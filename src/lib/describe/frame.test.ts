@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { fromHex } from '#lib/modes/frame.ts';
-import { describe as describeFrame, type Located } from './describe';
+import { describe as describeFrame, type Located } from './frame';
 
 const position = fromHex('8d4400f858c3a2beccc74b9d3525'); // DF17 TC 11, 38,050 ft
 

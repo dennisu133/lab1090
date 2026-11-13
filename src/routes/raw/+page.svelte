@@ -1,6 +1,9 @@
 <script lang="ts">
+	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
+	import { resolve } from '$app/paths';
 	import { DF_NAMES, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
@@ -30,7 +33,6 @@
 	);
 
 	let update = $derived(stream.update);
-	let status = $derived(update?.status);
 
 	let dfRows = $derived(
 		Object.entries(update?.counts.byDf ?? {}).map(([k, count]) => ({
@@ -105,23 +107,7 @@
 	<header
 		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
 	>
-		<div class="flex items-center gap-2">
-			{#if !stream.online}
-				<span class="size-2.5 rounded-full bg-zinc-500"></span>
-				<span>Server stream offline, retrying…</span>
-			{:else if status?.state === 'connected'}
-				<span class="size-2.5 animate-pulse rounded-full bg-emerald-400"></span>
-				<span>Receiving from <code class="text-zinc-300">{update?.source}</code></span>
-			{:else if status?.state === 'waiting'}
-				<span class="size-2.5 rounded-full bg-amber-400"></span>
-				<span>
-					Receiver unreachable ({status.reason}), retrying in {(status.retryInMs / 1000).toFixed(0)} s
-				</span>
-			{:else}
-				<span class="size-2.5 rounded-full bg-amber-400"></span>
-				<span>Connecting to <code>{update?.source ?? 'receiver'}</code>…</span>
-			{/if}
-		</div>
+		<ReceiverStatus online={stream.online} {update} />
 		<div class="tabular-nums">
 			<span class="text-2xl font-semibold">{stream.rates.total.toFixed(1)}</span>
 			<span class="text-zinc-400">msg/s</span>
@@ -305,8 +291,10 @@
 								look them up. Hover any value for what it means.
 							</p>
 							<p class="text-zinc-400">
-								DF20/21 also carry a Comm-B register (MB), and the CPR values become a position on
-								the map: both come later.
+								DF20/21 also carry a Comm-B register (MB): <a
+									href={resolve('/comm-b')}
+									class="text-sky-400 underline">/comm-b</a
+								> works out which one, and decodes it.
 							</p>
 						</InfoTip>
 					</th>
@@ -348,22 +336,7 @@
 							<td></td>
 						{/if}
 						<td class="py-0.5">
-							<div class="flex flex-wrap items-baseline gap-x-3">
-								{#each f.fields as field, i (i)}
-									<span
-										title={field.title}
-										class={[
-											'whitespace-nowrap',
-											field.tone === 'main' && 'text-zinc-100',
-											field.tone === 'minor' && 'text-xs text-zinc-500',
-											field.tone === 'alert' && 'text-orange-400'
-										]}
-									>
-										{#if field.label}<span class="text-xs text-zinc-500">{field.label}</span>{/if}
-										<span class={{ 'font-mono': field.mono }}>{field.value}</span>
-									</span>
-								{/each}
-							</div>
+							<Fields fields={f.fields} />
 						</td>
 						<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
 					</tr>

@@ -58,3 +58,24 @@ export const cprOracle: {
 		local: [number, number];
 	}[];
 } = await Bun.file(join(root, 'fixtures/oracle/cpr.json')).json();
+
+/** Every Mode S message of the capture with its receiver time in ms, in order. */
+export const timedMessages: { t: number; data: Uint8Array }[] = new BeastParser()
+	.push(new Uint8Array(await Bun.file(join(root, 'fixtures/capture.beast')).arrayBuffer()))
+	.filter((f) => f.kind !== 'modeac')
+	.map((f) => ({ t: f.timestamp / 12_000, data: f.data }));
+
+/**
+ * pyModeS on every Comm-B payload of the capture, plus a bit-flipped copy of each
+ * (tools/oracle-commb.py): which of its registers accept it, and their decoded fields.
+ */
+export const commbOracle: {
+	mb: string;
+	real: boolean;
+	inferred: string[];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	valid: Record<string, Record<string, any>>;
+}[] = (await Bun.file(join(root, 'fixtures/oracle/commb.jsonl')).text())
+	.trim()
+	.split('\n')
+	.map((line) => JSON.parse(line));

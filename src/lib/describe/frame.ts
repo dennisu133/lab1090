@@ -1,6 +1,6 @@
 /**
- * What /raw shows in the Content column: everything the decoders found in one frame, as a
- * flat list of short, labelled values. Each one has a tooltip that says what it means.
+ * What the Content columns show: everything the decoders found in one frame, as a flat
+ * list of short, labelled values. Each one has a tooltip that says what it means.
  *
  * Labels are the field names from the specs (FS, SL, RI, …), so they match the literature.
  */
@@ -68,7 +68,7 @@ export function describe(data: Uint8Array, located: Located | null = null): Fiel
 			label: 'MB',
 			value: 'Comm-B',
 			title:
-				"56 bits from one of the transponder's registers, read out by a radar. The message doesn't say which register: that has to be inferred (coming on /comm-b).",
+				"56 bits from one of the transponder's registers, read out by a radar. The message doesn't say which register: /comm-b infers it.",
 			tone: 'minor'
 		});
 	}
@@ -81,7 +81,7 @@ export function describe(data: Uint8Array, located: Located | null = null): Fiel
 
 const n = (x: number) => x.toLocaleString();
 
-function altitudeField(altitude: Altitude, what = 'Barometric altitude'): Field {
+export function altitudeField(altitude: Altitude, what = 'Barometric altitude'): Field {
 	const title = {
 		none: `${what}: not available`,
 		'25 ft': `${what} (pressure altitude, standard 1013.25 hPa), in 25 ft steps (Q bit = 1)`,
@@ -323,7 +323,7 @@ function mvFields(mv: Uint8Array): Field[] {
 
 // --- ADS-B -------------------------------------------------------------------------------
 
-function squitterFields(s: Squitter): Field[] {
+export function squitterFields(s: Squitter): Field[] {
 	switch (s.kind) {
 		case 'identification':
 			return [
