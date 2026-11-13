@@ -1,69 +1,23 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
-import { join } from 'node:path';
-import type { Socket, TCPSocketListener } from 'bun';
 import { BeastClient, type BeastClientOptions, type BeastClientStatus } from './client';
 import { BeastParser, type BeastFrame } from './parser';
-import { encodeFrame } from './encode';
+import {
+	capture,
+	fakeReceiver,
+	heartbeat,
+	sendAndEnd,
+	stopFakeReceivers,
+	waitFor
+} from './testing';
 
-const capture = new Uint8Array(
-	await Bun.file(join(import.meta.dir, '../../../../fixtures/capture.beast')).arrayBuffer()
-);
 const show = (f: BeastFrame) =>
 	`${f.kind} ${f.timestamp} ${f.signal} ${Buffer.from(f.data).toString('hex')}`;
 const reference = new BeastParser().push(capture).map(show);
-const heartbeat = encodeFrame({ kind: 'modeac', timestamp: 0, signal: 0, data: new Uint8Array(2) });
 
-/**
- * A stand-in for the Pi: a TCP server on a random local port. `onConnection` gets a `send`
- * function that handles backpressure (socket.write may accept only part of a large buffer).
- */
-function fakeReceiver(
-	onConnection: (send: (bytes: Uint8Array) => void, socket: Socket<Pending>, n: number) => void,
-	port = 0
-) {
-	const server: TCPSocketListener<Pending> = Bun.listen<Pending>({
-		hostname: '127.0.0.1',
-		port,
-		socket: {
-			open(socket) {
-				socket.data = { queue: [] };
-				const send = (bytes: Uint8Array) => {
-					socket.data.queue.push(bytes);
-					flush(socket);
-				};
-				onConnection(send, socket, ++connections.count);
-			},
-			drain: flush
-		}
-	});
-	const connections = { count: 0 };
-	servers.push(server);
-	return { port: server.port, connections, stop: () => server.stop(true) };
-}
-type Pending = { queue: Uint8Array[]; endAfter?: boolean };
-function flush(socket: Socket<Pending>) {
-	const q = socket.data.queue;
-	while (q.length) {
-		const written = socket.write(q[0]);
-		if (written < q[0].length) {
-			q[0] = q[0].subarray(written); // kernel buffer full: wait for `drain`
-			return;
-		}
-		q.shift();
-	}
-	if (socket.data.endAfter) socket.end();
-}
-/** Send, then close the connection once everything has been written. */
-function sendAndEnd(socket: Socket<Pending>, send: (b: Uint8Array) => void, bytes: Uint8Array) {
-	socket.data.endAfter = true;
-	send(bytes);
-}
-
-const servers: TCPSocketListener<Pending>[] = [];
 const clients: BeastClient[] = [];
 afterEach(() => {
 	clients.splice(0).forEach((c) => c.close());
-	servers.splice(0).forEach((s) => s.stop(true));
+	stopFakeReceivers();
 });
 
 function client(opts: Partial<BeastClientOptions> & { port: number }) {
@@ -78,14 +32,6 @@ function client(opts: Partial<BeastClientOptions> & { port: number }) {
 	}).start();
 	clients.push(c);
 	return { client: c, frames, statuses };
-}
-
-async function waitFor(condition: () => boolean, timeoutMs = 3000) {
-	const deadline = performance.now() + timeoutMs;
-	while (!condition()) {
-		if (performance.now() > deadline) throw new Error('waitFor: timed out');
-		await Bun.sleep(5);
-	}
 }
 
 describe('BeastClient', () => {
