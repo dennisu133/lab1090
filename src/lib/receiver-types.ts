@@ -1,3 +1,4 @@
+import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
 import type { BeastClientStatus } from '#lib/server/beast/client.ts';
 
 /** Shape of the messages on the /api/raw Server-Sent Events stream. Shared by server and page. */
@@ -13,6 +14,11 @@ export interface WireFrame {
 	sig: number;
 	/** The Mode S message as hex. */
 	hex: string;
+	/**
+	 * Sender and parity verdict, from the server (it remembers which aircraft were heard
+	 * recently; a single browser tab can't know that). null for formats without an address.
+	 */
+	addr: Checked | null;
 }
 
 export interface ReceiverCounts {
@@ -22,6 +28,8 @@ export interface ReceiverCounts {
 	byTc: Record<number, number>;
 	/** Signal levels in 3 dB buckets, keyed by the lower edge in dBFS (see signalBucket). */
 	bySignal: Record<number, number>;
+	/** Parity check results. */
+	byVerdict: Partial<Record<Verdict, number>>;
 }
 
 export interface RawUpdate {

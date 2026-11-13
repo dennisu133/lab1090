@@ -1,10 +1,9 @@
-import { downlinkFormat, fromHex, icaoAddress, signalDbfs, typeCode } from '#lib/modes/frame.ts';
+import { downlinkFormat, fromHex, signalDbfs, typeCode } from '#lib/modes/frame.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 export interface FeedFrame extends WireFrame {
 	df: number;
 	tc: number | null;
-	icao: string | null;
 	dbfs: number;
 }
 
@@ -12,6 +11,7 @@ export interface Rates {
 	total: number;
 	byDf: Record<number, number>;
 	byTc: Record<number, number>;
+	byVerdict: Record<string, number>;
 }
 
 const MAX_FRAMES = 1000;
@@ -27,7 +27,7 @@ export class RawStream {
 	update = $state.raw<RawUpdate | null>(null);
 	/** Newest first. */
 	frames = $state.raw<FeedFrame[]>([]);
-	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {} });
+	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {}, byVerdict: {} });
 
 	paused = $state(false);
 	/** Frames that arrived while paused. */
@@ -82,12 +82,13 @@ export class RawStream {
 		const oldest = this.#samples[0];
 		const seconds = (now - oldest.t) / 1000;
 		if (seconds < 1) return; // too short a window to say anything
-		const per = (a: Record<number, number>, b: Record<number, number>) =>
-			Object.fromEntries(Object.keys(a).map((k) => [k, ((a[+k] ?? 0) - (b[+k] ?? 0)) / seconds]));
+		const per = (a: Record<string, number>, b: Record<string, number>) =>
+			Object.fromEntries(Object.keys(a).map((k) => [k, ((a[k] ?? 0) - (b[k] ?? 0)) / seconds]));
 		this.rates = {
 			total: (counts.total - oldest.counts.total) / seconds,
 			byDf: per(counts.byDf, oldest.counts.byDf),
-			byTc: per(counts.byTc, oldest.counts.byTc)
+			byTc: per(counts.byTc, oldest.counts.byTc),
+			byVerdict: per(counts.byVerdict, oldest.counts.byVerdict)
 		};
 	}
 }
@@ -98,7 +99,6 @@ function decorate(f: WireFrame): FeedFrame {
 		...f,
 		df: downlinkFormat(data),
 		tc: typeCode(data),
-		icao: icaoAddress(data),
 		dbfs: signalDbfs(f.sig)
 	};
 }

@@ -28,3 +28,10 @@ DF17 came from 19 distinct aircraft. Type codes: 0 (26), 4 (267), 11 (2,196), 12
 The file starts at a frame boundary, because readsb starts each new client on a frame. The
 timestamps are 12 MHz receiver ticks and are monotonic throughout. They count from when
 readsb started, not wall-clock time.
+
+Parity: every DF11 and DF17 passes the CRC, and every address recovered from the parity of
+DF0/4/5/16/20/21 belongs to an aircraft that also sent DF11/17 (readsb already filtered).
+Replayed in order through `AddressFilter`, 13 AP messages come out "unknown": they precede
+their aircraft's first DF11/17 in the recording.
+
+`oracle/` holds reference values from pyModeS for the capture's messages; see `tools/README.md`.

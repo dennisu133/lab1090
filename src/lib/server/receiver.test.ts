@@ -56,6 +56,10 @@ test('counts every frame by DF and type code', async () => {
 	const buckets = Object.entries(r.counts.bySignal);
 	expect(buckets.reduce((sum, [, n]) => sum + n, 0)).toBe(TOTAL);
 	for (const [k] of buckets) expect(+k % 3 === 0 && +k >= -48 && +k <= -3).toBe(true);
+
+	// parity: the same as in address-filter.test.ts, here with the wall clock instead of the
+	// receiver's (the capture plays in ~1 s, so nothing expires)
+	expect(r.counts.byVerdict).toEqual({ valid: 6658 + 7545, known: 19752, unknown: 13 });
 });
 
 test('subscribers get every frame exactly once, also when joining mid-stream', async () => {

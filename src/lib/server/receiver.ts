@@ -1,5 +1,6 @@
 import { BeastClient, type BeastClientStatus } from './beast/client';
 import type { BeastFrame } from './beast/parser';
+import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
@@ -16,10 +17,11 @@ type Subscriber = { send: (update: RawUpdate) => void; close: () => void };
 export class Receiver {
 	readonly source: string;
 	readonly since = Date.now();
-	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {} };
+	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {}, byVerdict: {} };
 	status: BeastClientStatus = { state: 'closed' };
 
 	#client: BeastClient;
+	#addresses = new AddressFilter();
 	#nextId = 1;
 	/** Recent frames, so a new tab doesn't start with an empty feed. */
 	#history: WireFrame[] = [];
@@ -70,17 +72,22 @@ export class Receiver {
 		if (tc !== null && df === 17) c.byTc[tc] = (c.byTc[tc] ?? 0) + 1;
 		const bucket = signalBucket(signalDbfs(f.signal));
 		c.bySignal[bucket] = (c.bySignal[bucket] ?? 0) + 1;
+		const now = Date.now();
+		const addr = this.#addresses.check(f.data, now);
+		if (addr) c.byVerdict[addr.verdict] = (c.byVerdict[addr.verdict] ?? 0) + 1;
 
 		this.#pending.push({
 			id: this.#nextId++,
-			rx: Date.now(),
+			rx: now,
 			ts: f.timestamp,
 			sig: f.signal,
-			hex: toHex(f.data)
+			hex: toHex(f.data),
+			addr
 		});
 	}
 
 	#flush(): void {
+		this.#addresses.prune(Date.now());
 		const frames = this.#pending;
 		this.#pending = [];
 		this.#history = [...this.#history, ...frames].slice(-HISTORY);

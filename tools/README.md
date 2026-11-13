@@ -1,0 +1,31 @@
+# tools/
+
+Helpers that aren't part of the app. Nothing in `src/` imports from here.
+
+## pyModeS oracle
+
+[pyModeS](https://github.com/junzis/pyModeS) is the reference decoder by the author of
+"The 1090 MHz Riddle". We use it as an **oracle**: it computes the expected values for
+the messages in our capture, and our own TypeScript decoder is tested against them.
+
+The output is committed (`fixtures/oracle/`), so `bun test` doesn't need Python. You
+only need the setup below to regenerate or extend it.
+
+```sh
+python3 -m venv tools/.venv
+tools/.venv/bin/pip install -r tools/requirements.txt
+
+bun tools/dump-messages.ts fixtures/capture.beast \
+  | tools/.venv/bin/python tools/oracle.py > fixtures/oracle/crc.tsv
+```
+
+- `dump-messages.ts`: prints every distinct Mode S message of a Beast capture as hex,
+  using our own Beast parser (the parser has its own tests).
+- `oracle.py`: reads hex messages, writes `message  crc  icao` as TSV.
+
+| File                      | Content                                                             | Tested in                   |
+| ------------------------- | ------------------------------------------------------------------- | --------------------------- |
+| `fixtures/oracle/crc.tsv` | CRC remainder (syndrome) and address of all 7,481 distinct messages | `src/lib/modes/crc.test.ts` |
+
+pyModeS 3 changed its API (no more `pms.crc()`/`pms.icao()` at the top level); this
+uses `pyModeS.util.crc` and `pyModeS.decode(msg)["icao"]`.

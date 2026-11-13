@@ -1,10 +1,12 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import type { Verdict } from '#lib/modes/address-filter.ts';
 	import { DF_NAMES, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
 	import { RawStream } from './raw-stream.svelte';
+	import { VERDICTS, addressTitle, interrogatorLabel } from './verdicts';
 
 	const FEED_ROWS = 200;
 
@@ -12,6 +14,7 @@
 	$effect(() => stream.connect());
 
 	let dfFilter = $state<number | null>(null);
+	let verdictFilter = $state<Verdict | null>(null);
 
 	let update = $derived(stream.update);
 	let status = $derived(update?.status);
@@ -34,11 +37,25 @@
 		}))
 	);
 
+	let verdictRows = $derived(
+		(Object.keys(VERDICTS) as Verdict[]).map((v) => ({
+			key: v,
+			keyText: VERDICTS[v].symbol,
+			keyClass: VERDICTS[v].color,
+			label: VERDICTS[v].label,
+			count: update?.counts.byVerdict[v] ?? 0,
+			rate: stream.rates.byVerdict[v] ?? 0
+		}))
+	);
+
 	let feed = $derived(
-		(dfFilter === null ? stream.frames : stream.frames.filter((f) => f.df === dfFilter)).slice(
-			0,
-			FEED_ROWS
-		)
+		stream.frames
+			.filter(
+				(f) =>
+					(dfFilter === null || f.df === dfFilter) &&
+					(verdictFilter === null || f.addr?.verdict === verdictFilter)
+			)
+			.slice(0, FEED_ROWS)
 	);
 
 	const time = new Intl.DateTimeFormat(undefined, {
@@ -62,6 +79,10 @@
 
 	function toggleFilter(df: number) {
 		dfFilter = dfFilter === df ? null : df;
+	}
+
+	function toggleVerdict(v: Verdict) {
+		verdictFilter = verdictFilter === v ? null : v;
 	}
 </script>
 
@@ -135,7 +156,40 @@
 		</CountTable>
 	</div>
 
-	<SignalHistogram counts={update?.counts.bySignal ?? {}} />
+	<div class="grid gap-6 lg:grid-cols-2">
+		<CountTable
+			title="Parity check"
+			keyLabel=""
+			rows={verdictRows}
+			selected={verdictFilter}
+			onselect={toggleVerdict}
+		>
+			{#snippet info()}
+				<p>
+					Every Mode S message ends in 24 bits of <strong>parity</strong>: a CRC computed over the
+					rest of the message. The receiver recomputes it; if a bit got flipped on the way, it no
+					longer matches.
+				</p>
+				<p>
+					<span class={VERDICTS.valid.color}>DF11/17/18</span> send the address in the clear, so the CRC
+					can check the whole message.
+				</p>
+				<p>
+					All other formats save 24 bits by XORing the address into the parity. Recomputing the CRC
+					gives back the address, but a corrupted message would simply give a <em>different</em>
+					address. So it only counts if that aircraft was heard in a checked message within the last 60
+					s: <span class={VERDICTS.known.color}>known</span>, or else
+					<span class={VERDICTS.unknown.color}>unknown</span>.
+				</p>
+				<p class="text-zinc-400">
+					readsb on the Pi already fixes single-bit errors and drops what fails these checks, so
+					expect (almost) only green and blue here. Unknowns show up right after a restart, before
+					an aircraft's next DF11/17. Click a row to filter the feed.
+				</p>
+			{/snippet}
+		</CountTable>
+		<SignalHistogram counts={update?.counts.bySignal ?? {}} />
+	</div>
 
 	<!-- Feed -->
 	<section>
@@ -155,11 +209,20 @@
 					DF {dfFilter} only ✕
 				</button>
 			{/if}
+			{#if verdictFilter !== null}
+				<button
+					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
+					onclick={() => (verdictFilter = null)}
+				>
+					{verdictFilter} only ✕
+				</button>
+			{/if}
 			<div class="ml-auto flex gap-3 font-mono text-xs">
 				<span class={PART_COLORS.header}>DF + control</span>
 				<span class={PART_COLORS.address}>ICAO address</span>
 				<span class={PART_COLORS.payload}>payload</span>
 				<span class={PART_COLORS.parity}>parity</span>
+				<span class="text-zinc-500">* address from parity</span>
 			</div>
 		</div>
 
@@ -178,9 +241,8 @@
 								<strong>−20 dBFS</strong> is a tenth of the full-scale amplitude, a hundredth of its power.
 							</p>
 							<p>
-								Usable range here is about −40 (drowning in noise) to −3 dBFS (pulses at full scale; <span
-									class="text-rose-400">red</span
-								>). Louder usually means closer, but only roughly: transmitter power and antenna
+								Usable range here is about −40 (drowning in noise) to −3 dBFS (pulses at full
+								scale). Louder usually means closer, but only roughly: transmitter power and antenna
 								orientation vary.
 							</p>
 							<p class="text-zinc-400">
@@ -192,6 +254,7 @@
 					<th class="py-1 pl-4 font-normal">DF</th>
 					<th class="py-1 font-normal">TC</th>
 					<th class="py-1 font-normal">ICAO</th>
+					<th class="py-1 font-normal">Parity</th>
 					<th class="py-1 font-normal">Message</th>
 				</tr>
 			</thead>
@@ -206,11 +269,39 @@
 						<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>
 							{f.tc ?? ''}
 						</td>
-						<td class="py-0.5 font-mono text-amber-300">{f.icao ?? ''}</td>
+						{#if f.addr}
+							{@const v = VERDICTS[f.addr.verdict]}
+							<td
+								class={[
+									'py-0.5 font-mono',
+									f.addr.verdict === 'valid' || f.addr.verdict === 'known'
+										? 'text-amber-300'
+										: 'text-zinc-500'
+								]}
+								title={addressTitle(f.addr)}
+							>
+								{f.addr.icao}<span class="text-zinc-600"
+									>{f.addr.source === 'parity' ? '*' : ''}</span
+								>
+							</td>
+							<td class="py-0.5 whitespace-nowrap" title={v.label}>
+								<span class={v.color}>{v.symbol}</span>
+								<span class="text-xs text-zinc-500">{interrogatorLabel(f.addr) ?? ''}</span>
+							</td>
+						{:else}
+							<td></td>
+							<td></td>
+						{/if}
 						<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
 					</tr>
 				{:else}
-					<tr><td colspan="6" class="py-4 text-zinc-500">Waiting for frames…</td></tr>
+					<tr>
+						<td colspan="7" class="py-4 text-zinc-500">
+							{stream.frames.length === 0
+								? 'Waiting for frames…'
+								: `None of the last ${stream.frames.length} frames match the filter.`}
+						</td>
+					</tr>
 				{/each}
 			</tbody>
 		</table>

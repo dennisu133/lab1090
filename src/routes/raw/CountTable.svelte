@@ -1,9 +1,13 @@
-<script lang="ts">
+<script lang="ts" generics="K extends number | string">
 	import type { Snippet } from 'svelte';
+	import type { ClassValue } from 'svelte/elements';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 
 	interface Row {
-		key: number;
+		key: K;
+		/** Shown in the first column instead of the key. */
+		keyText?: string;
+		keyClass?: ClassValue;
 		label: string;
 		/** Extra info shown after the label, dimmed. */
 		detail?: string;
@@ -16,9 +20,9 @@
 		keyLabel: string;
 		rows: Row[];
 		/** Highlighted row, if any. */
-		selected?: number | null;
+		selected?: K | null;
 		/** Makes rows clickable. */
-		onselect?: (key: number) => void;
+		onselect?: (key: K) => void;
 		/** Explanation shown when hovering the title. */
 		info?: Snippet;
 	}
@@ -61,7 +65,7 @@
 					]}
 					onclick={() => onselect?.(row.key)}
 				>
-					<td class="py-1 font-mono">{row.key}</td>
+					<td class={['py-1 font-mono', row.keyClass]}>{row.keyText ?? row.key}</td>
 					<td class="py-1">
 						{#if onselect}
 							<button class="text-left" aria-pressed={selected === row.key}>{row.label}</button>
