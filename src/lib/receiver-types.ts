@@ -20,6 +20,8 @@ export interface ReceiverCounts {
 	byDf: Record<number, number>;
 	/** DF17 type codes. */
 	byTc: Record<number, number>;
+	/** Signal levels in 3 dB buckets, keyed by the lower edge in dBFS (see signalBucket). */
+	bySignal: Record<number, number>;
 }
 
 export interface RawUpdate {

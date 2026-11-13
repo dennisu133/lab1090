@@ -1,7 +1,12 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+	import InfoTip from '#lib/components/InfoTip.svelte';
+
 	interface Row {
 		key: number;
 		label: string;
+		/** Extra info shown after the label, dimmed. */
+		detail?: string;
 		count: number;
 		rate: number;
 	}
@@ -14,16 +19,24 @@
 		selected?: number | null;
 		/** Makes rows clickable. */
 		onselect?: (key: number) => void;
+		/** Explanation shown when hovering the title. */
+		info?: Snippet;
 	}
 
-	let { title, keyLabel, rows, selected = null, onselect }: Props = $props();
+	let { title, keyLabel, rows, selected = null, onselect, info }: Props = $props();
 
 	let total = $derived(rows.reduce((sum, r) => sum + r.count, 0));
 	let max = $derived(Math.max(1, ...rows.map((r) => r.count)));
 </script>
 
 <section>
-	<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">{title}</h2>
+	<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
+		{#if info}
+			<InfoTip label={title}>{@render info()}</InfoTip>
+		{:else}
+			{title}
+		{/if}
+	</h2>
 	<table class="w-full text-sm tabular-nums">
 		<thead class="text-left text-xs text-zinc-500">
 			<tr>
@@ -50,6 +63,9 @@
 							<button class="text-left" aria-pressed={selected === row.key}>{row.label}</button>
 						{:else}
 							{row.label}
+						{/if}
+						{#if row.detail}
+							<span class="ml-1 text-xs text-zinc-500">{row.detail}</span>
 						{/if}
 					</td>
 					<td class="py-1 text-right">{row.count.toLocaleString()}</td>

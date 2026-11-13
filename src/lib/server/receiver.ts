@@ -1,6 +1,6 @@
 import { BeastClient, type BeastClientStatus } from './beast/client';
 import type { BeastFrame } from './beast/parser';
-import { downlinkFormat, toHex, typeCode } from '#lib/modes/frame.ts';
+import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
@@ -16,7 +16,7 @@ type Subscriber = { send: (update: RawUpdate) => void; close: () => void };
 export class Receiver {
 	readonly source: string;
 	readonly since = Date.now();
-	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {} };
+	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {} };
 	status: BeastClientStatus = { state: 'closed' };
 
 	#client: BeastClient;
@@ -68,6 +68,8 @@ export class Receiver {
 		c.byDf[df] = (c.byDf[df] ?? 0) + 1;
 		const tc = typeCode(f.data);
 		if (tc !== null && df === 17) c.byTc[tc] = (c.byTc[tc] ?? 0) + 1;
+		const bucket = signalBucket(signalDbfs(f.signal));
+		c.bySignal[bucket] = (c.bySignal[bucket] ?? 0) + 1;
 
 		this.#pending.push({
 			id: this.#nextId++,

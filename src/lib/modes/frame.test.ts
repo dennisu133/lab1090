@@ -1,7 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
-import { downlinkFormat, fromHex, icaoAddress, signalDbfs, toHex, typeCode } from './frame';
+import {
+	containmentRadius,
+	downlinkFormat,
+	fromHex,
+	icaoAddress,
+	signalBucket,
+	signalDbfs,
+	toHex,
+	typeCode
+} from './frame';
 
 const capture = new Uint8Array(
 	await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
@@ -59,4 +68,20 @@ test('signal levels', () => {
 	expect(signalDbfs(255)).toBe(0);
 	expect(signalDbfs(0)).toBe(-Infinity);
 	expect(signalDbfs(7)).toBeCloseTo(-31.2, 1);
+});
+
+test('signal buckets: 3 dB wide, lower edge, clamped to -48 … -3', () => {
+	expect(signalBucket(-2.6)).toBe(-3); // strong: at or above -3 dBFS
+	expect(signalBucket(-3)).toBe(-3);
+	expect(signalBucket(-3.1)).toBe(-6);
+	expect(signalBucket(-20)).toBe(-21);
+	expect(signalBucket(signalDbfs(1))).toBe(-48); // -48.1, the weakest possible byte
+	expect(signalBucket(-Infinity)).toBe(-48);
+	expect(signalBucket(0)).toBe(-3); // full scale still counts as the top bucket
+});
+
+test('containment radius only for airborne position type codes', () => {
+	expect(containmentRadius(11)).toBe('< 75 m or < 185 m');
+	expect(containmentRadius(18)).toBe('unknown');
+	for (const tc of [0, 4, 8, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
 });

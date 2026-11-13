@@ -51,6 +51,11 @@ test('counts every frame by DF and type code', async () => {
 		21: 2884
 	});
 	expect(r.counts.byTc[19]).toBe(2747);
+
+	// every frame lands in exactly one signal bucket, -48 … -3 dBFS
+	const buckets = Object.entries(r.counts.bySignal);
+	expect(buckets.reduce((sum, [, n]) => sum + n, 0)).toBe(TOTAL);
+	for (const [k] of buckets) expect(+k % 3 === 0 && +k >= -48 && +k <= -3).toBe(true);
 });
 
 test('subscribers get every frame exactly once, also when joining mid-stream', async () => {

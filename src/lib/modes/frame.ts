@@ -40,6 +40,22 @@ export function signalDbfs(signal: number): number {
 	return signal === 0 ? -Infinity : 20 * Math.log10(signal / 255);
 }
 
+/** readsb counts messages above this as "strong signals" (and auto-gain backs off). */
+export const STRONG_SIGNAL_DBFS = -3;
+
+/** Width of the signal histogram buckets, in dB. */
+export const SIGNAL_BUCKET_DB = 3;
+
+/**
+ * Histogram bucket for a signal level: the lower edge, a multiple of 3 dB, so -3 covers
+ * [-3, 0) and lines up with STRONG_SIGNAL_DBFS. The weakest possible byte (1) is -48.1 dBFS,
+ * so everything is clamped to -48 and up.
+ */
+export function signalBucket(dbfs: number): number {
+	const bucket = Math.floor(dbfs / SIGNAL_BUCKET_DB) * SIGNAL_BUCKET_DB;
+	return Math.min(-SIGNAL_BUCKET_DB, Math.max(-48, bucket));
+}
+
 export function toHex(bytes: Uint8Array): string {
 	let s = '';
 	for (const b of bytes) s += b.toString(16).padStart(2, '0');
@@ -78,3 +94,30 @@ export function typeCodeName(tc: number): string {
 	if (tc === 31) return 'Aircraft operational status';
 	return 'Reserved';
 }
+
+/**
+ * Airborne position messages (TC 9–18 and 20–22) all have the same layout. The type code
+ * additionally says how much the aircraft vouches for the position: the containment radius Rc,
+ * a circle the true position is inside with ~1e-7 risk of being wrong (integrity, not accuracy).
+ * Values from DO-260A/B (ADS-B version 1/2). Where two values are given, a supplement bit from
+ * the aircraft's operational status message (TC 31) decides.
+ */
+export function containmentRadius(tc: number): string | null {
+	return RC[tc] ?? null;
+}
+
+const RC: Record<number, string> = {
+	9: '< 7.5 m',
+	10: '< 25 m',
+	11: '< 75 m or < 185 m',
+	12: '< 370 m',
+	13: '< 0.5 or 0.6 NM',
+	14: '< 1 NM',
+	15: '< 2 NM',
+	16: '< 4 or 8 NM',
+	17: '< 20 NM',
+	18: 'unknown',
+	20: '< 7.5 m',
+	21: '< 25 m',
+	22: 'unknown'
+};
