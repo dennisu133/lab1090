@@ -4,7 +4,9 @@
  *
  * Labels are the field names from the specs (FS, SL, RI, …), so they match the literature.
  */
+import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import type { Altitude } from '#lib/modes/altitude.ts';
+import type { LatLon } from '#lib/modes/cpr.ts';
 import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
 import {
 	CAPABILITIES,
@@ -42,9 +44,16 @@ export interface Field {
 	mono?: boolean;
 }
 
+/** A decoded airborne position: from the reference point (local), an even/odd pair (global), or both. */
+export interface Located {
+	reference: LatLon | null;
+	local: LatLon | null;
+	global: LatLon | null;
+}
+
 const TONE_ORDER = { main: 0, alert: 1, minor: 2 };
 
-export function describe(data: Uint8Array): Field[] {
+export function describe(data: Uint8Array, located: Located | null = null): Field[] {
 	const fields: Field[] = [];
 	const header = messageHeader(data);
 	if (header) fields.push(...headerFields(header));
@@ -63,6 +72,7 @@ export function describe(data: Uint8Array): Field[] {
 			tone: 'minor'
 		});
 	}
+	if (located) fields.push(...locationFields(located));
 	// Stable sort: headline values first, details last, each group in decoding order.
 	return fields.sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
 }
@@ -120,6 +130,78 @@ function silField(sil: number): Field {
 }
 
 const degrees = (x: number) => `${Math.round(x) % 360}°`;
+
+// --- position ----------------------------------------------------------------------------
+
+/** Two decodes of the same message closer than this are the same position (float noise). */
+const SAME_KM = 0.05;
+
+function locationFields({ reference, local, global }: Located): Field[] {
+	const fields: Field[] = [];
+	let position: LatLon;
+	if (local && global) {
+		const off = distanceKm(local, global);
+		if (off < SAME_KM) {
+			position = local;
+			fields.push({
+				value: '✓ pair',
+				title:
+					'Decoded with the reference point, and the even/odd pair (global decoding) gives the same position: confirmed',
+				tone: 'minor'
+			});
+		} else {
+			position = global; // a fresh pair beats a reference that's too far away
+			fields.push(
+				{
+					value: 'pair',
+					title: 'Decoded from the even/odd pair (global decoding)',
+					tone: 'minor'
+				},
+				{
+					value: `reference decode ${n(Math.round(off))} km off`,
+					title:
+						"Decoding with the reference point picked the wrong zone: the aircraft is probably more than ~150 NM from it. Nothing in the message itself reveals this; only the even/odd pair does. Showing the pair's position instead",
+					tone: 'alert'
+				}
+			);
+		}
+	} else if (local) {
+		position = local;
+		fields.push({
+			value: 'unconfirmed',
+			title:
+				"Decoded with the reference point only. No message from this aircraft's other grid within the last 10 s (yet), so it can't be confirmed",
+			tone: 'minor'
+		});
+	} else if (global) {
+		position = global;
+		fields.push({
+			value: 'pair',
+			title:
+				'Decoded from the even/odd pair (global decoding). Set REFERENCE_POINT to also decode single messages',
+			tone: 'minor'
+		});
+	} else {
+		return [];
+	}
+
+	fields.unshift({
+		value: `${position.lat.toFixed(4)}, ${position.lon.toFixed(4)}`,
+		title:
+			'Latitude, longitude in degrees (WGS84). CPR resolves about 5 m; 4 decimals are about 10 m',
+		tone: 'main',
+		mono: true
+	});
+	if (reference) {
+		fields.splice(1, 0, {
+			value: `${n(Math.round(distanceKm(reference, position)))} km ${compass(bearing(reference, position))}`,
+			title:
+				"Distance and direction from the reference point (only as exact as the reference is: it's rounded)",
+			tone: 'main'
+		});
+	}
+	return fields;
+}
 
 // --- header ------------------------------------------------------------------------------
 

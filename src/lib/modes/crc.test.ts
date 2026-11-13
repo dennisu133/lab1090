@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { checkParity, crc24, interrogator, syndrome } from './crc';
 import { fromHex } from './frame';
+import { prng } from './testing';
 
 /**
  * Reference: the textbook bitwise CRC, written independently of crc.ts (25-bit generator,
@@ -16,16 +17,6 @@ function remainderBitwise(data: Uint8Array): number {
 		}
 	}
 	return r;
-}
-
-/** mulberry32: small seeded PRNG, so "random" tests are the same every run. */
-function prng(seed: number) {
-	return () => {
-		seed = (seed + 0x6d2b79f5) | 0;
-		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
 }
 
 /** pyModeS's verdict on every distinct message in the capture (see tools/README.md). */

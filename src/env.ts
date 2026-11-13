@@ -1,4 +1,5 @@
 import { defineEnvVars } from '@sveltejs/kit/env';
+import { parseLatLon } from '#lib/geo.ts';
 
 export const variables = defineEnvVars({
 	RECEIVER_HOST: {
@@ -14,5 +15,12 @@ export const variables = defineEnvVars({
 			}
 			return port;
 		}
+	},
+	REFERENCE_POINT: {
+		description:
+			'A point near the receiver as "latitude,longitude" (decimal degrees), e.g. "51.5,-0.1". ' +
+			'Used to decode single ADS-B positions (local CPR decoding): it only has to be within ' +
+			'~150 NM of the aircraft, so a rounded value is enough. Optional.',
+		schema: parseLatLon
 	}
 });

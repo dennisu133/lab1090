@@ -1,6 +1,8 @@
-import { downlinkFormat, fromHex, signalDbfs, typeCode } from '#lib/modes/frame.ts';
+import { CprPairs, decodeLocal, type LatLon } from '#lib/modes/cpr.ts';
+import { downlinkFormat, fromHex, payload, signalDbfs, typeCode } from '#lib/modes/frame.ts';
+import { airbornePosition } from '#lib/modes/position.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
-import { describe, type Field } from './describe';
+import { describe, type Field, type Located } from './describe';
 
 export interface FeedFrame extends WireFrame {
 	df: number;
@@ -38,6 +40,15 @@ export class RawStream {
 
 	#heldFrames: FeedFrame[] = [];
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
+	/** Each aircraft's latest even and odd position, for global CPR decoding. */
+	#pairs = new CprPairs();
+
+	/** REFERENCE_POINT from the server, if set (for local CPR decoding). */
+	#reference: () => LatLon | null;
+
+	constructor(reference: () => LatLon | null) {
+		this.#reference = reference;
+	}
 
 	/** Open the stream; returns a cleanup function (use from an $effect). */
 	connect(): () => void {
@@ -67,7 +78,9 @@ export class RawStream {
 		this.#updateRates(update.counts);
 
 		if (update.frames.length === 0) return;
-		const fresh = update.frames.map(decorate).reverse();
+		// In arrival order (pairing depends on it), then newest first for the feed.
+		const fresh = update.frames.map((f) => this.#decorate(f)).reverse();
+		this.#pairs.prune(update.frames.at(-1)!.rx); // the server's clock, like the frames'
 		if (this.paused) {
 			this.#heldFrames = [...fresh, ...this.#heldFrames].slice(0, MAX_FRAMES);
 			this.held = this.#heldFrames.length;
@@ -94,15 +107,33 @@ export class RawStream {
 			byVerdict: per(counts.byVerdict, oldest.counts.byVerdict)
 		};
 	}
-}
 
-function decorate(f: WireFrame): FeedFrame {
-	const data = fromHex(f.hex);
-	return {
-		...f,
-		df: downlinkFormat(data),
-		tc: typeCode(data),
-		fields: describe(data),
-		dbfs: signalDbfs(f.sig)
-	};
+	#decorate(f: WireFrame): FeedFrame {
+		const data = fromHex(f.hex);
+		return {
+			...f,
+			df: downlinkFormat(data),
+			tc: typeCode(data),
+			fields: describe(data, this.#locate(data, f)),
+			dbfs: signalDbfs(f.sig)
+		};
+	}
+
+	/**
+	 * Airborne positions (ADS-B, or the copy in a DF16 reply): decode locally with the
+	 * reference point, and globally if the same aircraft sent one from the other grid recently.
+	 */
+	#locate(data: Uint8Array, f: WireFrame): Located | null {
+		const df = downlinkFormat(data);
+		const position = df === 17 || df === 16 ? airbornePosition(payload(data)!) : null;
+		if (!position?.cpr) return null;
+		const reference = this.#reference();
+		// Only pair checked ADS-B: DF16's address comes from the parity and could be wrong.
+		const pairable = df === 17 && f.addr?.verdict === 'valid';
+		return {
+			reference,
+			local: reference ? decodeLocal(position.cpr, reference) : null,
+			global: pairable ? this.#pairs.add(f.addr!.icao, position.cpr, f.rx) : null
+		};
+	}
 }

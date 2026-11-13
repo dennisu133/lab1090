@@ -10,7 +10,9 @@
 
 	const FEED_ROWS = 200;
 
-	const stream = new RawStream();
+	let { data } = $props();
+
+	const stream = new RawStream(() => data.reference);
 	$effect(() => stream.connect());
 
 	/** Clicking a row in a count table shows only those frames; null = no filter. */
@@ -124,6 +126,35 @@
 			<span class="text-2xl font-semibold">{stream.rates.total.toFixed(1)}</span>
 			<span class="text-zinc-400">msg/s</span>
 		</div>
+		<div class="text-zinc-400">
+			{#if data.reference}
+				<InfoTip label="Reference point set">
+					<p>
+						Positions are decoded from single messages, using the <code>REFERENCE_POINT</code>
+						from <code>.env</code> to pick the right CPR zone (local decoding). Its coordinates are never
+						shown here.
+					</p>
+					<p>
+						When the same aircraft also sent a message from its other grid within 10 s, the even/odd
+						pair is decoded too (global decoding, no reference needed). If both agree, the position
+						is confirmed: <span class="text-zinc-300">✓ pair</span>. Until then it's
+						<span class="text-zinc-300">unconfirmed</span>; if they disagree, the pair wins and the
+						row says how far off the reference decode was.
+					</p>
+				</InfoTip>
+			{:else}
+				<InfoTip label="No reference point">
+					<p>
+						Positions are only decoded from even/odd pairs (global decoding), so each aircraft's
+						first position message stays undecoded.
+					</p>
+					<p>
+						Set <code>REFERENCE_POINT="lat,lon"</code> in <code>.env</code> to decode single
+						messages too (see <code>.env.example</code>).
+					</p>
+				</InfoTip>
+			{/if}
+		</div>
 		{#if update}
 			<div class="text-zinc-400 tabular-nums">
 				<span class="text-zinc-100">{update.counts.total.toLocaleString()}</span> messages since
@@ -236,7 +267,7 @@
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
 					<th class="py-1 font-normal">Received</th>
-					<th class="py-1 text-right font-normal">
+					<th class="py-1 text-right font-normal whitespace-nowrap">
 						<InfoTip label="Signal (dBFS)">
 							<p>
 								How loud the message arrived, in <strong>dBFS</strong>: decibels relative to the
