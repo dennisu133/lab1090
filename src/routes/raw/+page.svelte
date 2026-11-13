@@ -1,11 +1,6 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import {
-		DF_NAMES,
-		STRONG_SIGNAL_DBFS,
-		containmentRadius,
-		typeCodeName
-	} from '#lib/modes/frame.ts';
+	import { DF_NAMES, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
@@ -58,9 +53,6 @@
 		minute: '2-digit',
 		hour12: false
 	});
-
-	/** Meter width: -42 dBFS (about the noise floor) is empty, 0 dBFS is full. */
-	const meter = (dbfs: number) => Math.min(100, Math.max(0, ((dbfs + 42) / 42) * 100));
 
 	function signalTitle(dbfs: number) {
 		const amplitude = 10 ** (dbfs / 20) * 100;
@@ -207,19 +199,8 @@
 				{#each feed as f (f.id)}
 					<tr class="border-t border-zinc-900">
 						<td class="py-0.5 text-zinc-400">{time.format(f.rx)}</td>
-						<td class="py-0.5 text-zinc-400" title={signalTitle(f.dbfs)}>
-							<div class="flex items-center justify-end gap-2">
-								<div class="h-1.5 w-12 rounded-sm bg-zinc-800">
-									<div
-										class={[
-											'h-1.5 rounded-sm',
-											f.dbfs >= STRONG_SIGNAL_DBFS ? 'bg-rose-400' : 'bg-sky-500'
-										]}
-										style:width="{meter(f.dbfs)}%"
-									></div>
-								</div>
-								<span class="w-10 text-right">{f.dbfs.toFixed(1)}</span>
-							</div>
+						<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
+							{f.dbfs.toFixed(1)} dBFS
 						</td>
 						<td class="py-0.5 pl-4 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
 						<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>

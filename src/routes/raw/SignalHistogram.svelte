@@ -50,26 +50,63 @@
 	};
 </script>
 
-<section class="grid gap-6 lg:grid-cols-2">
+<section>
 	<div>
-		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
-			<InfoTip label="Signal strength">
+		<div class="mb-2 flex">
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Signal strength"
+				wide
+			>
+				<h3 class="font-semibold text-zinc-100">Reading dBFS</h3>
 				<p>
-					How loud each message arrived, in 3 dB steps, counted since the server started. Higher
-					bars are more messages at that level.
+					<strong>dBFS</strong> means decibels relative to <em>full scale</em>: how loud a message
+					was compared to the loudest signal the dongle can measure. So values are always 0 or
+					negative. Decibels are logarithmic: every −10 dB is a tenth of the power.
+				</p>
+				<table class="w-full text-xs tabular-nums">
+					<thead class="text-left text-zinc-500">
+						<tr>
+							<th class="py-0.5 font-normal">dBFS</th>
+							<th class="py-0.5 text-right font-normal">amplitude</th>
+							<th class="py-0.5 text-right font-normal">power</th>
+							<th class="py-0.5 pl-4 font-normal"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each reference as r (r.db)}
+							{@const s = share(r.db)}
+							<tr class="border-t border-zinc-800">
+								<td class="py-0.5 font-mono">{r.db}</td>
+								<td class="py-0.5 text-right">{s.amplitude} %</td>
+								<td class="py-0.5 text-right">{s.power} %</td>
+								<td class="py-0.5 pl-4 text-zinc-400">{r.note}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+				<p>
+					<strong>Why −3 dBFS is the ceiling:</strong> every Mode S bit is a pulse in one half of a
+					microsecond and silence in the other. readsb averages the power over the whole message,
+					gaps included, so even pulses at full scale average out at half power. Messages at or
+					above it are
+					<span class="text-rose-400">red</span> in the chart: readsb counts them as "strong signals",
+					and its auto-gain turns the gain down when there are many.
 				</p>
 				<p>
-					Most traffic sits well below full scale: that's the many aircraft far away. The few loud
-					messages are from aircraft close to you.
+					<strong>It's relative to your receiver</strong>, not an absolute power: turning the gain
+					up makes everything louder. Good for comparing messages, not for comparing receivers.
 				</p>
 				<p>
-					<span class="text-rose-400">Red</span> is readsb's "strong signal" range (≥ −3 dBFS). Its auto-gain
-					turns the gain down when there are too many of those.
+					<strong>As a distance hint:</strong> twice as far is about −6 dB, ten times as far −20 dB. Only
+					roughly, though: transponders differ in power (125–500 W) and a banking aircraft can turn its
+					antenna away from you.
 				</p>
 			</InfoTip>
-		</h2>
+		</div>
 
-		<div class="flex h-36 items-end gap-1 border-b border-zinc-700">
+		<div class="flex h-28 items-end gap-1 border-b border-zinc-700">
 			{#each bins as b (b.key)}
 				<div
 					class="flex h-full flex-1 flex-col justify-end hover:bg-zinc-800/60"
@@ -106,49 +143,5 @@
 				<dd class="inline">{strong.toLocaleString()} ({percent(strong)} %)</dd>
 			</div>
 		</dl>
-	</div>
-
-	<div class="space-y-3 rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-300">
-		<h3 class="font-semibold text-zinc-100">Reading dBFS</h3>
-		<p>
-			<strong>dBFS</strong> means decibels relative to <em>full scale</em>: how loud a message was
-			compared to the loudest signal the dongle can measure. So values are always 0 or negative.
-			Decibels are logarithmic: every −10 dB is a tenth of the power.
-		</p>
-		<table class="w-full text-xs tabular-nums">
-			<thead class="text-left text-zinc-500">
-				<tr>
-					<th class="py-0.5 font-normal">dBFS</th>
-					<th class="py-0.5 text-right font-normal">amplitude</th>
-					<th class="py-0.5 text-right font-normal">power</th>
-					<th class="py-0.5 pl-4 font-normal"></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each reference as r (r.db)}
-					{@const s = share(r.db)}
-					<tr class="border-t border-zinc-800">
-						<td class="py-0.5 font-mono">{r.db}</td>
-						<td class="py-0.5 text-right">{s.amplitude} %</td>
-						<td class="py-0.5 text-right">{s.power} %</td>
-						<td class="py-0.5 pl-4 text-zinc-400">{r.note}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-		<p>
-			<strong>Why −3 dBFS is the ceiling:</strong> every Mode S bit is a pulse in one half of a microsecond
-			and silence in the other. readsb averages the power over the whole message, gaps included, so even
-			pulses at full scale average out at half power.
-		</p>
-		<p>
-			<strong>It's relative to your receiver</strong>, not an absolute power: turning the gain up
-			makes everything louder. Good for comparing messages, not for comparing receivers.
-		</p>
-		<p>
-			<strong>As a distance hint:</strong> twice as far is about −6 dB, ten times as far −20 dB. Only
-			roughly, though: transponders differ in power (125–500 W) and a banking aircraft can turn its antenna
-			away from you.
-		</p>
 	</div>
 </section>

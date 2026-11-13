@@ -30,13 +30,17 @@
 </script>
 
 <section>
-	<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
-		{#if info}
-			<InfoTip label={title}>{@render info()}</InfoTip>
-		{:else}
-			{title}
-		{/if}
-	</h2>
+	{#if info}
+		<div class="mb-2 flex">
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label={title}>{@render info()}</InfoTip
+			>
+		</div>
+	{:else}
+		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">{title}</h2>
+	{/if}
 	<table class="w-full text-sm tabular-nums">
 		<thead class="text-left text-xs text-zinc-500">
 			<tr>
