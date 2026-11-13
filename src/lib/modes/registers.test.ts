@@ -1,11 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { inferRegister } from './comm-b';
 import { fromHex } from './frame';
-import { combineFine, FINE_SPAN, REGISTERS, type Register } from './registers';
-import { commbOracle } from './testing';
+import { combineFine, FINE_SPAN, RARE, REGISTERS, type Register } from './registers';
+import { commbOracle as oracle } from './testing';
+
+/** pyModeS's inference with include_meteo, too (the oracle has it; see tools/oracle-commb.py). */
+const commbOracle = oracle as ((typeof oracle)[number] & { inferred_meteo: string[] })[];
 
 /** The registers pyModeS decodes too. */
-const PYMODES = ['1,0', '1,7', '2,0', '3,0', '4,0', '5,0', '6,0'];
+const PYMODES = ['1,0', '1,7', '2,0', '3,0', '4,0', '5,0', '6,0', '4,4', '4,5'];
 const spec = (bds: string) => REGISTERS.find((r) => r.bds === bds)!;
 
 const TARGET_SOURCE: Record<string, string> = {
@@ -90,6 +93,27 @@ function asPyModeS(r: Register): Record<string, unknown> {
 				baro_vertical_rate: r.baroRate,
 				inertial_vertical_rate: r.inertialRate
 			});
+		case '4,4':
+			return withoutNulls({
+				figure_of_merit: r.source,
+				wind_speed: r.wind?.speed,
+				wind_direction: r.wind?.direction,
+				static_air_temperature: r.temperature,
+				static_pressure: r.pressure,
+				turbulence: r.turbulence,
+				humidity: r.humidity
+			});
+		case '4,5':
+			return withoutNulls({
+				turbulence: r.turbulence,
+				wind_shear: r.windShear,
+				microburst: r.microburst,
+				icing: r.icing,
+				wake_vortex: r.wakeVortex,
+				static_air_temperature: r.temperature,
+				static_pressure: r.pressure,
+				radio_height: r.radioHeight
+			});
 		default:
 			throw new Error(`pyModeS doesn't decode ${r.bds}`);
 	}
@@ -129,29 +153,51 @@ describe('against pyModeS: every Comm-B payload of the capture, and a bit-flippe
 				compared++;
 			}
 		}
-		expect(compared).toBe(4191);
+		expect(compared).toBe(4279);
 	});
 
 	test('without ADS-B to compare with, the same register is picked (or none, if two fit)', () => {
 		const hows: Record<string, number> = {};
 		for (const o of commbOracle) {
 			const inference = inferRegister(fromHex(o.mb), null);
-			hows[inference.how] = (hows[inference.how] ?? 0) + 1;
-			expect(inference.candidates.map((c) => c.bds).sort()).toEqual(Object.keys(o.valid).sort());
-			if (inference.how === 'ambiguous') {
+			const key = `${inference.how}${RARE.has(inference.best?.bds ?? '') ? ` ${inference.best!.bds}` : ''}`;
+			hows[key] = (hows[key] ?? 0) + 1;
+			// The rare registers (4,4, 4,5, 5,3) only count when no common one fits: pyModeS too
+			// only tries 4,4/4,5 on request (include_meteo), and then puts them last.
+			const valid = Object.keys(o.valid);
+			const common = valid.filter((bds) => !RARE.has(bds));
+			const expected = common.length > 0 ? common : valid;
+			const inferred = common.length > 0 ? o.inferred : o.inferred_meteo;
+			// pyModeS 3 doesn't know 5,3 (it's tested by hand below).
+			const ours = inference.candidates.map((c) => c.bds).filter((bds) => bds !== '5,3');
+			expect(ours.sort()).toEqual(expected.sort());
+			if (inference.best?.bds === '5,3') {
+				expect(inferred).toEqual([]);
+			} else if (inference.how === 'ambiguous') {
 				// pyModeS then just takes the first; we say we don't know.
-				expect(o.inferred).toEqual(['5,0', '6,0']);
+				expect(inferred.length).toBeGreaterThan(1);
 			} else {
-				expect(inference.best?.bds ?? null).toBe(o.inferred[0] ?? null);
+				expect(inference.best?.bds ?? null).toBe(inferred[0] ?? null);
 			}
 		}
 		expect(hows).toEqual({
 			'only candidate': 4121,
 			fixed: 26,
 			ambiguous: 22,
-			unknown: 1297,
-			empty: 1
+			unknown: 1271,
+			empty: 1,
+			// Bit-flipped payloads nothing common fits: see the next test.
+			'only candidate 4,4': 1,
+			'only candidate 4,5': 16,
+			'only candidate 5,3': 9
 		});
+	});
+
+	test('only bit-flipped payloads fall through to the rare registers', () => {
+		for (const o of commbOracle.filter((o) => o.real)) {
+			const best = inferRegister(fromHex(o.mb), null).best?.bds ?? '';
+			expect({ mb: o.mb, rare: RARE.has(best) }).toEqual({ mb: o.mb, rare: false });
+		}
 	});
 });
 
@@ -198,4 +244,66 @@ describe('5,1 and 5,2 (layout inferred, not from the spec)', () => {
 
 test('an all-zero register is "empty", not a register', () => {
 	expect(inferRegister(new Uint8Array(7), null)).toMatchObject({ how: 'empty', candidates: [] });
+});
+
+/** A 56-bit register, built field by field: [first bit, bit count, value] (two's complement). */
+function build(...fields: [number, number, number][]): Uint8Array {
+	const mb = new Uint8Array(7);
+	for (const [first, count, value] of fields) {
+		const raw = value < 0 ? 2 ** count + value : value;
+		for (let i = 0; i < count; i++) {
+			const bit = first - 1 + i;
+			if (Math.floor(raw / 2 ** (count - 1 - i)) % 2) mb[bit >> 3] |= 0x80 >> (bit & 7);
+		}
+	}
+	return mb;
+}
+
+describe('5,3 air-referenced state vector (not in pyModeS 3: ICAO Doc 9871, pyModeS 2)', () => {
+	test('every field: status bit, then the value; heading and rate two’s complement', () => {
+		const mb = build(
+			[1, 1, 1],
+			[2, 11, -512], // −512 × 90/512 = −90°, i.e. 270°
+			[13, 1, 1],
+			[14, 10, 250],
+			[24, 1, 1],
+			[25, 9, 98], // × 0.008
+			[34, 1, 1],
+			[35, 12, 905], // × 0.5 kt
+			[47, 1, 1],
+			[48, 9, -16] // × 64 ft/min
+		);
+		expect(spec('5,3').reject(mb)).toBeNull();
+		const r = spec('5,3').decode(mb);
+		expect(r).toMatchObject({
+			bds: '5,3',
+			heading: 270,
+			ias: 250,
+			tas: 452.5,
+			verticalRate: -1024
+		});
+		expect(r.bds === '5,3' && r.mach).toBeCloseTo(0.784, 9);
+	});
+
+	test('status 0 means "no data": null, and the value bits must be zero', () => {
+		const onlyIas = build([13, 1, 1], [14, 10, 280]);
+		expect(spec('5,3').decode(onlyIas)).toEqual({
+			bds: '5,3',
+			heading: null,
+			ias: 280,
+			mach: null,
+			tas: null,
+			verticalRate: null
+		});
+		expect(spec('5,3').reject(build([13, 1, 1], [14, 10, 280], [35, 12, 900]))).toBe(
+			'true airspeed: status bit 34 says "no data", but its 12 value bits aren\'t zero'
+		);
+	});
+
+	test('impossible values rule it out', () => {
+		expect(spec('5,3').reject(build([24, 1, 1], [25, 9, 200]))).toBe('Mach 1.600 > 1');
+		expect(spec('5,3').reject(build([47, 1, 1], [48, 9, -120]))).toBe(
+			'vertical rate -7680 ft/min beyond ±6,000'
+		);
+	});
 });

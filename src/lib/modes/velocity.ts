@@ -25,6 +25,11 @@ export interface Velocity {
 	subtype: number;
 	/** NACv: how accurate the velocity is. 0 unknown, 1 < 10 m/s, 2 < 3 m/s, 3 < 1 m/s, 4 < 0.3 m/s. */
 	nacV: number;
+	/** IC: the aircraft's intent (e.g. selected altitude) changed in the last 4 s. Versions
+	 * 0/1; reserved in version 2. In TIS-B/ADS-R this bit is the IMF instead (see imf()). */
+	intentChange: boolean;
+	/** IFR: equipped for instrument flight rules (class A1 or above). Versions 0/1; reserved since. */
+	ifrCapability: boolean;
 	/** Subtype 1/2: speed and direction over the ground (what moves the dot on the map). */
 	ground: { speed: number; track: number } | null;
 	/** Subtype 3/4: speed through the air and where the nose points. */
@@ -68,6 +73,8 @@ export function velocity(me: Uint8Array): Velocity | null {
 		kind: 'velocity',
 		subtype,
 		nacV: bits(me, 11, 3),
+		intentChange: bits(me, 9, 1) === 1,
+		ifrCapability: bits(me, 10, 1) === 1,
 		ground,
 		air,
 		verticalRate: vr === 0 ? null : signed(bits(me, 37, 1), (vr - 1) * 64),

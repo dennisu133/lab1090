@@ -11,13 +11,14 @@
  * register (or null if they can), and a `decode` function. Bit numbers are the ones in the
  * spec tables (ICAO Doc 9871): MB bit 1 is the first bit of the payload.
  *
- * The checks for 1,0 to 6,0 are the same as pyModeS's, and tested against it. 5,1 and 5,2
- * are not public (pyModeS doesn't decode them); their layout here is inferred from real
- * replies, compared with the same aircraft's ADS-B position and altitude.
+ * The checks for 1,0 to 6,0, 4,4 and 4,5 are the same as pyModeS's, and tested against it.
+ * 5,3 follows ICAO Doc 9871 (and pyModeS 2, which had it). 5,1 and 5,2 are not public
+ * (pyModeS doesn't decode them); their layout here is inferred from real replies, compared
+ * with the same aircraft's ADS-B position and altitude.
  *
  * Shared by server and browser; no state here.
  */
-import { altitudeCode } from './altitude';
+import { resolutionAdvisory, type ResolutionAdvisory as Advisory } from './acas';
 import { bits } from './frame';
 import { callsign } from './identification';
 import { squitter, type Squitter } from './squitter';
@@ -32,6 +33,9 @@ export type Register =
 	| PositionCoarse
 	| PositionFine
 	| HeadingAndSpeed
+	| MeteoRoutine
+	| MeteoHazard
+	| AirReferencedState
 	| ExtendedSquitter;
 
 export interface RegisterSpec {
@@ -210,31 +214,8 @@ const BDS_2_0: RegisterSpec = {
 
 // --- 3,0 ACAS active resolution advisory -------------------------------------------------
 
-export interface ResolutionAdvisory {
+export interface ResolutionAdvisory extends Advisory {
 	bds: '3,0';
-	/** ARA bits 9–15: the advice ACAS is giving the pilots right now. */
-	active: boolean;
-	corrective: boolean;
-	downward: boolean;
-	increasedRate: boolean;
-	senseReversal: boolean;
-	altitudeCrossing: boolean;
-	positive: boolean;
-	/** RAC bits 23–26: what another aircraft's ACAS told this one not to do. */
-	noBelow: boolean;
-	noAbove: boolean;
-	/** Horizontal advisories: defined, but no ACAS II issues them. */
-	noLeft: boolean;
-	noRight: boolean;
-	/** Bit 27: the advisory just ended. */
-	terminated: boolean;
-	/** Bit 28: more than one threat. */
-	multipleThreats: boolean;
-	/** Bits 31–56, by threat type (bits 29–30). */
-	threat:
-		| { type: 'address'; icao: string }
-		| { type: 'position'; altitude: number | null; rangeNm: number | null; bearing: number | null }
-		| null;
 }
 
 const BDS_3_0: RegisterSpec = {
@@ -247,38 +228,7 @@ const BDS_3_0: RegisterSpec = {
 			bits(mb, 29, 2) === 3 ? 'threat type 3 is reserved' : null
 		);
 	},
-	decode(mb) {
-		const tti = bits(mb, 29, 2);
-		const range = bits(mb, 44, 7);
-		const bearing = bits(mb, 51, 6);
-		return {
-			bds: '3,0',
-			active: flag(mb, 9),
-			corrective: flag(mb, 10),
-			downward: flag(mb, 11),
-			increasedRate: flag(mb, 12),
-			senseReversal: flag(mb, 13),
-			altitudeCrossing: flag(mb, 14),
-			positive: flag(mb, 15),
-			noBelow: flag(mb, 23),
-			noAbove: flag(mb, 24),
-			noLeft: flag(mb, 25),
-			noRight: flag(mb, 26),
-			terminated: flag(mb, 27),
-			multipleThreats: flag(mb, 28),
-			threat:
-				tti === 1
-					? { type: 'address', icao: bits(mb, 31, 24).toString(16).toUpperCase().padStart(6, '0') }
-					: tti === 2
-						? {
-								type: 'position',
-								altitude: altitudeCode(bits(mb, 31, 13)).feet,
-								rangeNm: range === 0 ? null : (range - 1) / 10,
-								bearing: bearing === 0 ? null : 6 * (bearing - 1) + 3
-							}
-						: null
-		};
-	}
+	decode: (mb) => ({ bds: '3,0', ...resolutionAdvisory(mb) })
 };
 
 // --- 4,0 Selected vertical intention -----------------------------------------------------
@@ -436,6 +386,181 @@ const BDS_6_0: RegisterSpec = {
 	}
 };
 
+// --- 4,4 Meteorological routine air report (MRAR) --------------------------------------
+
+/**
+ * What the aircraft's sensors measure of the air around it. Optional: only some aircraft
+ * fill it, and only some radars ask for it (the data goes to weather services).
+ */
+export interface MeteoRoutine {
+	bds: '4,4';
+	/** Bits 1–4, FOM/source: where the position behind the wind comes from (METEO_SOURCES). */
+	source: number;
+	/** Bits 5–23. Direction the wind blows *from*, true north, 180/256° steps; speed in kt. */
+	wind: { speed: number; direction: number } | null;
+	/** Bits 24–34, static air temperature, °C in 0.25° steps. No status bit: always present. */
+	temperature: number;
+	/** Bits 35–46, average static pressure, hPa. */
+	pressure: number | null;
+	/** Bits 47–49, 0 nil … 3 severe (HAZARD_LEVELS). */
+	turbulence: number | null;
+	/** Bits 50–56, relative humidity, %, in 100/64 steps. */
+	humidity: number | null;
+}
+
+export const METEO_SOURCES = ['invalid', 'INS', 'GNSS', 'DME/DME', 'VOR/DME'];
+
+/** Turbulence, wind shear, … in 4,4 and 4,5. */
+export const HAZARD_LEVELS = ['nil', 'light', 'moderate', 'severe'];
+
+const BDS_4_4: RegisterSpec = {
+	bds: '4,4',
+	name: 'Meteorological routine air report',
+	reject(mb) {
+		const r = BDS_4_4.decode(mb) as MeteoRoutine;
+		return firstOf(
+			r.source > 4 ? `FOM/source ${r.source} is reserved (0–4 are defined)` : null,
+			// Not required by the spec, but a report without wind says next to nothing (pyModeS).
+			!flag(mb, 5) ? 'status bit 5 says "no wind"' : null,
+			wrongStatus(mb, 35, 11, 'static pressure'),
+			wrongStatus(mb, 47, 2, 'turbulence'),
+			wrongStatus(mb, 50, 6, 'humidity'),
+			r.wind && r.wind.speed > 250 ? `wind ${r.wind.speed} kt > 250` : null,
+			r.temperature < -80 || r.temperature > 60
+				? `temperature ${r.temperature} °C beyond −80…+60`
+				: null,
+			bits(mb, 6, 9) === 0 && bits(mb, 15, 9) === 0 && bits(mb, 25, 10) === 0
+				? 'wind and temperature are all zero'
+				: null
+		);
+	},
+	decode(mb) {
+		const wind = flag(mb, 5);
+		const pressure = gated(mb, 35, 11);
+		const turbulence = gated(mb, 47, 2);
+		const humidity = gated(mb, 50, 6);
+		return {
+			bds: '4,4',
+			source: bits(mb, 1, 4),
+			wind: wind ? { speed: bits(mb, 6, 9), direction: (bits(mb, 15, 9) * 180) / 256 } : null,
+			temperature: signed(bits(mb, 24, 11), 11) * 0.25,
+			pressure,
+			turbulence,
+			humidity: humidity === null ? null : (humidity * 100) / 64
+		};
+	}
+};
+
+// --- 4,5 Meteorological hazard report (MHR) ---------------------------------------------
+
+export interface MeteoHazard {
+	bds: '4,5';
+	/** Each 0 nil … 3 severe (HAZARD_LEVELS), null if not reported. */
+	turbulence: number | null;
+	windShear: number | null;
+	microburst: number | null;
+	icing: number | null;
+	wakeVortex: number | null;
+	/** Bits 16–26, static air temperature, °C in 0.25° steps. */
+	temperature: number | null;
+	/** Bits 27–38, average static pressure, hPa. */
+	pressure: number | null;
+	/** Bits 39–51, radio height (above the ground, from the radar altimeter), ft in 16 ft steps. */
+	radioHeight: number | null;
+}
+
+const BDS_4_5: RegisterSpec = {
+	bds: '4,5',
+	name: 'Meteorological hazard report',
+	reject(mb) {
+		const r = BDS_4_5.decode(mb) as MeteoHazard;
+		return firstOf(
+			// 1,7's pattern (32 zero bits at the end) also passes 4,5's checks; it's more specific.
+			BDS_1_7.reject(mb) === null ? "fits 1,7's pattern, which is more specific" : null,
+			bits(mb, 52, 5) !== 0 ? 'reserved bits 52–56 must be zero' : null,
+			wrongStatus(mb, 1, 2, 'turbulence'),
+			wrongStatus(mb, 4, 2, 'wind shear'),
+			wrongStatus(mb, 7, 2, 'microburst'),
+			wrongStatus(mb, 10, 2, 'icing'),
+			wrongStatus(mb, 13, 2, 'wake vortex'),
+			wrongStatus(mb, 16, 10, 'temperature'),
+			wrongStatus(mb, 27, 11, 'static pressure'),
+			wrongStatus(mb, 39, 12, 'radio height'),
+			r.temperature !== null && (r.temperature < -80 || r.temperature > 60)
+				? `temperature ${r.temperature} °C beyond −80…+60`
+				: null
+		);
+	},
+	decode(mb) {
+		const temperature = gatedSigned(mb, 16, 10);
+		const radioHeight = gated(mb, 39, 12);
+		return {
+			bds: '4,5',
+			turbulence: gated(mb, 1, 2),
+			windShear: gated(mb, 4, 2),
+			microburst: gated(mb, 7, 2),
+			icing: gated(mb, 10, 2),
+			wakeVortex: gated(mb, 13, 2),
+			temperature: temperature === null ? null : temperature * 0.25,
+			pressure: gated(mb, 27, 11),
+			radioHeight: radioHeight === null ? null : radioHeight * 16
+		};
+	}
+};
+
+// --- 5,3 Air-referenced state vector -----------------------------------------------------
+
+/** The aircraft's movement through the air (not over the ground), from the air data computer. */
+export interface AirReferencedState {
+	bds: '5,3';
+	/** Bits 1–12: magnetic heading, 0–360°, 90/512° steps. */
+	heading: number | null;
+	/** Bits 13–23: indicated airspeed, kt. */
+	ias: number | null;
+	/** Bits 24–33: 0.008 steps. */
+	mach: number | null;
+	/** Bits 34–46: true airspeed, kt, 0.5 kt steps. */
+	tas: number | null;
+	/** Bits 47–56: altitude rate, ft/min, 64 ft/min steps, positive = climbing. */
+	verticalRate: number | null;
+}
+
+const BDS_5_3: RegisterSpec = {
+	bds: '5,3',
+	name: 'Air-referenced state vector',
+	reject(mb) {
+		const r = BDS_5_3.decode(mb) as AirReferencedState;
+		return firstOf(
+			wrongStatus(mb, 1, 11, 'heading'),
+			wrongStatus(mb, 13, 10, 'indicated airspeed'),
+			wrongStatus(mb, 24, 9, 'Mach'),
+			wrongStatus(mb, 34, 12, 'true airspeed'),
+			wrongStatus(mb, 47, 9, 'vertical rate'),
+			// The same limits as for 5,0 and 6,0.
+			r.ias !== null && r.ias > 500 ? `indicated airspeed ${r.ias} kt > 500` : null,
+			r.mach !== null && r.mach > 1 ? `Mach ${r.mach.toFixed(3)} > 1` : null,
+			r.tas !== null && r.tas > 600 ? `true airspeed ${r.tas} kt > 600` : null,
+			r.verticalRate !== null && Math.abs(r.verticalRate) > 6000
+				? `vertical rate ${r.verticalRate} ft/min beyond ±6,000`
+				: null
+		);
+	},
+	decode(mb) {
+		const heading = gatedSigned(mb, 1, 11);
+		const mach = gated(mb, 24, 9);
+		const tas = gated(mb, 34, 12);
+		const rate = gatedSigned(mb, 47, 9);
+		return {
+			bds: '5,3',
+			heading: heading === null ? null : normalise((heading * 90) / 512),
+			ias: gated(mb, 13, 10),
+			mach: mach === null ? null : mach * 0.008,
+			tas: tas === null ? null : tas / 2,
+			verticalRate: rate === null ? null : rate * 64
+		};
+	}
+};
+
 // --- 5,1 / 5,2 Position report coarse / fine (layout inferred, see the top) --------------
 
 export interface PositionCoarse {
@@ -521,11 +646,13 @@ export function combineFine(fine: number, near: number): number {
 // --- ADS-B registers, read via Comm-B ----------------------------------------------------
 
 /**
- * The ADS-B messages are registers too: 0,5 airborne position, 0,8 identification, 0,9
- * velocity. A radar can read them like any other (and some do, as a cheap position check).
+ * The ADS-B messages are registers too: 0,5 airborne position, 0,6 surface position, 0,8
+ * identification, 0,9 velocity, 6,1 aircraft status, 6,2 target state, 6,5 operational
+ * status. A radar can read them like any other (and some do, as a cheap position check).
+ * The type code inside says which one it is, so the decoding is ADS-B's (squitter.ts).
  */
 export interface ExtendedSquitter {
-	bds: '0,5' | '0,8' | '0,9';
+	bds: '0,5' | '0,6' | '0,8' | '0,9' | '6,1' | '6,2' | '6,5';
 	squitter: Squitter;
 }
 
@@ -556,9 +683,23 @@ export const REGISTERS: RegisterSpec[] = [
 	BDS_5_1,
 	BDS_5_2,
 	adsbRegister('0,5', 'Extended squitter airborne position', ['airborne-position']),
+	adsbRegister('0,6', 'Extended squitter surface position', ['surface-position']),
 	adsbRegister('0,8', 'Extended squitter identification', ['identification']),
-	adsbRegister('0,9', 'Extended squitter airborne velocity', ['velocity'])
+	adsbRegister('0,9', 'Extended squitter airborne velocity', ['velocity']),
+	adsbRegister('6,1', 'Extended squitter aircraft status', ['aircraft-status']),
+	adsbRegister('6,2', 'Target state and status', ['target-state']),
+	adsbRegister('6,5', 'Aircraft operational status', ['operational-status']),
+	// Rarely interrogated: only tried when none of the above fits (see comm-b.ts).
+	BDS_4_4,
+	BDS_4_5,
+	BDS_5_3
 ];
+
+/**
+ * Registers hardly any radar asks for, with enough structure to fit by chance now and then.
+ * inferRegister() only considers them when none of the common registers fits.
+ */
+export const RARE = new Set(['4,4', '4,5', '5,3']);
 
 export const REGISTER_NAMES: Record<string, string> = Object.fromEntries(
 	REGISTERS.map((r) => [r.bds, r.name])

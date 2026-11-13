@@ -3,8 +3,15 @@
  * inferred, as Fields (see frame.ts) and tooltip text.
  */
 import { mismatch, type Comparison, type How, type Inference } from '#lib/modes/comm-b.ts';
-import { REGISTER_NAMES, type Register } from '#lib/modes/registers.ts';
-import { squitterFields, type Field } from './frame';
+import {
+	HAZARD_LEVELS,
+	METEO_SOURCES,
+	REGISTER_NAMES,
+	type MeteoHazard,
+	type MeteoRoutine,
+	type Register
+} from '#lib/modes/registers.ts';
+import { advisoryFields, squitterFields, type Field } from './frame';
 
 /** All register names, including the ADS-B ones that are only seen broadcast here. */
 export const NAMES: Record<string, string> = {
@@ -126,30 +133,8 @@ export function registerFields(r: Register): Field[] {
 			return [
 				{ value: r.callsign, title: 'Callsign, as the crew entered it', tone: 'main', mono: true }
 			];
-		case '3,0': {
-			if (!r.active && !r.terminated)
-				return [{ value: 'no RA', title: 'No resolution advisory right now', tone: 'minor' }];
-			const what = r.downward ? 'descend' : 'climb';
-			const fields: Field[] = [
-				{
-					value: r.terminated
-						? 'RA ended'
-						: `RA: ${r.corrective ? what : `don't ${what === 'climb' ? 'descend' : 'climb'}`}`,
-					title:
-						'ACAS resolution advisory: the collision avoidance system is telling the pilots how to avoid another aircraft',
-					tone: 'alert'
-				}
-			];
-			if (r.threat?.type === 'address')
-				fields.push({
-					label: 'threat',
-					value: r.threat.icao,
-					title: 'The other aircraft',
-					tone: 'alert',
-					mono: true
-				});
-			return fields;
-		}
+		case '3,0':
+			return advisoryFields(r);
 		case '4,0': {
 			const fields: Field[] = [];
 			if (r.mcpAltitude !== null)
@@ -318,11 +303,132 @@ export function registerFields(r: Register): Field[] {
 					'minor'
 				)
 			];
+		case '4,4':
+			return meteoRoutineFields(r);
+		case '4,5':
+			return meteoHazardFields(r);
+		case '5,3':
+			return [
+				...(r.heading !== null
+					? [
+							field(
+								'HDG',
+								deg(r.heading),
+								`Magnetic heading, where the nose points: ${r.heading.toFixed(1)}°`,
+								'main'
+							)
+						]
+					: []),
+				...(r.ias !== null ? [field('IAS', `${r.ias} kt`, 'Indicated airspeed', 'main')] : []),
+				...(r.mach !== null
+					? [field('M', r.mach.toFixed(3), 'Mach number, 0.008 steps', 'main')]
+					: []),
+				...(r.tas !== null
+					? [field('TAS', `${r.tas} kt`, 'True airspeed: speed through the air', 'main')]
+					: []),
+				...(r.verticalRate !== null
+					? [
+							field(
+								'VR',
+								signedRate(r.verticalRate),
+								'Altitude rate: how fast it climbs or descends',
+								'minor'
+							)
+						]
+					: [])
+			];
 		case '0,5':
+		case '0,6':
 		case '0,8':
 		case '0,9':
+		case '6,1':
+		case '6,2':
+		case '6,5':
 			return squitterFields(r.squitter);
 	}
+}
+
+function temperatureField(celsius: number): Field {
+	return field(
+		'SAT',
+		`${celsius.toFixed(2)} °C`,
+		'Static air temperature: the temperature of the air around the aircraft (not heated by the speed), 0.25 °C steps',
+		'main'
+	);
+}
+
+function pressureField(hPa: number): Field {
+	return field(
+		'p',
+		`${hPa} hPa`,
+		'Average static pressure of the air around the aircraft',
+		'minor'
+	);
+}
+
+function hazardField(label: string, level: number, what: string): Field {
+	return field(
+		label,
+		HAZARD_LEVELS[level],
+		`${what}, as the aircraft reports it: nil, light, moderate or severe`,
+		level > 0 ? 'alert' : 'minor'
+	);
+}
+
+function meteoRoutineFields(r: MeteoRoutine): Field[] {
+	const fields: Field[] = [];
+	if (r.wind)
+		fields.push(
+			field(
+				'wind',
+				`${deg(r.wind.direction)} ${r.wind.speed} kt`,
+				`Wind from ${r.wind.direction.toFixed(1)}° (true north, where it blows from), ${r.wind.speed} kt. Measured by the aircraft`,
+				'main'
+			)
+		);
+	fields.push(temperatureField(r.temperature));
+	if (r.pressure !== null) fields.push(pressureField(r.pressure));
+	if (r.turbulence !== null) fields.push(hazardField('turb', r.turbulence, 'Turbulence'));
+	if (r.humidity !== null)
+		fields.push(
+			field('RH', `${Math.round(r.humidity)} %`, 'Relative humidity, 100/64 % steps', 'minor')
+		);
+	fields.push(
+		field(
+			'FOM',
+			METEO_SOURCES[r.source] ?? String(r.source),
+			'Figure of merit: where the navigation data behind the wind comes from',
+			'minor'
+		)
+	);
+	return fields;
+}
+
+function meteoHazardFields(r: MeteoHazard): Field[] {
+	const fields: Field[] = [];
+	for (const [level, label, what] of [
+		[r.turbulence, 'turb', 'Turbulence'],
+		[r.windShear, 'shear', 'Wind shear'],
+		[r.microburst, 'microburst', 'Microburst (a violent downdraft under a storm)'],
+		[r.icing, 'icing', 'Icing'],
+		[r.wakeVortex, 'wake', 'Wake vortex: the turbulence another aircraft leaves behind']
+	] as const) {
+		if (level !== null) fields.push(hazardField(label, level, what));
+	}
+	if (r.temperature !== null) fields.push(temperatureField(r.temperature));
+	if (r.pressure !== null) fields.push(pressureField(r.pressure));
+	if (r.radioHeight !== null)
+		fields.push(
+			field(
+				'radio',
+				`${n(r.radioHeight)} ft`,
+				'Radio height: height above the ground, measured by the radar altimeter, 16 ft steps',
+				'minor'
+			)
+		);
+	if (fields.length === 0)
+		fields.push(field('', 'no hazards reported', 'Every field says "no data"', 'minor'));
+	return fields;
 }
 
 function field(label: string, value: string, title: string, tone: Field['tone']): Field {

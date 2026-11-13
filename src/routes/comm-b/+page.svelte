@@ -113,12 +113,19 @@
 				</ol>
 				<p>
 					Some registers have no structure to speak of: 5,1/5,2 (position reports) and ADS-B
-					registers a radar reads via Comm-B. They only count if ADS-B confirms them: same position,
-					same altitude, or simply the same 56 bits.
+					registers a radar reads via Comm-B (0,5, 0,6, 0,8, 0,9, 6,1, 6,2, 6,5). They only count if
+					ADS-B confirms them: same position, same altitude, or simply the same 56 bits.
 				</p>
 				<p>
-					The checks for 1,0–6,0 are pyModeS's (and tested against it). 5,1 and 5,2 aren't in any
-					public spec; their layout was worked out from this receiver's own data.
+					A few registers are hardly ever asked for: 4,4 and 4,5 (weather reports) and 5,3 (speeds
+					through the air). With enough random bits, one of them fits now and then by chance, so
+					they are a last resort: only considered when no other register fits, and never if ADS-B
+					disagrees.
+				</p>
+				<p>
+					The checks for 1,0–6,0, 4,4 and 4,5 are pyModeS's (and tested against it); 5,3 follows
+					ICAO Doc 9871. 5,1 and 5,2 aren't in any public spec; their layout was worked out from
+					this receiver's own data.
 				</p>
 				<p class="text-zinc-400">
 					Hover a register in the feed for its reasoning: what fitted, and why everything else was

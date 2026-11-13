@@ -2,6 +2,7 @@
  * The first layer of Mode S decoding: what kind of message is this, and from whom?
  * Pure functions on the raw message bytes (7 or 14), shared by server and browser.
  */
+import { isDf17Format } from './crc';
 
 /**
  * Downlink Format: the first 5 bits of every Mode S message.
@@ -13,12 +14,17 @@ export function downlinkFormat(data: Uint8Array): number {
 }
 
 /**
- * ADS-B Type Code: the first 5 bits of the 56-bit ME field (byte 4) in DF17/18.
+ * ADS-B Type Code: the first 5 bits of the 56-bit ME field (byte 4) in DF17/18/19.
  * Decides what the message carries (identification, position, velocity, …).
+ * null if the message has no ADS-B payload: DF18 with CF 3/4/7 uses other layouts (see
+ * esFormat in squitter.ts), and DF19 only counts if the CRC shows it's laid out like DF17.
  */
 export function typeCode(data: Uint8Array): number | null {
 	const df = downlinkFormat(data);
-	return df === 17 || df === 18 ? data[4] >> 3 : null;
+	const cf = data[0] & 0b111;
+	if (df === 17 || (df === 18 && ![3, 4, 7].includes(cf)) || isDf17Format(data))
+		return data[4] >> 3;
+	return null;
 }
 
 /**
@@ -107,15 +113,18 @@ export function typeCodeName(tc: number): string {
 	if (tc <= 18) return 'Airborne position (barometric altitude)';
 	if (tc === 19) return 'Airborne velocity';
 	if (tc <= 22) return 'Airborne position (GNSS height)';
+	if (tc === 23) return 'Test message';
+	if (tc === 24) return 'Surface system status (reserved)';
 	if (tc === 28) return 'Aircraft status';
 	if (tc === 29) return 'Target state and status';
+	if (tc === 30) return 'Aircraft operational coordination (reserved)';
 	if (tc === 31) return 'Aircraft operational status';
 	return 'Reserved';
 }
 
 /**
- * Airborne position messages (TC 9–18 and 20–22) all have the same layout. The type code
- * additionally says how much the aircraft vouches for the position: the containment radius Rc,
+ * Position messages (airborne TC 9–18 and 20–22, surface TC 5–8) have one layout each. The
+ * type code additionally says how much the aircraft vouches for the position: the containment radius Rc,
  * a circle the true position is inside with ~1e-7 risk of being wrong (integrity, not accuracy).
  * Values from DO-260A/B (ADS-B version 1/2). Where two values are given, a supplement bit from
  * the aircraft's operational status message (TC 31) decides.
@@ -125,6 +134,10 @@ export function containmentRadius(tc: number): string | null {
 }
 
 const RC: Record<number, string> = {
+	5: '< 7.5 m',
+	6: '< 25 m',
+	7: '< 75 m or < 185 m',
+	8: 'unknown',
 	9: '< 7.5 m',
 	10: '< 25 m',
 	11: '< 75 m or < 185 m',

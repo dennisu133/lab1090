@@ -8,18 +8,37 @@
  *   DF4/20 (altitude reply):       FS DR UM AC          (+ MB in DF20)
  *   DF5/21 (identity reply):       FS DR UM ID          (+ MB in DF21)
  *   DF11/17 (all-call reply, ES):  CA
+ *   DF18 (ES, non-transponder):    CF  (who sends it, and what the address means)
+ *   DF19 (military ES):            AF  (the rest: see isDf17Format in crc.ts)
+ *   DF24 (Comm-D, extended length):  KE ND (+ MD, 80 bits)
  *
  * Shared by server and browser; no state here.
  */
 import { replyAltitude, type Altitude } from './altitude';
-import { bits, downlinkFormat } from './frame';
+import { bits, downlinkFormat, toHex } from './frame';
 import { replySquawk } from './squawk';
 
 export type Header =
 	| ({ df: 0 | 16 } & AirAir)
 	| ({ df: 4 | 20 } & ReplyStatus & { altitude: Altitude })
 	| ({ df: 5 | 21 } & ReplyStatus & { squawk: string })
-	| { df: 11 | 17; capability: number };
+	| { df: 11 | 17; capability: number }
+	| { df: 18; control: number }
+	| { df: 19; application: number }
+	| ({ df: 24 } & CommD);
+
+/**
+ * DF24: one segment of an extended length message (ELM): up to 16 segments of 80 bits,
+ * sent as a burst after a radar reserved the transponder for it (DR 16–31 announce one).
+ */
+export interface CommD {
+	/** KE: 0 = a downlink ELM segment, 1 = acknowledges an uplink ELM. */
+	ke: number;
+	/** ND: the segment number, 0–15. */
+	nd: number;
+	/** MD: the 80-bit message segment, as hex. */
+	md: string;
+}
 
 /** DF0/16: replies to another aircraft's collision avoidance system (ACAS, a.k.a. TCAS). */
 export interface AirAir {
@@ -76,8 +95,15 @@ export function messageHeader(data: Uint8Array): Header | null {
 		case 11:
 		case 17:
 			return { df, capability: bits(data, 6, 3) };
+		case 18:
+			return { df, control: bits(data, 6, 3) };
+		case 19:
+			return { df, application: bits(data, 6, 3) };
+		case 24:
+			// The first two bits are "11", the third is spare: DF24 is the only 2-bit format.
+			return { df, ke: bits(data, 4, 1), nd: bits(data, 5, 4), md: toHex(data.subarray(1, 11)) };
 		default:
-			return null; // DF18's equivalent field (CF) means something else; DF19/24: not decoded
+			return null;
 	}
 }
 
@@ -106,6 +132,18 @@ export const CAPABILITIES: Record<number, string> = {
 	5: 'Level 2+, airborne',
 	6: 'Level 2+, airborne or on the ground',
 	7: 'Level 2+, has something to send or alert/SPI'
+};
+
+/** CF in DF18: who sends the message, and what the address in it means. */
+export const CONTROL_FIELDS: Record<number, string> = {
+	0: 'ADS-B from a device without a transponder, ICAO address',
+	1: 'ADS-B from a device without a transponder, non-ICAO address (anonymous, vehicle, obstacle)',
+	2: 'Fine TIS-B: a ground station relaying radar traffic (IMF says what the address is)',
+	3: 'Coarse TIS-B airborne position and velocity',
+	4: 'TIS-B/ADS-R management message',
+	5: 'Fine TIS-B, non-ICAO address',
+	6: 'ADS-R: a ground station rebroadcasting ADS-B from another data link (978 MHz UAT)',
+	7: 'Reserved'
 };
 
 /** RI in DF0/16. */

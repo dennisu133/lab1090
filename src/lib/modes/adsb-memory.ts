@@ -104,6 +104,7 @@ export class AdsbMemory {
 				if (s.gnssMinusBaro !== null) a.gnssMinusBaro = stamp(s.gnssMinusBaro);
 				break;
 			case 'target-state':
+				if (s.subtype !== 1) break; // only version 2 has these (subtype 0 is DO-260A)
 				if (s.selectedAltitude) a.selectedAltitude = stamp(s.selectedAltitude);
 				if (s.qnh !== null) a.qnh = stamp(s.qnh);
 				break;

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
 import { AddressFilter } from './address-filter';
+import { crc24 } from './crc';
 import { fromHex } from './frame';
 
 const squitter = fromHex('5d471efa7e630b'); // DF11 from 471EFA, II 0
@@ -61,4 +62,17 @@ test('the capture, in order, with the receiver clock', async () => {
 	// What's left as "unknown": aircraft that readsb knew from before the recording started,
 	// whose first AP messages here arrive before their first DF11/17 does.
 	expect(verdicts).toEqual({ valid: 6658 + 7545, known: 19752, unknown: 13 });
+});
+
+test('only DF11/17 vouch for an address: not DF18 (no transponder), not DF19 (military)', () => {
+	for (const first of [0x90, 0x98]) {
+		// DF18 CF 0 / DF19 AF 0 with a valid CRC, from the address in the DF4 reply's parity
+		const message = new Uint8Array(14);
+		message.set([first, 0x47, 0x1e, 0xfa]);
+		const parity = crc24(message, 11);
+		message.set([parity >> 16, (parity >> 8) & 0xff, parity & 0xff], 11);
+		const filter = new AddressFilter();
+		expect(filter.check(message, 0)?.verdict).toBe('valid');
+		expect(filter.check(altitudeReply, 0)?.verdict).toBe('unknown');
+	}
 });

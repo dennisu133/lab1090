@@ -79,3 +79,32 @@ export const commbOracle: {
 	.trim()
 	.split('\n')
 	.map((line) => JSON.parse(line));
+
+/**
+ * pyModeS on synthetic messages (tools/oracle-synthetic.py): every type code and subtype,
+ * every operational status version, DF18 with each CF, DF19, DF16 coordination replies.
+ * Random payloads with a correct CRC: well-formed, not necessarily sensible.
+ */
+export const syntheticOracle: OracleEntry[] = (
+	await Bun.file(join(root, 'fixtures/oracle/synthetic.jsonl')).text()
+)
+	.trim()
+	.split('\n')
+	.map((line) => {
+		const entry = JSON.parse(line);
+		return { ...entry, data: fromHex(entry.message) };
+	});
+
+type Pair = [number, number];
+
+/** Surface positions near a reference, encoded by our encoder, decoded by pyModeS. */
+export const surfaceOracle: {
+	reference: Pair;
+	truth: Pair;
+	even: Pair;
+	odd: Pair;
+	local_even: Pair;
+	local_odd: Pair;
+	pair_even_newer: Pair | null;
+	pair_odd_newer: Pair | null;
+}[] = await Bun.file(join(root, 'fixtures/oracle/surface.json')).json();

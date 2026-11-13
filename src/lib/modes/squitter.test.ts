@@ -85,7 +85,8 @@ describe('aircraft status (TC 28)', () => {
 				kind: 'aircraft-status',
 				subtype: 1,
 				emergency: o.emergency_state,
-				squawk: o.squawk
+				squawk: o.squawk,
+				advisory: null
 			});
 		}
 	});
@@ -97,6 +98,7 @@ describe('target state (TC 29)', () => {
 		expect(states.length).toBe(21);
 		for (const o of states) {
 			const t = targetState(me(o))!;
+			if (t.subtype !== 1) throw new Error(`subtype ${t.subtype}`);
 			expect(t.selectedAltitude?.feet ?? null).toBe(o.selected_altitude);
 			if (t.selectedAltitude) expect(t.selectedAltitude.source).toBe(o.selected_altitude_source);
 			expect(t.qnh).toBeCloseTo(o.baro_pressure_setting, 6);
@@ -139,13 +141,26 @@ describe('operational status (TC 31)', () => {
 		const s = operationalStatus(payload(fromHex('8d78103bf8230003004008a780e4'))!)!;
 		expect(s.capabilities).toEqual({
 			tcasOperational: true,
+			cdti: null,
 			es1090In: false,
+			uatIn: false,
 			arv: true,
 			ts: true,
 			tc: 0,
-			uatIn: false
+			poa: null,
+			b2Low: null,
+			nacV: null,
+			nicSupplementC: null
 		});
-		expect(s.modes).toEqual({ raActive: false, ident: false, singleAntenna: false, sda: 3 });
+		expect(s.modes).toEqual({
+			raActive: false,
+			ident: false,
+			atc: false,
+			singleAntenna: false,
+			sda: 3
+		});
+		expect(s.gva).toBe(0); // ME bits 49–56: 0000 1000, so GVA 0 and NICbaro 1
+		expect(s.nicBaro).toBe(1);
 	});
 });
 

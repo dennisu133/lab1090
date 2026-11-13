@@ -1,7 +1,8 @@
 """
 pyModeS's view of every Comm-B payload (MB) in the capture: which registers its validators
 accept, what each accepted register decodes to, and which one its inference picks (without
-any aircraft state). Reads hex messages from stdin; see tools/README.md.
+any aircraft state): once by default, once with the meteorological registers 4,4 and 4,5
+(include_meteo). Reads hex messages from stdin; see tools/README.md.
 
 Besides the real payloads, each one is also included with 1-3 random bit flips (seeded),
 so the validators get compared near their edges too, not only on clean data.
@@ -11,7 +12,18 @@ import json
 import random
 import sys
 
-from pyModeS.decoder.bds import _infer, bds10, bds17, bds20, bds30, bds40, bds50, bds60
+from pyModeS.decoder.bds import (
+    _infer,
+    bds10,
+    bds17,
+    bds20,
+    bds30,
+    bds40,
+    bds44,
+    bds45,
+    bds50,
+    bds60,
+)
 
 REGISTERS = {
     "1,0": (bds10.is_bds10, bds10.decode_bds10),
@@ -21,6 +33,8 @@ REGISTERS = {
     "4,0": (bds40.is_bds40, bds40.decode_bds40),
     "5,0": (bds50.is_bds50, bds50.decode_bds50),
     "6,0": (bds60.is_bds60, bds60.decode_bds60),
+    "4,4": (bds44.is_bds44, bds44.decode_bds44),
+    "4,5": (bds45.is_bds45, bds45.decode_bds45),
 }
 
 
@@ -30,6 +44,7 @@ def entry(mb: int, real: bool) -> dict:
         "mb": f"{mb:014x}",
         "real": real,
         "inferred": _infer.infer(mb, 20),
+        "inferred_meteo": _infer.infer(mb, 20, include_meteo=True),
         "valid": valid,
     }
 

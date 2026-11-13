@@ -4,7 +4,8 @@
  * How it's used depends on the format:
  *
  * - DF17/18 (PI): parity = CRC. Recomputing it and XORing with the received parity gives
- *   the *syndrome*: 0 for an intact message.
+ *   the *syndrome*: 0 for an intact message. (DF19 too, if it's laid out like DF17: see
+ *   isDf17Format.)
  * - DF11 (PI): parity = CRC XOR interrogator code. The syndrome is the code of the radar the
  *   aircraft is replying to (0 when it's broadcasting on its own), always < 128.
  * - DF0/4/5/16/20/21/24 (AP): parity = CRC XOR aircraft address. These messages don't carry
@@ -66,12 +67,13 @@ export type ParityResult =
 
 /**
  * Who the message is from, and what the CRC says about it. `null` for formats without
- * a (known) address field, e.g. DF19 (military) or undefined formats.
+ * a (known) address field: DF19, unless isDf17Format says it's laid out like DF17;
+ * undefined formats.
  */
 export function checkParity(data: Uint8Array): ParityResult | null {
 	const df = Math.min(data[0] >> 3, 24);
 	const s = syndrome(data);
-	if (df === 17 || df === 18) {
+	if (df === 17 || df === 18 || isDf17Format(data)) {
 		return { kind: 'clear', icao: hex24(clearAddress(data)), valid: s === 0, interrogator: null };
 	}
 	if (df === 11) {
@@ -86,6 +88,22 @@ export function checkParity(data: Uint8Array): ParityResult | null {
 	}
 	if (AP_FORMATS.has(df)) return { kind: 'parity', icao: hex24(s) };
 	return null;
+}
+
+/**
+ * DF19 is the military extended squitter: 5 bits DF, 3 bits application field (AF), then 104
+ * bits whose meaning is up to the military. Whether AF 0 means "laid out like DF17" (address,
+ * ADS-B payload, CRC) is disputed: some ICAO documents say so, others leave AF 0 to the
+ * military too. pyModeS, readsb and rs1090 don't decode DF19 beyond the AF.
+ *
+ * So let the CRC decide: if the last 24 bits are the CRC of the rest, with no address
+ * overlaid, the message is laid out like DF17. A message that isn't would pass by chance
+ * once in 2^24 (16.7 million) times. Otherwise the 104 bits stay undecoded.
+ */
+export function isDf17Format(data: Uint8Array): boolean {
+	return (
+		data.length === 14 && data[0] >> 3 === 19 && (data[0] & 0b111) === 0 && syndrome(data) === 0
+	);
 }
 
 /**

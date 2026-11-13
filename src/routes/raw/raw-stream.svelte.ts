@@ -1,6 +1,13 @@
-import { CprPairs, decodeLocal, type LatLon } from '#lib/modes/cpr.ts';
+import {
+	CprPairs,
+	decodeLocal,
+	decodeSurfaceGlobal,
+	decodeSurfaceLocal,
+	type LatLon
+} from '#lib/modes/cpr.ts';
 import { downlinkFormat, fromHex, payload, signalDbfs, typeCode } from '#lib/modes/frame.ts';
-import { airbornePosition } from '#lib/modes/position.ts';
+import { airbornePosition, surfacePosition } from '#lib/modes/position.ts';
+import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 import { describe, type Field, type Located } from '#lib/describe/frame.ts';
@@ -33,6 +40,11 @@ export class RawStream extends LiveFeed<FeedFrame> {
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
 	/** Each aircraft's latest even and odd position, for global CPR decoding. */
 	#pairs = new CprPairs();
+	/** The same for surface positions: a separate grid, and pairs need the reference too. */
+	#surfacePairs = new CprPairs(10_000, (even, odd, newer) => {
+		const reference = this.#reference();
+		return reference ? decodeSurfaceGlobal(even, odd, newer, reference) : null;
+	});
 
 	/** REFERENCE_POINT from the server, if set (for local CPR decoding). */
 	#reference: () => LatLon | null;
@@ -57,6 +69,7 @@ export class RawStream extends LiveFeed<FeedFrame> {
 		// In arrival order: pairing depends on it.
 		const decorated = frames.map((f) => this.#decorate(f));
 		this.#pairs.prune(frames.at(-1)!.rx); // the server's clock, like the frames'
+		this.#surfacePairs.prune(frames.at(-1)!.rx);
 		return decorated;
 	}
 
@@ -91,20 +104,35 @@ export class RawStream extends LiveFeed<FeedFrame> {
 	}
 
 	/**
-	 * Airborne positions (ADS-B, or the copy in a DF16 reply): decode locally with the
-	 * reference point, and globally if the same aircraft sent one from the other grid recently.
+	 * Positions (ADS-B, relayed TIS-B/ADS-R, or the copy in a DF16 reply): decode locally
+	 * with the reference point, and globally if the same sender recently sent one from the
+	 * other grid. Surface positions need the reference point either way.
 	 */
 	#locate(data: Uint8Array, f: WireFrame): Located | null {
 		const df = downlinkFormat(data);
-		const position = df === 17 || df === 16 ? airbornePosition(payload(data)!) : null;
-		if (!position?.cpr) return null;
+		const me = payload(data);
+		const es = esFormat(data) !== null;
+		if (!me || !(es || df === 16)) return null;
 		const reference = this.#reference();
-		// Only pair checked ADS-B: DF16's address comes from the parity and could be wrong.
-		const pairable = df === 17 && f.addr?.verdict === 'valid';
+		// Only pair messages whose address the CRC checked: DF16's comes from the parity and
+		// could be wrong. DF18/19 get their own key: their addresses aren't all ICAO addresses.
+		const key = es && f.addr?.verdict === 'valid' ? `${df}/${f.addr.icao}` : null;
+
+		const surface = es ? surfacePosition(me) : null;
+		if (surface) {
+			return {
+				reference,
+				local: reference ? decodeSurfaceLocal(surface.cpr, reference) : null,
+				global: key ? this.#surfacePairs.add(key, surface.cpr, f.rx) : null,
+				surface: true
+			};
+		}
+		const position = airbornePosition(me);
+		if (!position?.cpr) return null;
 		return {
 			reference,
 			local: reference ? decodeLocal(position.cpr, reference) : null,
-			global: pairable ? this.#pairs.add(f.addr!.icao, position.cpr, f.rx) : null
+			global: key ? this.#pairs.add(key, position.cpr, f.rx) : null
 		};
 	}
 }

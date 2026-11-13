@@ -26,7 +26,8 @@ export const ADDRESS_TTL_MS = 60_000;
  * addresses recovered from AP parity can be checked against them. readsb does the same
  * ("ICAO filter").
  *
- * Only clear, valid messages (DF11/17/18) put an address on the list. An AP message never
+ * Only clear, valid messages from transponders (DF11/17) put an address on the list. An
+ * AP message never
  * does, not even a "known" one: it can't prove anything about itself.
  */
 export class AddressFilter {
@@ -39,7 +40,11 @@ export class AddressFilter {
 		const p = checkParity(data);
 		if (p === null) return null;
 		if (p.kind === 'clear') {
-			if (p.valid) this.#lastSeen.set(p.icao, now);
+			// DF18 comes from devices without a transponder, or from ground stations relaying
+			// traffic (whose addresses may not even be ICAO addresses): neither can send the
+			// replies this list vouches for. DF19 is military, and whether its address is an
+			// ICAO address is not something we can know.
+			if (p.valid && (data[0] >> 3 === 11 || data[0] >> 3 === 17)) this.#lastSeen.set(p.icao, now);
 			return {
 				icao: p.icao,
 				source: 'clear',

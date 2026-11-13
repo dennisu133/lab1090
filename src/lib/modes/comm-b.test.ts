@@ -5,6 +5,7 @@ import { replyAltitude } from './altitude';
 import { inferRegister, type Inference } from './comm-b';
 import { downlinkFormat, fromHex, payload, toHex } from './frame';
 import { combineFine, REGISTERS, type PositionCoarse, type PositionFine } from './registers';
+import { squitter } from './squitter';
 import { commbOracle, oracle, timedMessages } from './testing';
 
 interface Reply {
@@ -202,4 +203,121 @@ test('angles are compared the short way round: 359° and 1° are 2° apart', () 
 	expect(track.quantity).toBe('track');
 	expect(track.difference).toBeCloseTo(2.05, 2);
 	expect(track.ok).toBe(true);
+});
+
+describe('ADS-B registers read via Comm-B: only an exact copy (or agreeing values) counts', () => {
+	// Payloads (ME) of real DF17s from the capture.
+	const ME = {
+		'6,1': 'e10ba700000000', // TC 28: emergency status and squawk
+		'6,2': 'ea4a5858001008', // TC 29: target state and status
+		'6,5': 'f8230003004008' // TC 31: operational status
+	};
+	const nothing: Broadcast = {
+		callsign: null,
+		altitude: null,
+		gnssMinusBaro: null,
+		position: null,
+		ground: null,
+		air: null,
+		verticalRate: null,
+		selectedAltitude: null,
+		qnh: null,
+		lastSeen: 0,
+		recent: new Map()
+	};
+
+	for (const [bds, hex] of Object.entries(ME)) {
+		test(`${bds}: unknown alone, recognised when the aircraft just broadcast the same bits`, () => {
+			const mb = fromHex(hex);
+			const alone = inferRegister(mb, null);
+			expect(alone.best?.bds).not.toBe(bds);
+			expect(alone.rejected.find((r) => r.bds === bds)?.reason).toMatch(/too little structure/);
+
+			const adsb = { ...nothing, recent: new Map([[hex, 0]]) };
+			const copy = inferRegister(mb, { now: 2000, replyAltitude: null, adsb });
+			expect(copy.best?.bds).toBe(bds);
+			expect(copy.best?.comparisons[0]).toMatchObject({ quantity: 'all 56 bits', ok: true });
+		});
+	}
+
+	test('6,2 is also confirmed by agreeing values: selected altitude and pressure setting', () => {
+		const mb = fromHex(ME['6,2']);
+		const [selected, qnh] = [{ feet: 38_016, source: 'MCP/FCU' as const }, 1012.8];
+		const at = <T>(value: T) => ({ value, t: 0, from: 'TC 29' });
+		const agree = { ...nothing, selectedAltitude: at(selected), qnh: at(qnh) };
+		const inference = inferRegister(mb, { now: 1000, replyAltitude: null, adsb: agree });
+		expect(inference.best?.bds).toBe('6,2');
+		expect(inference.best?.comparisons.map((c) => c.quantity)).toEqual([
+			'selected altitude',
+			'pressure setting'
+		]);
+
+		const disagree = { ...agree, selectedAltitude: at({ ...selected, feet: 24_000 }) };
+		const no = inferRegister(mb, { now: 1000, replyAltitude: null, adsb: disagree });
+		expect(no.best?.bds).not.toBe('6,2');
+		expect(no.rejected.find((r) => r.bds === '6,2')?.reason).toBe(
+			'ADS-B disagrees: selected altitude 38,016 ft vs 24,000 ft'
+		);
+	});
+
+	test('0,6: a surface position, as an exact copy', () => {
+		// TC 7, movement 20, track valid: 64 × 360/128 = 180°, T 0, odd, CPR 1000 / 2000.
+		const fields = [
+			[5, 7],
+			[7, 20],
+			[1, 1],
+			[7, 64],
+			[1, 0],
+			[1, 1],
+			[17, 1000],
+			[17, 2000]
+		];
+		let binary = '';
+		for (const [count, value] of fields) binary += value.toString(2).padStart(count, '0');
+		const mb = fromHex(BigInt(`0b${binary}`).toString(16).padStart(14, '0'));
+		expect(squitter(mb)?.kind).toBe('surface-position');
+		const adsb = { ...nothing, recent: new Map([[toHex(mb), 0]]) };
+		expect(inferRegister(mb, { now: 500, replyAltitude: null, adsb }).best?.bds).toBe('0,6');
+	});
+});
+
+describe('the rare registers (4,4, 4,5, 5,3) are a last resort', () => {
+	const spec = (bds: string) => REGISTERS.find((r) => r.bds === bds)!;
+
+	test('when a common register fits too, the rare one is set aside, and says why', () => {
+		const both = commbOracle
+			.map((o) => fromHex(o.mb))
+			.find((mb) => spec('5,3').reject(mb) === null && spec('6,0').reject(mb) === null)!;
+		const inference = inferRegister(both, null);
+		expect(inference.candidates.map((c) => c.bds)).not.toContain('5,3');
+		expect(inference.rejected.find((r) => r.bds === '5,3')?.reason).toMatch(/rarely asked for/);
+	});
+
+	test('5,3 alone fits, but ADS-B contradicts it: unknown', () => {
+		const ias = (mb: Uint8Array) => {
+			const r = spec('5,3').decode(mb);
+			return r.bds === '5,3' ? r.ias : null;
+		};
+		const alone = commbOracle
+			.map((o) => fromHex(o.mb))
+			.find((mb) => inferRegister(mb, null).best?.bds === '5,3' && ias(mb) !== null)!;
+		const adsb: Broadcast = {
+			callsign: null,
+			altitude: null,
+			gnssMinusBaro: null,
+			position: null,
+			ground: null,
+			air: { value: { speed: ias(alone)! + 100, type: 'IAS', heading: null }, t: 0, from: 'TC 19' },
+			verticalRate: null,
+			selectedAltitude: null,
+			qnh: null,
+			lastSeen: 0,
+			recent: new Map()
+		};
+		const inference = inferRegister(alone, { now: 1000, replyAltitude: null, adsb });
+		expect(inference.best).toBeNull();
+		expect(inference.rejected.find((x) => x.bds === '5,3')?.reason).toMatch(
+			/^ADS-B disagrees: indicated airspeed/
+		);
+	});
 });

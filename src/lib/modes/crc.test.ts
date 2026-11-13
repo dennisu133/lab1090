@@ -123,5 +123,11 @@ describe('DF11 interrogator codes', () => {
 });
 
 test('formats without an address field', () => {
-	expect(checkParity(fromHex('98' + '00'.repeat(13)))).toBeNull(); // DF19, military
+	expect(checkParity(fromHex('99' + '00'.repeat(13)))).toBeNull(); // DF19 AF 1, military format
+	expect(checkParity(fromHex('98' + '00'.repeat(13)))).toBeNull(); // DF19 AF 0, CRC doesn't fit
+	// DF19 AF 0 whose parity is the plain CRC: laid out like DF17, address in the clear.
+	const military = fromHex('98abcdef' + '00'.repeat(10));
+	const parity = crc24(military, 11);
+	military.set([parity >> 16, (parity >> 8) & 0xff, parity & 0xff], 11);
+	expect(checkParity(military)).toMatchObject({ kind: 'clear', icao: 'ABCDEF', valid: true });
 });

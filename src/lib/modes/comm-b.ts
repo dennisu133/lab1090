@@ -14,6 +14,9 @@
  * Step 3 also lets registers without any structure of their own (5,1, 5,2, and ADS-B
  * registers read via Comm-B) be recognised: they only count if ADS-B confirms them.
  *
+ * Registers hardly any radar asks for (4,4, 4,5 and 5,3, see RARE) are a last resort: they
+ * are only considered if none of the others fits, and never if ADS-B contradicts them.
+ *
  * Shared by server and browser; no state here (the ADS-B side comes from AdsbMemory).
  */
 import { distanceKm } from '#lib/geo.ts';
@@ -21,7 +24,7 @@ import type { Broadcast, Timed } from './adsb-memory';
 import { machFromCas } from './air-data';
 import { decodeLocal } from './cpr';
 import { toHex } from './frame';
-import { combineFine, REGISTERS, type Register } from './registers';
+import { combineFine, RARE, REGISTERS, type Register } from './registers';
 
 export interface Context {
 	/** Same clock as the ADS-B timestamps, ms. */
@@ -79,7 +82,7 @@ export interface Inference {
 /** Registers recognised by a fixed pattern: if one fits, nothing else is considered. */
 const FIXED = new Set(['1,0', '1,7', '2,0', '3,0']);
 /** Registers with too little structure to recognise on their own: ADS-B must confirm them. */
-const NEEDS_ADSB = new Set(['5,1', '5,2', '0,5', '0,8', '0,9']);
+const NEEDS_ADSB = new Set(['5,1', '5,2', '0,5', '0,6', '0,8', '0,9', '6,1', '6,2', '6,5']);
 
 /** ADS-B values older than this aren't compared with. */
 const MAX_AGE_MS = 30_000;
@@ -89,6 +92,7 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 	const inference: Inference = { how: 'unknown', best: null, candidates: [], rejected: [] };
 	if (mb.every((b) => b === 0)) return { ...inference, how: 'empty' };
 
+	const rare: Candidate[] = [];
 	for (const spec of REGISTERS) {
 		const reason = spec.reject(mb);
 		if (reason) {
@@ -97,8 +101,8 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 		}
 		const register = spec.decode(mb);
 		const comparisons = context ? compare(register, mb, context) : [];
+		const failed = comparisons.filter((c) => !c.ok);
 		if (NEEDS_ADSB.has(spec.bds)) {
-			const failed = comparisons.filter((c) => !c.ok);
 			const why =
 				comparisons.length === 0
 					? 'too little structure to tell without recent ADS-B to compare with'
@@ -108,7 +112,21 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 				continue;
 			}
 		}
-		inference.candidates.push({ bds: spec.bds, name: spec.name, register, comparisons });
+		if (RARE.has(spec.bds) && failed.length > 0) {
+			const reason = `ADS-B disagrees: ${failed.map(mismatch).join('; ')}`;
+			inference.rejected.push({ bds: spec.bds, name: spec.name, reason });
+			continue;
+		}
+		const candidate = { bds: spec.bds, name: spec.name, register, comparisons };
+		(RARE.has(spec.bds) ? rare : inference.candidates).push(candidate);
+	}
+	// The rare registers only get a chance when none of the common ones fits.
+	if (inference.candidates.length === 0) inference.candidates.push(...rare);
+	else {
+		for (const c of rare) {
+			const reason = 'fits too, but is rarely asked for: only considered when nothing else fits';
+			inference.rejected.push({ bds: c.bds, name: c.name, reason });
+		}
 	}
 
 	const { candidates } = inference;
@@ -361,9 +379,43 @@ function compare(
 			const height = baro[0]?.ok || gnss.length === 0 ? baro : gnss;
 			return [...distance(combined), ...height];
 		}
+		case '5,3': {
+			const heading = map(air, (a) => a.heading) ?? map(ground, (g) => g.track);
+			return [
+				...numeric('heading', '°', register.heading, heading, 30, true),
+				...numeric(
+					'indicated airspeed',
+					'kt',
+					register.ias,
+					map(air, (a) => (a.type === 'IAS' ? a.speed : null)),
+					20
+				),
+				...numeric(
+					'true airspeed',
+					'kt',
+					register.tas,
+					map(air, (a) => (a.type === 'TAS' ? a.speed : null)),
+					20
+				),
+				...(register.ias !== null && altitude
+					? machCheck(register.mach, register.ias, altitude)
+					: []),
+				...numeric(
+					'vertical rate',
+					'ft/min',
+					register.verticalRate,
+					map(rate, (r) => r.rate),
+					500
+				)
+			];
+		}
 		case '0,5':
+		case '0,6':
 		case '0,8':
-		case '0,9': {
+		case '0,9':
+		case '6,1':
+		case '6,2':
+		case '6,5': {
 			const sent = adsb.recent.get(toHex(mb));
 			if (sent !== undefined && now - sent <= MAX_AGE_MS) {
 				return [
@@ -413,6 +465,19 @@ function compare(
 					)
 				];
 			}
+			if (s.kind === 'target-state' && s.subtype === 1) {
+				return [
+					...numeric(
+						'selected altitude',
+						'ft',
+						s.selectedAltitude?.feet ?? null,
+						map(selected, (x) => x.feet),
+						50
+					),
+					...numeric('pressure setting', 'hPa', s.qnh, fresh(adsb.qnh, now), 1)
+				];
+			}
+			// Surface positions, aircraft and operational status: only an exact copy confirms them.
 			return [];
 		}
 		default:

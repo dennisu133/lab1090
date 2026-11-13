@@ -80,8 +80,10 @@ test('signal buckets: 3 dB wide, lower edge, clamped to -48 … -3', () => {
 	expect(signalBucket(0)).toBe(-3); // full scale still counts as the top bucket
 });
 
-test('containment radius only for airborne position type codes', () => {
+test('containment radius only for position type codes', () => {
 	expect(containmentRadius(11)).toBe('< 75 m or < 185 m');
 	expect(containmentRadius(18)).toBe('unknown');
-	for (const tc of [0, 4, 8, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
+	expect(containmentRadius(5)).toBe('< 7.5 m');
+	expect(containmentRadius(8)).toBe('unknown');
+	for (const tc of [0, 4, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
 });

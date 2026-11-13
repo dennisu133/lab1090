@@ -57,6 +57,11 @@ test('flight status', () => {
 	expect(flightStatus(4)).toEqual({ code: 4, onGround: null, alert: true, spi: true });
 });
 
+test('DF18/19: the control and application fields', () => {
+	expect(messageHeader(fromHex('92' + '00'.repeat(13)))).toEqual({ df: 18, control: 2 });
+	expect(messageHeader(fromHex('98' + '00'.repeat(13)))).toEqual({ df: 19, application: 0 });
+});
+
 test('formats without these fields', () => {
-	expect(messageHeader(fromHex('98' + '00'.repeat(13)))).toBeNull(); // DF19
+	expect(messageHeader(fromHex('08' + '00'.repeat(6)))).toBeNull(); // DF1, undefined
 });
