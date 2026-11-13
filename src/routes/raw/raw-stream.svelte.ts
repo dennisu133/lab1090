@@ -1,10 +1,13 @@
 import { downlinkFormat, fromHex, signalDbfs, typeCode } from '#lib/modes/frame.ts';
+import { identification, type Identification } from '#lib/modes/identification.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 export interface FeedFrame extends WireFrame {
 	df: number;
 	tc: number | null;
 	dbfs: number;
+	/** DF17/18 TC 1–4: callsign and category. */
+	ident: Identification | null;
 }
 
 export interface Rates {
@@ -99,6 +102,7 @@ function decorate(f: WireFrame): FeedFrame {
 		...f,
 		df: downlinkFormat(data),
 		tc: typeCode(data),
+		ident: identification(data),
 		dbfs: signalDbfs(f.sig)
 	};
 }

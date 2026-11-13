@@ -17,15 +17,21 @@ tools/.venv/bin/pip install -r tools/requirements.txt
 
 bun tools/dump-messages.ts fixtures/capture.beast \
   | tools/.venv/bin/python tools/oracle.py > fixtures/oracle/crc.tsv
+bun tools/dump-messages.ts fixtures/capture.beast \
+  | tools/.venv/bin/python tools/oracle-decode.py > fixtures/oracle/decoded.jsonl
 ```
 
 - `dump-messages.ts`: prints every distinct Mode S message of a Beast capture as hex,
   using our own Beast parser (the parser has its own tests).
 - `oracle.py`: reads hex messages, writes `message  crc  icao` as TSV.
+- `oracle-decode.py`: reads hex messages, writes everything `pyModeS.decode()` returns
+  as JSON lines (callsign, altitude, position fields, velocity, …). This is the reference
+  for all decoders after the CRC.
 
-| File                      | Content                                                             | Tested in                   |
-| ------------------------- | ------------------------------------------------------------------- | --------------------------- |
-| `fixtures/oracle/crc.tsv` | CRC remainder (syndrome) and address of all 7,481 distinct messages | `src/lib/modes/crc.test.ts` |
+| File                            | Content                                                             | Tested in                              |
+| ------------------------------- | ------------------------------------------------------------------- | -------------------------------------- |
+| `fixtures/oracle/crc.tsv`       | CRC remainder (syndrome) and address of all 7,481 distinct messages | `src/lib/modes/crc.test.ts`            |
+| `fixtures/oracle/decoded.jsonl` | Full pyModeS decode of the same messages (1.7 MB)                   | `src/lib/modes/identification.test.ts` |
 
 pyModeS 3 changed its API (no more `pms.crc()`/`pms.icao()` at the top level); this
 uses `pyModeS.util.crc` and `pyModeS.decode(msg)["icao"]`.

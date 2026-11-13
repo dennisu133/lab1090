@@ -1,0 +1,95 @@
+import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
+import { BeastParser } from '#lib/server/beast/parser.ts';
+import { fromHex, icaoAddress } from './frame';
+import { callsign, emitterCategory, identification } from './identification';
+
+const root = join(import.meta.dir, '../../..');
+
+/** pyModeS's full decode of every distinct message in the capture (see tools/README.md). */
+const oracle: { message: string; typecode?: number; callsign?: string; category?: number }[] = (
+	await Bun.file(join(root, 'fixtures/oracle/decoded.jsonl')).text()
+)
+	.trim()
+	.split('\n')
+	.map((line) => JSON.parse(line));
+
+/** Pack 8 characters into 6 bytes, the way an aircraft would (test helper, the inverse). */
+function encode(text: string): Uint8Array {
+	const codes = [...text.padEnd(8)].map((c) => c.charCodeAt(0) & 0b111111);
+	const bytes = new Uint8Array(6);
+	for (let half = 0; half < 2; half++) {
+		const n = codes.slice(half * 4, half * 4 + 4).reduce((acc, c) => (acc << 6) | c, 0);
+		bytes.set([n >> 16, (n >> 8) & 0xff, n & 0xff], half * 3);
+	}
+	return bytes;
+}
+
+describe('callsign characters', () => {
+	test('letters, digits and space-padding', () => {
+		expect(callsign(encode('DLH4LW'))).toBe('DLH4LW');
+		expect(callsign(encode('A1 Z9'))).toBe('A1 Z9'); // inner spaces stay
+		expect(callsign(encode('12345678'))).toBe('12345678');
+	});
+
+	test('6-bit codes that are no letter, digit or space become #', () => {
+		const bytes = encode('ABCD');
+		bytes[0] &= 0b000000_11; // first character -> code 0
+		expect(callsign(bytes)).toBe('#BCD');
+	});
+});
+
+test('emitter categories', () => {
+	expect(emitterCategory(4, 5)).toEqual({ set: 'A', code: 5, name: 'Heavy (> 136 t)' });
+	expect(emitterCategory(4, 0).name).toBe('No category information');
+	expect(emitterCategory(3, 1).name).toBe('Glider / sailplane');
+	expect(emitterCategory(2, 1).set).toBe('C');
+	expect(emitterCategory(1, 3).name).toBe('Reserved');
+});
+
+test('a real message: Lufthansa DLH4LW, a large aircraft', () => {
+	// (DLH4LW also shows up in DF20 Comm-B replies: same callsign, read out by a radar.
+	// Those aren't ADS-B, so we pick the DF17 here.)
+	const o = oracle.find((o) => o.callsign === 'DLH4LW' && o.typecode === 4)!;
+	const id = identification(fromHex(o.message));
+	expect(id).toEqual({
+		callsign: 'DLH4LW',
+		category: { set: 'A', code: 3, name: 'Large (34–136 t)' }
+	});
+});
+
+test('only type codes 1–4 are identification messages', () => {
+	expect(identification(fromHex('8d48e95b9915828df0089c433e2e'))).toBeNull(); // TC 19
+	expect(identification(fromHex('200017180d1091'))).toBeNull(); // DF4
+});
+
+test('agrees with pyModeS on every identification message in the capture', () => {
+	const idents = oracle.filter(
+		(o) => o.typecode !== undefined && o.typecode <= 4 && o.typecode >= 1
+	);
+	expect(idents.length).toBe(12);
+	for (const o of idents) {
+		const id = identification(fromHex(o.message))!;
+		expect(id.callsign).toBe(o.callsign!);
+		expect(id.category.code).toBe(o.category!);
+	}
+});
+
+test('across the capture, each aircraft keeps one clean callsign', async () => {
+	const capture = new Uint8Array(
+		await Bun.file(join(root, 'fixtures/capture.beast')).arrayBuffer()
+	);
+	const seen = new Map<string, Set<string>>();
+	for (const f of new BeastParser().push(capture)) {
+		if (f.kind === 'modeac') continue;
+		const id = identification(f.data);
+		if (!id) continue;
+		const icao = icaoAddress(f.data)!;
+		seen.set(icao, (seen.get(icao) ?? new Set()).add(id.callsign));
+	}
+	expect(seen.size).toBe(12);
+	for (const callsigns of seen.values()) {
+		expect(callsigns.size).toBe(1);
+		expect([...callsigns][0]).toMatch(/^[A-Z0-9]{2,8}$/);
+	}
+});

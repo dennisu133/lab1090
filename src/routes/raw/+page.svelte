@@ -13,8 +13,19 @@
 	const stream = new RawStream();
 	$effect(() => stream.connect());
 
-	let dfFilter = $state<number | null>(null);
-	let verdictFilter = $state<Verdict | null>(null);
+	/** Clicking a row in a count table shows only those frames; null = no filter. */
+	let filter = $state<{ df: number | null; tc: number | null; verdict: Verdict | null }>({
+		df: null,
+		tc: null,
+		verdict: null
+	});
+	let chips = $derived(
+		[
+			{ key: 'df' as const, label: `DF ${filter.df}`, active: filter.df !== null },
+			{ key: 'tc' as const, label: `TC ${filter.tc}`, active: filter.tc !== null },
+			{ key: 'verdict' as const, label: `${filter.verdict}`, active: filter.verdict !== null }
+		].filter((c) => c.active)
+	);
 
 	let update = $derived(stream.update);
 	let status = $derived(update?.status);
@@ -52,8 +63,9 @@
 		stream.frames
 			.filter(
 				(f) =>
-					(dfFilter === null || f.df === dfFilter) &&
-					(verdictFilter === null || f.addr?.verdict === verdictFilter)
+					(filter.df === null || f.df === filter.df) &&
+					(filter.tc === null || (f.df === 17 && f.tc === filter.tc)) &&
+					(filter.verdict === null || f.addr?.verdict === filter.verdict)
 			)
 			.slice(0, FEED_ROWS)
 	);
@@ -77,12 +89,8 @@
 		return `${dbfs.toFixed(1)} dBFS: amplitude ${amplitude.toFixed(1)} %, power ${power.toFixed(2)} % of full scale`;
 	}
 
-	function toggleFilter(df: number) {
-		dfFilter = dfFilter === df ? null : df;
-	}
-
-	function toggleVerdict(v: Verdict) {
-		verdictFilter = verdictFilter === v ? null : v;
+	function toggle<K extends keyof typeof filter>(key: K, value: (typeof filter)[K]) {
+		filter[key] = filter[key] === value ? null : value;
 	}
 </script>
 
@@ -130,10 +138,16 @@
 			title="Downlink formats"
 			keyLabel="DF"
 			rows={dfRows}
-			selected={dfFilter}
-			onselect={toggleFilter}
+			selected={filter.df}
+			onselect={(df) => toggle('df', df)}
 		/>
-		<CountTable title="ADS-B type codes (DF17)" keyLabel="TC" rows={tcRows}>
+		<CountTable
+			title="ADS-B type codes (DF17)"
+			keyLabel="TC"
+			rows={tcRows}
+			selected={filter.tc}
+			onselect={(tc) => toggle('tc', tc)}
+		>
 			{#snippet info()}
 				<p>
 					The type code is the first 5 bits of an ADS-B message's payload and says what it carries.
@@ -161,8 +175,8 @@
 			title="Parity check"
 			keyLabel=""
 			rows={verdictRows}
-			selected={verdictFilter}
-			onselect={toggleVerdict}
+			selected={filter.verdict}
+			onselect={(v) => toggle('verdict', v)}
 		>
 			{#snippet info()}
 				<p>
@@ -201,22 +215,14 @@
 			>
 				{stream.paused ? `Resume (${stream.held} new)` : 'Pause'}
 			</button>
-			{#if dfFilter !== null}
+			{#each chips as chip (chip.key)}
 				<button
 					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
-					onclick={() => (dfFilter = null)}
+					onclick={() => (filter[chip.key] = null)}
 				>
-					DF {dfFilter} only ✕
+					{chip.label} only ✕
 				</button>
-			{/if}
-			{#if verdictFilter !== null}
-				<button
-					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
-					onclick={() => (verdictFilter = null)}
-				>
-					{verdictFilter} only ✕
-				</button>
-			{/if}
+			{/each}
 			<div class="ml-auto flex gap-3 font-mono text-xs">
 				<span class={PART_COLORS.header}>DF + control</span>
 				<span class={PART_COLORS.address}>ICAO address</span>
@@ -255,6 +261,7 @@
 					<th class="py-1 font-normal">TC</th>
 					<th class="py-1 font-normal">ICAO</th>
 					<th class="py-1 font-normal">Parity</th>
+					<th class="py-1 font-normal">Content</th>
 					<th class="py-1 font-normal">Message</th>
 				</tr>
 			</thead>
@@ -292,11 +299,22 @@
 							<td></td>
 							<td></td>
 						{/if}
+						<td class="py-0.5 whitespace-nowrap">
+							{#if f.ident}
+								<span class="font-mono font-semibold text-zinc-100">{f.ident.callsign}</span>
+								<span
+									class="ml-1 text-xs text-zinc-500"
+									title="Emitter category {f.ident.category.set}{f.ident.category.code}"
+								>
+									{f.ident.category.name}
+								</span>
+							{/if}
+						</td>
 						<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="7" class="py-4 text-zinc-500">
+						<td colspan="8" class="py-4 text-zinc-500">
 							{stream.frames.length === 0
 								? 'Waiting for frames…'
 								: `None of the last ${stream.frames.length} frames match the filter.`}
