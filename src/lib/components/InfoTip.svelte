@@ -1,6 +1,7 @@
 <!--
 	A label with an explanation that appears on hover (mouse) or focus (keyboard, tap).
 	Pure CSS: the tooltip lives inside the same `group`, so moving the pointer onto it keeps it open.
+	It resets the text styles it would otherwise inherit (e.g. `whitespace-nowrap` from a table header).
 
 	For a section title, pass `heading="h2"`: only the label goes inside the heading, the
 	tooltip sits next to it (a heading may only contain text, not paragraphs or tables).
@@ -56,7 +57,7 @@
 		]}
 	>
 		<div
-			class="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-left text-sm leading-relaxed font-normal tracking-normal text-zinc-300 normal-case shadow-xl"
+			class="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-left text-sm leading-relaxed font-normal tracking-normal whitespace-normal text-zinc-300 normal-case shadow-xl"
 		>
 			{@render children()}
 		</div>

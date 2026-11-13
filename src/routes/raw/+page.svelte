@@ -3,8 +3,9 @@
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
+	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { resolve } from '$app/paths';
-	import { DF_NAMES, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
+	import { DF_NAMES, TYPE_CODE_GROUPS, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
@@ -18,8 +19,11 @@
 	const stream = new RawStream(() => data.reference);
 	$effect(() => stream.connect());
 
-	/** Clicking a row in a count table shows only those frames; null = no filter. */
-	let filter = $state<{ df: number | null; tc: number | null; verdict: Verdict | null }>({
+	/**
+	 * Clicking a row in a count table shows only those frames; null = no filter.
+	 * tc is a TC table row key: a group ("9–18") or a single code ("11").
+	 */
+	let filter = $state<{ df: number | null; tc: string | null; verdict: Verdict | null }>({
 		df: null,
 		tc: null,
 		verdict: null
@@ -34,23 +38,68 @@
 
 	let update = $derived(stream.update);
 
-	let dfRows = $derived(
-		Object.entries(update?.counts.byDf ?? {}).map(([k, count]) => ({
-			key: +k,
-			label: DF_NAMES[+k] ?? 'Unknown',
-			count,
-			rate: stream.rates.byDf[+k] ?? 0
-		}))
-	);
-	let tcRows = $derived(
-		Object.entries(update?.counts.byTc ?? {}).map(([k, count]) => ({
-			key: +k,
-			label: typeCodeName(+k),
-			detail: containmentRadius(+k) === null ? undefined : `Rc ${containmentRadius(+k)}`,
-			count,
-			rate: stream.rates.byTc[+k] ?? 0
-		}))
-	);
+	/** Every defined format, received or not (plus any undefined one that shows up). */
+	let dfRows = $derived.by(() => {
+		const byDf = update?.counts.byDf ?? {};
+		const dfs = new Set([...Object.keys(DF_NAMES), ...Object.keys(byDf)].map(Number));
+		return [...dfs]
+			.sort((a, b) => a - b)
+			.map((df) => ({
+				key: df,
+				label: DF_NAMES[df] ?? 'Unknown',
+				count: byDf[df] ?? 0,
+				rate: stream.rates.byDf[df] ?? 0
+			}));
+	});
+
+	/** All type codes: one row per group, which expands into its codes. */
+	let tcRows = $derived.by(() => {
+		const byTc = update?.counts.byTc ?? {};
+		const row = (tc: number) => ({
+			key: `${tc}`,
+			label: codeLabel(tc),
+			title: `TC ${tc}: ${typeCodeName(tc)}`,
+			count: byTc[tc] ?? 0,
+			rate: stream.rates.byTc[tc] ?? 0
+		});
+		return TYPE_CODE_GROUPS.map((g) => {
+			const codes = [];
+			for (let tc = g.from; tc <= g.to; tc++) codes.push(row(tc));
+			return {
+				key: codeRange(g),
+				label: g.name,
+				count: codes.reduce((sum, c) => sum + c.count, 0),
+				rate: codes.reduce((sum, c) => sum + c.rate, 0),
+				children: codes.length > 1 ? codes : undefined
+			};
+		});
+	});
+
+	/** "9–18", or just "19". Also the TC table's row keys. */
+	function codeRange(g: { from: number; to: number }) {
+		return g.from === g.to ? `${g.from}` : `${g.from}–${g.to}`;
+	}
+
+	/** A TC table row key ("9–18" or "11") back to its range of codes. */
+	function parseRange(key: string) {
+		const [from, to = from] = key.split('–').map(Number);
+		return { from, to };
+	}
+
+	/** What a type code adds to its group's meaning. */
+	function codeLabel(tc: number) {
+		const rc = containmentRadius(tc);
+		if (rc) return `Rc ${rc}`;
+		return EMITTER_SETS[tc] ?? typeCodeName(tc);
+	}
+
+	/** Identification messages: the type code says which set the emitter category is from. */
+	const EMITTER_SETS: Record<number, string> = {
+		1: 'Set D: reserved',
+		2: 'Set C: ground vehicles, obstacles',
+		3: 'Set B: gliders, balloons, drones…',
+		4: 'Set A: aircraft by size'
+	};
 
 	let verdictRows = $derived(
 		(Object.keys(VERDICTS) as Verdict[]).map((v) => ({
@@ -63,12 +112,14 @@
 		}))
 	);
 
+	let tcFilter = $derived(filter.tc === null ? null : parseRange(filter.tc));
 	let feed = $derived(
 		stream.frames
 			.filter(
 				(f) =>
 					(filter.df === null || f.df === filter.df) &&
-					(filter.tc === null || (f.df === 17 && f.tc === filter.tc)) &&
+					(tcFilter === null ||
+						(f.df === 17 && f.tc !== null && f.tc >= tcFilter.from && f.tc <= tcFilter.to)) &&
 					(filter.verdict === null || f.addr?.verdict === filter.verdict)
 			)
 			.slice(0, FEED_ROWS)
@@ -93,6 +144,11 @@
 		return `${dbfs.toFixed(1)} dBFS: amplitude ${amplitude.toFixed(1)} %, power ${power.toFixed(2)} % of full scale`;
 	}
 
+	/** 51.8° N, 14.3° E */
+	function latLonText({ lat, lon }: LatLon) {
+		return `${Math.abs(lat)}° ${lat < 0 ? 'S' : 'N'}, ${Math.abs(lon)}° ${lon < 0 ? 'W' : 'E'}`;
+	}
+
 	function toggle<K extends keyof typeof filter>(key: K, value: (typeof filter)[K]) {
 		filter[key] = filter[key] === value ? null : value;
 	}
@@ -112,13 +168,17 @@
 			<span class="text-2xl font-semibold">{stream.rates.total.toFixed(1)}</span>
 			<span class="text-zinc-400">msg/s</span>
 		</div>
+		<div class="text-zinc-400 tabular-nums">
+			<span class="text-zinc-100">{update ? update.counts.total.toLocaleString() : '–'}</span>
+			messages{#if update}&nbsp;since {clock.format(update.since)}{/if}
+		</div>
 		<div class="text-zinc-400">
 			{#if data.reference}
 				<InfoTip label="Reference point set">
 					<p>
-						Positions are decoded from single messages, using the <code>REFERENCE_POINT</code>
-						from <code>.env</code> to pick the right CPR zone (local decoding). Its coordinates are never
-						shown here.
+						Positions are decoded from single messages, using the reference point
+						<span class="text-zinc-100 tabular-nums">{latLonText(data.reference)}</span> to pick the right
+						CPR zone (local decoding).
 					</p>
 					<p>
 						When the same aircraft also sent a message from its other grid within 10 s, the even/odd
@@ -141,12 +201,6 @@
 				</InfoTip>
 			{/if}
 		</div>
-		{#if update}
-			<div class="text-zinc-400 tabular-nums">
-				<span class="text-zinc-100">{update.counts.total.toLocaleString()}</span> messages since
-				{clock.format(update.since)}
-			</div>
-		{/if}
 	</header>
 
 	<!-- Counts -->
@@ -168,12 +222,17 @@
 			{#snippet info()}
 				<p>
 					The type code is the first 5 bits of an ADS-B message's payload and says what it carries.
+					All 32 are listed, grouped by message type: click a group's number (▸ 9–18) to see its
+					codes one by one. Greyed-out rows haven't been received yet.
 				</p>
 				<p>
-					All airborne positions (TC 9–18 with barometric altitude, 20–22 with GNSS height) have the
-					same layout. The type code additionally says how much the aircraft vouches for the
-					position: the <strong>containment radius Rc</strong>. The avionics guarantee, with about a
-					1 in 10 million risk of being wrong, that the true position is inside that circle.
+					Within a group the layout is the same, and the code adds a detail. For identification (TC
+					1–4) it's which set of emitter categories (D, C, B, A) the aircraft's category is from.
+					For positions (surface 5–8, airborne 9–18 with barometric altitude, 20–22 with GNSS
+					height) it's how much the aircraft vouches for the position: the <strong
+						>containment radius Rc</strong
+					>. The avionics guarantee, with about a 1 in 10 million risk of being wrong, that the true
+					position is inside that circle.
 				</p>
 				<p>
 					That's <em>integrity</em>, not accuracy: a TC 11 aircraft is usually within a few metres.
@@ -181,7 +240,8 @@
 					depends on its navigation equipment.
 				</p>
 				<p class="text-zinc-400">
-					"or": a bit in the aircraft's operational status message (TC 31) decides.
+					"or": a bit in the aircraft's operational status message (TC 31) decides. Click a row to
+					filter the feed, a group or a single code.
 				</p>
 			{/snippet}
 		</CountTable>
@@ -249,107 +309,112 @@
 			</div>
 		</div>
 
-		<table class="w-full text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
-			<thead class="text-left text-xs text-zinc-500">
-				<tr>
-					<th class="py-1 font-normal">Received</th>
-					<th class="py-1 text-right font-normal whitespace-nowrap">
-						<InfoTip label="Signal (dBFS)">
-							<p>
-								How loud the message arrived, in <strong>dBFS</strong>: decibels relative to the
-								loudest signal the dongle can measure (full scale = 0 dBFS).
-							</p>
-							<p>
-								Every −6 dB halves the amplitude, every −10 dB is a tenth of the power. So
-								<strong>−20 dBFS</strong> is a tenth of the full-scale amplitude, a hundredth of its power.
-							</p>
-							<p>
-								Usable range here is about −40 (drowning in noise) to −3 dBFS (pulses at full
-								scale). Louder usually means closer, but only roughly: transmitter power and antenna
-								orientation vary.
-							</p>
-							<p class="text-zinc-400">
-								Relative to your receiver and its current gain, not an absolute power. Hover a value
-								for its exact amplitude and power.
-							</p>
-						</InfoTip>
-					</th>
-					<th class="py-1 font-normal">DF</th>
-					<th class="py-1 font-normal">TC</th>
-					<th class="py-1 font-normal">ICAO</th>
-					<th class="py-1 font-normal">Parity</th>
-					<th class="py-1 font-normal">
-						<InfoTip label="Content">
-							<p>
-								Everything decoded from the message. <span class="text-zinc-100">Bright</span>: the
-								headline values. <span class="text-xs text-zinc-500">Dimmed</span>: details.
-								<span class="text-orange-400">Orange</span>: worth noticing (alerts, emergencies,
-								missing data).
-							</p>
-							<p>
-								Labels are the field names from the specifications (FS, SL, RI, NACp, …), so you can
-								look them up. Hover any value for what it means.
-							</p>
-							<p class="text-zinc-400">
-								DF20/21 also carry a Comm-B register (MB): <a
-									href={resolve('/comm-b')}
-									class="text-sky-400 underline">/comm-b</a
-								> works out which one, and decodes it.
-							</p>
-						</InfoTip>
-					</th>
-					<th class="py-1 font-normal">Message</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each feed as f (f.id)}
-					<tr class="border-t border-zinc-900">
-						<td class="py-0.5 text-zinc-400">{time.format(f.rx)}</td>
-						<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
-							{f.dbfs.toFixed(1)} dBFS
-						</td>
-						<td class="py-0.5 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
-						<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>
-							{f.tc ?? ''}
-						</td>
-						{#if f.addr}
-							{@const v = VERDICTS[f.addr.verdict]}
-							<td
-								class={[
-									'py-0.5 font-mono',
-									f.addr.verdict === 'valid' || f.addr.verdict === 'known'
-										? 'text-amber-300'
-										: 'text-zinc-500'
-								]}
-								title={addressTitle(f.addr)}
-							>
-								{f.addr.icao}<span class="text-zinc-600"
-									>{f.addr.source === 'parity' ? '*' : ''}</span
-								>
-							</td>
-							<td class="py-0.5 whitespace-nowrap" title={v.label}>
-								<span class={v.color}>{v.symbol}</span>
-								<span class="text-xs text-zinc-500">{interrogatorLabel(f.addr) ?? ''}</span>
-							</td>
-						{:else}
-							<td></td>
-							<td></td>
-						{/if}
-						<td class="py-0.5">
-							<Fields fields={f.fields} />
-						</td>
-						<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
-					</tr>
-				{:else}
+		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
+		     so new frames never shift the columns; Content gets the rest and wraps. -->
+		<div class="overflow-x-auto">
+			<table class="w-full min-w-5xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+				<thead class="text-left text-xs text-zinc-500">
 					<tr>
-						<td colspan="8" class="py-4 text-zinc-500">
-							{stream.frames.length === 0
-								? 'Waiting for frames…'
-								: `None of the last ${stream.frames.length} frames match the filter.`}
-						</td>
+						<th class="w-28 py-1 font-normal">Received</th>
+						<th class="w-32 py-1 text-right font-normal whitespace-nowrap">
+							<InfoTip label="Signal (dBFS)">
+								<p>
+									How loud the message arrived, in <strong>dBFS</strong>: decibels relative to the
+									loudest signal the dongle can measure (full scale = 0 dBFS).
+								</p>
+								<p>
+									Every −6 dB halves the amplitude, every −10 dB is a tenth of the power. So
+									<strong>−20 dBFS</strong> is a tenth of the full-scale amplitude, a hundredth of its
+									power.
+								</p>
+								<p>
+									Usable range here is about −40 (drowning in noise) to −3 dBFS (pulses at full
+									scale). Louder usually means closer, but only roughly: transmitter power and
+									antenna orientation vary.
+								</p>
+								<p class="text-zinc-400">
+									Relative to your receiver and its current gain, not an absolute power. Hover a
+									value for its exact amplitude and power.
+								</p>
+							</InfoTip>
+						</th>
+						<th class="w-10 py-1 font-normal">DF</th>
+						<th class="w-10 py-1 font-normal">TC</th>
+						<th class="w-20 py-1 font-normal">ICAO</th>
+						<th class="w-20 py-1 font-normal">Parity</th>
+						<th class="py-1 font-normal">
+							<InfoTip label="Content">
+								<p>
+									Everything decoded from the message. <span class="text-zinc-100">Bright</span>:
+									the headline values. <span class="text-xs text-zinc-500">Dimmed</span>: details.
+									<span class="text-orange-400">Orange</span>: worth noticing (alerts, emergencies,
+									missing data).
+								</p>
+								<p>
+									Labels are the field names from the specifications (FS, SL, RI, NACp, …), so you
+									can look them up. Hover any value for what it means.
+								</p>
+								<p class="text-zinc-400">
+									DF20/21 also carry a Comm-B register (MB): <a
+										href={resolve('/comm-b')}
+										class="text-sky-400 underline">/comm-b</a
+									> works out which one, and decodes it.
+								</p>
+							</InfoTip>
+						</th>
+						<th class="w-66 py-1 font-normal">Message</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					{#each feed as f (f.id)}
+						<tr class="border-t border-zinc-900">
+							<td class="py-0.5 text-zinc-400">{time.format(f.rx)}</td>
+							<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
+								{f.dbfs.toFixed(1)} dBFS
+							</td>
+							<td class="py-0.5 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
+							<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>
+								{f.tc ?? ''}
+							</td>
+							{#if f.addr}
+								{@const v = VERDICTS[f.addr.verdict]}
+								<td
+									class={[
+										'py-0.5 font-mono',
+										f.addr.verdict === 'valid' || f.addr.verdict === 'known'
+											? 'text-amber-300'
+											: 'text-zinc-500'
+									]}
+									title={addressTitle(f.addr)}
+								>
+									{f.addr.icao}<span class="text-zinc-600"
+										>{f.addr.source === 'parity' ? '*' : ''}</span
+									>
+								</td>
+								<td class="py-0.5 whitespace-nowrap" title={v.label}>
+									<span class={v.color}>{v.symbol}</span>
+									<span class="text-xs text-zinc-500">{interrogatorLabel(f.addr) ?? ''}</span>
+								</td>
+							{:else}
+								<td></td>
+								<td></td>
+							{/if}
+							<td class="py-0.5">
+								<Fields fields={f.fields} />
+							</td>
+							<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
+						</tr>
+					{:else}
+						<tr>
+							<td colspan="8" class="py-4 text-zinc-500">
+								{stream.frames.length === 0
+									? 'Waiting for frames…'
+									: `None of the last ${stream.frames.length} frames match the filter.`}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</section>
 </div>

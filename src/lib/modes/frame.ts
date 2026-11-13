@@ -106,20 +106,35 @@ export const DF_NAMES: Record<number, string> = {
 	24: 'Comm-D (extended length message)'
 };
 
+/**
+ * All 32 type codes, grouped by what the message carries. Within a group the layout is the
+ * same; the code itself adds a detail (emitter category set, containment radius).
+ */
+export const TYPE_CODE_GROUPS: readonly { from: number; to: number; name: string }[] = [
+	{ from: 0, to: 0, name: 'No position information' },
+	{ from: 1, to: 4, name: 'Aircraft identification' },
+	{ from: 5, to: 8, name: 'Surface position' },
+	{ from: 9, to: 18, name: 'Airborne position (barometric altitude)' },
+	{ from: 19, to: 19, name: 'Airborne velocity' },
+	{ from: 20, to: 22, name: 'Airborne position (GNSS height)' },
+	{ from: 23, to: 23, name: 'Test message' },
+	{ from: 24, to: 24, name: 'Surface system status (reserved)' },
+	{ from: 25, to: 27, name: 'Reserved' },
+	{ from: 28, to: 28, name: 'Aircraft status' },
+	{ from: 29, to: 29, name: 'Target state and status' },
+	{ from: 30, to: 30, name: 'Aircraft operational coordination (reserved)' },
+	{ from: 31, to: 31, name: 'Aircraft operational status' }
+];
+
+/** The group a type code (0–31) belongs to. */
+export function typeCodeGroup(tc: number) {
+	const group = TYPE_CODE_GROUPS.find((g) => tc >= g.from && tc <= g.to);
+	if (!group) throw new RangeError(`type code out of range: ${tc}`);
+	return group;
+}
+
 export function typeCodeName(tc: number): string {
-	if (tc === 0) return 'No position information';
-	if (tc <= 4) return 'Aircraft identification';
-	if (tc <= 8) return 'Surface position';
-	if (tc <= 18) return 'Airborne position (barometric altitude)';
-	if (tc === 19) return 'Airborne velocity';
-	if (tc <= 22) return 'Airborne position (GNSS height)';
-	if (tc === 23) return 'Test message';
-	if (tc === 24) return 'Surface system status (reserved)';
-	if (tc === 28) return 'Aircraft status';
-	if (tc === 29) return 'Target state and status';
-	if (tc === 30) return 'Aircraft operational coordination (reserved)';
-	if (tc === 31) return 'Aircraft operational status';
-	return 'Reserved';
+	return typeCodeGroup(tc).name;
 }
 
 /**

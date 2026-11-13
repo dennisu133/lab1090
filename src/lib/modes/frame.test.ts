@@ -9,7 +9,10 @@ import {
 	signalBucket,
 	signalDbfs,
 	toHex,
-	typeCode
+	TYPE_CODE_GROUPS,
+	typeCode,
+	typeCodeGroup,
+	typeCodeName
 } from './frame';
 
 const capture = new Uint8Array(
@@ -86,4 +89,14 @@ test('containment radius only for position type codes', () => {
 	expect(containmentRadius(5)).toBe('< 7.5 m');
 	expect(containmentRadius(8)).toBe('unknown');
 	for (const tc of [0, 4, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
+});
+
+test('type code groups cover 0–31 exactly once, in order', () => {
+	const codes = TYPE_CODE_GROUPS.flatMap((g) =>
+		Array.from({ length: g.to - g.from + 1 }, (_, i) => g.from + i)
+	);
+	expect(codes).toEqual(Array.from({ length: 32 }, (_, i) => i));
+	expect(typeCodeName(11)).toBe('Airborne position (barometric altitude)');
+	expect(typeCodeName(26)).toBe('Reserved');
+	expect(() => typeCodeGroup(32)).toThrow(RangeError);
 });
