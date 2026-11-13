@@ -2,6 +2,7 @@
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { resolve } from '$app/paths';
@@ -9,7 +10,7 @@
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
-	import { RawStream } from './raw-stream.svelte';
+	import { LIVE_FRAMES, RawStream, type FeedFrame } from './raw-stream.svelte';
 	import { VERDICTS, addressTitle, interrogatorLabel } from './verdicts';
 
 	const FEED_ROWS = 200;
@@ -112,18 +113,53 @@
 		}))
 	);
 
-	let tcFilter = $derived(filter.tc === null ? null : parseRange(filter.tc));
-	let feed = $derived(
-		stream.frames
-			.filter(
-				(f) =>
-					(filter.df === null || f.df === filter.df) &&
-					(tcFilter === null ||
-						(f.df === 17 && f.tc !== null && f.tc >= tcFilter.from && f.tc <= tcFilter.to)) &&
-					(filter.verdict === null || f.addr?.verdict === filter.verdict)
-			)
-			.slice(0, FEED_ROWS)
-	);
+	let query = $derived<FrameQuery>({
+		df: filter.df,
+		tc: filter.tc === null ? null : parseRange(filter.tc),
+		verdict: filter.verdict
+	});
+	/** Server start: frame ids, and the stored frames, belong to one server run. */
+	let since = $derived(update?.since);
+
+	/**
+	 * With a filter set: the latest matching frames the server stored, newest first, so rare
+	 * ones show up even when they're long gone from the live list. null while loading.
+	 */
+	let stored = $state.raw<FeedFrame[] | null>([]);
+	$effect(() => {
+		const q = query;
+		const run = since;
+		if (isEmpty(q) || run === undefined) {
+			stored = [];
+			return;
+		}
+		stored = null;
+		const controller = new AbortController();
+		stream.lookup(q, controller.signal).then(
+			(r) => {
+				// From a server run that already ended? Then the new `since` looks again.
+				if (r.since === run) stored = r.frames;
+			},
+			(e) => {
+				if (controller.signal.aborted) return;
+				console.error(e);
+				stored = [];
+			}
+		);
+		return () => controller.abort();
+	});
+
+	/** Live frames matching the filter, plus the stored ones the live list doesn't have. */
+	let feed = $derived.by(() => {
+		const live = stream.frames.filter((f) =>
+			matches(query, { df: f.df, tc: f.tc, verdict: f.addr?.verdict ?? null })
+		);
+		if (!stored?.length) return live.slice(0, FEED_ROWS);
+		const ids = new Set(live.map((f) => f.id));
+		return [...live, ...stored.filter((f) => !ids.has(f.id))]
+			.sort((a, b) => b.id - a.id)
+			.slice(0, FEED_ROWS);
+	});
 
 	const time = new Intl.DateTimeFormat(undefined, {
 		hour: '2-digit',
@@ -200,6 +236,27 @@
 					</p>
 				</InfoTip>
 			{/if}
+		</div>
+		<div class="text-zinc-400">
+			<InfoTip label="Filters search stored frames" wide align="right">
+				<p>
+					The live list holds the last {LIVE_FRAMES.toLocaleString()} frames: at 50 msg/s, just 20 seconds.
+					So clicking a row in the tables above also asks the server, which keeps the latest
+					<strong>{data.perKind} frames of every kind</strong>: per downlink format, per type code,
+					and per parity verdict.
+				</p>
+				<p>
+					Each kind only turns over as fast as it arrives. The latest {data.perKind} TC 11 positions only
+					reach back a minute or so, but a rare TC 23 test message or an unknown address stays findable
+					for hours.
+				</p>
+				<p class="text-zinc-400">
+					Limits: stored frames are lost when the server restarts (so are the counts). Combined
+					filters search one kind's frames and narrow them down, so they can miss some: DF 20 +
+					unknown only looks among the latest {data.perKind} unknown ones. Stored positions show
+					<span class="text-zinc-300">✓ pair</span> only if the other half of the pair was stored too.
+				</p>
+			</InfoTip>
 		</div>
 	</header>
 
@@ -407,9 +464,11 @@
 					{:else}
 						<tr>
 							<td colspan="8" class="py-4 text-zinc-500">
-								{stream.frames.length === 0
+								{isEmpty(query)
 									? 'Waiting for frames…'
-									: `None of the last ${stream.frames.length} frames match the filter.`}
+									: stored === null
+										? 'Looking for stored frames…'
+										: 'No frames match the filter.'}
 							</td>
 						</tr>
 					{/each}

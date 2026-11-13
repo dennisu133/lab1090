@@ -9,7 +9,8 @@ import { downlinkFormat, fromHex, payload, signalDbfs, typeCode } from '#lib/mod
 import { airbornePosition, surfacePosition } from '#lib/modes/position.ts';
 import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
-import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
+import { toSearchParams, type FrameQuery } from '#lib/frame-query.ts';
+import type { FramesResponse, RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 import { describe, type Field, type Located } from '#lib/describe/frame.ts';
 
 export interface FeedFrame extends WireFrame {
@@ -27,7 +28,8 @@ export interface Rates {
 	byVerdict: Record<string, number>;
 }
 
-const MAX_FRAMES = 1000;
+/** How many frames the live list keeps (stored frames come on top, see lookup). */
+export const LIVE_FRAMES = 1000;
 const RATE_WINDOW_MS = 10_000;
 
 /**
@@ -38,20 +40,31 @@ export class RawStream extends LiveFeed<FeedFrame> {
 	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {}, byVerdict: {} });
 
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
-	/** Each aircraft's latest even and odd position, for global CPR decoding. */
-	#pairs = new CprPairs();
-	/** The same for surface positions: a separate grid, and pairs need the reference too. */
-	#surfacePairs = new CprPairs(10_000, (even, odd, newer) => {
-		const reference = this.#reference();
-		return reference ? decodeSurfaceGlobal(even, odd, newer, reference) : null;
-	});
-
 	/** REFERENCE_POINT from the server, if set (for local CPR decoding). */
 	#reference: () => LatLon | null;
+	#decoder: FrameDecoder;
 
 	constructor(reference: () => LatLon | null) {
-		super(MAX_FRAMES);
+		super(LIVE_FRAMES);
 		this.#reference = reference;
+		this.#decoder = new FrameDecoder(reference);
+	}
+
+	/**
+	 * The latest frames the server stored for a filter (see FrameBuffers), newest first:
+	 * also those that arrived before this tab opened, or have long left the live feed.
+	 */
+	async lookup(
+		query: FrameQuery,
+		signal?: AbortSignal
+	): Promise<FramesResponse & { frames: FeedFrame[] }> {
+		const response = await fetch(`/api/frames?${toSearchParams(query)}`, { signal });
+		if (!response.ok) throw new Error(`/api/frames: ${response.status} ${await response.text()}`);
+		const { since, frames }: FramesResponse = await response.json();
+		// A decoder of their own, fed in arrival order: these frames are older than the live
+		// ones and must not end up in the live pairing. Pairs within the batch still work.
+		const decoder = new FrameDecoder(this.#reference);
+		return { since, frames: frames.map((f) => decoder.decorate(f)).reverse() };
 	}
 
 	/** Newest first. */
@@ -67,9 +80,8 @@ export class RawStream extends LiveFeed<FeedFrame> {
 		this.#updateRates(update.counts);
 		if (frames.length === 0) return [];
 		// In arrival order: pairing depends on it.
-		const decorated = frames.map((f) => this.#decorate(f));
-		this.#pairs.prune(frames.at(-1)!.rx); // the server's clock, like the frames'
-		this.#surfacePairs.prune(frames.at(-1)!.rx);
+		const decorated = frames.map((f) => this.#decoder.decorate(f));
+		this.#decoder.prune(frames.at(-1)!.rx); // the server's clock, like the frames'
 		return decorated;
 	}
 
@@ -91,8 +103,33 @@ export class RawStream extends LiveFeed<FeedFrame> {
 			byVerdict: per(counts.byVerdict, oldest.counts.byVerdict)
 		};
 	}
+}
 
-	#decorate(f: WireFrame): FeedFrame {
+/**
+ * Decodes frames for display. Remembers each aircraft's latest even and odd positions to
+ * decode pairs (global CPR), so frames must come in arrival order.
+ */
+class FrameDecoder {
+	#reference: () => LatLon | null;
+	#pairs = new CprPairs();
+	/** The same for surface positions: a separate grid, and pairs need the reference too. */
+	#surfacePairs = new CprPairs(10_000, (even, odd, newer) => {
+		const reference = this.#reference();
+		return reference ? decodeSurfaceGlobal(even, odd, newer, reference) : null;
+	});
+
+	constructor(reference: () => LatLon | null) {
+		this.#reference = reference;
+	}
+
+	/** Forget positions too old to pair with (rx: the server's clock). */
+	prune(rx: number): void {
+		this.#pairs.prune(rx);
+		this.#surfacePairs.prune(rx);
+	}
+
+	/** A frame with everything the feed shows. */
+	decorate(f: WireFrame): FeedFrame {
 		const data = fromHex(f.hex);
 		return {
 			...f,

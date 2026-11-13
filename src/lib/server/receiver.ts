@@ -1,11 +1,14 @@
 import { BeastClient, type BeastClientStatus } from './beast/client';
 import type { BeastFrame } from './beast/parser';
+import { FrameBuffers } from './frame-buffers';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
 const HISTORY = 1000;
+/** Frames kept per downlink format, type code and verdict (see FrameBuffers). */
+const PER_KIND = 200;
 
 type Subscriber = { send: (update: RawUpdate) => void; close: () => void };
 
@@ -19,6 +22,8 @@ export class Receiver {
 	readonly since = Date.now();
 	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {}, byVerdict: {} };
 	status: BeastClientStatus = { state: 'closed' };
+	/** The latest frames of every kind, for filtering (/api/frames). */
+	readonly buffers = new FrameBuffers(PER_KIND);
 
 	#client: BeastClient;
 	#addresses = new AddressFilter();
@@ -76,14 +81,16 @@ export class Receiver {
 		const addr = this.#addresses.check(f.data, now);
 		if (addr) c.byVerdict[addr.verdict] = (c.byVerdict[addr.verdict] ?? 0) + 1;
 
-		this.#pending.push({
+		const frame: WireFrame = {
 			id: this.#nextId++,
 			rx: now,
 			ts: f.timestamp,
 			sig: f.signal,
 			hex: toHex(f.data),
 			addr
-		});
+		};
+		this.#pending.push(frame);
+		this.buffers.add(frame, { df, tc, verdict: addr?.verdict ?? null });
 	}
 
 	#flush(): void {

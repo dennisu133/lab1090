@@ -81,3 +81,26 @@ test('subscribers get every frame exactly once, also when joining mid-stream', a
 	expect(late.updates[0].frames.length).toBeLessThanOrEqual(1000);
 	expect(ids).toEqual(Array.from({ length: ids.length }, (_, i) => ids[0] + i));
 });
+
+test('keeps the latest 200 frames of every kind, however rare', async () => {
+	const r = start(trickle().port);
+	await waitFor(() => r.counts.total === TOTAL, 5000);
+	const none = { df: null, tc: null, verdict: null };
+	const kept = (n: number) => Math.min(200, n);
+
+	for (const [df, n] of Object.entries(r.counts.byDf)) {
+		const frames = r.buffers.query({ ...none, df: +df });
+		expect(frames).toHaveLength(kept(n));
+		expect(frames.every((f) => parseInt(f.hex.slice(0, 2), 16) >> 3 === +df)).toBe(true);
+	}
+	for (const [tc, n] of Object.entries(r.counts.byTc))
+		expect(r.buffers.query({ ...none, tc: { from: +tc, to: +tc } })).toHaveLength(kept(n));
+
+	// the 13 unknown addresses are spread over the whole capture, and all still there
+	const unknown = r.buffers.query({ ...none, verdict: 'unknown' });
+	expect(unknown).toHaveLength(13);
+	expect(unknown.every((f) => f.addr?.verdict === 'unknown')).toBe(true);
+	// the latest of each kind: DF 17's are the last 200 DF 17 frames, oldest first
+	const df17 = r.buffers.query({ ...none, df: 17 }).map((f) => f.id);
+	expect(df17).toEqual([...df17].sort((a, b) => a - b));
+});

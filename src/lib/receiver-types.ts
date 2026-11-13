@@ -42,3 +42,10 @@ export interface RawUpdate {
 	/** New frames since the previous update (the first update holds recent history). */
 	frames: WireFrame[];
 }
+
+/** Answer of /api/frames: stored frames matching a filter, oldest first. */
+export interface FramesResponse {
+	/** Server start, like RawUpdate.since: frame ids only compare within one run. */
+	since: number;
+	frames: WireFrame[];
+}
