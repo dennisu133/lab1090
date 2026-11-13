@@ -232,7 +232,7 @@
 			</div>
 		</div>
 
-		<table class="w-full text-sm tabular-nums">
+		<table class="w-full text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
 					<th class="py-1 font-normal">Received</th>
@@ -257,11 +257,28 @@
 							</p>
 						</InfoTip>
 					</th>
-					<th class="py-1 pl-4 font-normal">DF</th>
+					<th class="py-1 font-normal">DF</th>
 					<th class="py-1 font-normal">TC</th>
 					<th class="py-1 font-normal">ICAO</th>
 					<th class="py-1 font-normal">Parity</th>
-					<th class="py-1 font-normal">Content</th>
+					<th class="py-1 font-normal">
+						<InfoTip label="Content">
+							<p>
+								Everything decoded from the message. <span class="text-zinc-100">Bright</span>: the
+								headline values. <span class="text-xs text-zinc-500">Dimmed</span>: details.
+								<span class="text-orange-400">Orange</span>: worth noticing (alerts, emergencies,
+								missing data).
+							</p>
+							<p>
+								Labels are the field names from the specifications (FS, SL, RI, NACp, …), so you can
+								look them up. Hover any value for what it means.
+							</p>
+							<p class="text-zinc-400">
+								DF20/21 also carry a Comm-B register (MB), and the CPR values become a position on
+								the map: both come later.
+							</p>
+						</InfoTip>
+					</th>
 					<th class="py-1 font-normal">Message</th>
 				</tr>
 			</thead>
@@ -272,7 +289,7 @@
 						<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
 							{f.dbfs.toFixed(1)} dBFS
 						</td>
-						<td class="py-0.5 pl-4 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
+						<td class="py-0.5 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
 						<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>
 							{f.tc ?? ''}
 						</td>
@@ -299,16 +316,23 @@
 							<td></td>
 							<td></td>
 						{/if}
-						<td class="py-0.5 whitespace-nowrap">
-							{#if f.ident}
-								<span class="font-mono font-semibold text-zinc-100">{f.ident.callsign}</span>
-								<span
-									class="ml-1 text-xs text-zinc-500"
-									title="Emitter category {f.ident.category.set}{f.ident.category.code}"
-								>
-									{f.ident.category.name}
-								</span>
-							{/if}
+						<td class="py-0.5">
+							<div class="flex flex-wrap items-baseline gap-x-3">
+								{#each f.fields as field, i (i)}
+									<span
+										title={field.title}
+										class={[
+											'whitespace-nowrap',
+											field.tone === 'main' && 'text-zinc-100',
+											field.tone === 'minor' && 'text-xs text-zinc-500',
+											field.tone === 'alert' && 'text-orange-400'
+										]}
+									>
+										{#if field.label}<span class="text-xs text-zinc-500">{field.label}</span>{/if}
+										<span class={{ 'font-mono': field.mono }}>{field.value}</span>
+									</span>
+								{/each}
+							</div>
 						</td>
 						<td class="py-0.5"><HexFrame hex={f.hex} df={f.df} /></td>
 					</tr>

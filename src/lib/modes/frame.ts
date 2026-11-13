@@ -33,6 +33,24 @@ export function icaoAddress(data: Uint8Array): string | null {
 }
 
 /**
+ * Read `count` bits starting at bit `first`, counted from 1 like in the specs: bit 1 is the
+ * most significant bit of the first byte. So `bits(data, 1, 5)` is the DF, and for an ADS-B
+ * payload `bits(me, 1, 5)` is the type code. Up to 53 bits (plain numbers, no BigInt).
+ */
+export function bits(data: Uint8Array, first: number, count: number): number {
+	let n = 0;
+	for (let i = first - 1; i < first - 1 + count; i++) {
+		n = n * 2 + ((data[i >> 3] >> (7 - (i & 7))) & 1);
+	}
+	return n;
+}
+
+/** The 56-bit payload of a long message (ME in DF17/18, MB in DF20/21, MV in DF16). */
+export function payload(data: Uint8Array): Uint8Array | null {
+	return data.length === 14 ? data.subarray(4, 11) : null;
+}
+
+/**
  * Beast signal byte -> dBFS. readsb sends sqrt(power) * 255, with power relative to full
  * scale (0–1), so power = (s / 255)² and dBFS = 20·log10(s / 255).
  */
