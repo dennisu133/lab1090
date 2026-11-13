@@ -201,7 +201,7 @@
 	>
 		<ReceiverStatus online={stream.online} {update} />
 		<div class="tabular-nums">
-			<span class="text-2xl font-semibold">{stream.rates.total.toFixed(1)}</span>
+			<span class="font-semibold">{stream.rates.total.toFixed(1)}</span>
 			<span class="text-zinc-400">msg/s</span>
 		</div>
 		<div class="text-zinc-400 tabular-nums">
