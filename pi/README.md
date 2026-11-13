@@ -4,12 +4,12 @@ The Pi is a deliberately "dumb" receiver. It demodulates 1090 MHz with an RTL-SD
 drops frames that fail the CRC check, and streams the raw frames over TCP.
 All decoding and tracking happens on the PC.
 
-| | |
-|---|---|
-| Hardware | Raspberry Pi 5, RTL-SDR Blog v3 (R820T tuner) |
-| OS | Raspberry Pi OS Lite (Debian 13 trixie, arm64) |
-| Decoder | [readsb](https://github.com/wiedehopf/readsb) built from source as a `.deb` |
-| Outputs | `pi:30005` Beast binary (main feed), `pi:30002` AVR hex text (debugging) |
+|          |                                                                             |
+| -------- | --------------------------------------------------------------------------- |
+| Hardware | Raspberry Pi 5, RTL-SDR Blog v3 (R820T tuner)                               |
+| OS       | Raspberry Pi OS Lite (Debian 13 trixie, arm64)                              |
+| Decoder  | [readsb](https://github.com/wiedehopf/readsb) built from source as a `.deb` |
+| Outputs  | `pi:30005` Beast binary (main feed), `pi:30002` AVR hex text (debugging)    |
 
 Quick look at live traffic: `nc pi 30002`
 
@@ -37,7 +37,7 @@ sudo systemctl enable --now readsb
 
 - **Debian's own `readsb` package has no RTL-SDR support**, so it fails with
   `SDR type 'rtlsdr' not recognized`. That's why we build our own.
-- **RTL-SDR support is opt-in via a build profile.** `-Prtlsdr` alone did *not*
+- **RTL-SDR support is opt-in via a build profile.** `-Prtlsdr` alone did _not_
   reach `debian/rules` here, so we also set `DEB_BUILD_PROFILES=rtlsdr` in the environment.
   Verify the result: `dpkg-deb -I readsb_*.deb | grep Depends` must list `librtlsdr0`.
 - Upgrading later: rebuild, then `sudo apt install --allow-change-held-packages ../readsb_*.deb`.
