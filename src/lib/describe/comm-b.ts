@@ -2,9 +2,16 @@
  * What /comm-b shows: register contents, comparisons with ADS-B, and how the register was
  * inferred, as Fields (see frame.ts) and tooltip text.
  */
-import { mismatch, type Comparison, type How, type Inference } from '#lib/modes/comm-b.ts';
+import {
+	mismatch,
+	type Candidate,
+	type Comparison,
+	type How,
+	type Inference
+} from '#lib/modes/comm-b.ts';
 import {
 	HAZARD_LEVELS,
+	type DataLinkCapability,
 	METEO_SOURCES,
 	REGISTER_NAMES,
 	type MeteoHazard,
@@ -112,7 +119,8 @@ export function registerFields(r: Register): Field[] {
 					] as const
 				)
 					.filter(([on]) => on)
-					.map(([, value, title]) => ({ value, title, tone: 'minor' as const }))
+					.map(([, value, title]) => ({ value, title, tone: 'minor' as const })),
+				{ value: 'other bits', title: otherCapabilityBits(r), tone: 'minor' }
 			];
 		}
 		case '1,7':
@@ -346,6 +354,53 @@ export function registerFields(r: Register): Field[] {
 		case '6,5':
 			return squitterFields(r.squitter);
 	}
+}
+
+/**
+ * The 1,0 bits that rarely matter to a listener, for a tooltip. Bit numbers and meanings:
+ * ICAO Doc 9871 Table A-2-16 (and pyModeS's bds10.py, which follows it).
+ */
+function otherCapabilityBits(r: DataLinkCapability): string {
+	const yes = (on: boolean) => (on ? 'yes' : 'no');
+	return [
+		'The rest of the capability report:',
+		`Bit 9, continuation (the report goes on in register 1,1): ${yes(r.continuation)}`,
+		`Bit 25, specific services (data link services beyond surveillance): ${yes(r.specificServices)}`,
+		`Bits 26–28 / 29–32, ELM throughput (extended length messages: up to 16 segments of 80 bits, for data link; 0 = none): up ${r.uplinkElm}, down ${r.downlinkElm}`,
+		`Bit 36, 1,7 toggle (flips whenever register 1,7 changes, so a radar knows to read it again): ${Number(r.gicbChanged)}`,
+		`Bit 37, ACAS hybrid surveillance (uses ADS-B to interrogate other aircraft less often): ${yes(r.acasHybrid)}`,
+		`Bits 39–40, ACAS version code (which edition of the ACAS standard, RTCA DO-185, it follows): ${r.acasVersion}`,
+		`Bits 41–56, DTE status (which of 16 data terminal sub-addresses, for ELM, are in service): ${r.dteStatus.toString(16).padStart(4, '0')}`
+	].join('\n');
+}
+
+/**
+ * The 56 bits as binary, 8 per line with their bit numbers (1 = first, as in the spec
+ * tables), so a reasoning like "status bit 12 is 0" can be checked by eye.
+ */
+export function bitsTitle(hex: string, name: 'MB' | 'ME'): string {
+	const lines = [`${name} field (56 bits) in binary:`];
+	for (let i = 0; i < 7; i++) {
+		const byte = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+			.toString(2)
+			.padStart(8, '0');
+		const range = `${i * 8 + 1}–${i * 8 + 8}`.padStart(5, ' ');
+		lines.push(`${range}  ${byte.slice(0, 4)} ${byte.slice(4)}`);
+	}
+	return lines.join('\n');
+}
+
+/** An ambiguous reply: every reading it could be, each headed by its register. */
+export function ambiguousFields(candidates: Candidate[]): Field[] {
+	return candidates.flatMap((c, i) => [
+		{
+			value: `${i === 0 ? '' : 'or '}${c.bds}?`,
+			title: `If this is ${c.bds} ${c.name}, it reads as follows`,
+			tone: 'alert' as const,
+			mono: true
+		},
+		...registerFields(c.register)
+	]);
 }
 
 function temperatureField(celsius: number): Field {

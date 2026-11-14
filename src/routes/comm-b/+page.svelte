@@ -2,9 +2,10 @@
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
-	import { HOW, NAMES, inferenceTitle } from '#lib/describe/comm-b.ts';
+	import { HOW, NAMES, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
 	import { DF_NAMES } from '#lib/modes/frame.ts';
-	import { CommBStream, type Source } from './comm-b-stream.svelte';
+	import AircraftTable from './AircraftTable.svelte';
+	import { CommBStream, type RegisterRow, type Source } from './comm-b-stream.svelte';
 
 	const FEED_ROWS = 200;
 	/** Keys that aren't registers, shown last. */
@@ -56,6 +57,17 @@
 		fractionalSecondDigits: 3,
 		hour12: false
 	});
+
+	/** Registers that start with their own number: the first MB byte. */
+	const NUMBERED = new Set(['1,0', '2,0', '3,0']);
+
+	/** Which part of the MB gave the register away by pattern, in hex digits: [from, to). */
+	function patternRange(r: RegisterRow): [number, number] | null {
+		if (r.inference?.how !== 'fixed') return null;
+		if (NUMBERED.has(r.key)) return [0, 2];
+		if (r.key === '1,7') return [6, 14]; // bits 25–56: 32 zero bits
+		return null;
+	}
 
 	const n = (x: number) => (x === 0 ? '' : x.toLocaleString());
 	const rate = (x: number) => (x === 0 ? '' : `${x.toFixed(1)}/s`);
@@ -133,6 +145,41 @@
 				</p>
 			</InfoTip>
 		</div>
+		<div class="text-zinc-400">
+			<InfoTip label="Which registers radars read" wide align="right">
+				<p>
+					Not just any: European rules (EU regulation 1207/2011) say which registers the radars
+					read, and which aircraft must provide them.
+				</p>
+				<p>
+					<strong>Elementary Surveillance (ELS)</strong>, for every flight under instrument rules:
+					1,0 and 1,7 (what the transponder can do), 2,0 (callsign), and 3,0 when ACAS issues a
+					resolution advisory.
+				</p>
+				<p>
+					<strong>Enhanced Surveillance (EHS)</strong>, for aircraft over 5,700 kg or faster than
+					250 kt, adds the "downlinked aircraft parameters": 4,0 (selected altitude), 5,0 (track,
+					speeds, roll) and 6,0 (heading, airspeed, Mach, vertical rate). That's why these three
+					dominate the table above. The Aircraft table shows them per aircraft.
+				</p>
+				<p>
+					<strong>How a radar asks:</strong> its interrogation, on 1030 MHz, names the register in its
+					RR field (and a subfield for the second digit). The aircraft answers on 1090 MHz. This receiver
+					only listens on 1090 MHz: it hears every answer but none of the questions, hence the inference.
+				</p>
+				<p>
+					That's <strong>ground-initiated Comm-B</strong> (GICB), and all you see here. An aircraft can
+					also start a conversation: it sets DR in its replies (see /frames) to say it has a message,
+					for example a new resolution advisory, and the radar then reads it out the same way (air-initiated
+					Comm-B).
+				</p>
+				<p class="text-zinc-400">
+					The rest: some radars also read the ADS-B registers (0,5, 0,9, …), probably to check them
+					against their own measurement. 5,1/5,2 aren't in any public spec. The weather registers
+					(4,4, 4,5) are only asked for by a few radars that feed weather services.
+				</p>
+			</InfoTip>
+		</div>
 	</header>
 
 	<!-- Registers -->
@@ -140,7 +187,17 @@
 		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
 			Registers since this page opened
 		</h2>
-		<table class="w-full text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+		<!-- Fixed layout: only Register takes the remaining width, so changing counts never move
+		     the columns. Widths go on <col>: the header's colspan cells can't carry them. -->
+		<table class="w-full table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+			<colgroup>
+				<col class="w-14" />
+				<col />
+				<col class="w-24" />
+				<col class="w-20" />
+				<col class="w-24" />
+				<col class="w-20" />
+			</colgroup>
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
 					<th class="py-1 font-normal">BDS</th>
@@ -171,6 +228,13 @@
 			</tbody>
 		</table>
 	</section>
+
+	<AircraftTable
+		aircraft={stream.aircraft}
+		now={stream.now}
+		selected={aircraft}
+		onselect={(icao) => (aircraft = aircraft === icao ? null : icao)}
+	/>
 
 	<!-- Feed -->
 	<section>
@@ -213,90 +277,123 @@
 			{/if}
 		</div>
 
-		<table class="w-full text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
-			<thead class="text-left text-xs text-zinc-500">
-				<tr>
-					<th class="py-1 font-normal">Received</th>
-					<th class="py-1 font-normal">Aircraft</th>
-					<th class="py-1 font-normal">DF</th>
-					<th class="py-1 font-normal">BDS</th>
-					<th class="py-1 font-normal">Content</th>
-					<th class="py-1 font-normal">
-						<InfoTip label="vs ADS-B" align="right">
-							<p>
-								The Comm-B reading next to what the same aircraft broadcast via ADS-B (at most 30 s
-								earlier): <span class="text-zinc-300">✓</span> agrees within the allowed difference,
-								<span class="text-orange-400">✗</span> doesn't. Hover for both values.
-							</p>
-							<p>
-								Some differences are expected. Heading (6,0) is where the nose points, relative to
-								magnetic north; ADS-B gives the track over the ground, relative to true north. Wind
-								and the magnetic declination both add up, so up to 30° is allowed.
-							</p>
-							<p>
-								Mach is checked against the reply itself: indicated airspeed and pressure altitude
-								fix the Mach number, whatever the temperature.
-							</p>
-							<p class="text-zinc-400">
-								Replies whose address can't be verified (unknown on /frames) are not compared.
-							</p>
-						</InfoTip>
-					</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each feed as r (r.id)}
-					<tr class="border-t border-zinc-900">
-						<td class="py-0.5 text-zinc-400">{time.format(r.rx)}</td>
-						<td class="py-0.5 whitespace-nowrap">
-							<button
-								class={[
-									'font-mono hover:underline',
-									r.verdict === 'unknown' ? 'text-zinc-500' : 'text-amber-300'
-								]}
-								title="Show only this aircraft"
-								onclick={() => (aircraft = aircraft === r.icao ? null : r.icao)}
-							>
-								{r.icao}
-							</button>
-							<span class="text-xs text-zinc-500">{r.callsign ?? ''}</span>
-						</td>
-						<td class="py-0.5 font-mono" title={DF_NAMES[r.df]}>{r.df}</td>
-						<td
-							class="py-0.5 whitespace-nowrap"
-							title={r.inference
-								? inferenceTitle(r.inference)
-								: `${r.key} ${NAMES[r.key] ?? ''}\nBroadcast: the ADS-B type code says which register.`}
-						>
-							{#if r.inference?.best || !r.inference}
-								<span class="font-mono">{r.key}</span>
-							{/if}
-							{#if r.inference}
-								<span
-									class={[
-										'text-xs',
-										r.inference.how === 'unknown' || r.inference.how === 'ambiguous'
-											? 'text-orange-400'
-											: 'text-zinc-500'
-									]}
-								>
-									{HOW[r.inference.how].label}
-								</span>
-							{/if}
-						</td>
-						<td class="py-0.5"><Fields fields={r.fields} /></td>
-						<td class="py-0.5"><Fields fields={r.comparisons} /></td>
-					</tr>
-				{:else}
+		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
+		     so new readings never shift the columns; Content gets the rest and wraps. -->
+		<div class="overflow-x-auto">
+			<table class="w-full min-w-6xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+				<thead class="text-left text-xs text-zinc-500">
 					<tr>
-						<td colspan="6" class="py-4 text-zinc-500">
-							{stream.items.length === 0
-								? 'Waiting for frames…'
-								: `None of the last ${stream.items.length} readings match the filter.`}
-						</td>
+						<th class="w-28 py-1 font-normal">Received</th>
+						<th class="w-36 py-1 font-normal">Aircraft</th>
+						<th class="w-10 py-1 font-normal">DF</th>
+						<th class="w-32 py-1 font-normal">BDS</th>
+						<th class="w-36 py-1 font-normal">
+							<InfoTip label="MB">
+								<p>
+									The 56 register bits as hex: the <strong>MB</strong> field of a DF20/21 reply. For
+									broadcasts it's the <strong>ME</strong> field of DF17: the same register, sent unasked.
+								</p>
+								<p>
+									Hover for the bits in binary, numbered like the spec tables (bit 1 first), to
+									check the reasoning in the BDS column yourself.
+								</p>
+								<p>
+									<span class="font-semibold text-zinc-100">Highlighted</span>: what gave a register
+									away by pattern. 1,0, 2,0 and 3,0 start with their own number (<span
+										class="font-mono">10</span
+									>, <span class="font-mono">20</span>, <span class="font-mono">30</span>); 1,7 ends
+									in 32 zero bits (<span class="font-mono">00000000</span>).
+								</p>
+							</InfoTip>
+						</th>
+						<th class="py-1 font-normal">Content</th>
+						<th class="w-72 py-1 font-normal">
+							<InfoTip label="vs ADS-B" align="right">
+								<p>
+									The Comm-B reading next to what the same aircraft broadcast via ADS-B (at most 30
+									s earlier): <span class="text-zinc-300">✓</span> agrees within the allowed
+									difference,
+									<span class="text-orange-400">✗</span> doesn't. Hover for both values.
+								</p>
+								<p>
+									Some differences are expected. Heading (6,0) is where the nose points, relative to
+									magnetic north; ADS-B gives the track over the ground, relative to true north.
+									Wind and the magnetic declination both add up, so up to 30° is allowed.
+								</p>
+								<p>
+									Mach is checked against the reply itself: indicated airspeed and pressure altitude
+									fix the Mach number, whatever the temperature.
+								</p>
+								<p class="text-zinc-400">
+									Replies whose address can't be verified (unknown on /frames) are not compared.
+								</p>
+							</InfoTip>
+						</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					{#each feed as r (r.id)}
+						{@const range = patternRange(r)}
+						<tr class="border-t border-zinc-900">
+							<td class="py-0.5 text-zinc-400">{time.format(r.rx)}</td>
+							<td class="py-0.5 whitespace-nowrap">
+								<button
+									class={[
+										'font-mono hover:underline',
+										r.verdict === 'unknown' ? 'text-zinc-500' : 'text-amber-300'
+									]}
+									title="Show only this aircraft"
+									onclick={() => (aircraft = aircraft === r.icao ? null : r.icao)}
+								>
+									{r.icao}
+								</button>
+								<span class="text-xs text-zinc-500">{r.callsign ?? ''}</span>
+							</td>
+							<td class="py-0.5 font-mono" title={DF_NAMES[r.df]}>{r.df}</td>
+							<td
+								class="py-0.5 whitespace-nowrap"
+								title={r.inference
+									? inferenceTitle(r.inference)
+									: `${r.key} ${NAMES[r.key] ?? ''}\nBroadcast: the ADS-B type code says which register.`}
+							>
+								{#if r.inference?.best || !r.inference}
+									<span class="font-mono">{r.key}</span>
+								{/if}
+								{#if r.inference}
+									<span
+										class={[
+											'text-xs',
+											r.inference.how === 'unknown' || r.inference.how === 'ambiguous'
+												? 'text-orange-400'
+												: 'text-zinc-500'
+										]}
+									>
+										{HOW[r.inference.how].label}
+									</span>
+								{/if}
+							</td>
+							<td
+								class="py-0.5 font-mono text-sky-300"
+								title={bitsTitle(r.mb, r.source === 'broadcast' ? 'ME' : 'MB')}
+							>
+								{#if range}{r.mb.slice(0, range[0])}<span class="font-semibold text-zinc-100"
+										>{r.mb.slice(range[0], range[1])}</span
+									>{r.mb.slice(range[1])}{:else}{r.mb}{/if}
+							</td>
+							<td class="py-0.5"><Fields fields={r.fields} /></td>
+							<td class="py-0.5"><Fields fields={r.comparisons} /></td>
+						</tr>
+					{:else}
+						<tr>
+							<td colspan="7" class="py-4 text-zinc-500">
+								{stream.items.length === 0
+									? 'Waiting for frames…'
+									: `None of the last ${stream.items.length} readings match the filter.`}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</section>
 </div>

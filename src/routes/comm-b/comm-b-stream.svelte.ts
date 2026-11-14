@@ -1,4 +1,9 @@
-import { broadcastRegister, comparisonFields, registerFields } from '#lib/describe/comm-b.ts';
+import {
+	ambiguousFields,
+	broadcastRegister,
+	comparisonFields,
+	registerFields
+} from '#lib/describe/comm-b.ts';
 import { squitterFields, type Field } from '#lib/describe/frame.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { Verdict } from '#lib/modes/address-filter.ts';
@@ -8,6 +13,7 @@ import { inferRegister, type Inference } from '#lib/modes/comm-b.ts';
 import { downlinkFormat, fromHex, payload } from '#lib/modes/frame.ts';
 import { squitter } from '#lib/modes/squitter.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
+import { CommBAircraftList, type CommBAircraft } from './aircraft';
 
 /** Broadcast: ADS-B, sent on the aircraft's own. Interrogated: Comm-B, a radar asked for it. */
 export type Source = 'broadcast' | 'interrogated';
@@ -16,6 +22,8 @@ export interface RegisterRow {
 	id: number;
 	rx: number;
 	hex: string;
+	/** The 56 register bits as hex: MB (DF20/21) or ME (DF17). */
+	mb: string;
 	df: number;
 	icao: string;
 	verdict: Verdict;
@@ -45,8 +53,13 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 	counts = $state.raw<Counts>({});
 	/** Per second, over the last 10 s. */
 	rates = $state.raw<Counts>({});
+	/** Aircraft with verified Comm-B replies in the last minute, by address. */
+	aircraft = $state.raw<CommBAircraft[]>([]);
+	/** The latest frame's time (server clock): "now" for ages like "3 s ago". */
+	now = $state(0);
 
 	#memory = new AdsbMemory();
+	#aircraft = new CommBAircraftList();
 	// Plain Map on purpose: bookkeeping, never rendered (rows copy the callsign out).
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	#callsigns = new Map<string, string>();
@@ -60,8 +73,11 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		this.#memory = new AdsbMemory();
 		this.#callsigns.clear();
 		this.#recent = [];
+		this.#aircraft.clear();
 		this.counts = {};
 		this.rates = {};
+		this.aircraft = [];
+		this.now = 0;
 	}
 
 	protected process(frames: WireFrame[]): RegisterRow[] {
@@ -69,7 +85,10 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		const rows = frames.flatMap((f) => this.#row(f) ?? []);
 		const now = frames.at(-1)!.rx; // the server's clock, like the frames'
 		this.#memory.prune(now);
+		this.#aircraft.prune(now);
 		this.#count(rows, now);
+		this.aircraft = this.#aircraft.list();
+		this.now = now;
 		return rows;
 	}
 
@@ -79,7 +98,15 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		const addr = f.addr;
 		const mb = payload(data);
 		if (!addr || !mb) return null;
-		const base = { id: f.id, rx: f.rx, hex: f.hex, df, icao: addr.icao, verdict: addr.verdict };
+		const base = {
+			id: f.id,
+			rx: f.rx,
+			hex: f.hex,
+			mb: f.hex.slice(8, 22), // after the 32 bits of DF and control fields
+			df,
+			icao: addr.icao,
+			verdict: addr.verdict
+		};
 
 		if (df === 17 && addr.verdict === 'valid') {
 			this.#memory.add(addr.icao, mb, f.rx);
@@ -108,13 +135,20 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 			});
 			const best = inference.best;
 			if (best?.register.bds === '2,0') this.#callsigns.set(addr.icao, best.register.callsign);
+			const callsign = this.#callsigns.get(addr.icao) ?? null;
+			if (addr.verdict === 'known')
+				this.#aircraft.add(addr.icao, f.rx, best?.register ?? null, callsign);
 			return {
 				...base,
-				callsign: this.#callsigns.get(addr.icao) ?? null,
+				callsign,
 				source: 'interrogated',
 				key: best?.bds ?? inference.how,
 				inference,
-				fields: best ? registerFields(best.register) : [],
+				fields: best
+					? registerFields(best.register)
+					: inference.how === 'ambiguous'
+						? ambiguousFields(inference.candidates)
+						: [],
 				comparisons: best ? comparisonFields(best.comparisons) : []
 			};
 		}
