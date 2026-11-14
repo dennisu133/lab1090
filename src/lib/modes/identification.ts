@@ -53,7 +53,7 @@ export function callsign(bytes: Uint8Array): string {
 	return s.trim();
 }
 
-function character(code: number): string {
+export function character(code: number): string {
 	if (code >= 1 && code <= 26) return String.fromCharCode(code | 0x40); // A–Z
 	if (code === 32 || (code >= 48 && code <= 57)) return String.fromCharCode(code); // space, 0–9
 	return '#';

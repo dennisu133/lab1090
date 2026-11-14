@@ -90,7 +90,8 @@ export class WeatherPipeline {
 		const best = inferRegister(mb, {
 			now: rx,
 			replyAltitude: df === 20 ? altitude : null,
-			adsb
+			adsb,
+			address: addr.icao // known, see above
 		}).best;
 		const register = best?.register;
 		if (register?.bds === '2,0')

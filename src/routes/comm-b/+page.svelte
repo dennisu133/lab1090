@@ -130,15 +130,20 @@
 					ADS-B confirms them: same position, same altitude, or simply the same 56 bits.
 				</p>
 				<p>
-					A few registers are hardly ever asked for: 4,4 and 4,5 (weather reports) and 5,3 (speeds
-					through the air). With enough random bits, one of them fits now and then by chance, so
-					they are a last resort: only considered when no other register fits, and never if ADS-B
-					disagrees.
+					A few registers are hardly ever asked for: 4,4 and 4,5 (weather reports), 5,3 (speeds
+					through the air) and 2,1 (the registration, e.g. D-AIZA). With enough random bits, one of
+					them fits now and then by chance, so they are a last resort: only considered when no other
+					register fits, and never if ADS-B disagrees.
 				</p>
 				<p>
-					The checks for 1,0–6,0, 4,4 and 4,5 are pyModeS's (and tested against it); 5,3 follows
-					ICAO Doc 9871. 5,1 and 5,2 aren't in any public spec; their layout was worked out from
-					this receiver's own data.
+					2,1 needs a second opinion too, from the address: ICAO gives each country a block of
+					addresses, so 3C6586 is German, and a German registration starts with D. Seven random
+					letters rarely start with the right one.
+				</p>
+				<p>
+					The checks for 1,0–6,0, 4,4 and 4,5 are pyModeS's (and tested against it); 5,3 and 2,1
+					follow ICAO Doc 9871. 5,1 and 5,2 aren't in any public spec; their layout was worked out
+					from this receiver's own data.
 				</p>
 				<p class="text-zinc-400">
 					Hover a register in the feed for its reasoning: what fitted, and why everything else was

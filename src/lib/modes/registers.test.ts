@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { inferRegister } from './comm-b';
 import { fromHex } from './frame';
 import { combineFine, FINE_SPAN, RARE, REGISTERS, type Register } from './registers';
-import { commbOracle as oracle } from './testing';
+import { build, commbOracle as oracle, registration21 } from './testing';
 
 /** pyModeS's inference with include_meteo, too (the oracle has it; see tools/oracle-commb.py). */
 const commbOracle = oracle as ((typeof oracle)[number] & { inferred_meteo: string[] })[];
@@ -247,17 +247,6 @@ test('an all-zero register is "empty", not a register', () => {
 });
 
 /** A 56-bit register, built field by field: [first bit, bit count, value] (two's complement). */
-function build(...fields: [number, number, number][]): Uint8Array {
-	const mb = new Uint8Array(7);
-	for (const [first, count, value] of fields) {
-		const raw = value < 0 ? 2 ** count + value : value;
-		for (let i = 0; i < count; i++) {
-			const bit = first - 1 + i;
-			if (Math.floor(raw / 2 ** (count - 1 - i)) % 2) mb[bit >> 3] |= 0x80 >> (bit & 7);
-		}
-	}
-	return mb;
-}
 
 describe('5,3 air-referenced state vector (not in pyModeS 3: ICAO Doc 9871, pyModeS 2)', () => {
 	test('every field: status bit, then the value; heading and rate two’s complement', () => {
@@ -304,6 +293,55 @@ describe('5,3 air-referenced state vector (not in pyModeS 3: ICAO Doc 9871, pyMo
 		expect(spec('5,3').reject(build([24, 1, 1], [25, 9, 200]))).toBe('Mach 1.600 > 1');
 		expect(spec('5,3').reject(build([47, 1, 1], [48, 9, -120]))).toBe(
 			'vertical rate -7680 ft/min beyond ±6,000'
+		);
+	});
+});
+
+describe('2,1 aircraft and airline registration markings (ICAO Doc 9871 Table A-2-33)', () => {
+	test('seven characters of the 2,0 alphabet, sent without the dash', () => {
+		const mb = registration21([...'DAIZA']);
+		expect(spec('2,1').reject(mb)).toBeNull();
+		expect(spec('2,1').decode(mb)).toEqual({ bds: '2,1', registration: 'DAIZA', airline: null });
+	});
+
+	test("the dash's place may be filled: space, or code 0 or 45 (jet1090's finding)", () => {
+		for (const gap of [' ', 0, 45]) {
+			const mb = registration21(['B', gap, '2', '4', '8', '7']);
+			expect(spec('2,1').reject(mb)).toBeNull();
+			expect(spec('2,1').decode(mb)).toMatchObject({ registration: 'B2487' });
+		}
+	});
+
+	test('the two airline characters, if their status bit says so', () => {
+		const mb = registration21([...'DAIZA'], 'LH');
+		expect(spec('2,1').reject(mb)).toBeNull();
+		expect(spec('2,1').decode(mb)).toMatchObject({ airline: 'LH' });
+		expect(spec('2,1').reject(build([1, 1, 1], [2, 6, 4], [45, 12, 1]))).toBe(
+			'airline mark: status bit 44 says "no data", but its 12 value bits aren\'t zero'
+		);
+	});
+
+	test('what rules it out', () => {
+		expect(spec('2,1').reject(registration21([...'DAIZA'], null, 0))).toBe(
+			'status bit 1 says "no registration"'
+		);
+		expect(spec('2,1').reject(registration21(['D', 27, 'I', 'Z', 'A']))).toBe(
+			'a character is not a letter, digit or space'
+		);
+		for (const chars of [[' ', ...'DAIZA'], [...'D A IZA']])
+			expect(spec('2,1').reject(registration21(chars))).toBe(
+				'not a registration: it starts with a gap, or has more than one'
+			);
+		expect(spec('2,1').reject(registration21([...'DAIZA'], '#A'))).toBe(
+			'an airline character is not a letter or digit'
+		);
+	});
+
+	test('rare and weakly structured: never picked without an address to check it against', () => {
+		expect(RARE.has('2,1')).toBe(true);
+		const inference = inferRegister(registration21([...'DAIZA']), null);
+		expect(inference.rejected.find((r) => r.bds === '2,1')?.reason).toBe(
+			'too little structure to tell without a trusted address to check the nationality mark against'
 		);
 	});
 });

@@ -5,7 +5,7 @@ import { replyAltitude } from '#lib/modes/altitude.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, toHex } from '#lib/modes/frame.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
-import { cprOracle, encodeCpr, timedMessages } from '#lib/modes/testing.ts';
+import { cprOracle, encodeCpr, registration21, timedMessages } from '#lib/modes/testing.ts';
 import { AIRCRAFT_TTL_MS, Tracker, type TrackedAircraft } from './tracker';
 
 /** Rounded from the capture itself, like the CPR oracle's reference (tools/README.md). */
@@ -190,6 +190,26 @@ describe('Tracker', () => {
 		expect(t.list().length).toBe(1);
 		t.prune(1001 + AIRCRAFT_TTL_MS);
 		expect(t.list()).toEqual([]);
+	});
+
+	test('a registration from Comm-B 2,1, if it starts with the mark of the address (D for 3C…)', () => {
+		const df21 = timedMessages.find((m) => downlinkFormat(m.data) === 21)!.data;
+		const reply = (chars: string) => {
+			const data = df21.slice();
+			data.set(registration21([...chars]), 4); // MB: bytes 5–11
+			return data;
+		};
+		const german: Checked = {
+			icao: '3C6586',
+			source: 'parity',
+			verdict: 'known',
+			interrogator: null
+		};
+		const t = new Tracker(() => receiver);
+		t.add(reply('NABCD'), german, 1000); // not D…: random bits
+		expect(t.get('3C6586')!.registration).toBeNull();
+		t.add(reply('DAIZA'), german, 2000);
+		expect(t.get('3C6586')!.registration).toEqual({ value: 'D-AIZA', t: 2000, from: '2,1' });
 	});
 });
 

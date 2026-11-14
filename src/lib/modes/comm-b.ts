@@ -14,8 +14,11 @@
  * Step 3 also lets registers without any structure of their own (5,1, 5,2, and ADS-B
  * registers read via Comm-B) be recognised: they only count if ADS-B confirms them.
  *
- * Registers hardly any radar asks for (4,4, 4,5 and 5,3, see RARE) are a last resort: they
- * are only considered if none of the others fits, and never if ADS-B contradicts them.
+ * Registers hardly any radar asks for (4,4, 4,5, 5,3 and 2,1, see RARE) are a last resort:
+ * they are only considered if none of the others fits, and never if ADS-B contradicts them.
+ * 2,1 (the registration) needs a confirmation too, from the address rather than ADS-B: the
+ * registration has to start with the nationality mark of the State whose block the address
+ * is in (nationality.ts).
  *
  * Shared by server and browser; no state here (the ADS-B side comes from AdsbMemory).
  */
@@ -24,7 +27,8 @@ import type { Broadcast, Timed } from './adsb-memory';
 import { machFromCas } from './air-data';
 import { decodeLocal } from './cpr';
 import { toHex } from './frame';
-import { combineFine, RARE, REGISTERS, type Register } from './registers';
+import { allocation, formatRegistration, nationalityMark } from './nationality';
+import { combineFine, RARE, REGISTERS, type Register, type Registration } from './registers';
 
 export interface Context {
 	/** Same clock as the ADS-B timestamps, ms. */
@@ -33,6 +37,11 @@ export interface Context {
 	replyAltitude: number | null;
 	/** What the aircraft broadcast recently; null if nothing (or the address is unverified). */
 	adsb: Broadcast | null;
+	/**
+	 * The reply's address, if it's trustworthy (the address filter's "known"); null if not.
+	 * Register 2,1 is checked against the State it belongs to.
+	 */
+	address: string | null;
 }
 
 export type Unit = 'kt' | '°' | 'ft' | 'hPa' | 'ft/min' | 'km' | '';
@@ -102,11 +111,15 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 		const register = spec.decode(mb);
 		const comparisons = context ? compare(register, mb, context) : [];
 		const failed = comparisons.filter((c) => !c.ok);
-		if (NEEDS_ADSB.has(spec.bds)) {
+		if (NEEDS_ADSB.has(spec.bds) || spec.bds === '2,1') {
+			const [by, without] =
+				spec.bds === '2,1'
+					? ['The address', 'without a trusted address to check the nationality mark against']
+					: ['ADS-B', 'without recent ADS-B to compare with'];
 			const why =
 				comparisons.length === 0
-					? 'too little structure to tell without recent ADS-B to compare with'
-					: failed.length > 0 && `ADS-B disagrees: ${failed.map(mismatch).join('; ')}`;
+					? `too little structure to tell ${without}`
+					: failed.length > 0 && `${by} disagrees: ${failed.map(mismatch).join('; ')}`;
 			if (why) {
 				inference.rejected.push({ bds: spec.bds, name: spec.name, reason: why });
 				continue;
@@ -243,8 +256,9 @@ function map<T, U>(other: Other<T> | null, f: (value: T) => U | null): Other<U> 
 function compare(
 	register: Register,
 	mb: Uint8Array,
-	{ now, replyAltitude, adsb }: Context
+	{ now, replyAltitude, adsb, address }: Context
 ): Comparison[] {
+	if (register.bds === '2,1') return registrationCheck(register, address);
 	const altitude: Other<number> | null =
 		replyAltitude !== null
 			? { value: replyAltitude, from: 'this reply', ageMs: null }
@@ -483,6 +497,29 @@ function compare(
 		default:
 			return [];
 	}
+}
+
+/**
+ * Does the registration start with a nationality mark of the State the address belongs to?
+ * Nothing to compare if the address is unknown, unallocated or its State's marks are.
+ */
+function registrationCheck(r: Registration, address: string | null): Comparison[] {
+	const block = address ? allocation(address) : null;
+	if (!block || block.marks.length === 0) return [];
+	const mark = nationalityMark(r.registration, block.marks);
+	return [
+		{
+			quantity: 'registration',
+			unit: '',
+			commB: mark ? formatRegistration(r.registration, mark) : r.registration,
+			other: block.marks.map((m) => `${m}…`).join(' or '),
+			from: `Address block (${block.state})`,
+			ageMs: null,
+			difference: null,
+			tolerance: 0,
+			ok: mark !== null
+		}
+	];
 }
 
 /** Mach should follow from the indicated airspeed and the altitude (see air-data.ts). */

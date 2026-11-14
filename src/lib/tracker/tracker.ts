@@ -43,6 +43,7 @@ import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, payload } from '#lib/modes/frame.ts';
 import type { EmitterCategory } from '#lib/modes/identification.ts';
+import { allocation, formatRegistration, nationalityMark } from '#lib/modes/nationality.ts';
 import type { Cpr, Movement } from '#lib/modes/position.ts';
 import type { HeadingAndSpeed, TrackAndTurn, VerticalIntention } from '#lib/modes/registers.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
@@ -83,6 +84,8 @@ export interface TrackedAircraft {
 	adsb: boolean;
 
 	callsign: Timed<string> | null;
+	/** From Comm-B 2,1, with the dash put back ("D-AIZA"). Rare: radars here don't ask for it. */
+	registration: Timed<string> | null;
 	category: Timed<EmitterCategory> | null;
 	squawk: Timed<string> | null;
 	/** Barometric (pressure) altitude, ft: ADS-B TC 9–18, or a radar reply's AC field. */
@@ -131,6 +134,7 @@ function blank(icao: string, t: number): TrackedAircraft {
 		signal: null,
 		adsb: false,
 		callsign: null,
+		registration: null,
 		category: null,
 		squawk: null,
 		altitude: null,
@@ -338,7 +342,8 @@ export class Tracker {
 		const best = inferRegister(mb, {
 			now: t,
 			replyAltitude: df === 20 ? replyAltitude(data).feet : null,
-			adsb: this.#memory.get(a.icao)
+			adsb: this.#memory.get(a.icao),
+			address: a.icao // the tracker only counts replies from known addresses
 		}).best;
 		if (!best || !best.comparisons.every((c) => c.ok)) return a;
 		const r = best.register;
@@ -349,6 +354,12 @@ export class Tracker {
 			const adsb = a.callsign?.from.startsWith('TC') ? a.callsign : null;
 			if (adsb ? same(adsb) : this.#fromReply(a.icao, 'callsign', a.callsign, r.callsign, t, same))
 				a.callsign = stamped(r.callsign);
+		}
+		if (r.bds === '2,1') {
+			// Inference only accepts a 2,1 that starts with one of these marks (comm-b.ts).
+			const marks = allocation(a.icao)?.marks ?? [];
+			const mark = nationalityMark(r.registration, marks);
+			if (mark) a.registration = stamped(formatRegistration(r.registration, mark));
 		}
 		if (r.bds === '4,0') a.commB = { ...a.commB, intention: stamped(r) };
 		if (r.bds === '5,0') a.commB = { ...a.commB, trackAndTurn: stamped(r) };

@@ -74,6 +74,29 @@ tools/.venv/bin/python tools/oracle-synthetic.py   # writes synthetic.jsonl and 
 pyModeS 3 changed its API (no more `pms.crc()`/`pms.icao()` at the top level); this
 uses `pyModeS.util.crc` and `pyModeS.decode(msg)["icao"]`.
 
+## Aircraft address blocks
+
+`src/lib/modes/address-blocks.ts` (which State each block of 24-bit addresses belongs to) is
+generated from ICAO Annex 10, Volume III, Part I, Chapter 9, Table 9-1. The Swiss Federal
+Office of Civil Aviation publishes the Annex (currently with Amendment 92, 28/11/24):
+
+```sh
+mkdir -p /tmp/annex10 && cd /tmp/annex10
+curl -L -o annex10-vol3.pdf \
+  https://www.bazl.admin.ch/dam/en/sd-web/QQ3WlrAoWJRb/icao_annex_10_aeronauticaltelecommunicationsvolumeiii-communicat.pdf
+pdftotext -layout annex10-vol3.pdf annex10-vol3.txt   # poppler-utils
+cd - && bun tools/address-blocks.ts /tmp/annex10/annex10-vol3.txt > src/lib/modes/address-blocks.ts
+```
+
+- `address-blocks.ts`: reads each row's 24-bit pattern (fixed bits, then dashes) into a
+  range, joins State names that wrap onto a second line, and fails if two blocks overlap.
+  `src/lib/modes/nationality.test.ts` checks the result: 196 blocks of the sizes the Annex
+  allows, spot checks, every address in the capture allocated.
+- The nationality marks (D-, G-, N, …) in `src/lib/modes/nationality.ts` are maintained by
+  hand: taken from [jet1090](https://github.com/xoolive/jet1090)'s `data/patterns.json` (MIT)
+  by matching its address ranges to these blocks, then completed (see the file's header).
+  Comm-B register 2,1 (the registration) is checked against them.
+
 ## EGM96 geoid grid
 
 `src/lib/weather/egm96.ts` (sea level relative to the WGS84 ellipsoid, for /weather's GNSS

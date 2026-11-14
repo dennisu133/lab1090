@@ -141,6 +141,27 @@ export function registerFields(r: Register): Field[] {
 			return [
 				{ value: r.callsign, title: 'Callsign, as the crew entered it', tone: 'main', mono: true }
 			];
+		case '2,1': {
+			const fields: Field[] = [
+				{
+					value: r.registration,
+					title:
+						'Registration ("tail number"), as painted on the aircraft but without the dash: the 6-bit alphabet has none, so DAIZA is D-AIZA. The check next to it puts the dash back, from the nationality mark of the State the address belongs to.',
+					tone: 'main',
+					mono: true
+				}
+			];
+			if (r.airline !== null)
+				fields.push({
+					label: 'airline',
+					value: r.airline,
+					title:
+						'"ICAO airline registration marking": two characters that ICAO Doc 9871 provides for, which most transponders leave empty',
+					tone: 'minor',
+					mono: true
+				});
+			return fields;
+		}
 		case '3,0':
 			return advisoryFields(r);
 		case '4,0': {

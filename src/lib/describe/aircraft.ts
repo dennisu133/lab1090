@@ -7,6 +7,7 @@
 import { bearing, compass, distanceKm, KM_PER_NM } from '#lib/geo.ts';
 import type { Timed } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
+import { allocation } from '#lib/modes/nationality.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
@@ -77,6 +78,25 @@ export function aircraftSections(
 		tone: 'main',
 		mono: true
 	});
+	const block = allocation(a.icao);
+	identity.push({
+		label: 'Registered in',
+		value: block?.state ?? 'no State’s block',
+		title: block
+			? `ICAO gives each State a block of addresses (Annex 10, Vol. III, Table 9-1), and the State gives each aircraft on its register one from it, so the address alone says where the aircraft is registered. This one is in ${block.from}–${block.to} (${block.size.toLocaleString()} addresses), allocated to: ${block.state}. That's not necessarily where it flies or whose airline it is: leased aircraft often keep a foreign registration.${block.marks.length ? ` Registrations there start with ${block.marks.join(' or ')}.` : ''}`
+			: 'The address is in no State’s block (Annex 10, Vol. III, Table 9-1): ICAO hasn’t allocated it to anyone.',
+		tone: 'minor'
+	});
+	if (a.registration)
+		identity.push({
+			label: 'Registration',
+			value: a.registration.value,
+			title:
+				'The "tail number" painted on the aircraft. A radar read it from the transponder\'s register 2,1, which few radars ask for. The register sends it without the dash (the 6-bit alphabet has none); the dash goes back after the nationality mark of the State the address belongs to.' +
+				source(a.registration, now),
+			tone: 'main',
+			mono: true
+		});
 	if (a.category)
 		identity.push({
 			label: 'Category',

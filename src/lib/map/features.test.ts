@@ -22,6 +22,7 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		signal: null,
 		adsb: true,
 		callsign: { value: 'DLH4LW', t: 0, from: 'TC 4' },
+		registration: null,
 		category: { value: { set: 'A', code: 3, name: 'Large (34–136 t)' }, t: 0, from: 'TC 4' },
 		squawk: null,
 		altitude: { value: 35_000, t: 0, from: 'TC 11' },

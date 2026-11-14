@@ -127,3 +127,39 @@ export function encodeCpr({ lat, lon }: LatLon, format: Cpr['format'], span: 360
 	const xz = Math.floor((131072 * mod(lon, dLon)) / dLon + 0.5);
 	return { format, lat: mod(yz, 131072), lon: mod(xz, 131072) };
 }
+
+/** A 56-bit field from [first bit (1 = MSB), bit count, value] triples; negative values two’s complement. */
+export function build(...fields: [number, number, number][]): Uint8Array {
+	const mb = new Uint8Array(7);
+	for (const [first, count, value] of fields) {
+		const raw = value < 0 ? 2 ** count + value : value;
+		for (let i = 0; i < count; i++) {
+			const bit = first - 1 + i;
+			if (Math.floor(raw / 2 ** (count - 1 - i)) % 2) mb[bit >> 3] |= 0x80 >> (bit & 7);
+		}
+	}
+	return mb;
+}
+
+/**
+ * A 2,1 payload: status, 7 characters, airline status, 2 characters (ICAO Doc 9871
+ * Table A-2-33, as jet1090 reads it). A character is a letter, digit or space, or a raw
+ * 6-bit code (0 and 45 stand for the dash in some transponders).
+ */
+export function registration21(
+	chars: (string | number)[],
+	airline: string | null = null,
+	status = 1
+): Uint8Array {
+	const code = (c: string | number) =>
+		typeof c === 'number' ? c : /[A-Z]/.test(c) ? c.charCodeAt(0) - 64 : c.charCodeAt(0);
+	const padded = [...chars, ...Array(7 - chars.length).fill(' ')];
+	return build(
+		[1, 1, status],
+		...padded.map((c, i): [number, number, number] => [2 + 6 * i, 6, code(c)]),
+		[44, 1, airline ? 1 : 0],
+		...(airline
+			? [...airline].map((c, i): [number, number, number] => [45 + 6 * i, 6, code(c)])
+			: [])
+	);
+}

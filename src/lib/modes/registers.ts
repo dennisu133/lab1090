@@ -12,7 +12,8 @@
  * spec tables (ICAO Doc 9871): MB bit 1 is the first bit of the payload.
  *
  * The checks for 1,0 to 6,0, 4,4 and 4,5 are the same as pyModeS's, and tested against it.
- * 5,3 follows ICAO Doc 9871 (and pyModeS 2, which had it). 5,1 and 5,2 are not public
+ * 5,3 follows ICAO Doc 9871 (and pyModeS 2, which had it), 2,1 Doc 9871 as jet1090 reads
+ * it (pyModeS doesn't decode it). 5,1 and 5,2 are not public
  * (pyModeS doesn't decode them); their layout here is inferred from real replies, compared
  * with the same aircraft's ADS-B position and altitude.
  *
@@ -20,13 +21,14 @@
  */
 import { resolutionAdvisory, type ResolutionAdvisory as Advisory } from './acas';
 import { bits } from './frame';
-import { callsign } from './identification';
+import { callsign, character } from './identification';
 import { squitter, type Squitter } from './squitter';
 
 export type Register =
 	| DataLinkCapability
 	| GicbCapability
 	| AircraftIdentification
+	| Registration
 	| ResolutionAdvisory
 	| VerticalIntention
 	| TrackAndTurn
@@ -210,6 +212,72 @@ const BDS_2_0: RegisterSpec = {
 		);
 	},
 	decode: (mb) => ({ bds: '2,0', callsign: callsign(mb.subarray(1, 7)) })
+};
+
+// --- 2,1 Aircraft and airline registration markings -------------------------------------
+//
+// ICAO Doc 9871 Table A-2-33, as jet1090 reads it (crates/rs1090/src/decode/bds/bds21.rs,
+// which cites the table; the table itself isn't public):
+//
+//   bit 1        status: 1 = registration available
+//   bits 2–43    the registration, 7 characters of 6 bits (2,0's alphabet), left-aligned
+//   bit 44       status: 1 = airline mark available
+//   bits 45–56   "ICAO airline registration marking", 2 characters
+//
+// The alphabet has no dash, so the dash is left out ("DAIZA" for D-AIZA) or its place is
+// filled: with a space (the alphabet's), or, as jet1090 found in real replies, with code 0
+// or 45. All three are read as a gap here.
+//
+// Its purpose (Doc 9871): to identify the aircraft without keeping a database of addresses.
+// Optional, and hardly ever asked for: no radar around this receiver did, in the capture or
+// in 15 live minutes, although 5 of 11 transponders in the capture offer it (1,7). Seven
+// characters from the alphabet fit by chance now and then, so it's a last resort (RARE),
+// and it only counts if the registration starts with the nationality mark of the State the
+// address belongs to (nationality.ts; the check is in comm-b.ts).
+
+export interface Registration {
+	bds: '2,1';
+	/** Without the dash, as sent: "DAIZA". nationality.ts can put it back (D-AIZA). */
+	registration: string;
+	/** The two airline characters; null if their status bit says "not available". */
+	airline: string | null;
+}
+
+/** A 2,1 character: '' for a gap (space, 0 or 45), '#' if not in the alphabet. */
+function registrationCharacter(mb: Uint8Array, bit: number): string {
+	const code = bits(mb, bit, 6);
+	return code === 0 || code === 32 || code === 45 ? ' ' : character(code);
+}
+
+const registrationText = (mb: Uint8Array) =>
+	Array.from({ length: 7 }, (_, i) => registrationCharacter(mb, 2 + 6 * i)).join('');
+
+const BDS_2_1: RegisterSpec = {
+	bds: '2,1',
+	name: 'Aircraft and airline registration markings',
+	reject(mb) {
+		const text = registrationText(mb).trimEnd(); // trailing gaps are padding
+		const airline = bits(mb, 45, 12);
+		return firstOf(
+			!flag(mb, 1) ? 'status bit 1 says "no registration"' : null,
+			text.includes('#') ? 'a character is not a letter, digit or space' : null,
+			!/^[A-Z0-9]+( [A-Z0-9]+)?$/.test(text)
+				? 'not a registration: it starts with a gap, or has more than one'
+				: null,
+			wrongStatus(mb, 44, 12, 'airline mark'),
+			flag(mb, 44) && !/^[A-Z0-9]{2}$/.test(character(airline >> 6) + character(airline & 63))
+				? 'an airline character is not a letter or digit'
+				: null
+		);
+	},
+	decode(mb) {
+		const airline = bits(mb, 45, 12);
+		return {
+			bds: '2,1',
+			registration: registrationText(mb).replaceAll(' ', ''),
+			airline: flag(mb, 44) ? character(airline >> 6) + character(airline & 63) : null
+		};
+	}
 };
 
 // --- 3,0 ACAS active resolution advisory -------------------------------------------------
@@ -692,14 +760,15 @@ export const REGISTERS: RegisterSpec[] = [
 	// Rarely interrogated: only tried when none of the above fits (see comm-b.ts).
 	BDS_4_4,
 	BDS_4_5,
-	BDS_5_3
+	BDS_5_3,
+	BDS_2_1
 ];
 
 /**
  * Registers hardly any radar asks for, with enough structure to fit by chance now and then.
  * inferRegister() only considers them when none of the common registers fits.
  */
-export const RARE = new Set(['4,4', '4,5', '5,3']);
+export const RARE = new Set(['4,4', '4,5', '5,3', '2,1']);
 
 export const REGISTER_NAMES: Record<string, string> = Object.fromEntries(
 	REGISTERS.map((r) => [r.bds, r.name])

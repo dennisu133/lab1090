@@ -131,7 +131,8 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 			const inference = inferRegister(mb, {
 				now: f.rx,
 				replyAltitude: df === 20 ? replyAltitude(data).feet : null,
-				adsb
+				adsb,
+				address: addr.verdict === 'known' ? addr.icao : null
 			});
 			const best = inference.best;
 			if (best?.register.bds === '2,0') this.#callsigns.set(addr.icao, best.register.callsign);
