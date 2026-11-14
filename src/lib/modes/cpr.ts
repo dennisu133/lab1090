@@ -211,8 +211,10 @@ export class CprPairs {
 	/**
 	 * Remember this message. If the same aircraft sent one from the other grid within
 	 * maxAgeMs, return the global position (for this message, the newer of the two).
+	 * `combine` overrides the constructor's for this call (e.g. a surface pair decoded with
+	 * this aircraft's own reference).
 	 */
-	add(icao: string, cpr: Cpr, t: number): LatLon | null {
+	add(icao: string, cpr: Cpr, t: number, combine = this.combine): LatLon | null {
 		const latest = this.#latest.get(icao) ?? {};
 		latest[cpr.format] = { cpr, t };
 		this.#latest.set(icao, latest);
@@ -220,8 +222,8 @@ export class CprPairs {
 		const partner = latest[cpr.format === 'even' ? 'odd' : 'even'];
 		if (!partner || t - partner.t > this.maxAgeMs) return null;
 		return cpr.format === 'even'
-			? this.combine(cpr, partner.cpr, 'even')
-			: this.combine(partner.cpr, cpr, 'odd');
+			? combine(cpr, partner.cpr, 'even')
+			: combine(partner.cpr, cpr, 'odd');
 	}
 
 	/** Forget aircraft not heard from in a while. */

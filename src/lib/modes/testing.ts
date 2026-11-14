@@ -4,7 +4,9 @@
  */
 import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
+import { nl, type LatLon } from './cpr';
 import { fromHex } from './frame';
+import type { Cpr } from './position';
 
 const root = join(import.meta.dir, '../../..');
 
@@ -108,3 +110,20 @@ export const surfaceOracle: {
 	pair_even_newer: Pair | null;
 	pair_odd_newer: Pair | null;
 }[] = await Bun.file(join(root, 'fixtures/oracle/surface.json')).json();
+
+/**
+ * The encoder, as the aircraft runs it (DO-260B A.1.7.1): the inverse of decoding, for
+ * testing with positions anywhere in the world. Rounds to the nearest 1/2^17 of a zone.
+ * `span` 90: surface positions (A.1.7.3), zones a quarter the size, like
+ * tools/oracle-synthetic.py's encode_surface.
+ */
+export function encodeCpr({ lat, lon }: LatLon, format: Cpr['format'], span: 360 | 90 = 360): Cpr {
+	const i = format === 'odd' ? 1 : 0;
+	const mod = (a: number, b: number) => a - b * Math.floor(a / b);
+	const dLat = span / (60 - i);
+	const yz = Math.floor((131072 * mod(lat, dLat)) / dLat + 0.5);
+	const rlat = dLat * (yz / 131072 + Math.floor(lat / dLat));
+	const dLon = span / Math.max(nl(rlat) - i, 1);
+	const xz = Math.floor((131072 * mod(lon, dLon)) / dLon + 0.5);
+	return { format, lat: mod(yz, 131072), lon: mod(xz, 131072) };
+}

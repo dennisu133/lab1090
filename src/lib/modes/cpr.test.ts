@@ -2,23 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { distanceKm } from '#lib/geo.ts';
 import { CprPairs, decodeGlobal, decodeLocal, nl, type LatLon } from './cpr';
 import { fromHex, payload } from './frame';
-import { airbornePosition, type Cpr } from './position';
-import { cprOracle, prng } from './testing';
-
-/**
- * The encoder, as the aircraft runs it (DO-260B A.1.7.1): the inverse of decoding, for
- * testing with positions anywhere in the world. Rounds to the nearest 1/2^17 of a zone.
- */
-function encode({ lat, lon }: LatLon, format: Cpr['format']): Cpr {
-	const i = format === 'odd' ? 1 : 0;
-	const mod = (a: number, b: number) => a - b * Math.floor(a / b);
-	const dLat = 360 / (60 - i);
-	const yz = Math.floor((131072 * mod(lat, dLat)) / dLat + 0.5);
-	const rlat = dLat * (yz / 131072 + Math.floor(lat / dLat));
-	const dLon = 360 / Math.max(nl(rlat) - i, 1);
-	const xz = Math.floor((131072 * mod(lon, dLon)) / dLon + 0.5);
-	return { format, lat: mod(yz, 131072), lon: mod(xz, 131072) };
-}
+import { airbornePosition } from './position';
+import { cprOracle, encodeCpr as encode, prng } from './testing';
 
 function randomPoint(random: () => number, maxLat = 87): LatLon {
 	return { lat: (random() * 2 - 1) * maxLat, lon: (random() * 2 - 1) * 180 };

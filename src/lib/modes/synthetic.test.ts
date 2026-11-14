@@ -14,7 +14,7 @@ import { messageHeader } from './header';
 import { movement, surfacePosition } from './position';
 import { esFormat, extendedSquitter, imf, squitter } from './squitter';
 import { aircraftSize, antennaOffset, operationalStatus, targetState } from './status';
-import { surfaceOracle, syntheticOracle, type OracleEntry } from './testing';
+import { surfaceOracle, syntheticOracle, type OracleEntry, encodeCpr } from './testing';
 
 /** The ADS-B entries pyModeS decoded (DF17, and DF18 with an ADS-B layout; it skips DF19). */
 const adsb = syntheticOracle.filter((o) => typeCode(o.data) !== null && 'typecode' in o);
@@ -101,6 +101,16 @@ describe('surface position (TC 5–8)', () => {
 			close(decodeSurfaceLocal(odd, reference), c.local_odd);
 			close(decodeSurfaceGlobal(even, odd, 'even', reference), c.pair_even_newer);
 			close(decodeSurfaceGlobal(even, odd, 'odd', reference), c.pair_odd_newer);
+		}
+	});
+
+	test("CPR: our test encoder (testing.ts) encodes like the oracle's", () => {
+		for (const c of surfaceOracle) {
+			const truth = { lat: c.truth[0], lon: c.truth[1] };
+			const even = encodeCpr(truth, 'even', 90);
+			const odd = encodeCpr(truth, 'odd', 90);
+			expect([even.lat, even.lon]).toEqual(c.even);
+			expect([odd.lat, odd.lon]).toEqual(c.odd);
 		}
 	});
 
