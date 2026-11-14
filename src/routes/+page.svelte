@@ -1,13 +1,120 @@
 <!--
-	The tracker (planned). Unlike the data pages (/frames, /comm-b: 1024 px and up), this
-	page is meant to work on phones too, down to 360 px: design it mobile-first.
+	The tracker: live aircraft on a map, decoded in the browser from the raw frames (see
+	tracker-stream.svelte.ts and lib/tracker). Unlike the data pages (/frames, /comm-b: 1024 px
+	and up), this page works on phones too, down to 360 px: the map on top and the panel
+	below it, side by side from `md` on.
 -->
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
+	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import InfoTip from '#lib/components/InfoTip.svelte';
+	import { shownPosition, type Unit } from '#lib/map/features.ts';
+	import AircraftList from './AircraftList.svelte';
+	import AircraftPanel from './AircraftPanel.svelte';
+	import AltitudeLegend from './AltitudeLegend.svelte';
+	import TrackerMap from './TrackerMap.svelte';
+	import { TrackerStream } from './tracker-stream.svelte.ts';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
+	const stream = new TrackerStream(() => data.receiver);
+	$effect(() => stream.connect());
+
+	/** Range rings and distances: nautical miles (aviation's unit) or km. Remembered. */
+	const UNIT_KEY = 'tracker.unit';
+	let unit = $state<Unit>('NM');
+	onMount(() => {
+		const saved = localStorage.getItem(UNIT_KEY);
+		if (saved === 'NM' || saved === 'km') unit = saved;
+	});
+	function setUnit(u: Unit) {
+		unit = u;
+		localStorage.setItem(UNIT_KEY, u);
+	}
+
+	/** The server's clock, once a second: for "3 s ago" and the list (the map runs on its own). */
+	let now = $state(Date.now());
+	$effect(() => {
+		const timer = setInterval(() => (now = stream.now()), 1000);
+		return () => clearInterval(timer);
+	});
+
+	let selected = $derived(stream.get(stream.selected));
+	let onMap = $derived(stream.aircraft.filter((a) => shownPosition(a, now)).length);
 </script>
 
-<h1 class="mb-2 text-2xl font-semibold">ADS-B receiver</h1>
-<p class="text-zinc-400">
-	Live Mode S and ADS-B traffic from the receiver. Start with the
-	<a href={resolve('/frames')} class="text-sky-400 underline">raw frames</a>.
-</p>
+<svelte:head>
+	<title>Tracker · ADS-B</title>
+</svelte:head>
+
+<div class="flex h-full flex-col md:flex-row">
+	<div class="relative min-h-0 flex-1">
+		<TrackerMap {stream} receiver={data.receiver} {unit} />
+
+		<div
+			class="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur"
+		>
+			<ReceiverStatus online={stream.online} update={stream.update} />
+			<span class="text-zinc-300 tabular-nums">
+				{onMap} on the map{#if stream.aircraft.length > onMap}, {stream.aircraft.length - onMap} more
+					heard{/if}
+			</span>
+			<div class="flex items-center gap-1">
+				<InfoTip label="Rings" align="right">
+					<p>
+						Dashed circles around the receiver (the white dot) at equal distances, like on a radar
+						screen. Nautical miles are aviation's unit: one minute of latitude, 1,852 m.
+					</p>
+					{#if !data.receiver}
+						<p>
+							No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
+							<code>.env</code> to draw it.
+						</p>
+					{/if}
+				</InfoTip>
+				{#each ['NM', 'km'] as const as u (u)}
+					<button
+						type="button"
+						onclick={() => setUnit(u)}
+						aria-pressed={unit === u}
+						class={[
+							'rounded px-1.5 py-0.5',
+							unit === u ? 'bg-zinc-700 text-zinc-100' : 'hover:bg-zinc-800'
+						]}>{u}</button
+					>
+				{/each}
+			</div>
+		</div>
+
+		<div class="absolute bottom-2 left-2">
+			<AltitudeLegend />
+		</div>
+	</div>
+
+	<aside
+		class="max-h-[45dvh] shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-950 pb-4 md:max-h-none md:w-[26rem] md:border-t-0 md:border-l"
+	>
+		{#if selected}
+			<!-- Keyed: another aircraft gets a fresh panel (e.g. its own paused feed). -->
+			{#key selected.icao}
+				<AircraftPanel
+					aircraft={selected}
+					messages={stream.messages}
+					{now}
+					receiver={data.receiver}
+					{unit}
+					onclose={() => stream.select(null)}
+				/>
+			{/key}
+		{:else}
+			<AircraftList
+				aircraft={stream.aircraft}
+				{now}
+				receiver={data.receiver}
+				{unit}
+				onselect={(icao) => stream.select(icao)}
+			/>
+		{/if}
+	</aside>
+</div>

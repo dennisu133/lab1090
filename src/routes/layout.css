@@ -12,3 +12,19 @@
 		color-scheme: dark;
 	}
 }
+
+/*
+ * MapLibre's controls (the map's attribution) come with their own CSS: white boxes. Dark
+ * like the rest here. Its CSS isn't in a cascade layer, so it would beat Tailwind's
+ * utilities, and it loads after this file: these rules are more specific instead.
+ */
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
+	@apply bg-zinc-950/80 text-zinc-500 backdrop-blur;
+}
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib a {
+	@apply text-zinc-400;
+}
+.maplibregl-map .maplibregl-ctrl-attrib-button {
+	/* the ⓘ button is a black icon: make it light */
+	@apply invert;
+}

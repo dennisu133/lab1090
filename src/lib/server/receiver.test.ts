@@ -104,3 +104,24 @@ test('keeps the latest 200 frames of every kind, however rare', async () => {
 	const df17 = r.buffers.query({ ...none, df: 17 }).map((f) => f.id);
 	expect(df17).toEqual([...df17].sort((a, b) => a - b));
 });
+
+test('the tracker gets the position history too, merged in arrival order', async () => {
+	const r = start(trickle().port);
+	await waitFor(() => r.counts.total === TOTAL, 5000);
+	let plain: StreamUpdate | undefined;
+	let tracks: StreamUpdate | undefined;
+	r.subscribe(
+		(u) => (plain ??= u),
+		() => {}
+	);
+	r.subscribe(
+		(u) => (tracks ??= u),
+		() => {},
+		{ tracks: true }
+	);
+	const ids = tracks!.frames.map((f) => f.id);
+	expect(plain!.frames.length).toBe(1000);
+	expect(ids.length).toBeGreaterThan(1000); // the thinned positions of the whole capture
+	expect(ids).toEqual([...new Set(ids)].sort((a, b) => a - b)); // ascending, no repeats
+	for (const f of plain!.frames) expect(ids).toContain(f.id); // and all the recent frames
+});

@@ -16,6 +16,8 @@ function runCapture() {
 	const tracker = new Tracker(() => receiver);
 	const filter = new AddressFilter();
 	const last = new Map<string, TrackedAircraft>();
+	/** Every altitude each aircraft was shown at. */
+	const seenAltitudes = new Map<string, Set<number>>();
 	/** Every position the tracker took, with the message it came from. */
 	const taken: { t: number; hex: string; lat: number; lon: number }[] = [];
 	for (const { t, data } of timedMessages) {
@@ -23,13 +25,15 @@ function runCapture() {
 		if (!tracker.add(data, addr, t)) continue;
 		const a = tracker.get(addr!.icao)!;
 		last.set(a.icao, a);
+		if (a.altitude)
+			seenAltitudes.set(a.icao, (seenAltitudes.get(a.icao) ?? new Set()).add(a.altitude.value));
 		if (a.position?.t === t)
 			taken.push({ t, hex: toHex(data), lat: a.position.lat, lon: a.position.lon });
 	}
-	return { tracker, aircraft: [...last.values()], taken };
+	return { tracker, aircraft: [...last.values()], taken, seenAltitudes };
 }
 
-const { tracker, aircraft, taken } = runCapture();
+const { tracker, aircraft, taken, seenAltitudes } = runCapture();
 const byCallsign = (callsign: string) => aircraft.find((a) => a.callsign?.value === callsign)!;
 
 describe('the capture', () => {
@@ -57,6 +61,11 @@ describe('the capture', () => {
 		expect(aircraft.length).toBe(19);
 		expect(aircraft.every((a) => a.adsb)).toBe(true);
 		expect(aircraft.filter((a) => a.position).length).toBe(16);
+	});
+
+	test("CCA749 stays at FL380: one corrupted DF16 reply said 73,400 ft (and 'on the ground')", () => {
+		expect(byCallsign('CCA749').altitude?.value).toBe(38_000);
+		expect(seenAltitudes.get('78103B')).toEqual(new Set([38_000]));
 	});
 
 	test('CCA749 broadcasts, but never a position: only TC 0 ("no position information")', () => {
@@ -104,14 +113,57 @@ describe('Tracker', () => {
 		interrogator: null
 	});
 
-	test('radar replies with a verified address: altitude and squawk, no position', () => {
+	test('radar replies with a verified address: altitude and squawk, once a second reply agrees', () => {
 		const t = new Tracker(() => receiver);
 		expect(t.add(df4, as('known'), 1000, -20)).toBe(true);
-		expect(t.add(df5, as('known'), 2000)).toBe(true);
+		expect(t.add(df5, as('known'), 1500)).toBe(true);
+		expect(t.get('ABC123')).toMatchObject({ altitude: null, squawk: null, messages: 2 });
+		t.add(df4, as('known'), 2000);
+		t.add(df5, as('known'), 2500);
 		const a = t.get('ABC123')!;
-		expect(a.altitude).toEqual({ value: replyAltitude(df4).feet!, t: 1000, from: 'DF4 reply' });
-		expect(a.squawk).toEqual({ value: replySquawk(df5), t: 2000, from: 'DF5 reply' });
-		expect(a).toMatchObject({ adsb: false, position: null, messages: 2, firstSeen: 1000 });
+		expect(a.altitude).toEqual({ value: replyAltitude(df4).feet!, t: 2000, from: 'DF4 reply' });
+		expect(a.squawk).toEqual({ value: replySquawk(df5), t: 2500, from: 'DF5 reply' });
+		expect(a).toMatchObject({ adsb: false, position: null, messages: 4, firstSeen: 1000 });
+	});
+
+	/** A DF4 reply from ABC123 with another altitude: the 13-bit AC field (bits 20–32) replaced. */
+	function df4At(feet: number) {
+		const data = df4.slice();
+		// Q = 1: 25 ft steps from −1,000 ft, 11 bits (up to 50,175 ft), with M and Q spliced in.
+		const n = (feet + 1000) / 25;
+		const ac = ((n >> 5) << 7) | (((n >> 4) & 1) << 5) | 0x10 | (n & 0xf);
+		data[2] = (data[2] & 0xe0) | (ac >> 8);
+		data[3] = ac & 0xff;
+		expect(replyAltitude(data).feet).toBe(feet);
+		return data;
+	}
+
+	test('one corrupted reply changes nothing; climbing at a normal rate does', () => {
+		const t = new Tracker(() => receiver);
+		t.add(df4At(35_000), as('known'), 0);
+		t.add(df4At(35_000), as('known'), 1000);
+		t.add(df4At(50_000), as('known'), 2000); // 15,000 ft in a second: corrupted (like CCA749's DF16)
+		expect(t.get('ABC123')!.altitude?.value).toBe(35_000);
+		t.add(df4At(35_100), as('known'), 6000); // 100 ft in 5 s: plausible right away
+		expect(t.get('ABC123')!.altitude?.value).toBe(35_100);
+		expect(t.heldBack).toBe(2); // the very first reply, and the corrupted one
+	});
+
+	test('a new squawk shows from the second reply on', () => {
+		const t = new Tracker(() => receiver);
+		const squawk = (code: number) => {
+			const data = df5.slice();
+			data[2] = (data[2] & 0xe0) | (code >> 8);
+			data[3] = code & 0xff;
+			return data;
+		};
+		t.add(squawk(0x0123), as('known'), 0);
+		t.add(squawk(0x0123), as('known'), 1000);
+		const before = t.get('ABC123')!.squawk!.value;
+		t.add(squawk(0x0456), as('known'), 2000);
+		expect(t.get('ABC123')!.squawk!.value).toBe(before);
+		t.add(squawk(0x0456), as('known'), 3000);
+		expect(t.get('ABC123')!.squawk!.value).not.toBe(before);
 	});
 
 	test('unverified addresses never make an aircraft: they may be made up by bit errors', () => {

@@ -11,6 +11,13 @@
  *   in a DF11/17 within the last minute are trusted. These give the altitude (DF0/4/16/20)
  *   and the squawk (DF5/21), and DF20/21 the Comm-B registers: the callsign (2,0), and the
  *   EHS registers (4,0, 5,0, 6,0) if nothing the aircraft broadcast contradicts them.
+ * - Values from radar replies need a second opinion before they replace what we have (see
+ *   #fromReply). The address check above is weaker than it looks, because readsb forwards
+ *   such replies only if their address matches an aircraft it knows: of the many replies
+ *   that noise corrupted, the few whose garbled checksum happens to give a known address
+ *   are exactly the ones that get through. In the capture, one DF16 reply put CCA749 at
+ *   73,400 ft, on the ground (it was cruising at FL380). ADS-B has its own checksum (CRC)
+ *   and needs no second opinion.
  * - DF18 is left out for now: it comes from devices without a transponder, or from ground
  *   stations relaying other traffic (TIS-B, ADS-R), and hardly occurs in Europe.
  *
@@ -48,6 +55,18 @@ import { extend, prune, type Trail } from './trail';
 export const AIRCRAFT_TTL_MS = 60_000;
 /** A ground speed older than this isn't used for the speed check. */
 const GROUND_SPEED_MS = 30_000;
+/** Radar replies: a value replaces the current one if that's older than this, or see below. */
+const REPLY_CURRENT_MS = 60_000;
+/** A value waiting for a second reply to confirm it waits this long. */
+const REPLY_PENDING_MS = 30_000;
+/**
+ * The fastest altitude change believed from replies: steeper than any normal descent
+ * (an emergency descent is 6,000–8,000 ft/min), plus 500 ft for the 100 ft steps of the
+ * old Gillham code and the time between replies.
+ */
+const MAX_FT_PER_MIN = 10_000;
+const ALTITUDE_SLACK_FT = 500;
+
 /** A trail point takes the altitude if it's at most this old (position messages carry it). */
 const TRAIL_ALTITUDE_MS = 10_000;
 
@@ -136,6 +155,10 @@ export class Tracker {
 	#positions: Positions;
 	/** For Comm-B inference: replies are compared with what the aircraft broadcast (comm-b.ts). */
 	#memory = new AdsbMemory();
+	/** Reply values waiting for confirmation, per `${icao} ${field}`. */
+	#pending = new Map<string, Timed<string | number>>();
+	/** Reply values that weren't taken (yet): the tests read this. */
+	heldBack = 0;
 	/** Positions that failed the checks: the tests read them, the page may show them later. */
 	readonly rejections: { icao: string; outcome: Outcome }[] = [];
 
@@ -167,11 +190,21 @@ export class Tracker {
 		let a: TrackedAircraft = { ...old, lastSeen: t, messages: old.messages + 1, signal };
 		const mb = payload(data);
 		if (df === 17 && mb) a = this.#adsb(a, mb, t);
+		const from = `DF${df} reply`;
 		if ([0, 4, 16, 20].includes(df)) {
 			const feet = replyAltitude(data).feet;
-			if (feet !== null) a.altitude = { value: feet, t, from: `DF${df} reply` };
+			const close = (b: Timed<string | number>) =>
+				Math.abs(feet! - (b.value as number)) <=
+				ALTITUDE_SLACK_FT + (MAX_FT_PER_MIN * Math.abs(t - b.t)) / 60_000;
+			if (feet !== null && this.#fromReply(a.icao, 'altitude', a.altitude, feet, t, close))
+				a.altitude = { value: feet, t, from };
 		}
-		if (df === 5 || df === 21) a.squawk = { value: replySquawk(data), t, from: `DF${df} reply` };
+		if (df === 5 || df === 21) {
+			const squawk = replySquawk(data);
+			const same = (b: Timed<string | number>) => b.value === squawk;
+			if (this.#fromReply(a.icao, 'squawk', a.squawk, squawk, t, same))
+				a.squawk = { value: squawk, t, from };
+		}
 		if ((df === 20 || df === 21) && mb) a = this.#commB(a, data, mb, t);
 		this.#aircraft.set(addr.icao, a);
 		return true;
@@ -185,6 +218,8 @@ export class Tracker {
 			if (now - a.lastSeen > AIRCRAFT_TTL_MS) {
 				this.#aircraft.delete(icao);
 				this.#positions.delete(icao);
+				for (const field of ['altitude', 'squawk', 'callsign'])
+					this.#pending.delete(`${icao} ${field}`);
 				continue;
 			}
 			const trail = prune(a.trail, now);
@@ -268,6 +303,36 @@ export class Tracker {
 		return a;
 	}
 
+	/**
+	 * Should a value from a radar reply be taken? Yes if it agrees with the current one
+	 * (`agrees`: equal, or for the altitude, reachable in the time between), or if there's no
+	 * current one within REPLY_CURRENT_MS and a second reply agrees with this one. Otherwise
+	 * it waits for that second reply. So one corrupted reply changes nothing, and a real
+	 * change (a new squawk from ATC) shows from the second reply on.
+	 */
+	#fromReply(
+		icao: string,
+		field: string,
+		current: Timed<string | number> | null,
+		value: string | number,
+		t: number,
+		agrees: (other: Timed<string | number>) => boolean
+	): boolean {
+		const key = `${icao} ${field}`;
+		if (current && t - current.t <= REPLY_CURRENT_MS && agrees(current)) {
+			this.#pending.delete(key);
+			return true;
+		}
+		const pending = this.#pending.get(key);
+		if (pending && t - pending.t <= REPLY_PENDING_MS && agrees(pending)) {
+			this.#pending.delete(key);
+			return true;
+		}
+		this.#pending.set(key, { value, t, from: field });
+		this.heldBack++;
+		return false;
+	}
+
 	#commB(a: TrackedAircraft, data: Uint8Array, mb: Uint8Array, t: number): TrackedAircraft {
 		const df = downlinkFormat(data);
 		const best = inferRegister(mb, {
@@ -278,7 +343,13 @@ export class Tracker {
 		if (!best || !best.comparisons.every((c) => c.ok)) return a;
 		const r = best.register;
 		const stamped = <T>(value: T): Timed<T> => ({ value, t, from: r.bds });
-		if (r.bds === '2,0') a.callsign = stamped(r.callsign);
+		if (r.bds === '2,0') {
+			const same = (b: Timed<string | number>) => b.value === r.callsign;
+			// ADS-B's callsign has a CRC: a different one in a reply is more likely corrupted.
+			const adsb = a.callsign?.from.startsWith('TC') ? a.callsign : null;
+			if (adsb ? same(adsb) : this.#fromReply(a.icao, 'callsign', a.callsign, r.callsign, t, same))
+				a.callsign = stamped(r.callsign);
+		}
 		if (r.bds === '4,0') a.commB = { ...a.commB, intention: stamped(r) };
 		if (r.bds === '5,0') a.commB = { ...a.commB, trackAndTurn: stamped(r) };
 		if (r.bds === '6,0') a.commB = { ...a.commB, headingAndSpeed: stamped(r) };

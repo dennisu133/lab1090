@@ -40,7 +40,16 @@ Pages:
 
   Every step shown with its own numbers.
 
-- **/**: the tracker (planned).
+- **/**: the tracker. Live aircraft on a map, coloured by altitude, with their trails of the
+  last 10 minutes and range rings around the receiver. Tap one for everything known about
+  it (identity, position, flight, autopilot settings, what radars read from it, reception)
+  and its live messages, each value explained. Works on phones too. How positions are
+  checked before they're believed: `src/lib/tracker/positions.ts`.
+
+  Map: [MapLibre GL JS](https://maplibre.org/) with vector tiles from
+  [OpenFreeMap](https://openfreemap.org/) (OpenStreetMap data) and hillshading from the
+  [Terrain Tiles on AWS](https://registry.opendata.aws/terrain-tiles/), all free and without
+  an API key. The browser loads the tiles from those servers directly.
 
 ## Hardware
 
@@ -119,6 +128,14 @@ running the app where others can see it.
 | `bun run lint`   | Prettier and ESLint                        |
 | `bun run format` | Format everything with Prettier            |
 | `bun run build`  | Production build (`@sveltejs/adapter-bun`) |
+
+Nothing in the sky (at night, say)? Replay the recording instead of the Pi, at its original
+pace:
+
+```sh
+bun tools/replay.ts --loop                                # serves it on 127.0.0.1:30105
+RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
+```
 
 The tests run against a 10-minute recording from the receiver
 ([fixtures/](fixtures/README.md)) and reference values from pyModeS, which are committed:

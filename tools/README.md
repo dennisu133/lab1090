@@ -112,3 +112,17 @@ bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11
   The archive often answers "server too busy"; the tool retries for a few minutes.
 - The data is the Deutscher Wetterdienst's (open data, free to use with attribution);
   the files' headers say where they came from.
+
+## Replaying a recording
+
+```sh
+bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop]
+RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
+```
+
+- `replay.ts`: serves a Beast recording over TCP like readsb does, so the app can run
+  without the Pi or when nothing is flying. Frames go out at the pace they were recorded
+  (by their 12 MHz timestamps), so CPR pairs, trails and dead reckoning behave as live.
+  `--speed 2` plays twice as fast; `--loop` starts over at the end, where the aircraft jump
+  back to their starting points (the tracker rejects that jump three times, then starts
+  their tracks afresh).

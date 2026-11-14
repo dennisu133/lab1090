@@ -25,6 +25,30 @@ export function bearing(a: LatLon, b: LatLon): number {
 	return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+/** Kilometres per nautical mile (exact, by definition: 1 NM = 1,852 m). */
+export const KM_PER_NM = 1.852;
+
+/**
+ * Where you get to from `start`, going `km` along a great circle with the initial
+ * direction `bearingDeg` (clockwise from true north). The "direct problem" on a sphere:
+ * the angular distance d = km / R, then the spherical law of cosines for the latitude and
+ * the sine rule for the longitude.
+ */
+export function destination(start: LatLon, bearingDeg: number, km: number): LatLon {
+	const d = km / EARTH_RADIUS_KM;
+	const theta = rad(bearingDeg);
+	const phi1 = rad(start.lat);
+	const phi2 = Math.asin(
+		Math.sin(phi1) * Math.cos(d) + Math.cos(phi1) * Math.sin(d) * Math.cos(theta)
+	);
+	const dLon = Math.atan2(
+		Math.sin(theta) * Math.sin(d) * Math.cos(phi1),
+		Math.cos(d) - Math.sin(phi1) * Math.sin(phi2)
+	);
+	const lon = start.lon + (dLon * 180) / Math.PI;
+	return { lat: (phi2 * 180) / Math.PI, lon: ((lon + 540) % 360) - 180 };
+}
+
 /** 8-point compass direction: N, NE, E, … */
 export function compass(degrees: number): string {
 	return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(degrees / 45) % 8];

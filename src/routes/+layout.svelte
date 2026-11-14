@@ -8,7 +8,7 @@
 	let { children }: LayoutProps = $props();
 
 	const links = [
-		{ route: '/', href: resolve('/'), label: 'Home' },
+		{ route: '/', href: resolve('/'), label: 'Tracker' },
 		{ route: '/frames', href: resolve('/frames'), label: 'Raw frames' },
 		{ route: '/comm-b', href: resolve('/comm-b'), label: 'Comm-B registers' },
 		{ route: '/weather', href: resolve('/weather'), label: 'Weather' }
@@ -21,6 +21,9 @@
 	 */
 	const WIDE_ONLY = ['/frames', '/comm-b', '/weather'];
 
+	/** The tracker fills the window below the navigation: a map, no margins, no page scrolling. */
+	const fullScreen = $derived(page.route.id === '/');
+
 	/** Is the current page this route or one of its sub-pages (the /weather tabs)? */
 	const within = (route: string) =>
 		page.route.id === route || (route !== '/' && !!page.route.id?.startsWith(`${route}/`));
@@ -30,7 +33,12 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
+<div
+	class={[
+		'bg-zinc-950 text-zinc-100',
+		fullScreen ? 'flex h-dvh flex-col overflow-hidden' : 'min-h-screen'
+	]}
+>
 	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
 		<span class="font-semibold">ADS-B</span>
 		{#each links as { route, href, label } (route)}
@@ -49,7 +57,13 @@
 			most explanations only appear when you hover with a mouse.
 		</p>
 	{/if}
-	<main class="mx-auto max-w-7xl p-6">
-		{@render children()}
-	</main>
+	{#if fullScreen}
+		<main class="relative min-h-0 flex-1">
+			{@render children()}
+		</main>
+	{:else}
+		<main class="mx-auto max-w-7xl p-6">
+			{@render children()}
+		</main>
+	{/if}
 </div>

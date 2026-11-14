@@ -1,6 +1,7 @@
 import { BeastClient, type BeastClientStatus } from './beast/client';
 import type { BeastFrame } from './beast/parser';
 import { FrameBuffers } from './frame-buffers';
+import { mergeFrames, TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
@@ -24,6 +25,8 @@ export class Receiver {
 	status: BeastClientStatus = { state: 'closed' };
 	/** The latest frames of every kind, for filtering (/api/frames). */
 	readonly buffers = new FrameBuffers(PER_KIND);
+	/** Thinned position frames of the last 10 minutes, for the tracker's trails. */
+	readonly tracks = new TrackHistory();
 
 	#client: BeastClient;
 	#addresses = new AddressFilter();
@@ -57,13 +60,24 @@ export class Receiver {
 		this.#subscribers.clear();
 	}
 
-	/** Get an update right away (with recent history), then one every 250 ms. */
-	subscribe(send: Subscriber['send'], close: Subscriber['close']): () => void {
+	/**
+	 * Get an update right away (with recent history), then one every 250 ms. `tracks`: the
+	 * first update also holds the position history (TrackHistory), merged into the recent
+	 * frames in arrival order, so the tracker sees one sequence, every frame once.
+	 */
+	subscribe(
+		send: Subscriber['send'],
+		close: Subscriber['close'],
+		{ tracks = false } = {}
+	): () => void {
 		const subscriber = { send, close };
 		this.#subscribers.add(subscriber);
 		// History only: frames still pending go out with the next batch, to everyone.
 		// (Sending them here too would deliver them twice.)
-		send(this.#update(this.#history));
+		const history = tracks
+			? mergeFrames(this.tracks.frames(Date.now()), this.#history)
+			: this.#history;
+		send(this.#update(history));
 		return () => this.#subscribers.delete(subscriber);
 	}
 
@@ -91,6 +105,7 @@ export class Receiver {
 		};
 		this.#pending.push(frame);
 		this.buffers.add(frame, { df, tc, verdict: addr?.verdict ?? null });
+		this.tracks.add(frame, f.data, df, tc);
 	}
 
 	#flush(): void {

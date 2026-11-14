@@ -28,9 +28,12 @@ export abstract class LiveFeed<T> {
 
 	#heldItems: T[] = [];
 	#maxItems: number;
+	#url: string;
 
-	constructor(maxItems: number) {
+	/** `url`: the stream, e.g. '/api/stream?tracks' for the tracker's position history. */
+	constructor(maxItems: number, url = '/api/stream') {
 		this.#maxItems = maxItems;
+		this.#url = url;
 	}
 
 	/**
@@ -44,7 +47,7 @@ export abstract class LiveFeed<T> {
 
 	/** Open the stream; returns a cleanup function (use from an $effect). */
 	connect(): () => void {
-		const source = new EventSource('/api/stream');
+		const source = new EventSource(this.#url);
 		source.onopen = () => (this.online = true);
 		source.onerror = () => (this.online = false); // EventSource retries by itself
 		source.onmessage = (e) => this.#receive(JSON.parse(e.data));
