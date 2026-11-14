@@ -14,6 +14,11 @@
  * its ADS-B position (for the magnetic declination; the receiver's position if it has
  * none), and its callsign.
  *
+ * For the "Now" tab it also fills `sky` (sky.ts): the trusted observations, GNSS − baro
+ * from ADS-B velocity messages (TC 19, CRC-checked, with a barometric altitude from the
+ * same aircraft's position messages at most COLUMN_ALTITUDE_MS older), and the pressure
+ * settings from register 4,0 (same rules as 5,0/6,0) and ADS-B TC 29.
+ *
  * Shared by server and browser; state is the aircraft heard so far.
  */
 import type { Checked } from '#lib/modes/address-filter.ts';
@@ -23,14 +28,21 @@ import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, payload } from '#lib/modes/frame.ts';
 import type { Inputs, Observation } from './observation';
+import { Sky } from './sky';
 import { AIRCRAFT_TTL_MS, WeatherTracker } from './tracker';
 
 /** Older than this, a position or altitude isn't used. */
 const POSITION_MAX_AGE_MS = 60_000;
 const ALTITUDE_MAX_AGE_MS = 30_000;
+/**
+ * GNSS − baro only needs the altitude for the layer and the pressure (column.ts); the
+ * difference itself the aircraft computes. Position messages come twice a second.
+ */
+const COLUMN_ALTITUDE_MS = 5_000;
 
 export class WeatherPipeline {
 	readonly tracker = new WeatherTracker();
+	readonly sky = new Sky();
 	/** Replies that were 5,0 or 6,0 but contradicted ADS-B, and weren't used. */
 	contradicted = 0;
 
@@ -60,6 +72,7 @@ export class WeatherPipeline {
 			if (a.callsign?.t === rx) this.#callsigns.set(addr.icao, { callsign: a.callsign.value, rx });
 			if (a.altitude?.t === rx)
 				this.#altitudes.set(addr.icao, { feet: a.altitude.value, from: a.altitude.from, rx });
+			this.#broadcastWeather(addr.icao, rx);
 			return null;
 		}
 		if (addr.verdict !== 'known') return null;
@@ -78,13 +91,24 @@ export class WeatherPipeline {
 		const register = best?.register;
 		if (register?.bds === '2,0')
 			this.#callsigns.set(addr.icao, { callsign: register.callsign, rx });
+		if (register?.bds === '4,0' && register.baroSetting !== null) {
+			if (best!.comparisons.every((c) => c.ok))
+				this.sky.addSetting({
+					icao: addr.icao,
+					rx,
+					hPa: register.baroSetting,
+					altitude: this.#altitude(addr.icao, rx)?.feet ?? null,
+					from: '4,0'
+				});
+			return null;
+		}
 		if (register?.bds !== '5,0' && register?.bds !== '6,0') return null;
 		if (!best!.comparisons.every((c) => c.ok)) {
 			this.contradicted++;
 			return null;
 		}
 
-		return this.tracker.add(
+		const o = this.tracker.add(
 			addr.icao,
 			{ value: register, rx, t },
 			{
@@ -93,11 +117,31 @@ export class WeatherPipeline {
 				callsign: this.#callsigns.get(addr.icao)?.callsign ?? null
 			}
 		);
+		if (o) this.sky.addObservation(o);
+		return o;
+	}
+
+	/** What a DF17 that just went into the ADS-B memory adds to the sky. */
+	#broadcastWeather(icao: string, rx: number): void {
+		const a = this.#memory.get(icao)!;
+		if (a.gnssMinusBaro?.t === rx && a.altitude && rx - a.altitude.t <= COLUMN_ALTITUDE_MS) {
+			const position = this.#position(icao, rx);
+			if (position) this.sky.addColumn(icao, rx, a.altitude.value, a.gnssMinusBaro.value, position);
+		}
+		if (a.qnh?.t === rx)
+			this.sky.addSetting({
+				icao,
+				rx,
+				hPa: a.qnh.value,
+				altitude: this.#altitude(icao, rx)?.feet ?? null,
+				from: 'TC 29'
+			});
 	}
 
 	prune(now: number): void {
 		this.#memory.prune(now);
 		this.tracker.prune(now);
+		this.sky.prune(now);
 		for (const [icao, a] of this.#altitudes) {
 			if (now - a.rx > ALTITUDE_MAX_AGE_MS) this.#altitudes.delete(icao);
 		}

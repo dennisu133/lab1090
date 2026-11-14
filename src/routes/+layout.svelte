@@ -19,7 +19,11 @@
 	 * support 1024 px and up (tables scroll sideways below their minimum width); narrower
 	 * screens get a notice. The tracker (/) is meant to work on phones too, so it doesn't.
 	 */
-	const WIDE_ONLY = new Set(['/frames', '/comm-b', '/weather']);
+	const WIDE_ONLY = ['/frames', '/comm-b', '/weather'];
+
+	/** Is the current page this route or one of its sub-pages (the /weather tabs)? */
+	const within = (route: string) =>
+		page.route.id === route || (route !== '/' && !!page.route.id?.startsWith(`${route}/`));
 </script>
 
 <svelte:head>
@@ -32,15 +36,12 @@
 		{#each links as { route, href, label } (route)}
 			<a
 				{href}
-				class={[
-					'text-sm hover:text-white',
-					page.route.id === route ? 'text-white' : 'text-zinc-400'
-				]}
-				aria-current={page.route.id === route ? 'page' : undefined}>{label}</a
+				class={['text-sm hover:text-white', within(route) ? 'text-white' : 'text-zinc-400']}
+				aria-current={within(route) ? 'page' : undefined}>{label}</a
 			>
 		{/each}
 	</nav>
-	{#if page.route.id && WIDE_ONLY.has(page.route.id)}
+	{#if WIDE_ONLY.some(within)}
 		<p
 			class="border-b border-amber-900/50 bg-amber-950/40 px-6 py-2 text-sm text-amber-200 lg:hidden"
 		>

@@ -30,7 +30,7 @@ export const RHO0 = P0 / (R_AIR * T0);
 const LAPSE = 0.0065;
 const H11 = 11_000;
 export const T11 = 216.65;
-const G0 = 9.806_65;
+export const G0 = 9.806_65;
 /** g / (L·R) = 5.25588: how pressure follows temperature in the troposphere. */
 const EXPONENT = G0 / (LAPSE * R_AIR);
 /** Above the tropopause pressure and density fall by e every R·T/g = 6,341.6 m. */
@@ -49,6 +49,17 @@ export function staticPressure(altitudeFt: number): number {
 	if (h <= H11) return P0 * (isaTemperature(altitudeFt) / T0) ** EXPONENT;
 	// Above 11 km (36,089 ft) the temperature stays at −56.5 °C: pressure falls exponentially.
 	return P0 * (T11 / T0) ** EXPONENT * Math.exp(-(h - H11) / SCALE_HEIGHT);
+}
+
+/**
+ * Pressure altitude of a static pressure (Pa), ft: the inverse of staticPressure. E.g. a
+ * sea-level pressure (QNH) of 1023 hPa is at −265 ft: an altimeter set to standard
+ * (1013.25) reads −265 ft on a sea-level runway that day.
+ */
+export function pressureAltitude(pascal: number): number {
+	const p11 = staticPressure(H11 / FT);
+	if (pascal >= p11) return ((T0 / LAPSE) * (1 - (pascal / P0) ** (1 / EXPONENT))) / FT;
+	return (H11 + SCALE_HEIGHT * Math.log(p11 / pascal)) / FT;
 }
 
 /**

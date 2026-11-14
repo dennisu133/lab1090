@@ -45,6 +45,9 @@ export const acrossText = (crosswind: number) =>
 export const driftText = (drift: number) =>
 	`${Math.abs(drift).toFixed(1)}° ${drift >= 0 ? 'right' : 'left'}`;
 
+/** "1018.4 hPa", but the standard pressure as itself: "1013.25 hPa". */
+export const hpa = (x: number) => `${x.toFixed(Math.round(x * 100) % 10 ? 2 : 1)} hPa`;
+
 /** "FL370" above 18,000 ft (where everyone uses the standard pressure setting), else feet. */
 export function flightLevel(feet: number): string {
 	return feet >= 18_000

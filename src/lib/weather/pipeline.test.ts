@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { timedMessages } from '#lib/modes/testing.ts';
+import { column } from './column';
 import type { Observation } from './observation';
 import { WeatherPipeline } from './pipeline';
+import { layers, strongestWind } from './profile';
+import { qnh } from './sky';
 import { angleDifference } from './wind';
 
 /**
@@ -119,5 +122,46 @@ describe('the capture', () => {
 		for (const o of trustedTemperature) {
 			expect(o.temperature!.range[1] - o.temperature!.range[0]).toBeLessThan(5);
 		}
+	});
+});
+
+describe('the capture, for the "Now" tab', () => {
+	const sky = pipeline.sky.samples;
+	const all = layers(sky.temperatures, sky.winds, sky.columns);
+
+	test('one sample per aircraft every 10 s: about 60 per aircraft in 10 minutes', () => {
+		expect([sky.temperatures.length, sky.winds.length, sky.columns.length]).toEqual([
+			218, 213, 245
+		]);
+		// GNSS − baro from 16 aircraft: ADS-B reaches more aircraft than the radars ask.
+		expect(new Set(sky.columns.map((c) => c.icao)).size).toBe(16);
+	});
+
+	test('pressure settings: every aircraft on standard, so QNH stays 1013.25', () => {
+		// All in cruise, above the transition altitude: nobody uses a local setting there.
+		const q = qnh(sky.settings);
+		expect(q).toMatchObject({ hPa: 1013.25, local: [], standard: 18 });
+	});
+
+	test('the column below cruise level is about 6–8 K colder than standard, at every level', () => {
+		// While the air at the aircraft (5,0/6,0) is up to 6 K warmer: in November the cold
+		// is near the ground. Plausible, not checked against a reference: no QNH in the
+		// capture, so a low surface pressure would show up here as cold too (27 ft per hPa
+		// against 139 ft per K at FL350).
+		const cruise = all.filter((l) => l.column && l.column.n >= 20);
+		expect(cruise.map((l) => l.level)).toEqual([35_000, 36_000, 37_000, 38_000, 39_000]);
+		for (const l of cruise) {
+			const c = column(l.column!, { qnh: 1013.25, heights: 'ellipsoid' });
+			expect(c.isaDeviation).toBeGreaterThan(-8);
+			expect(c.isaDeviation).toBeLessThan(-5.9);
+		}
+	});
+
+	test('the strongest wind: 83 kt from the west at FL350, jet stream strength', () => {
+		const w = strongestWind(all)!;
+		expect(w.level).toBe(35_000);
+		expect(w.wind.speed).toBeCloseTo(83.1, 1);
+		expect(w.jet).toBe(true);
+		expect(w.atBottom).toBe(true); // nothing lower with enough samples
 	});
 });

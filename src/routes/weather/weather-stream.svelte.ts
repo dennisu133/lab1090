@@ -4,6 +4,7 @@ import { fromHex } from '#lib/modes/frame.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
 import type { Observation } from '#lib/weather/observation.ts';
 import { WeatherPipeline } from '#lib/weather/pipeline.ts';
+import type { SkySamples } from '#lib/weather/sky.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 
 export interface ObservationRow {
@@ -18,13 +19,19 @@ const MAX_ROWS = 2000;
 const TICKS_PER_MS = 12_000;
 
 /**
- * /weather's view of the live stream: every 5,0/6,0 pair as an observation (the feed), and
- * per aircraft the latest wind and temperature (lib/weather/tracker.ts).
+ * /weather's view of the live stream: every 5,0/6,0 pair as an observation (the feed), per
+ * aircraft the latest wind and temperature (lib/weather/tracker.ts), and for the "Now" tab
+ * the samples of the last half hour (lib/weather/sky.ts). The layout owns it, so it keeps
+ * collecting while you switch tabs; it starts empty when the page is opened.
  */
 export class WeatherStream extends LiveFeed<ObservationRow> {
 	aircraft = $state.raw<WeatherAircraft[]>([]);
 	/** The latest frame's time (server clock): "now" for ages. */
 	now = $state(0);
+	/** Samples for the "Now" tab; a new object whenever one is added or dropped. */
+	sky = $state.raw<SkySamples>({ temperatures: [], winds: [], columns: [], settings: [] });
+	/** When the first frame arrived (server clock): how long we've been collecting. */
+	since = $state<number | null>(null);
 
 	#reference: () => LatLon | null;
 	#pipeline: WeatherPipeline;
@@ -39,6 +46,8 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		this.#pipeline = new WeatherPipeline(this.#reference);
 		this.aircraft = [];
 		this.now = 0;
+		this.sky = this.#pipeline.sky.samples;
+		this.since = null;
 	}
 
 	protected process(frames: WireFrame[]): ObservationRow[] {
@@ -54,6 +63,8 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		const callsigns = Object.fromEntries(this.aircraft.map((a) => [a.icao, a.callsign]));
 		for (const r of rows) r.callsign = callsigns[r.observation.icao] ?? null;
 		this.now = now;
+		this.since ??= frames[0].rx;
+		if (this.#pipeline.sky.samples !== this.sky) this.sky = this.#pipeline.sky.samples;
 		return rows;
 	}
 }

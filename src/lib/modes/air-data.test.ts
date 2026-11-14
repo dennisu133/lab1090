@@ -5,6 +5,7 @@ import {
 	isaDensity,
 	isaTemperature,
 	machFromCas,
+	pressureAltitude,
 	speedOfSound,
 	staticPressure,
 	temperatureFromMach,
@@ -63,6 +64,19 @@ describe('the standard atmosphere (ICAO Doc 7488 / US Standard Atmosphere 1976 t
 		for (const ft of [0, 5_000, 20_000, 36_000, 36_089, 40_000, 60_000]) {
 			expect(densityAltitude(isaDensity(ft))).toBeCloseTo(ft, 6);
 		}
+	});
+
+	test('pressure altitude undoes staticPressure, below and above the tropopause', () => {
+		for (const ft of [-2_000, 0, 5_000, 20_000, 36_089, 40_000, 60_000]) {
+			expect(pressureAltitude(staticPressure(ft))).toBeCloseTo(ft, 6);
+		}
+	});
+
+	test('pressure altitude: 27–28 ft per hPa near sea level', () => {
+		// The pilots' rule of thumb is 27 ft (or 30 ft) per hPa; exactly 27.2 ft per hPa
+		// between 1013.25 and 1023 hPa.
+		expect(pressureAltitude(102_300)).toBeCloseTo(-265.2, 1);
+		expect(pressureAltitude(100_000)).toBeCloseTo(363.8, 1);
 	});
 
 	test('density altitude: 30 °C at sea level is like 1,700 ft in standard air', () => {

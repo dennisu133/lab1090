@@ -73,3 +73,23 @@ tools/.venv/bin/python tools/oracle-synthetic.py   # writes synthetic.jsonl and 
 
 pyModeS 3 changed its API (no more `pms.crc()`/`pms.icao()` at the top level); this
 uses `pyModeS.util.crc` and `pyModeS.decode(msg)["icao"]`.
+
+## EGM96 geoid grid
+
+`src/lib/weather/egm96.ts` (sea level relative to the WGS84 ellipsoid, for /weather's GNSS
+heights) is generated from GeographicLib's 15-minute EGM96 grid. EGM96 is the US National
+Geospatial-Intelligence Agency's model (public domain); GeographicLib is MIT-licensed.
+
+```sh
+mkdir -p /tmp/geoids && cd /tmp/geoids
+curl -L -o egm96-15.tar.bz2 \
+  https://sourceforge.net/projects/geographiclib/files/geoids-distrib/egm96-15.tar.bz2/download
+tar xjf egm96-15.tar.bz2
+cd - && bun tools/geoid-grid.ts /tmp/geoids/geoids/egm96-15.pgm > src/lib/weather/egm96.ts
+```
+
+- `geoid-grid.ts`: samples the grid every 2° (whole metres, 54 KB of source instead of the
+  2.6 MB grid) and prints how far bilinear interpolation on it strays from the full grid:
+  at most 17 m anywhere, 9 m over Europe, rms 1.0 m. At FL350 that's under 0.2 K of
+  column temperature, below the other uncertainties. `src/lib/weather/geoid.test.ts`
+  checks spot values taken from the full grid.

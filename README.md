@@ -21,11 +21,21 @@ Pages:
   per downlink format, type code and parity verdict, signal histogram.
 - **/comm-b**: Comm-B replies (DF20/21), which register they most likely came from and how
   that was inferred, compared with what the same aircraft broadcasts via ADS-B.
-- **/weather**: wind and temperature at each aircraft, worked out from its Comm-B registers
-  (5,0 and 6,0): the wind triangle with the World Magnetic Model for the declination, and
-  the temperature from true airspeed and Mach. From those: tailwind, crosswind and drift,
-  the deviation from the standard atmosphere, the total air temperature, the air density.
+- **/weather**: two tabs.
+  - **Now**: the air above the receiver, from all aircraft of the last half hour, in
+    1,000 ft layers: temperature, lapse rate and wind by altitude, the tropopause (WMO
+    definition) and the strongest wind (jet stream or not), and the mean temperature of
+    the air column below each layer, from the gap between GNSS height and pressure
+    altitude (hypsometric equation, with the EGM96 geoid and the pilots' QNH from 4,0 and
+    TC 29).
+  - **Per aircraft**: wind and temperature at each aircraft, worked out from its Comm-B
+    registers (5,0 and 6,0): the wind triangle with the World Magnetic Model for the
+    declination, and the temperature from true airspeed and Mach. From those: tailwind,
+    crosswind and drift, the deviation from the standard atmosphere, the total air
+    temperature, the air density.
+
   Every step shown with its own numbers.
+
 - **/**: the tracker (planned).
 
 ## Hardware
@@ -91,7 +101,7 @@ status bar. The only visible effect of rounding is on the distances and directio
 feed ("67 km SW"), which are measured from the reference point, not from the antenna.
 
 /weather uses it too, for aircraft that don't broadcast an ADS-B position: it looks up the
-magnetic declination there. Rounding doesn't matter for that (the declination changes by
+magnetic declination (and the geoid) there. Rounding doesn't matter for that (the declination changes by
 about a degree per 250 km here).
 
 ## Development
