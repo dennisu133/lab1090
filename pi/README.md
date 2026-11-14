@@ -13,6 +13,16 @@ All decoding and tracking happens on the PC.
 
 Quick look at live traffic: `nc pi 30002`
 
+## Feeding the app
+
+All the app needs is a Beast feed it can reach over TCP: set `RECEIVER_HOST` (and
+`RECEIVER_PORT`, if it isn't 30005) in the app's `.env`. The Pi needs no location, no web
+interface and no other outputs.
+
+If you already run readsb or dump1090 (e.g. on a Pi that feeds a flight tracking network),
+it most likely serves Beast on port 30005 already: point the app at it and skip the setup
+below. Check with `nc <host> 30002` (text) or by watching the app's status bar.
+
 ## Setup from scratch
 
 DVB-T kernel drivers must be blacklisted so they don't claim the dongle
@@ -28,7 +38,7 @@ DEB_BUILD_PROFILES=rtlsdr dpkg-buildpackage -b -us -uc -Prtlsdr
 
 sudo apt install ../readsb_*_arm64.deb
 sudo apt-mark hold readsb            # never let apt swap in Debian's build
-# from the PC: scp pi/readsb.default dennis@pi:~/
+# from the PC: scp pi/readsb.default <user>@pi:~/
 sudo install -m 644 ~/readsb.default /etc/default/readsb
 sudo systemctl enable --now readsb
 ```

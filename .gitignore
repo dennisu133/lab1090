@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 # Python tools (pyModeS oracle)
 tools/.venv
 __pycache__
+
+# Claude Code: personal instructions, not shared
+CLAUDE.md
+CLAUDE.local.md
