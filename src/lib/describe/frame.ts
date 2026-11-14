@@ -183,7 +183,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 			fields.push({
 				value: '✓ pair',
 				title:
-					'Decoded with the reference point, and the even/odd pair (global decoding) gives the same position: confirmed',
+					"Decoded with the receiver's position as the reference point, and the even/odd pair (global decoding) gives the same position: confirmed",
 				tone: 'minor'
 			});
 		} else {
@@ -196,7 +196,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 				},
 				{
 					value: `reference decode ${n(Math.round(off))} km off`,
-					title: `Decoding with the reference point picked the wrong zone: the aircraft is probably more than ~${surface ? 45 : 150} NM from it. Nothing in the message itself reveals this; only the even/odd pair does. Showing the pair's position instead`,
+					title: `Decoding with the receiver's position as the reference point picked the wrong zone: the aircraft is probably more than ~${surface ? 45 : 150} NM from it. Nothing in the message itself reveals this; only the even/odd pair does. Showing the pair's position instead`,
 					tone: 'alert'
 				}
 			);
@@ -206,7 +206,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 		fields.push({
 			value: 'unconfirmed',
 			title:
-				"Decoded with the reference point only. No message from this aircraft's other grid within the last 10 s (yet), so it can't be confirmed",
+				"Decoded with the receiver's position as the reference point only. No message from this aircraft's other grid within the last 10 s (yet), so it can't be confirmed",
 			tone: 'minor'
 		});
 	} else if (global) {
@@ -214,7 +214,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 		fields.push({
 			value: 'pair',
 			title:
-				'Decoded from the even/odd pair (global decoding). Set REFERENCE_POINT to also decode single messages',
+				'Decoded from the even/odd pair (global decoding). Set RECEIVER_POSITION to also decode single messages',
 			tone: 'minor'
 		});
 	} else {
@@ -233,8 +233,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 	if (reference) {
 		fields.splice(1, 0, {
 			value: `${n(Math.round(distanceKm(reference, position)))} km ${compass(bearing(reference, position))}`,
-			title:
-				"Distance and direction from the reference point (only as exact as the reference is: it's rounded)",
+			title: 'Distance and direction from the receiver (RECEIVER_POSITION), along the great circle',
 			tone: 'main'
 		});
 	}

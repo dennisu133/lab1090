@@ -16,11 +16,11 @@ export const variables = defineEnvVars({
 			return port;
 		}
 	},
-	REFERENCE_POINT: {
+	RECEIVER_POSITION: {
 		description:
-			'A point near the receiver as "latitude,longitude" (decimal degrees), e.g. "51.5,-0.1". ' +
-			'Used to decode single ADS-B positions (local CPR decoding): it only has to be within ' +
-			'~150 NM of the aircraft, so a rounded value is enough. Optional.',
+			'Where the antenna is, as "latitude,longitude" (decimal degrees), e.g. "51.5,-0.1". ' +
+			'The reference point for decoding single ADS-B positions (local CPR decoding: within ' +
+			'~150 NM is enough), the origin of distances and the receiver marker on the map. Optional.',
 		schema: parseLatLon
 	}
 });

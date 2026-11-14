@@ -87,26 +87,27 @@ bun run dev            # http://localhost:5173
 
 Copy `.env.example` to `.env`. Everything is optional:
 
-| Variable          | Default | What it is                                                |
-| ----------------- | ------- | --------------------------------------------------------- |
-| `RECEIVER_HOST`   | `pi`    | Host running readsb with Beast output                     |
-| `RECEIVER_PORT`   | `30005` | readsb Beast output port                                  |
-| `REFERENCE_POINT` | –       | A point near the receiver, `"latitude,longitude"` (below) |
+| Variable            | Default | What it is                                           |
+| ------------------- | ------- | ---------------------------------------------------- |
+| `RECEIVER_HOST`     | `pi`    | Host running readsb with Beast output                |
+| `RECEIVER_PORT`     | `30005` | readsb Beast output port                             |
+| `RECEIVER_POSITION` | –       | Where the antenna is, `"latitude,longitude"` (below) |
 
-### Reference point
+### Receiver position
 
-`REFERENCE_POINT` lets /frames decode a position from a single ADS-B message (local CPR
-decoding). Without it, positions are only decoded from even/odd message pairs.
+`RECEIVER_POSITION` is where the antenna is. It's used for:
 
-**It doesn't have to be exact, and shouldn't be.** It only picks which CPR zone the
-aircraft is in, so it just has to be within about 150 NM of airborne aircraft (45 NM for
-aircraft on the ground). Round it to one decimal (≤ 6 km off): /frames shows it in its
-status bar. The only visible effect of rounding is on the distances and directions in the
-feed ("67 km SW"), which are measured from the reference point, not from the antenna.
+- **Decoding single ADS-B positions** (local CPR decoding): it's the reference point that
+  picks which CPR zone the aircraft is in. Without it, positions are only decoded from
+  even/odd message pairs. For this it only has to be within about 150 NM of airborne
+  aircraft (45 NM for aircraft on the ground).
+- **Distances and directions** in /frames ("67 km SW"), and the receiver on the map.
+- **/weather**, for aircraft that don't broadcast an ADS-B position: it looks up the magnetic
+  declination (and the geoid) there.
 
-/weather uses it too, for aircraft that don't broadcast an ADS-B position: it looks up the
-magnetic declination (and the geoid) there. Rounding doesn't matter for that (the declination changes by
-about a degree per 250 km here).
+Decoding works with a rounded value, but distances and the map are only as exact as it is.
+The pages show it (/frames in its status bar), so round it before sharing screenshots or
+running the app where others can see it.
 
 ## Development
 

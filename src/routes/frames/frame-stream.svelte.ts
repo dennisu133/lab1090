@@ -45,7 +45,7 @@ export class FrameStream extends LiveFeed<FeedFrame> {
 	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {}, byVerdict: {} });
 
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
-	/** REFERENCE_POINT from the server, if set (for local CPR decoding). */
+	/** RECEIVER_POSITION from the server, if set (the reference point for local CPR decoding). */
 	#reference: () => LatLon | null;
 	#decoder: FrameDecoder;
 

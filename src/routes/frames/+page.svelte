@@ -211,11 +211,11 @@
 		</div>
 		<div class="text-zinc-400">
 			{#if data.reference}
-				<InfoTip label="Reference point set">
+				<InfoTip label="Receiver position set">
 					<p>
-						Positions are decoded from single messages, using the reference point
-						<span class="text-zinc-100 tabular-nums">{latLonText(data.reference)}</span> to pick the right
-						CPR zone (local decoding).
+						Positions are decoded from single messages, using the receiver's position
+						<span class="text-zinc-100 tabular-nums">{latLonText(data.reference)}</span> as the reference
+						point that picks the right CPR zone (local decoding).
 					</p>
 					<p>
 						When the same aircraft also sent a message from its other grid within 10 s, the even/odd
@@ -226,13 +226,13 @@
 					</p>
 				</InfoTip>
 			{:else}
-				<InfoTip label="No reference point">
+				<InfoTip label="No receiver position">
 					<p>
 						Positions are only decoded from even/odd pairs (global decoding), so each aircraft's
 						first position message stays undecoded.
 					</p>
 					<p>
-						Set <code>REFERENCE_POINT="lat,lon"</code> in <code>.env</code> to decode single
+						Set <code>RECEIVER_POSITION="lat,lon"</code> in <code>.env</code> to decode single
 						messages too (see <code>.env.example</code>).
 					</p>
 				</InfoTip>
