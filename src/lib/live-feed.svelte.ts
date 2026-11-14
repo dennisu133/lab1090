@@ -5,6 +5,11 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  * EventSource, keeps the latest update and a list of recent items (newest first), and can
  * pause the list without losing what arrives meanwhile.
  *
+ * Two things pause it: the Pause button, and scrolling down into the list (see
+ * PauseButton.svelte). New items go on top, so while you read further down they would push
+ * the rows you're reading away. The list resumes when you scroll back up, unless the
+ * button paused it too.
+ *
  * What an item is depends on the page: subclasses turn each batch of frames into items.
  */
 export abstract class LiveFeed<T> {
@@ -14,7 +19,10 @@ export abstract class LiveFeed<T> {
 	/** Newest first. */
 	items = $state.raw<T[]>([]);
 
-	paused = $state(false);
+	/** Paused with the button. */
+	pausedByUser = $state(false);
+	/** Paused because the list's top is scrolled out of view. */
+	scrolledAway = $state(false);
 	/** Items that arrived while paused. */
 	held = $state(0);
 
@@ -43,13 +51,28 @@ export abstract class LiveFeed<T> {
 		return () => source.close();
 	}
 
+	get paused(): boolean {
+		return this.pausedByUser || this.scrolledAway;
+	}
+
 	togglePause(): void {
-		this.paused = !this.paused;
-		if (!this.paused) {
-			this.items = [...this.#heldItems, ...this.items].slice(0, this.#maxItems);
-			this.#heldItems = [];
-			this.held = 0;
-		}
+		this.pausedByUser = !this.pausedByUser;
+		this.#releaseIfLive();
+	}
+
+	/** Called on every scroll event: only acts on a change. */
+	setScrolledAway(away: boolean): void {
+		if (away === this.scrolledAway) return;
+		this.scrolledAway = away;
+		this.#releaseIfLive();
+	}
+
+	/** No longer paused: show what arrived in the meantime. */
+	#releaseIfLive(): void {
+		if (this.paused) return;
+		this.items = [...this.#heldItems, ...this.items].slice(0, this.#maxItems);
+		this.#heldItems = [];
+		this.held = 0;
 	}
 
 	#receive(update: StreamUpdate): void {

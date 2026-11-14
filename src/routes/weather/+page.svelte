@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
@@ -228,12 +229,7 @@
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
 			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Live observations</h2>
-			<button
-				class="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-				onclick={() => stream.togglePause()}
-			>
-				{stream.paused ? `Resume (${stream.held} new)` : 'Pause'}
-			</button>
+			<PauseButton feed={stream} noun="observations" />
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SHOW as s (s.value)}
 					<button

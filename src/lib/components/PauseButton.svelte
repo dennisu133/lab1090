@@ -1,0 +1,64 @@
+<!--
+	The Pause button for a live list, which also pauses it automatically while you read.
+
+	New items go on top of the list. Once you scroll down into it, every batch (4 a second)
+	would push the rows you're reading further down. So as soon as this button, which sits in
+	the list's heading, scrolls out of view at the top, the list pauses. When it comes back
+	into view, the list resumes and shows what arrived in the meantime. The button stays in
+	charge: if you paused with it, scrolling back up doesn't resume.
+
+	While paused by scrolling, a notice at the top of the window says so, so the list never
+	looks frozen without a reason. Clicking it scrolls back up to the list's heading.
+-->
+<script lang="ts">
+	import type { Attachment } from 'svelte/attachments';
+	import type { LiveFeed } from '#lib/live-feed.svelte.ts';
+
+	interface Props {
+		feed: LiveFeed<unknown>;
+		/** What the list holds, for the notice: "frames", "readings", … */
+		noun: string;
+	}
+
+	let { feed, noun }: Props = $props();
+
+	let button: HTMLButtonElement | undefined;
+
+	/**
+	 * Paused while the button is above the window (scrolled past), not below it (not there
+	 * yet). Checked on every scroll and resize rather than with an IntersectionObserver: that
+	 * one only reports crossings, and a jump straight from below the window to above it
+	 * (dragging the scrollbar, End, find in page) never crosses.
+	 */
+	const watchScroll: Attachment<HTMLButtonElement> = (node) => {
+		button = node;
+		const check = () => feed.setScrolledAway(node.getBoundingClientRect().bottom < 0);
+		check();
+		addEventListener('scroll', check, { passive: true });
+		addEventListener('resize', check, { passive: true });
+		return () => {
+			removeEventListener('scroll', check);
+			removeEventListener('resize', check);
+			feed.setScrolledAway(false);
+		};
+	};
+</script>
+
+<button
+	class="scroll-mt-6 rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
+	title="The list also pauses by itself while you scroll down into it, so new {noun} don't push away the ones you're reading."
+	onclick={() => feed.togglePause()}
+	{@attach watchScroll}
+>
+	{feed.paused ? `Resume (${feed.held.toLocaleString()} new)` : 'Pause'}
+</button>
+
+{#if feed.scrolledAway && !feed.pausedByUser}
+	<button
+		class="fixed top-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-sky-800 bg-sky-950/95 px-4 py-1.5 text-sm text-sky-100 shadow-xl hover:bg-sky-900"
+		onclick={() => button?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+	>
+		Live {noun} paused while you scroll: {feed.held.toLocaleString()} new
+		<span class="ml-2 text-sky-300">↑ Back to live</span>
+	</button>
+{/if}
