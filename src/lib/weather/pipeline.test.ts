@@ -116,6 +116,12 @@ describe('the capture, for the "Now" tab', () => {
 		expect(new Set(sky.columns.map((c) => c.icao)).size).toBe(16);
 	});
 
+	test('no winds from turns: nobody turned more than 19° in 10 minutes', () => {
+		// circle.ts needs a quarter turn; the capture is all cruise traffic on airways.
+		expect(sky.turns).toEqual([]);
+		expect(sky.winds.every((w) => w.from === '5,0/6,0')).toBe(true);
+	});
+
 	test('pressure settings: every aircraft on standard, so QNH stays 1013.25', () => {
 		// All in cruise, above the transition altitude: nobody uses a local setting there.
 		const q = qnh(sky.settings);

@@ -10,6 +10,7 @@
  *
  * Shared by server and browser; state is the samples of the last half hour.
  */
+import type { TurnWind } from './circle';
 import { geoidUndulation } from './geoid';
 import type { Observation } from './observation';
 import type { ColumnSample, TemperatureSample, WindSample } from './profile';
@@ -36,10 +37,12 @@ export interface SkySamples {
 	columns: ColumnSample[];
 	/** Every pressure setting heard, standard or not. */
 	settings: SettingSample[];
+	/** Winds from turns, with their fits (they're also in `winds`). */
+	turns: TurnWind[];
 }
 
 export class Sky {
-	samples: SkySamples = { temperatures: [], winds: [], columns: [], settings: [] };
+	samples: SkySamples = { temperatures: [], winds: [], columns: [], settings: [], turns: [] };
 	/** Last accepted sample per aircraft and kind, for the thinning. */
 	#last = new Map<string, number>();
 
@@ -54,7 +57,14 @@ export class Sky {
 				kelvin: o.temperature.kelvin
 			});
 		if (o.wind && !o.windProblem && this.#due('w', o.icao, o.rx))
-			this.#push('winds', { icao: o.icao, rx: o.rx, altitude, wind: o.wind.wind.vector });
+			this.#push('winds', {
+				icao: o.icao,
+				rx: o.rx,
+				altitude,
+				wind: o.wind.wind.vector,
+				air: o.wind.air,
+				from: '5,0/6,0'
+			});
 	}
 
 	/** GNSS − baro from a TC 19, with the pressure altitude from a TC 9–18 shortly before. */
@@ -76,6 +86,19 @@ export class Sky {
 		});
 	}
 
+	/** A wind from a turn (circle.ts): one per turn, so no thinning. */
+	addTurn(t: TurnWind): void {
+		this.#push('turns', t);
+		this.#push('winds', {
+			icao: t.icao,
+			rx: t.end,
+			altitude: t.altitude,
+			wind: t.wind.vector,
+			air: null,
+			from: 'turn'
+		});
+	}
+
 	addSetting(setting: SettingSample): void {
 		if (!this.#due(`s${setting.from}`, setting.icao, setting.rx)) return;
 		this.#push('settings', setting);
@@ -89,7 +112,11 @@ export class Sky {
 			temperatures: fresh(s.temperatures),
 			winds: fresh(s.winds),
 			columns: fresh(s.columns),
-			settings: fresh(s.settings)
+			settings: fresh(s.settings),
+			turns:
+				s.turns.length && now - s.turns[0].end > WINDOW_MS
+					? s.turns.filter((t) => now - t.end <= WINDOW_MS)
+					: s.turns
 		};
 		if (Object.keys(next).some((k) => next[k as keyof SkySamples] !== s[k as keyof SkySamples]))
 			this.samples = next;

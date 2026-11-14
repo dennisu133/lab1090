@@ -17,7 +17,8 @@
  * For the "Now" tab it also fills `sky` (sky.ts): the trusted observations, GNSS − baro
  * from ADS-B velocity messages (TC 19, CRC-checked, with a barometric altitude from the
  * same aircraft's position messages at most COLUMN_ALTITUDE_MS older), and the pressure
- * settings from register 4,0 (same rules as 5,0/6,0) and ADS-B TC 29.
+ * settings from register 4,0 (same rules as 5,0/6,0) and ADS-B TC 29, and the winds from
+ * turns: every ADS-B ground vector (TC 19) goes to the TurnTracker (circle.ts).
  *
  * Shared by server and browser; state is the aircraft heard so far.
  */
@@ -28,8 +29,10 @@ import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, payload } from '#lib/modes/frame.ts';
 import type { Inputs, Observation } from './observation';
+import { TurnTracker } from './circle';
 import { Sky } from './sky';
 import { AIRCRAFT_TTL_MS, WeatherTracker } from './tracker';
+import { toVector } from './wind';
 
 /** Older than this, a position or altitude isn't used. */
 const POSITION_MAX_AGE_MS = 60_000;
@@ -43,6 +46,7 @@ const COLUMN_ALTITUDE_MS = 5_000;
 export class WeatherPipeline {
 	readonly tracker = new WeatherTracker();
 	readonly sky = new Sky();
+	readonly turns = new TurnTracker();
 	/** Replies that were 5,0 or 6,0 but contradicted ADS-B, and weren't used. */
 	contradicted = 0;
 
@@ -128,6 +132,18 @@ export class WeatherPipeline {
 			const position = this.#position(icao, rx);
 			if (position) this.sky.addColumn(icao, rx, a.altitude.value, a.gnssMinusBaro.value, position);
 		}
+		if (a.ground?.t === rx) {
+			const altitude =
+				a.altitude && rx - a.altitude.t <= COLUMN_ALTITUDE_MS
+					? a.altitude.value
+					: (this.#altitude(icao, rx)?.feet ?? null);
+			const turn = this.turns.add(icao, {
+				t: rx,
+				vector: toVector(a.ground.value.speed, a.ground.value.track),
+				altitude
+			});
+			if (turn) this.sky.addTurn(turn);
+		}
 		if (a.qnh?.t === rx)
 			this.sky.addSetting({
 				icao,
@@ -141,6 +157,7 @@ export class WeatherPipeline {
 	prune(now: number): void {
 		this.#memory.prune(now);
 		this.tracker.prune(now);
+		for (const turn of this.turns.prune(now)) this.sky.addTurn(turn);
 		this.sky.prune(now);
 		for (const [icao, a] of this.#altitudes) {
 			if (now - a.rx > ALTITUDE_MAX_AGE_MS) this.#altitudes.delete(icao);

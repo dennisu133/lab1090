@@ -27,7 +27,11 @@ Pages:
     definition) and the strongest wind (jet stream or not), and the mean temperature of
     the air column below each layer, from the gap between GNSS height and pressure
     altitude (hypsometric equation, with the EGM96 geoid and the pilots' QNH from 4,0 and
-    TC 29).
+    TC 29). Three more ways to the wind: the geostrophic wind from how the pressure
+    surfaces slope (GNSS − baro along each level flight), heading checks that compare each
+    aircraft's wind with the others' and correct a compass that's clearly off, and winds
+    from turns (a circle fitted through the ADS-B ground vectors: no heading needed).
+    Checked against weather balloons in the tests (`fixtures/sounding/`).
   - **Per aircraft**: wind and temperature at each aircraft, worked out from its Comm-B
     registers (5,0 and 6,0): the wind triangle with the World Magnetic Model for the
     declination, and the temperature from true airspeed and Mach. From those: tailwind,

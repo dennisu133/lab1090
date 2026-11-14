@@ -32,7 +32,17 @@ import {
 	type Sounding,
 	type SoundingLevel
 } from './testing';
-import { directionOf, speedOf, toVector, type Vector } from './wind';
+import { geostrophicWind } from './geostrophic';
+import { applyHeadingChecks, headingChecks } from './headings';
+import {
+	angleDifference,
+	directionOf,
+	meanWind,
+	speedOf,
+	toVector,
+	windOf,
+	type Vector
+} from './wind';
 
 const QNH = 1007;
 const FT = 0.3048;
@@ -213,6 +223,30 @@ describe('the capture against the balloons', () => {
 		expect(speedOf(geostrophic)).toBeLessThan(90);
 	});
 
+	test('the geostrophic wind from the aircraft alone points the way the balloons drifted', () => {
+		// geostrophic.ts: the same slope, from how GNSS − baro changes along each level
+		// flight, without the balloons. Each aircraft's own altimeter error drops out.
+		const g = geostrophicWind(sky.columns, { lat: 52, lon: 14 }, 'ellipsoid');
+		if (!g.found) throw new Error(g.reason);
+		expect(g.aircraft).toBe(9);
+		expect(g.slope.north).toBeCloseTo(-142, -1); // the fit against the balloons: −137
+		expect(g.residual).toBeLessThan(10); // ft: little more than the 25 ft steps
+		// The balloons' mean wind over the same levels, FL350–FL390.
+		const measured = meanWind(
+			[morning, evening].flatMap((s) =>
+				[35_000, 36_000, 37_000, 38_000, 39_000].map((l) => windOf(inLayer(s, l).wind))
+			)
+		)!;
+		expect(Math.round(measured.direction)).toBe(266);
+		expect(Math.round(measured.speed)).toBe(55);
+		// 267°: within 1.3° of the balloons.
+		expect(Math.abs(angleDifference(measured.direction, g.wind.direction))).toBeLessThan(2);
+		// 72 kt, ± 6 leaving out any one aircraft: faster than the real 55 kt, as the
+		// balance is where the air curves around a low.
+		expect(g.wind.speed).toBeCloseTo(71.8, 1);
+		expect(g.uncertainty).toBeLessThan(6);
+	});
+
 	test('the column temperature agrees within 0.8 K at every cruise layer, with the real QNH', () => {
 		const time = mean(cruise.map((c) => c.rx));
 		const k = (time - morning.launched) / (evening.launched - morning.launched);
@@ -251,12 +285,15 @@ describe('the capture against the balloons', () => {
 		expect(rest.filter((x) => x < 2).length).toBe(7);
 	});
 
-	test('winds per aircraft: 6,0 headings are magnetic, but one is 3.5° off', () => {
-		// The wind triangle (wind.ts) turns 6,0's magnetic heading into a true one with the
-		// declination (5° here). For each aircraft, the heading correction that best matches
-		// the balloons: near 0 means the heading and declination are right.
+	/**
+	 * For each aircraft with at least 20 winds, the heading correction that best matches the
+	 * balloons (0.25° steps), and the mean wind error before and after it, kt.
+	 */
+	let balloonHeadings: Map<string, { offset: number; before: number; after: number }> | undefined;
+	function headingsFromBalloons() {
+		if (balloonHeadings) return balloonHeadings;
 		const trusted = observations.filter((o) => o.wind && !o.windProblem && o.inputs.altitude);
-		const offsets = new Map<string, { offset: number; before: number; after: number }>();
+		balloonHeadings = new Map();
 		for (const [icao, os] of byAircraft(trusted)) {
 			if (os.length < 20) continue;
 			const pairs = os.map((o) => ({
@@ -276,8 +313,16 @@ describe('the capture against the balloons', () => {
 				);
 			let best = 0;
 			for (let d = -10; d <= 10; d += 0.25) if (error(d) < error(best)) best = d;
-			offsets.set(icao, { offset: best, before: error(0), after: error(best) });
+			balloonHeadings.set(icao, { offset: best, before: error(0), after: error(best) });
 		}
+		return balloonHeadings;
+	}
+
+	test('winds per aircraft: 6,0 headings are magnetic, but one is 3.5° off', () => {
+		// The wind triangle (wind.ts) turns 6,0's magnetic heading into a true one with the
+		// declination (5° here). For each aircraft, the heading correction that best matches
+		// the balloons: near 0 means the heading and declination are right.
+		const offsets = headingsFromBalloons();
 		expect(offsets.size).toBe(9); // with at least 20 winds
 		const odd = offsets.get('440822')!;
 		expect(odd.offset).toBeGreaterThanOrEqual(-4.5);
@@ -288,6 +333,53 @@ describe('the capture against the balloons', () => {
 		// wants several aircraft (MIN_AIRCRAFT).
 		for (const [icao, o] of offsets)
 			if (icao !== '440822') expect(Math.abs(o.offset)).toBeLessThan(2.1);
+	});
+
+	test('heading checks against the other aircraft find the same corrections', () => {
+		// headings.ts, without the balloons: each aircraft's wind against the others'.
+		const checks = headingChecks(sky.winds);
+		const offsets = headingsFromBalloons();
+		// Every aircraft with enough samples and others nearby (AE01D5 has 4 winds: too few).
+		expect([...checks.keys()].sort()).toEqual(
+			['3C65D4', '3C6750', '4400F8', '440822', '44CE75', '471D67', '4BAAC7', '501C2B'].sort()
+		);
+		// Within 2.2° of what the balloons say, for every one of them.
+		for (const [icao, c] of checks)
+			expect(Math.abs(c.correction - offsets.get(icao)!.offset)).toBeLessThan(2.3);
+		// Only 440822 is clearly off (MIN_CORRECTION): −4.0°, the balloons say −3.5°.
+		const off = [...checks.values()].filter((c) => c.significant);
+		expect(off.map((c) => c.icao)).toEqual(['440822']);
+		expect(off[0].correction).toBeCloseTo(-4.0, 1);
+		expect(off[0].others).toBe(5);
+
+		// Corrected, its layer (FL350) is 3 kt from the balloons instead of 29; the others
+		// stay as they were.
+		const error = (winds: typeof sky.winds) =>
+			Object.fromEntries(
+				layers([], winds, [])
+					.filter((l) => l.wind)
+					.map((l) => {
+						const at = winds.filter((w) => Math.round(w.altitude / 1000) * 1000 === l.level);
+						const t = balloon(staticPressure(l.level), mean(at.map((w) => w.rx))).wind;
+						const v = l.wind!.wind.vector;
+						return [
+							l.level,
+							Math.round(speedOf({ north: v.north - t.north, east: v.east - t.east }))
+						];
+					})
+			);
+		expect(error(sky.winds)).toEqual({
+			34000: 34, // one sample from one aircraft
+			35000: 29,
+			36000: 2,
+			37000: 4,
+			38000: 12,
+			39000: 10
+		});
+		expect(error(applyHeadingChecks(sky.winds, checks))).toEqual({
+			...error(sky.winds),
+			35000: 3
+		});
 	});
 
 	test('the strongest wind and the tropopause, against the balloons', () => {

@@ -77,14 +77,18 @@ export function windTriangle(
 	return { speed: speedOf(vector), direction: normalise(directionOf(vector) + 180), vector };
 }
 
+/** The wind that moves the air along this vector (kt): reported where it blows from. */
+export function windOf(vector: Vector): Wind {
+	return { speed: speedOf(vector), direction: normalise(directionOf(vector) + 180), vector };
+}
+
 /** Mean wind of several, as vectors: averaging 350° and 10° must give 0°, not 180°. */
 export function meanWind(winds: Wind[]): Wind | null {
 	if (winds.length === 0) return null;
-	const vector = {
+	return windOf({
 		north: winds.reduce((s, w) => s + w.vector.north, 0) / winds.length,
 		east: winds.reduce((s, w) => s + w.vector.east, 0) / winds.length
-	};
-	return { speed: speedOf(vector), direction: normalise(directionOf(vector) + 180), vector };
+	});
 }
 
 /**

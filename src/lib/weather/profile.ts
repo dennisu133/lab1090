@@ -47,6 +47,13 @@ export interface WindSample {
 	rx: number;
 	altitude: number;
 	wind: Vector;
+	/**
+	 * TAS along the true heading, kt: what the wind triangle took off the ground vector.
+	 * Kept so a heading correction can be applied later (headings.ts). null for a wind from
+	 * a turn (circle.ts), which doesn't use the heading.
+	 */
+	air: Vector | null;
+	from: '5,0/6,0' | 'turn';
 }
 
 export interface ColumnSample extends ColumnInputs {

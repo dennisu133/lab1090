@@ -29,7 +29,13 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 	/** The latest frame's time (server clock): "now" for ages. */
 	now = $state(0);
 	/** Samples for the "Now" tab; a new object whenever one is added or dropped. */
-	sky = $state.raw<SkySamples>({ temperatures: [], winds: [], columns: [], settings: [] });
+	sky = $state.raw<SkySamples>({
+		temperatures: [],
+		winds: [],
+		columns: [],
+		settings: [],
+		turns: []
+	});
 	/** When the first frame arrived (server clock): how long we've been collecting. */
 	since = $state<number | null>(null);
 
@@ -40,6 +46,11 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		super(MAX_ROWS);
 		this.#reference = reference;
 		this.#pipeline = new WeatherPipeline(reference);
+	}
+
+	/** The receiver's position, for maps around it. */
+	get reference(): LatLon | null {
+		return this.#reference();
 	}
 
 	protected reset(): void {

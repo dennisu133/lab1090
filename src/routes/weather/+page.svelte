@@ -1,7 +1,9 @@
 <!--
 	/weather, "Now": the air above the receiver, from every aircraft together. Temperature and
 	wind by altitude (from 5,0/6,0), the tropopause and the strongest wind, and the temperature
-	of the air column below each level (from ADS-B's GNSS − baro and the pilots' QNH).
+	of the air column below each level (from ADS-B's GNSS − baro and the pilots' QNH). Then
+	three more ways to the wind: the geostrophic wind from the slope of the pressure
+	surfaces, heading checks against the other aircraft, and winds from turns.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -17,8 +19,14 @@
 		tropopause
 	} from '#lib/weather/profile.ts';
 	import { WINDOW_MS, qnh } from '#lib/weather/sky.ts';
+	import { geostrophicWind } from '#lib/weather/geostrophic.ts';
+	import { applyHeadingChecks, headingChecks } from '#lib/weather/headings.ts';
+	import { meanWind } from '#lib/weather/wind.ts';
 	import ColumnCalculation from './ColumnCalculation.svelte';
 	import ColumnChart from './ColumnChart.svelte';
+	import GeostrophicCard from './GeostrophicCard.svelte';
+	import HeadingCard from './HeadingCard.svelte';
+	import TurnCard from './TurnCard.svelte';
 	import LayerTable from './LayerTable.svelte';
 	import QnhCard from './QnhCard.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
@@ -31,14 +39,35 @@
 	/** The layer picked in the table for the worked example. */
 	let picked = $state<number | null>(null);
 
+	/** Whether the profile uses the heading-corrected winds (HeadingCard). */
+	let correctHeadings = $state(true);
+
 	let sky = $derived(stream.sky);
-	let all = $derived(layers(sky.temperatures, sky.winds, sky.columns));
+	let checks = $derived(headingChecks(sky.winds));
+	let winds = $derived(correctHeadings ? applyHeadingChecks(sky.winds, checks) : sky.winds);
+	let all = $derived(layers(sky.temperatures, winds, sky.columns));
+	let callsigns = $derived(
+		new Map(stream.aircraft.flatMap((a) => (a.callsign ? [[a.icao, a.callsign]] : [])))
+	);
 	let pressure = $derived(qnh(sky.settings));
 	let columns = $derived(
 		all.map((l) => (l.column ? column(l.column, { qnh: pressure.hPa, heights }) : null))
 	);
 	let top = $derived(tropopause(all));
 	let strongest = $derived(strongestWind(all));
+	let geo = $derived(geostrophicWind(sky.columns, stream.reference, heights));
+	/** The aircraft's own mean wind over the levels the geostrophic fit covers. */
+	let measuredThere = $derived(
+		geo.found
+			? meanWind(
+					all.flatMap((l) =>
+						l.wind && l.level >= geo.levels[0] - 500 && l.level <= geo.levels[1] + 500
+							? [l.wind.wind]
+							: []
+					)
+				)
+			: null
+	);
 
 	/** The worked example: the picked layer, else the one with the most GNSS − baro samples. */
 	let example = $derived.by(() => {
@@ -265,5 +294,11 @@
 			</p>
 		{/if}
 		<QnhCard qnh={pressure} now={stream.now} />
+	</section>
+
+	<section class="grid gap-4 xl:grid-cols-2">
+		<GeostrophicCard {geo} measured={measuredThere} />
+		<HeadingCard {checks} {callsigns} bind:correct={correctHeadings} />
+		<TurnCard turns={sky.turns} {callsigns} />
 	</section>
 </div>
