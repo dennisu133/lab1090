@@ -1,3 +1,7 @@
+<!--
+	The tracker (planned). Unlike the data pages (/frames, /comm-b: 1024 px and up), this
+	page is meant to work on phones too, down to 360 px: design it mobile-first.
+-->
 <script lang="ts">
 	import { resolve } from '$app/paths';
 </script>
