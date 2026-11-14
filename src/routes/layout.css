@@ -1,1 +1,14 @@
 @import 'tailwindcss';
+
+/*
+ * The page background lives on <html>, not just on the layout wrapper: absolutely
+ * positioned tooltips (InfoTip) can stick out below the wrapper and make the document
+ * scroll further, and that extra area would otherwise show the browser's default white.
+ * color-scheme makes scrollbars and form controls dark as well.
+ */
+@layer base {
+	html {
+		@apply bg-zinc-950;
+		color-scheme: dark;
+	}
+}
