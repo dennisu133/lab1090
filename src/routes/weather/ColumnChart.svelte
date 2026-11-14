@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
 	import { expectedOffset, type Column } from '#lib/weather/column.ts';
-	import { MIN_SAMPLES, type Layer } from '#lib/weather/profile.ts';
+	import { enough, type Layer } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, H_MAX, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
 
 	interface Props {
@@ -91,13 +91,12 @@
 	{/each}
 
 	{#each points as { l, c } (l.level)}
-		{@const enough = l.column!.n >= MIN_SAMPLES}
 		<circle
 			cx={clampX(c.offset)}
 			cy={y(l.level)}
 			r={selected === l.level ? 4.5 : 3}
 			class={[
-				enough ? 'fill-amber-300' : 'fill-zinc-950 stroke-amber-300',
+				enough(l.column) ? 'fill-amber-300' : 'fill-zinc-950 stroke-amber-300',
 				selected === l.level && 'stroke-white'
 			]}
 		>

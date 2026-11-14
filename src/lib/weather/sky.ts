@@ -72,7 +72,7 @@ export class Sky {
 			altitude,
 			gnssMinusBaro,
 			geoid: geoidUndulation(position.lat, position.lon),
-			position: position.from
+			position
 		});
 	}
 

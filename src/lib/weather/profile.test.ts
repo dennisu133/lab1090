@@ -3,6 +3,7 @@ import { isaTemperature } from '#lib/modes/air-data.ts';
 import {
 	JET_KT,
 	MIN_SAMPLES,
+	enough,
 	lapseRate,
 	layers,
 	strongestWind,
@@ -64,7 +65,16 @@ describe('layers', () => {
 		const ls = layers(
 			[{ icao: 'A', rx: 0, altitude: 38_000, kelvin: 216 }],
 			[],
-			[{ icao: 'B', rx: 0, altitude: 30_000, gnssMinusBaro: -500, geoid: 40, position: 'ADS-B' }]
+			[
+				{
+					icao: 'B',
+					rx: 0,
+					altitude: 30_000,
+					gnssMinusBaro: -500,
+					geoid: 40,
+					position: { lat: 52, lon: 14, from: 'ADS-B' }
+				}
+			]
 		);
 		expect(ls.map((l) => l.level)).toEqual([30_000, 38_000]);
 		expect(ls[0].temperature).toBeNull();
@@ -125,6 +135,11 @@ describe('tropopause (WMO: lapse rate ≤ 2 K/km, staying so on average for 2 km
 		const few = sounding(range(25_000, 43_000), isaTemperature).filter((s) => s.icao === 'A0');
 		expect(tropopause(layers(few, [], [])).found).toBe(false);
 	});
+
+	test('… and so are layers where one aircraft has all of them, however many', () => {
+		const one = sounding(range(25_000, 43_000), isaTemperature).map((s) => ({ ...s, icao: 'A' }));
+		expect(tropopause(layers(one, [], [])).found).toBe(false);
+	});
 });
 
 describe('strongest wind', () => {
@@ -152,5 +167,12 @@ describe('strongest wind', () => {
 
 	test('nothing with enough samples: null', () => {
 		expect(strongestWind(layers([], windAt(36_000, 40).slice(1), []))).toBeNull();
+	});
+
+	test('a layer with one aircraft only is left out, however many samples it has', () => {
+		const one = Array.from({ length: 50 }, () => ({ ...windAt(35_000, 83)[0], icao: 'A' }));
+		const w = strongestWind(layers([], [...one, ...windAt(36_000, 60)], []));
+		expect(w).toMatchObject({ level: 36_000, atTop: false, atBottom: false });
+		expect(enough(layers([], one, [])[0].wind)).toBe(false);
 	});
 });

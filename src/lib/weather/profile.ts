@@ -19,8 +19,15 @@ import type { ColumnInputs } from './column';
 import { meanWind, speedOf, type Vector, type Wind } from './wind';
 
 export const LAYER_FT = 1000;
-/** Fewer samples than this, and a layer isn't used for the tropopause or the jet stream. */
+/** Fewer samples than this, and a layer isn't used for the tropopause or the jet stream … */
 export const MIN_SAMPLES = 5;
+/**
+ * … nor if they all come from one aircraft. Each aircraft has its own errors that don't
+ * average out over its samples: compared with Lindenberg's weather balloons, one aircraft
+ * in the capture read 7 K too cold, and another's heading was 3.5° off, which made 29 kt of
+ * wind that wasn't there (src/lib/weather/sounding.test.ts).
+ */
+export const MIN_AIRCRAFT = 2;
 /** WMO: the tropopause is where the lapse rate drops to 2 K/km or less … */
 export const TROPOPAUSE_LAPSE = 2;
 /** … and stays there on average for the next 2 km. */
@@ -45,11 +52,11 @@ export interface WindSample {
 export interface ColumnSample extends ColumnInputs {
 	icao: string;
 	rx: number;
-	/** Where the geoid was looked up. */
-	position: 'ADS-B' | 'receiver';
+	/** Where the geoid was looked up: the aircraft's ADS-B position, or the receiver's. */
+	position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' };
 }
 
-interface Count {
+export interface Count {
 	/** Samples. */
 	n: number;
 	/** Different aircraft among them. */
@@ -79,6 +86,11 @@ export interface Layer {
 		| null;
 	/** The mean of the column samples (column.ts turns it into a temperature). */
 	column: (Count & ColumnInputs & { spread: number }) | null;
+}
+
+/** Enough samples, from enough aircraft, to count for the tropopause and the jet stream. */
+export function enough<T extends Count>(c: T | null): c is T {
+	return c !== null && c.n >= MIN_SAMPLES && c.aircraft >= MIN_AIRCRAFT;
 }
 
 const layerOf = (feet: number) => Math.round(feet / LAYER_FT) * LAYER_FT;
@@ -183,14 +195,12 @@ export type Tropopause =
  * cold air, 16 km over the tropics; over Europe usually 9–12 km (FL300–FL390). The ISA
  * puts it at 36,089 ft.
  *
- * Only layers with at least MIN_SAMPLES temperatures count. Heights are pressure
+ * Only layers with enough temperatures count (MIN_SAMPLES, from MIN_AIRCRAFT aircraft). Heights are pressure
  * altitudes rather than real heights, a few percent off: fine for a 2 K/km threshold.
  */
 export function tropopause(all: Layer[]): Tropopause {
 	const usable = all.flatMap((l) =>
-		l.temperature && l.temperature.n >= MIN_SAMPLES
-			? [{ level: l.level, kelvin: l.temperature.kelvin }]
-			: []
+		enough(l.temperature) ? [{ level: l.level, kelvin: l.temperature.kelvin }] : []
 	);
 	if (usable.length < 2)
 		return { found: false, reason: 'Needs temperatures in at least two layers.' };
@@ -245,7 +255,7 @@ export interface StrongestWind {
  * flights ride them, westbound ones avoid them.
  */
 export function strongestWind(all: Layer[]): StrongestWind | null {
-	const usable = all.filter((l) => l.wind && l.wind.n >= MIN_SAMPLES);
+	const usable = all.filter((l) => enough(l.wind));
 	if (usable.length === 0) return null;
 	const best = usable.reduce((a, b) => (b.wind!.wind.speed > a.wind!.wind.speed ? b : a));
 	return {

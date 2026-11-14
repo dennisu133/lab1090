@@ -1,10 +1,11 @@
 <!--
 	Wind speed against altitude, layer by layer, with an arrow for where the air blows to
 	(up on the page is north). The dashed line is the jet stream threshold (30 m/s); the
-	strongest layer is highlighted. Hollow dots have fewer than MIN_SAMPLES samples.
+	strongest layer is highlighted. Hollow dots have fewer than MIN_SAMPLES samples or come
+	from one aircraft only.
 -->
 <script lang="ts">
-	import { JET_KT, MIN_SAMPLES, type Layer, type StrongestWind } from '#lib/weather/profile.ts';
+	import { JET_KT, enough, type Layer, type StrongestWind } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
 
 	let { layers, strongest }: { layers: Layer[]; strongest: StrongestWind | null } = $props();
@@ -80,7 +81,7 @@
 			{cx}
 			{cy}
 			r={top ? 4.5 : 3}
-			class={w.n >= MIN_SAMPLES
+			class={enough(w)
 				? top
 					? 'fill-emerald-300 stroke-white'
 					: 'fill-emerald-300'

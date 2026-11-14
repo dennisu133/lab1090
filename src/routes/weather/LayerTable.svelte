@@ -17,6 +17,7 @@
 	import type { Column } from '#lib/weather/column.ts';
 	import {
 		LAYER_FT,
+		MIN_AIRCRAFT,
 		MIN_SAMPLES,
 		lapseRate,
 		type Layer,
@@ -42,13 +43,11 @@
 			.map((layer, i) => {
 				const above = layers.slice(i + 1).find((l) => l.temperature);
 				const t = layer.temperature;
-				const upper = above?.temperature
-					? { level: above.level, kelvin: above.temperature.kelvin, n: above.temperature.n }
-					: null;
+				const upper = above?.temperature ? { level: above.level, ...above.temperature } : null;
 				return {
 					layer,
 					column: columns[i],
-					lower: t ? { level: layer.level, kelvin: t.kelvin, n: t.n } : null,
+					lower: t ? { level: layer.level, ...t } : null,
 					upper,
 					lapse: t && upper ? lapseRate({ level: layer.level, kelvin: t.kelvin }, upper) : null
 				};
@@ -70,8 +69,9 @@
 							the pilots set.
 						</p>
 						<p class="text-zinc-400">
-							The counts are samples/aircraft. Orange: fewer than {MIN_SAMPLES} samples, left out of the
-							tropopause and jet stream.
+							The counts are samples/aircraft. Orange: fewer than {MIN_SAMPLES} samples or fewer than
+							{MIN_AIRCRAFT}
+							aircraft, left out of the tropopause and jet stream.
 						</p>
 					</InfoTip>
 				</th>

@@ -9,6 +9,7 @@
 	import { column, type HeightReference } from '#lib/weather/column.ts';
 	import {
 		JET_KT,
+		MIN_AIRCRAFT,
 		MIN_SAMPLES,
 		TROPOPAUSE_LAPSE,
 		layers,
@@ -96,7 +97,8 @@
 				<p>
 					By the WMO's definition (the one weather balloons use): the lowest level where the
 					temperature falls by {TROPOPAUSE_LAPSE} K per km or less, and keeps doing so on average for
-					the next 2 km. Only layers with at least {MIN_SAMPLES} temperatures count.
+					the next 2 km. Only layers with at least {MIN_SAMPLES} temperatures from {MIN_AIRCRAFT} or more
+					aircraft count: each aircraft has its own sensor errors.
 				</p>
 				<p class="text-zinc-400">
 					Over Europe usually FL300–FL390: lower in cold polar air, higher in warm air. The standard
@@ -142,7 +144,9 @@
 				</p>
 			{:else}
 				<p class="mt-2 text-2xl text-zinc-500">—</p>
-				<p class="mt-1 text-xs text-zinc-500">No layer with {MIN_SAMPLES} winds yet.</p>
+				<p class="mt-1 text-xs text-zinc-500">
+					No layer with {MIN_SAMPLES} winds from {MIN_AIRCRAFT} aircraft yet.
+				</p>
 			{/if}
 		</div>
 
@@ -193,7 +197,7 @@
 			<InfoTip heading="h2" class="mb-2 text-sm font-semibold text-zinc-400" label="Temperature">
 				<p>
 					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
-					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples.
+					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
 			</InfoTip>
 			<TemperatureProfile layers={all} tropopause={top} />
@@ -202,7 +206,8 @@
 			<InfoTip heading="h2" class="mb-2 text-sm font-semibold text-zinc-400" label="Wind">
 				<p>
 					Each layer's mean wind speed, with an arrow pointing where the air goes (up is north: an
-					arrow to the right is a westerly). The dashed line is jet stream strength.
+					arrow to the right is a westerly). The dashed line is jet stream strength. Hollow: fewer
+					than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
 			</InfoTip>
 			<WindProfile layers={all} {strongest} />
@@ -222,7 +227,7 @@
 				</p>
 				<p class="text-zinc-400">
 					A dot left of the dashed ISA line: the level is lower than standard, the air below colder
-					(or the pressure lower).
+					(or the pressure lower). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
 			</InfoTip>
 			<ColumnChart

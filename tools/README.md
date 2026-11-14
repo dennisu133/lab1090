@@ -93,3 +93,22 @@ cd - && bun tools/geoid-grid.ts /tmp/geoids/geoids/egm96-15.pgm > src/lib/weathe
   at most 17 m anywhere, 9 m over Europe, rms 1.0 m. At FL350 that's under 0.2 K of
   column temperature, below the other uncertainties. `src/lib/weather/geoid.test.ts`
   checks spot values taken from the full grid.
+
+## Weather balloon soundings
+
+`fixtures/sounding/` holds radiosonde ascents from Lindenberg (WMO 10393), the German
+Weather Service's observatory near the receiver, as an independent check of /weather
+(`src/lib/weather/sounding.test.ts`). They come from the University of Wyoming's sounding
+archive, which serves the full-resolution data the weather services send out:
+
+```sh
+bun tools/sounding.ts 10393 "2026-11-13 12:00" > fixtures/sounding/10393-2026-11-13-12z.csv
+bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11-13-18z.csv
+```
+
+- `sounding.ts`: the station number and the ascent's nominal time in UTC (00, 06, 12 or 18;
+  the balloon goes up about 75 minutes earlier). Keeps one row per 25 m up to 100 hPa,
+  with time, position, pressure, geopotential height, temperature, mixing ratio and wind.
+  The archive often answers "server too busy"; the tool retries for a few minutes.
+- The data is the Deutscher Wetterdienst's (open data, free to use with attribution);
+  the files' headers say where they came from.

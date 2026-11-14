@@ -4,7 +4,14 @@
  */
 import { isaTemperature } from '#lib/modes/air-data.ts';
 import type { Column } from '#lib/weather/column.ts';
-import { MIN_SAMPLES, TROPOPAUSE_LAPSE, type Layer } from '#lib/weather/profile.ts';
+import {
+	MIN_AIRCRAFT,
+	MIN_SAMPLES,
+	TROPOPAUSE_LAPSE,
+	enough,
+	type Count,
+	type Layer
+} from '#lib/weather/profile.ts';
 import { SAMPLE_EVERY_MS } from '#lib/weather/sky.ts';
 import type { Field } from './frame';
 import { celsius, flightLevel, isaText, signed, windText } from './weather';
@@ -16,10 +23,19 @@ const samplesText = (n: number, aircraft: number) =>
 const THINNING = `At most one sample per aircraft every ${SAMPLE_EVERY_MS / 1000} s, so busy aircraft don't outweigh the others.`;
 
 function countField(n: number, aircraft: number, what: string): Field {
+	const ok = enough({ n, aircraft });
 	return {
 		value: `${n}/${aircraft}`,
-		title: `${samplesText(n, aircraft)}. ${THINNING}${n < MIN_SAMPLES ? ` Fewer than ${MIN_SAMPLES}: shown, but not used for the tropopause or the jet stream.` : ''}${aircraft === 1 ? ` One aircraft only: this is its ${what}, with whatever error its sensors have.` : ''}`,
-		tone: n < MIN_SAMPLES ? 'alert' : 'minor'
+		title: [
+			`${samplesText(n, aircraft)}. ${THINNING}`,
+			ok
+				? ''
+				: ` Fewer than ${MIN_SAMPLES} samples, or fewer than ${MIN_AIRCRAFT} aircraft: shown, but not used for the tropopause or the jet stream.`,
+			aircraft === 1
+				? ` One aircraft only: this is its ${what}, with whatever error its sensors have (compared with weather balloons: a few kelvin, or a heading a few degrees off, which is 10–30 kt of wind).`
+				: ''
+		].join(''),
+		tone: ok ? 'minor' : 'alert'
 	};
 }
 
@@ -53,14 +69,14 @@ export function layerTemperatureFields(layer: Layer): Field[] {
  * with height. `upper` is null for the highest layer.
  */
 export function lapseField(
-	lower: { level: number; kelvin: number; n: number },
-	upper: { level: number; kelvin: number; n: number } | null,
+	lower: { level: number; kelvin: number } & Count,
+	upper: ({ level: number; kelvin: number } & Count) | null,
 	lapse: number | null
 ): Field[] {
 	if (!upper || lapse === null)
 		return [{ value: '—', title: 'No temperature further up', tone: 'minor' }];
 	const km = ((upper.level - lower.level) * 0.3048) / 1000;
-	const noisy = lower.n < MIN_SAMPLES || upper.n < MIN_SAMPLES;
+	const noisy = !enough(lower) || !enough(upper);
 	return [
 		{
 			value: `${signed(lapse)} K/km`,
@@ -70,7 +86,7 @@ export function lapseField(
 				'The standard atmosphere cools by 6.5 K/km up to the tropopause, then not at all. Real air between: moist air cools more slowly than dry air as it rises, an inversion is negative (warmer above).',
 				`At ${TROPOPAUSE_LAPSE} K/km or less, staying so for 2 km, the WMO calls it the tropopause.`,
 				'',
-				`Over 1,000 ft, 1 K of noise in a layer's mean is 3 K/km here: trust the trend over several layers more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples.` : ''}`
+				`Over 1,000 ft, 1 K of noise in a layer's mean is 3 K/km here: trust the trend over several layers more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples or ${MIN_AIRCRAFT} aircraft.` : ''}`
 			].join('\n'),
 			tone: noisy ? 'minor' : lapse <= TROPOPAUSE_LAPSE ? 'alert' : 'main'
 		}

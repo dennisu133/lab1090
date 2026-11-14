@@ -2,11 +2,11 @@
 	Temperature against altitude, layer by layer: what a weather balloon would draw. The
 	dashed line is the standard atmosphere; where the measured dots stop moving left (no
 	longer getting colder) is the tropopause. Hollow dots have fewer than MIN_SAMPLES
-	samples; the bar is the spread between the samples.
+	samples or come from one aircraft only; the bar is the spread between the samples.
 -->
 <script lang="ts">
 	import { T11, isaTemperature } from '#lib/modes/air-data.ts';
-	import { MIN_SAMPLES, type Layer, type Tropopause } from '#lib/weather/profile.ts';
+	import { enough, type Layer, type Tropopause } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, H_MAX, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
 
 	let { layers, tropopause }: { layers: Layer[]; tropopause: Tropopause } = $props();
@@ -90,7 +90,7 @@
 			cx={x(t.kelvin)}
 			cy={yy}
 			r="3"
-			class={t.n >= MIN_SAMPLES ? 'fill-rose-300' : 'fill-zinc-950 stroke-rose-300'}
+			class={enough(t) ? 'fill-rose-300' : 'fill-zinc-950 stroke-rose-300'}
 		>
 			<title>{`FL${l.level / 100}: ${(t.kelvin - 273.15).toFixed(1)} °C, ${t.n} samples`}</title>
 		</circle>

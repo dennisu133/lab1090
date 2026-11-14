@@ -1,33 +1,12 @@
 import { describe, expect, test } from 'bun:test';
-import { AddressFilter } from '#lib/modes/address-filter.ts';
-import { timedMessages } from '#lib/modes/testing.ts';
 import { column } from './column';
-import type { Observation } from './observation';
-import { WeatherPipeline } from './pipeline';
 import { layers, strongestWind } from './profile';
 import { qnh } from './sky';
+import { runCapture } from './testing';
 import { angleDifference } from './wind';
 
-/**
- * The capture, through the same pipeline as /weather. Its wall-clock time is reconstructed
- * from when it was recorded (fixtures/README.md: 13 Nov 2026, 16:18:23 CET), which only
- * matters for the magnetic model. The receiver position is the one the CPR oracle derived
- * from the capture itself (tools/README.md), in case an aircraft has no ADS-B position.
- */
-const START = Date.UTC(2026, 10, 13, 15, 18, 23);
-const t0 = timedMessages[0].t;
-
-const pipeline = new WeatherPipeline(() => ({ lat: 52, lon: 14 }));
-const observations: Observation[] = (() => {
-	const filter = new AddressFilter();
-	const out: Observation[] = [];
-	for (const { t, data } of timedMessages) {
-		const rx = START + (t - t0);
-		const o = pipeline.add(data, filter.check(data, t), rx, t);
-		if (o) out.push(o);
-	}
-	return out;
-})();
+/** The capture, through the same pipeline as /weather (testing.ts). */
+const { pipeline, observations } = runCapture();
 const aircraft = pipeline.tracker.list();
 const trustedWind = observations.filter((o) => o.wind && !o.windProblem);
 const trustedTemperature = observations.filter((o) => o.temperature && !o.temperatureProblem);
@@ -144,10 +123,9 @@ describe('the capture, for the "Now" tab', () => {
 	});
 
 	test('the column below cruise level is about 6–8 K colder than standard, at every level', () => {
-		// While the air at the aircraft (5,0/6,0) is up to 6 K warmer: in November the cold
-		// is near the ground. Plausible, not checked against a reference: no QNH in the
-		// capture, so a low surface pressure would show up here as cold too (27 ft per hPa
-		// against 139 ft per K at FL350).
+		// With QNH assumed standard: nobody in the capture reported one. The real one was
+		// 1007 hPa, which makes the column about 1.2 K less cold; sounding.test.ts checks
+		// this against Lindenberg's weather balloons.
 		const cruise = all.filter((l) => l.column && l.column.n >= 20);
 		expect(cruise.map((l) => l.level)).toEqual([35_000, 36_000, 37_000, 38_000, 39_000]);
 		for (const l of cruise) {
@@ -157,11 +135,17 @@ describe('the capture, for the "Now" tab', () => {
 		}
 	});
 
-	test('the strongest wind: 83 kt from the west at FL350, jet stream strength', () => {
+	test('the strongest wind: 59 kt from the west at FL360, from two aircraft', () => {
+		// FL350 has 83 kt, but from one aircraft only, whose heading is 3.5° off: Lindenberg's
+		// weather balloons measured 53–61 kt there (sounding.test.ts). So it doesn't count.
+		const fl350 = all.find((l) => l.level === 35_000)!.wind!;
+		expect([fl350.n, fl350.aircraft, Math.round(fl350.wind.speed)]).toEqual([41, 1, 83]);
+
 		const w = strongestWind(all)!;
-		expect(w.level).toBe(35_000);
-		expect(w.wind.speed).toBeCloseTo(83.1, 1);
-		expect(w.jet).toBe(true);
+		expect(w.level).toBe(36_000);
+		expect(w.wind.speed).toBeCloseTo(59.0, 1);
+		expect(w.wind.direction).toBeCloseTo(275, 0);
+		expect(w.jet).toBe(true); // just: 58.3 kt is the threshold
 		expect(w.atBottom).toBe(true); // nothing lower with enough samples
 	});
 });

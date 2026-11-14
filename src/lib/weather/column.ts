@@ -49,6 +49,11 @@
  * column isn't straight below the aircraft but wherever it's been. Gravity varies with
  * latitude too (geopotential uses g₀, 9.80665 m/s², as at 45°); at 52° that's 0.06 %.
  *
+ * Checked against weather balloons (sounding.test.ts): the capture's GNSS heights put the
+ * pressure levels where Lindenberg's radiosondes found them, and the column ΔT agrees with
+ * theirs within 0.8 K at every cruise level, given the real QNH. Leaving out humidity costs
+ * 0.1–0.2 K there.
+ *
  * Shared by server and browser; no state here.
  */
 import { G0, R_AIR, pressureAltitude, staticPressure } from '#lib/modes/air-data.ts';

@@ -44,3 +44,17 @@ with the coefficients (`WMM2025COF.zip` from
 2025–2029.5, with declination, inclination and field components. Public domain (US
 government work). Tested in `src/lib/weather/wmm.test.ts`; the coefficients themselves are
 in `src/lib/weather/wmm2025.ts`.
+
+## `sounding/`
+
+Two weather balloon ascents from Lindenberg (WMO station 10393, 52.21°N 14.12°E),
+bracketing the capture: launched 10:45 and 16:45 UTC on 13 Nov
+2026, nominally the 12 and 18 UTC soundings. One row per 25 m up to 100 hPa: time, position,
+pressure, geopotential height, temperature, mixing ratio and wind. Data: Deutscher
+Wetterdienst, via the University of Wyoming's sounding archive (`tools/sounding.ts`,
+`tools/README.md`).
+
+`src/lib/weather/sounding.test.ts` checks the capture's /weather results against them. The
+sea-level pressure for that comes from Berlin Brandenburg airport's report at 15:20 UTC,
+`EDDB 131520Z AUTO 28016KT 9999 SCT041 08/01 Q1007` (Iowa Environmental Mesonet's METAR
+archive), quoted in the test rather than stored.
