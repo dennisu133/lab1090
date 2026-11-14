@@ -4,11 +4,21 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { celsius, flightLevel, signed, windText } from '#lib/describe/weather.ts';
+	import {
+		acrossText,
+		alongText,
+		celsius,
+		driftText,
+		flightLevel,
+		isaText,
+		signed,
+		windText
+	} from '#lib/describe/weather.ts';
 	import { compass } from '#lib/geo.ts';
-	import { A0, T0 } from '#lib/modes/air-data.ts';
+	import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
 	import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
 	import { WMM_VALID } from '#lib/weather/wmm.ts';
+	import IsaChart from './IsaChart.svelte';
 	import WindTriangle from './WindTriangle.svelte';
 
 	let { observation: o }: { observation: Observation } = $props();
@@ -26,14 +36,14 @@
 </script>
 
 <!--
-	Fixed heights, so the page below doesn't jump as observations come in. The wind card is
-	the drawing (288 px) plus header and footer; from xl the steps beside it get narrow and
-	can be taller than the drawing, hence the extra room. The temperature card sits beside it
-	from xl and stretches to the same height; stacked below it, it gets its own.
+	One card under the other, each a drawing with the steps beside it: side by side, the
+	steps would be squeezed into a narrow column and the cards would get very tall.
+	Fixed heights, so the page below doesn't jump as observations come in: the drawing
+	(240 px) plus header and footer, and the steps never get taller than the drawing.
 -->
-<div class="grid gap-4 xl:grid-cols-2">
+<div class="space-y-4">
 	<!-- Wind -->
-	<div class="h-98 rounded-lg bg-zinc-900 p-4 xl:h-106">
+	<div class="h-86 rounded-lg bg-zinc-900 p-4">
 		<!-- One line, whatever happens: the reason a value isn't used goes here and is cut off
 		     if it doesn't fit (the whole text is in its title), so nothing below moves. -->
 		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
@@ -110,6 +120,26 @@
 							(w.wind.direction + 180) % 360
 						)}°, so <strong>from {n(w.wind.direction)}° ({compass(w.wind.direction)})</strong>.
 					</li>
+					<li>
+						<InfoTip label="For the aircraft">
+							<p>
+								The same wind split along the aircraft's heading and across it (dashed in the
+								drawing). The part along it is a <strong>tailwind</strong> or
+								<strong>headwind</strong>: it makes the ground speed differ from the airspeed, and
+								so the flight time. The part across is the <strong>crosswind</strong>: it pushes the
+								aircraft sideways, so the nose has to point a little into the wind to stay on track.
+								The angle between nose and track is the
+								<strong>drift</strong>.
+							</p>
+							<p class="text-zinc-400">
+								Pilots do this for every runway (each aircraft type has a crosswind limit for
+								landing) and for every leg of a flight plan.
+							</p>
+						</InfoTip>: {alongText(w.components.tailwind)}, {acrossText(w.components.crosswind)}, so
+						it drifts {driftText(w.components.drift)} (track {n(track.track!)}°, true heading {n(
+							w.trueHeading
+						)}°).
+					</li>
 					<li class="text-zinc-400">
 						<InfoTip label="Rounding">
 							<p>
@@ -129,7 +159,7 @@
 			</div>
 		{/if}
 
-		<p class="mt-3 truncate text-xs text-zinc-500">
+		<p class="mt-2 truncate text-xs text-zinc-500">
 			<span class={o.skewMs > MAX_SKEW_MS ? 'text-orange-400' : ''}>
 				5,0 and 6,0 {o.skewMs < 1000 ? `${Math.round(o.skewMs)} ms` : `${n(o.skewMs / 1000)} s`} apart
 				(at most {MAX_SKEW_MS / 1000} s)</span
@@ -149,7 +179,7 @@
 	</div>
 
 	<!-- Temperature -->
-	<div class="h-44 rounded-lg bg-zinc-900 p-4 xl:h-auto">
+	<div class="h-86 rounded-lg bg-zinc-900 p-4">
 		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
 			<InfoTip heading="h3" class="font-semibold" label="Temperature">
 				<p>
@@ -186,45 +216,118 @@
 
 		{#if o.temperature}
 			{@const t = o.temperature}
-			<ol class="list-decimal space-y-2 pl-5 text-sm text-zinc-300">
-				<li>
-					From 5,0: true airspeed {track.tas} kt. From 6,0: Mach {heading.mach!.toFixed(3)}.
-				</li>
-				<li>
-					<strong>Speed of sound</strong> a = TAS / Mach = {track.tas} / {heading.mach!.toFixed(3)} =
-					{n(t.speedOfSound)} kt.
-				</li>
-				<li>
-					<InfoTip label="a = a₀ · √(T / T₀)">
-						<p>
-							The speed of sound in air is √(γ·R·T): γ = 1.4 (how air's pressure responds to
-							compression) and R = 287 J/(kg·K) (air's gas constant) are fixed, so only the absolute
-							temperature T changes it.
-						</p>
-						<p>
-							Written relative to the standard sea level (T₀ = {T0} K, 15 °C, where a₀ = {n(A0, 2)} kt)
-							it needs no constants at all.
-						</p>
-					</InfoTip>, solved for T: T = {T0} K × ({n(t.speedOfSound)} / {n(A0, 2)})² =
-					<strong>{n(t.kelvin)} K = {celsius(t.kelvin)}</strong>.
-				</li>
-				<li class="text-zinc-400">
-					<InfoTip label="Rounding">
-						<p>
-							TAS comes in {STEP.speed} kt steps and Mach in steps of {STEP.mach} (2.048/512). The coldest
-							the air can be is with the slowest TAS and the highest Mach in those steps ({(track.tas ??
-								0) - 1} kt, {(heading.mach! + STEP.mach / 2).toFixed(3)}), the warmest the other way
-							round.
-						</p>
-						<p class="text-zinc-400">
-							That's why one aircraft's temperature jumps by a degree or two between readings: a
-							single step in Mach is worth about 2 K at cruise. Averaging over a minute, and over
-							several aircraft, smooths it out.
-						</p>
-					</InfoTip>
-					allows {celsius(t.range[0])} to {celsius(t.range[1])}.
-				</li>
-			</ol>
+			{@const at = t.atAltitude}
+			<div class="flex flex-col gap-4 sm:flex-row">
+				<IsaChart result={t} altitude={o.inputs.altitude?.feet ?? null} />
+				<ol class="list-decimal space-y-2 pl-5 text-sm text-zinc-300">
+					<li>
+						From 5,0: true airspeed {track.tas} kt. From 6,0: Mach {heading.mach!.toFixed(3)}.
+					</li>
+					<li>
+						<strong>Speed of sound</strong> a = TAS / Mach = {track.tas} / {heading.mach!.toFixed(
+							3
+						)} =
+						{n(t.speedOfSound)} kt.
+					</li>
+					<li>
+						<InfoTip label="a = a₀ · √(T / T₀)">
+							<p>
+								The speed of sound in air is √(γ·R·T): γ = 1.4 (how air's pressure responds to
+								compression) and R = 287 J/(kg·K) (air's gas constant) are fixed, so only the
+								absolute temperature T changes it.
+							</p>
+							<p>
+								Written relative to the standard sea level (T₀ = {T0} K, 15 °C, where a₀ = {n(
+									A0,
+									2
+								)} kt) it needs no constants at all.
+							</p>
+						</InfoTip>, solved for T: T = {T0} K × ({n(t.speedOfSound)} / {n(A0, 2)})² =
+						<strong>{n(t.kelvin)} K = {celsius(t.kelvin)}</strong> (white dot).
+					</li>
+					{#if at}
+						<li>
+							<InfoTip label="Standard atmosphere">
+								<p>
+									The <strong>International Standard Atmosphere</strong> (ISA) is an agreed average: 15
+									°C at sea level, 1.98 °C colder per 1,000 ft, and −56.5 °C from the tropopause at 36,089
+									ft up. Altimeters and performance charts are built on it.
+								</p>
+								<p>
+									Real air is rarely exactly standard, so temperatures aloft are often given as the
+									difference: "ISA +10" is 10 °C warmer than standard. Unlike the temperature
+									itself, it hardly changes when an aircraft climbs, which makes aircraft at
+									different levels comparable.
+								</p>
+								<p class="text-zinc-400">
+									Warm air also makes the altimeter read low (pressure levels are further apart):
+									one of the tricks for step 3.
+								</p>
+							</InfoTip>
+							at {flightLevel(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is
+							<span class={at.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
+								>{n(Math.abs(at.isaDeviation))} °C {at.isaDeviation >= 0
+									? 'warmer'
+									: 'colder'}</span
+							>: <strong>{isaText(at.isaDeviation)}</strong>.
+						</li>
+					{/if}
+					<li>
+						<span class="text-amber-300">The probe</span> outside reads more:
+						<InfoTip label="TAT = T · (1 + 0.2 M²)">
+							<p>
+								<strong>Total air temperature.</strong> The air hitting the probe is brought to a stop,
+								and its energy of motion turns into heat. 0.2 is (γ − 1)/2 for air, with γ = 1.4.
+							</p>
+							<p class="text-zinc-400">
+								Air data computers work the other way: they measure TAT and calculate the static
+								temperature from it and the Mach number. That's also why a parked aircraft in the
+								sun shows a much too warm "outside temperature".
+							</p>
+						</InfoTip>
+						= {celsius(t.total)} (hollow dot), {n(t.total - t.kelvin, 0)} °C warmer than the air.
+					</li>
+					{#if at}
+						<li>
+							<strong>Air density</strong> ρ = p / (R·T) = {Math.round(
+								at.pressure
+							).toLocaleString()} Pa / (287.05 × {n(t.kelvin)} K) = {at.density.toFixed(3)} kg/m³, {n(
+								(at.density / RHO0) * 100,
+								0
+							)} % of sea level. Standard air is this thin at
+							<InfoTip label="{Math.round(at.densityAltitude).toLocaleString()} ft">
+								<p>
+									The <strong>density altitude</strong>: where the standard atmosphere has this
+									density. The pressure p comes from the pressure altitude (that's what it means: FL{Math.round(
+										o.inputs.altitude!.feet / 100
+									)} is wherever the pressure is {n(at.pressure / 100)} hPa).
+								</p>
+								<p>
+									Wings and engines feel density, not pressure: in warm air they perform as if
+									higher up, in cold air as if lower. It matters most on the ground: a hot day at a
+									high airport needs a much longer take-off run.
+								</p>
+							</InfoTip>.
+						</li>
+					{/if}
+					<li class="text-zinc-400">
+						<InfoTip label="Rounding">
+							<p>
+								TAS comes in {STEP.speed} kt steps and Mach in steps of {STEP.mach} (2.048/512). The coldest
+								the air can be is with the slowest TAS and the highest Mach in those steps ({(track.tas ??
+									0) - 1} kt, {(heading.mach! + STEP.mach / 2).toFixed(3)}), the warmest the other
+								way round.
+							</p>
+							<p class="text-zinc-400">
+								That's why one aircraft's temperature jumps by a degree or two between readings: a
+								single step in Mach is worth about 2 K at cruise. Averaging over a minute, and over
+								several aircraft, smooths it out.
+							</p>
+						</InfoTip>
+						allows {celsius(t.range[0])} to {celsius(t.range[1])}.
+					</li>
+				</ol>
+			</div>
 		{/if}
 	</div>
 </div>

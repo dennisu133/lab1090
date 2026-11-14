@@ -68,6 +68,21 @@ describe('the capture', () => {
 		expect([Math.min(...feet), Math.max(...feet)]).toEqual([31_700, 39_050]);
 	});
 
+	test('compared with the standard atmosphere: −6 to +9 K', () => {
+		const deviations = trustedTemperature.map((o) => o.temperature!.atAltitude!.isaDeviation);
+		expect(deviations.length).toBe(trustedTemperature.length); // every one had an altitude
+		expect(Math.min(...deviations)).toBeCloseTo(-5.9, 1);
+		expect(Math.max(...deviations)).toBeCloseTo(9.4, 1);
+		// Per aircraft (one-minute averages), all but one were warmer than standard.
+		const averages = aircraft.map((a) => a.average.isaDeviation!);
+		expect(averages.filter((d) => d < 0).length).toBe(1);
+	});
+
+	test('drift up to 11°: an 89 kt westerly straight across a southbound aircraft (440822)', () => {
+		const drifts = trustedWind.map((o) => Math.abs(o.wind!.components.drift));
+		expect(Math.max(...drifts)).toBeCloseTo(11.4, 1);
+	});
+
 	test("each aircraft's trusted winds stay close to its own average", () => {
 		// The jet stream doesn't change much in a minute, so this mostly measures noise:
 		// rounding, the time between the replies, the register update rates.

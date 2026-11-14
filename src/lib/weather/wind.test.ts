@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { angleDifference, meanWind, toVector, windTriangle } from './wind';
+import { angleDifference, components, meanWind, toVector, windTriangle } from './wind';
 
 describe('the wind triangle', () => {
 	test('no wind: the aircraft goes where it points, as fast as it flies', () => {
@@ -82,5 +82,36 @@ describe('helpers', () => {
 		const d = windTriangle({ speed: 410, track: 190 }, { speed: 400, heading: 190 });
 		expect(angleDifference(meanWind([c, d])!.direction, 0)).toBeCloseTo(0, 9);
 		expect(meanWind([])).toBeNull();
+	});
+});
+
+describe('components', () => {
+	test('a pure tailwind and a pure crosswind', () => {
+		const tail = windTriangle({ speed: 450, track: 90 }, { speed: 400, heading: 90 });
+		expect(components(tail, 90, 90)).toEqual({
+			tailwind: 50,
+			crosswind: expect.any(Number),
+			drift: 0
+		});
+		expect(components(tail, 90, 90).crosswind).toBeCloseTo(0, 9);
+		// Heading north, 10 kt from the west: pushed right (east), drifting right.
+		const ground = { speed: Math.hypot(100, 10), track: (Math.atan2(10, 100) * 180) / Math.PI };
+		const c = components(windTriangle(ground, { speed: 100, heading: 0 }), 0, ground.track);
+		expect(c.tailwind).toBeCloseTo(0, 9);
+		expect(c.crosswind).toBeCloseTo(10, 9);
+		expect(c.drift).toBeCloseTo(5.71, 2);
+	});
+
+	test('they rebuild the ground vector: tan(drift) = crosswind / (TAS + tailwind)', () => {
+		const tas = 432;
+		const heading = 81.595;
+		const ground = { speed: 488, track: 80.332 };
+		const c = components(windTriangle(ground, { speed: tas, heading }), heading, ground.track);
+		expect(Math.hypot(tas + c.tailwind, c.crosswind)).toBeCloseTo(ground.speed, 9);
+		expect((Math.atan2(c.crosswind, tas + c.tailwind) * 180) / Math.PI).toBeCloseTo(c.drift, 9);
+		// 44CE75 from the capture: a 56 kt tailwind, pushed 11 kt to the left, 1.3° drift.
+		expect(c.tailwind).toBeCloseTo(55.9, 1);
+		expect(c.crosswind).toBeCloseTo(-10.8, 1);
+		expect(c.drift).toBeCloseTo(-1.26, 2);
 	});
 });

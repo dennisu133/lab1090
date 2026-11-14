@@ -29,12 +29,32 @@
  * assumes the transponder rounds to the nearest step; if it truncated, the true values
  * would be up to a whole step higher, which shifts the result but hardly widens it.
  *
+ * Around these, what follows from them: the wind split along and across the aircraft
+ * (tailwind, crosswind, drift), and with the pressure altitude, the temperature compared
+ * with the standard atmosphere, the air density and the density altitude (air-data.ts).
+ *
  * Shared by server and browser; no state here (pairing replies is tracker.ts's job).
  */
-import { temperatureFromMach } from '#lib/modes/air-data.ts';
+import {
+	airDensity,
+	densityAltitude,
+	isaTemperature,
+	staticPressure,
+	temperatureFromMach,
+	totalTemperature
+} from '#lib/modes/air-data.ts';
 import type { HeadingAndSpeed, TrackAndTurn } from '#lib/modes/registers.ts';
 import { declination } from './wmm';
-import { angleDifference, normalise, toVector, windTriangle, type Vector, type Wind } from './wind';
+import {
+	angleDifference,
+	components,
+	normalise,
+	toVector,
+	windTriangle,
+	type Components,
+	type Vector,
+	type Wind
+} from './wind';
 
 /** Replies further apart than this don't describe the same moment, ms. */
 export const MAX_SKEW_MS = 2000;
@@ -84,6 +104,8 @@ export interface WindResult {
 	/** What the rounding of the four inputs allows: speed min/max (kt), direction ± (°). */
 	speedRange: [number, number];
 	directionSpread: number;
+	/** The wind relative to the aircraft's nose (wind.ts). */
+	components: Components;
 }
 
 export interface TemperatureResult {
@@ -92,6 +114,21 @@ export interface TemperatureResult {
 	speedOfSound: number;
 	/** What the rounding of TAS and Mach allows, K. */
 	range: [number, number];
+	/** What the probe outside reads, K (warmed by stopping the air). */
+	total: number;
+	/** Needs the pressure altitude; null without one. */
+	atAltitude: {
+		/** The standard atmosphere's temperature there, K. */
+		isa: number;
+		/** Measured − standard, K: how much warmer (+) or colder (−) the air is. */
+		isaDeviation: number;
+		/** Static pressure, Pa: what pressure altitude means. */
+		pressure: number;
+		/** kg/m³ */
+		density: number;
+		/** ft: where the standard atmosphere is this dense. */
+		densityAltitude: number;
+	} | null;
 }
 
 export interface Observation {
@@ -155,7 +192,7 @@ export function observe(icao: string, inputs: Inputs): Observation {
 	if (tMissing.length > 0) temperatureProblem = `no ${tMissing.join(', ')}`;
 	else if (mach! <= STEP.mach) temperatureProblem = `Mach ${mach!.toFixed(3)} is too small`;
 	else {
-		temperature = temperatureResult(tas!, mach!);
+		temperature = temperatureResult(tas!, mach!, inputs.altitude?.feet ?? null);
 		temperatureProblem = tooFar;
 	}
 
@@ -220,17 +257,38 @@ function windResult(
 		air: toVector(tas, trueHeading),
 		wind,
 		speedRange: [min, max],
-		directionSpread: spread
+		directionSpread: spread,
+		components: components(wind, trueHeading, track)
 	};
 }
 
-function temperatureResult(tas: number, mach: number): TemperatureResult {
+function temperatureResult(
+	tas: number,
+	mach: number,
+	altitudeFt: number | null
+): TemperatureResult {
 	const s = STEP.speed / 2;
 	const m = STEP.mach / 2;
+	const kelvin = temperatureFromMach(tas, mach);
+	let atAltitude: TemperatureResult['atAltitude'] = null;
+	if (altitudeFt !== null) {
+		const isa = isaTemperature(altitudeFt);
+		const pressure = staticPressure(altitudeFt);
+		const density = airDensity(pressure, kelvin);
+		atAltitude = {
+			isa,
+			isaDeviation: kelvin - isa,
+			pressure,
+			density,
+			densityAltitude: densityAltitude(density)
+		};
+	}
 	return {
-		kelvin: temperatureFromMach(tas, mach),
+		kelvin,
 		speedOfSound: tas / mach,
 		// Coldest: slowest TAS at the highest Mach; warmest the other way round.
-		range: [temperatureFromMach(tas - s, mach + m), temperatureFromMach(tas + s, mach - m)]
+		range: [temperatureFromMach(tas - s, mach + m), temperatureFromMach(tas + s, mach - m)],
+		total: totalTemperature(kelvin, mach),
+		atAltitude
 	};
 }

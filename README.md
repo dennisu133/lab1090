@@ -23,7 +23,9 @@ Pages:
   that was inferred, compared with what the same aircraft broadcasts via ADS-B.
 - **/weather**: wind and temperature at each aircraft, worked out from its Comm-B registers
   (5,0 and 6,0): the wind triangle with the World Magnetic Model for the declination, and
-  the temperature from true airspeed and Mach. Every step shown with its own numbers.
+  the temperature from true airspeed and Mach. From those: tailwind, crosswind and drift,
+  the deviation from the standard atmosphere, the total air temperature, the air density.
+  Every step shown with its own numbers.
 - **/**: the tracker (planned).
 
 ## Hardware

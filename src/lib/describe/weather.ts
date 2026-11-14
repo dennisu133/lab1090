@@ -4,7 +4,7 @@
  * calculation with this observation's own numbers, so any value can be checked by hand.
  */
 import { compass } from '#lib/geo.ts';
-import { A0, T0 } from '#lib/modes/air-data.ts';
+import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
 import { MAX_ROLL, MAX_SKEW_MS, type Observation } from '#lib/weather/observation.ts';
 import type { Wind } from '#lib/weather/wind.ts';
 import type { Field } from './frame';
@@ -30,6 +30,21 @@ export const windText = (w: Wind) =>
 export const signed = (x: number, digits = 1) =>
 	`${x < 0 ? '−' : x > 0 ? '+' : ''}${Math.abs(x).toFixed(digits)}`;
 
+/** "ISA +3": measured minus standard temperature, whole kelvin (= °C). */
+export const isaText = (deviation: number) => `ISA ${signed(deviation, 0)}`;
+
+/** "56 kt tailwind", "12 kt headwind" */
+export const alongText = (tailwind: number) =>
+	`${Math.abs(tailwind).toFixed(0)} kt ${tailwind >= 0 ? 'tailwind' : 'headwind'}`;
+
+/** "11 kt crosswind from the right": positive crosswind pushes right, so comes from the left. */
+export const acrossText = (crosswind: number) =>
+	`${Math.abs(crosswind).toFixed(0)} kt crosswind from the ${crosswind >= 0 ? 'left' : 'right'}`;
+
+/** "1.3° right" */
+export const driftText = (drift: number) =>
+	`${Math.abs(drift).toFixed(1)}° ${drift >= 0 ? 'right' : 'left'}`;
+
 /** "FL370" above 18,000 ft (where everyone uses the standard pressure setting), else feet. */
 export function flightLevel(feet: number): string {
 	return feet >= 18_000
@@ -39,7 +54,7 @@ export function flightLevel(feet: number): string {
 
 export function windFields(o: Observation): Field[] {
 	if (!o.wind) return [{ value: '—', title: o.windProblem ?? '', tone: 'minor' }];
-	const { wind, speedRange, directionSpread, declination, trueHeading } = o.wind;
+	const { wind, speedRange, directionSpread, declination, trueHeading, components: c } = o.wind;
 	const { groundSpeed, track, tas } = o.inputs.trackAndTurn.value;
 	const heading = o.inputs.headingAndSpeed.value.heading!;
 	const title = [
@@ -49,6 +64,8 @@ export function windFields(o: Observation): Field[] {
 		`Ground vector: ${groundSpeed} kt towards ${track!.toFixed(1)}° (5,0)`,
 		`Air vector: ${tas} kt towards ${trueHeading.toFixed(1)}° (TAS from 5,0, heading from 6,0)`,
 		`Wind = ground − air: ${wind.speed.toFixed(1)} kt towards ${((wind.direction + 180) % 360).toFixed(1)}°, so from ${wind.direction.toFixed(1)}°`,
+		'',
+		`For the aircraft: ${alongText(c.tailwind)}, ${acrossText(c.crosswind)}, drifting ${driftText(c.drift)}.`,
 		'',
 		`Rounding of the four inputs allows ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, ±${directionSpread.toFixed(1)}°.`
 	].join('\n');
@@ -67,7 +84,7 @@ export function windFields(o: Observation): Field[] {
 
 export function temperatureFields(o: Observation): Field[] {
 	if (!o.temperature) return [{ value: '—', title: o.temperatureProblem ?? '', tone: 'minor' }];
-	const { kelvin, speedOfSound, range } = o.temperature;
+	const { kelvin, speedOfSound, range, total, atAltitude: at } = o.temperature;
 	const tas = o.inputs.trackAndTurn.value.tas!;
 	const mach = o.inputs.headingAndSpeed.value.mach!;
 	const title = [
@@ -76,6 +93,14 @@ export function temperatureFields(o: Observation): Field[] {
 		`Speed of sound a = TAS / Mach = ${tas} kt / ${mach.toFixed(3)} = ${speedOfSound.toFixed(1)} kt`,
 		`a = ${A0.toFixed(2)} kt × √(T / ${T0} K), so`,
 		`T = ${T0} K × (${speedOfSound.toFixed(1)} / ${A0.toFixed(2)})² = ${kelvin.toFixed(1)} K`,
+		'',
+		...(at
+			? [
+					`Standard atmosphere at this altitude: ${celsius(at.isa)}, so ${isaText(at.isaDeviation)} (${at.isaDeviation >= 0 ? 'warmer' : 'colder'} than standard).`,
+					`Air density ${at.density.toFixed(3)} kg/m³ (${((at.density / RHO0) * 100).toFixed(0)} % of sea level), density altitude ${Math.round(at.densityAltitude).toLocaleString()} ft.`
+				]
+			: ['No altitude: no comparison with the standard atmosphere.']),
+		`The temperature probe reads ${celsius(total)} (total air temperature: warmed by stopping the air).`,
 		'',
 		`Rounding (TAS ±1 kt, Mach ±0.002) allows ${celsius(range[0])} to ${celsius(range[1])}.`
 	].join('\n');

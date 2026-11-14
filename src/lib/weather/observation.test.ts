@@ -69,6 +69,42 @@ describe('a real pair', () => {
 	});
 });
 
+describe('what follows from it', () => {
+	const o = observe('44CE75', inputs());
+
+	test('the wind as the aircraft feels it: tailwind, crosswind, drift', () => {
+		const c = o.wind!.components;
+		expect(c.tailwind).toBeCloseTo(55.9, 1);
+		expect(c.crosswind).toBeCloseTo(-10.8, 1); // from the right, pushing it left
+		expect(c.drift).toBeCloseTo(-1.26, 2); // track 80.33° − true heading 81.60°
+	});
+
+	test('3 °C warmer than the standard atmosphere at FL390', () => {
+		const a = o.temperature!.atAltitude!;
+		expect(a.isa).toBe(216.65); // above the tropopause: −56.5 °C
+		expect(a.isaDeviation).toBeCloseTo(3.0, 1);
+	});
+
+	test('the probe reads 25 °C warmer than the air', () => {
+		// TAT = 219.66 K × (1 + 0.2 × 0.748²) = 244.24 K = −28.9 °C
+		expect(o.temperature!.total - 273.15).toBeCloseTo(-28.9, 1);
+	});
+
+	test('density: a quarter of sea level, like 300 ft higher in standard air', () => {
+		const a = o.temperature!.atAltitude!;
+		expect(a.pressure).toBeCloseTo(19_677, 0); // 196.8 hPa: what FL390 means
+		expect(a.density).toBeCloseTo(0.3121, 4); // ρ = p / (R·T)
+		// Warmer than standard: thinner air, so a higher density altitude.
+		expect(a.densityAltitude).toBeCloseTo(39_287, -1);
+	});
+
+	test('no altitude: no comparison with the standard atmosphere', () => {
+		const t = observe('x', inputs({}, {}, 2, { altitude: null })).temperature!;
+		expect(t.atAltitude).toBeNull();
+		expect(t.kelvin).toBeCloseTo(o.temperature!.kelvin, 9);
+	});
+});
+
 describe('when not to trust it', () => {
 	test('replies too far apart: neither wind nor temperature', () => {
 		const o = observe('44CE75', inputs({}, {}, 2500));

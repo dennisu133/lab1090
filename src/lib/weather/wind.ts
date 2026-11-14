@@ -86,3 +86,34 @@ export function meanWind(winds: Wind[]): Wind | null {
 	};
 	return { speed: speedOf(vector), direction: normalise(directionOf(vector) + 180), vector };
 }
+
+/**
+ * The wind as the aircraft feels it: split along its heading and across it.
+ *
+ * - tailwind: the part blowing in the direction the nose points (negative = headwind).
+ *   It's what makes the ground speed differ from the airspeed.
+ * - crosswind: the part across, positive when it pushes the aircraft to the right (so it
+ *   comes from the left).
+ * - drift: the angle between where the nose points and where the aircraft goes (track −
+ *   heading, positive = drifting right). The crosswind causes it: tan(drift) =
+ *   crosswind / (TAS + tailwind).
+ *
+ * Pilots work these out before every take-off and landing (the runway's crosswind limit)
+ * and for every leg of a flight plan (the tailwind changes the flight time).
+ */
+export interface Components {
+	tailwind: number;
+	crosswind: number;
+	drift: number;
+}
+
+export function components(wind: Wind, trueHeading: number, track: number): Components {
+	const nose = toVector(1, trueHeading);
+	const right = toVector(1, trueHeading + 90);
+	const { north, east } = wind.vector;
+	return {
+		tailwind: north * nose.north + east * nose.east,
+		crosswind: north * right.north + east * right.east,
+		drift: angleDifference(trueHeading, track)
+	};
+}

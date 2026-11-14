@@ -9,6 +9,7 @@
 	import {
 		celsius,
 		flightLevel,
+		signed,
 		temperatureFields,
 		windFields,
 		windText
@@ -59,7 +60,7 @@
 		<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
-					<th class="w-36 py-1 font-normal">Aircraft</th>
+					<th class="w-32 py-1 font-normal xl:w-36">Aircraft</th>
 					<th class="w-24 py-1 font-normal">
 						<InfoTip label="Altitude">
 							<p>
@@ -74,7 +75,7 @@
 							</p>
 						</InfoTip>
 					</th>
-					<th class="w-44 py-1 font-normal">
+					<th class="w-40 py-1 font-normal xl:w-44">
 						<InfoTip label="Wind">
 							<p>
 								Where the wind blows <strong>from</strong> (true north, three digits as in weather reports)
@@ -92,6 +93,21 @@
 						</InfoTip>
 					</th>
 					<th class="w-48 py-1 font-normal">{minute} s average</th>
+					<th class="w-16 py-1 font-normal">
+						<InfoTip label="ISA">
+							<p>
+								How much warmer (+) or colder (−) than the standard atmosphere, in °C, averaged over
+								the last {minute} s. The standard atmosphere has 15 °C at sea level, 1.98 °C less per
+								1,000 ft, and −56.5 °C from 36,089 ft up.
+							</p>
+							<p>
+								For an aircraft that climbs or descends this is the better average: in a minute at
+								2,000 ft/min the temperature drops by 4 °C from the height alone, the deviation
+								hardly changes. It also makes aircraft at different levels comparable: if they all
+								show about the same, they're in the same air mass.
+							</p>
+						</InfoTip>
+					</th>
 					<th class="w-20 py-1 text-right font-normal">
 						<InfoTip label="Trusted" align="right">
 							<p>
@@ -153,6 +169,18 @@
 								>
 							{/if}
 						</td>
+						<td class="py-0.5 whitespace-nowrap">
+							{#if avg.isaDeviation !== null}
+								<span
+									class={avg.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
+									title="Mean deviation from the standard atmosphere of {avg.isaCount} trusted temperatures of the last {minute} s: {avg.isaDeviation.toFixed(
+										1
+									)} °C"
+								>
+									{signed(avg.isaDeviation, 0)}
+								</span>
+							{/if}
+						</td>
 						<td
 							class="py-0.5 text-right text-zinc-400"
 							title="{a.trustedWinds} of {a.observations} observations had a trusted wind"
@@ -171,7 +199,7 @@
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="7" class="py-4 text-zinc-500">
+						<td colspan="8" class="py-4 text-zinc-500">
 							Waiting for a radar to read 5,0 and 6,0 from an aircraft…
 						</td>
 					</tr>

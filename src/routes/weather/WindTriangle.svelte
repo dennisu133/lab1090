@@ -5,11 +5,12 @@
 	sliver. The main view zooms in on where the two long vectors end: the air vector's tip
 	(where the aircraft would be after an hour without wind) and the ground vector's tip
 	(where it really is). The wind is the arrow between them. The inset shows the whole
-	triangle at true scale, with the zoomed area marked.
+	triangle at true scale, with the zoomed area marked. Dashed: the wind split along the
+	aircraft's heading (tailwind or headwind) and across it (crosswind).
 -->
 <script lang="ts">
 	import type { WindResult } from '#lib/weather/observation.ts';
-	import type { Vector } from '#lib/weather/wind.ts';
+	import { toVector, type Vector } from '#lib/weather/wind.ts';
 
 	let { result }: { result: WindResult } = $props();
 
@@ -34,6 +35,11 @@
 	let origin = $derived(px({ north: 0, east: 0 }));
 	let airTip = $derived(px(result.air));
 	let groundTip = $derived(px(result.ground));
+	/** The corner of the components: from the air vector's tip, the tailwind along the heading. */
+	let corner = $derived.by(() => {
+		const along = toVector(result.components.tailwind, result.trueHeading);
+		return px({ north: result.air.north + along.north, east: result.air.east + along.east });
+	});
 
 	/** Grid lines every 10 kt, in pixels. */
 	let grid = $derived.by(() => {
@@ -75,7 +81,7 @@
 
 <svg
 	viewBox="0 0 {SIZE} {SIZE}"
-	class="h-auto w-full max-w-72 shrink-0 overflow-hidden rounded bg-zinc-950"
+	class="h-auto w-full max-w-60 shrink-0 overflow-hidden rounded bg-zinc-950"
 	role="img"
 	aria-label="Wind triangle: the wind is the arrow from the tip of the air vector to the tip of the ground vector"
 >
@@ -102,6 +108,14 @@
 		stroke-width="2"
 	/>
 	<polygon points={head(origin, groundTip)} class="fill-amber-400" />
+
+	<!-- The wind split into tailwind (along the heading) and crosswind (across it). -->
+	<polyline
+		points="{airTip.x},{airTip.y} {corner.x},{corner.y} {groundTip.x},{groundTip.y}"
+		class="fill-none stroke-zinc-400"
+		stroke-width="1"
+		stroke-dasharray="3 3"
+	/>
 
 	<!-- The wind: from the air vector's tip to the ground vector's tip. -->
 	{#if result.wind.speed > 0.5}

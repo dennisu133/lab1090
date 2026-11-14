@@ -27,6 +27,13 @@ export interface Average {
 	windCount: number;
 	kelvin: number | null;
 	temperatureCount: number;
+	/**
+	 * Mean deviation from the standard atmosphere, K. More telling than the mean
+	 * temperature for an aircraft that climbs or descends: in a minute at 2,000 ft/min the
+	 * temperature falls by 4 °C just from the height, the deviation hardly changes.
+	 */
+	isaDeviation: number | null;
+	isaCount: number;
 }
 
 export interface WeatherAircraft {
@@ -50,7 +57,7 @@ interface State {
 	headingAndSpeed: Reading<HeadingAndSpeed> | null;
 	/** Trusted values of the last AVERAGE_MS. */
 	winds: { rx: number; wind: Wind }[];
-	kelvins: { rx: number; kelvin: number }[];
+	kelvins: { rx: number; kelvin: number; isaDeviation: number | null }[];
 	snapshot: WeatherAircraft | null;
 }
 
@@ -91,7 +98,11 @@ export class WeatherTracker {
 		});
 		if (o.wind && !o.windProblem) state.winds.push({ rx: o.rx, wind: o.wind.wind });
 		if (o.temperature && !o.temperatureProblem)
-			state.kelvins.push({ rx: o.rx, kelvin: o.temperature.kelvin });
+			state.kelvins.push({
+				rx: o.rx,
+				kelvin: o.temperature.kelvin,
+				isaDeviation: o.temperature.atAltitude?.isaDeviation ?? null
+			});
 		this.#trim(state, o.rx);
 
 		const old = state.snapshot;
@@ -142,11 +153,14 @@ export class WeatherTracker {
 }
 
 function average(state: State): Average {
-	const n = state.kelvins.length;
+	const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+	const deviations = state.kelvins.flatMap((k) => k.isaDeviation ?? []);
 	return {
 		wind: meanWind(state.winds.map((w) => w.wind)),
 		windCount: state.winds.length,
-		kelvin: n ? state.kelvins.reduce((s, k) => s + k.kelvin, 0) / n : null,
-		temperatureCount: n
+		kelvin: mean(state.kelvins.map((k) => k.kelvin)),
+		temperatureCount: state.kelvins.length,
+		isaDeviation: mean(deviations),
+		isaCount: deviations.length
 	};
 }

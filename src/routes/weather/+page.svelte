@@ -10,6 +10,7 @@
 		windFields
 	} from '#lib/describe/weather.ts';
 	import type { Observation } from '#lib/weather/observation.ts';
+	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import AircraftTable from './AircraftTable.svelte';
 	import Calculation from './Calculation.svelte';
@@ -35,13 +36,25 @@
 		{ value: 'not used', label: 'Wind not used' }
 	];
 
-	/** The worked example: the selected aircraft, else the first one with a trusted wind. */
+	/** Without a selection, the example sticks to one aircraft while it keeps sending. */
+	const ACTIVE_MS = 10_000;
+	/** Bookkeeping for the derived below, not state: which aircraft it picked last time. */
+	let picked: string | null = null;
+
+	/**
+	 * The worked example: the selected aircraft; else the one picked before, as long as it
+	 * sent a pair in the last 10 s; else the first active one with a trusted wind.
+	 */
 	let example = $derived.by(() => {
 		if (held) return held;
+		const active = (a: WeatherAircraft) => stream.now - a.lastRx <= ACTIVE_MS;
 		const a =
 			stream.aircraft.find((a) => a.icao === selected) ??
+			stream.aircraft.find((a) => a.icao === picked && active(a)) ??
+			stream.aircraft.find((a) => a.lastWind && active(a)) ??
 			stream.aircraft.find((a) => a.lastWind) ??
 			stream.aircraft[0];
+		if (a && a.icao !== selected) picked = a.icao;
 		return a ? { observation: a.latest, callsign: a.callsign } : null;
 	});
 
@@ -203,7 +216,7 @@
 			<Calculation observation={example.observation} />
 		{:else}
 			<!-- As tall as the cards will be, so nothing jumps when the first pair arrives. -->
-			<p class="h-98 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500 xl:h-106">
+			<p class="h-176 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
 				Waiting for a 5,0/6,0 pair…
 			</p>
 		{/if}

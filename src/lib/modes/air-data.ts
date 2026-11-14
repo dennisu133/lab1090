@@ -13,17 +13,42 @@
  * Shared by server and browser; no state here.
  */
 
-/** Sea-level pressure (Pa), temperature (K) and speed of sound (kt) in the standard atmosphere. */
-const P0 = 101_325;
-export const T0 = 288.15;
-export const A0 = 661.4786;
+/**
+ * The International Standard Atmosphere (ISA, ICAO Doc 7488): an agreed, average
+ * atmosphere that altimeters, airspeed indicators and performance tables are built on.
+ * At sea level 1013.25 hPa and 15 °C; the temperature falls by 6.5 °C per km (1.98 °C per
+ * 1,000 ft) up to the tropopause at 11 km (36,089 ft), then stays at −56.5 °C up to 20 km.
+ */
+export const P0 = 101_325; // Pa
+export const T0 = 288.15; // K
+export const A0 = 661.4786; // speed of sound, kt
+/** Specific gas constant of dry air, J/(kg·K). */
+export const R_AIR = 287.053;
+/** Sea-level density, 1.225 kg/m³ (from the gas law, so it matches isaDensity(0) exactly). */
+export const RHO0 = P0 / (R_AIR * T0);
+/** Lapse rate (K/m), tropopause height (m) and temperature (K). */
+const LAPSE = 0.0065;
+const H11 = 11_000;
+export const T11 = 216.65;
+const G0 = 9.806_65;
+/** g / (L·R) = 5.25588: how pressure follows temperature in the troposphere. */
+const EXPONENT = G0 / (LAPSE * R_AIR);
+/** Above the tropopause pressure and density fall by e every R·T/g = 6,341.6 m. */
+const SCALE_HEIGHT = (R_AIR * T11) / G0;
+const RHO11 = RHO0 * (T11 / T0) ** (EXPONENT - 1);
+const FT = 0.3048;
+
+/** ISA temperature at a pressure altitude, K. */
+export function isaTemperature(altitudeFt: number): number {
+	return Math.max(T0 - LAPSE * altitudeFt * FT, T11);
+}
 
 /** Static pressure at a pressure altitude, Pa (ISA, valid up to 65,000 ft). */
 export function staticPressure(altitudeFt: number): number {
-	const h = altitudeFt * 0.3048;
-	if (h <= 11_000) return P0 * (1 - (0.0065 * h) / 288.15) ** 5.255_88;
+	const h = altitudeFt * FT;
+	if (h <= H11) return P0 * (isaTemperature(altitudeFt) / T0) ** EXPONENT;
 	// Above 11 km (36,089 ft) the temperature stays at −56.5 °C: pressure falls exponentially.
-	return 22_632.06 * Math.exp(-(h - 11_000) / 6341.62);
+	return P0 * (T11 / T0) ** EXPONENT * Math.exp(-(h - H11) / SCALE_HEIGHT);
 }
 
 /**
@@ -62,4 +87,44 @@ export function speedOfSound(kelvin: number): number {
  */
 export function temperatureFromMach(tasKt: number, mach: number): number {
 	return T0 * (tasKt / (mach * A0)) ** 2;
+}
+
+/**
+ * Total air temperature, K: what a temperature probe on the outside of the aircraft reads.
+ * The air hitting it is brought to a stop, and its kinetic energy turns into heat:
+ *
+ *   TAT = SAT · (1 + (γ − 1)/2 · M²) = SAT · (1 + 0.2 M²)
+ *
+ * At Mach 0.8 that's 13 % warmer in kelvin: about +28 °C at cruise. Air data computers go
+ * the other way (they measure TAT and work out SAT). Real probes recover slightly less
+ * than all the heat (a recovery factor of 0.97–1); this is the ideal value.
+ */
+export function totalTemperature(staticKelvin: number, mach: number): number {
+	return staticKelvin * (1 + 0.2 * mach ** 2);
+}
+
+/** Air density, kg/m³, from pressure (Pa) and temperature (K): the ideal gas law ρ = p / (R·T). */
+export function airDensity(pascal: number, kelvin: number): number {
+	return pascal / (R_AIR * kelvin);
+}
+
+/** ISA density at a pressure altitude, kg/m³. */
+export function isaDensity(altitudeFt: number): number {
+	return airDensity(staticPressure(altitudeFt), isaTemperature(altitudeFt));
+}
+
+/**
+ * Density altitude, ft: the altitude in the standard atmosphere where the air is this
+ * dense. Wings and engines feel density, not pressure: in air colder than standard they
+ * perform as if lower, in warm air as if higher (why hot airports need longer runways).
+ *
+ * Inverts isaDensity: in the troposphere ρ/ρ₀ = (T/T₀)^4.256, above it ρ falls by e every
+ * 6,341.6 m.
+ */
+export function densityAltitude(rho: number): number {
+	if (rho >= RHO11) {
+		const theta = (rho / RHO0) ** (1 / (EXPONENT - 1));
+		return (T0 * (1 - theta)) / LAPSE / FT;
+	}
+	return (H11 - SCALE_HEIGHT * Math.log(rho / RHO11)) / FT;
 }
