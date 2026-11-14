@@ -189,44 +189,46 @@
 		</h2>
 		<!-- Fixed layout: only Register takes the remaining width, so changing counts never move
 		     the columns. Widths go on <col>: the header's colspan cells can't carry them. -->
-		<table class="w-full table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
-			<colgroup>
-				<col class="w-14" />
-				<col />
-				<col class="w-24" />
-				<col class="w-20" />
-				<col class="w-24" />
-				<col class="w-20" />
-			</colgroup>
-			<thead class="text-left text-xs text-zinc-500">
-				<tr>
-					<th class="py-1 font-normal">BDS</th>
-					<th class="py-1 font-normal">Register</th>
-					<th class="py-1 text-right font-normal" colspan="2">Broadcast (ADS-B)</th>
-					<th class="py-1 text-right font-normal" colspan="2">Interrogated (Comm-B)</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each rows as row (row.key)}
-					<tr
-						class={[
-							'cursor-pointer border-t border-zinc-900 hover:bg-zinc-900',
-							register === row.key && 'bg-sky-950'
-						]}
-						onclick={() => (register = register === row.key ? null : row.key)}
-					>
-						<td class="py-0.5 font-mono">{row.key in SPECIAL ? '' : row.key}</td>
-						<td class={['py-0.5', row.key in SPECIAL && 'text-zinc-400']}>{row.name}</td>
-						<td class="py-0.5 text-right">{n(row.count.broadcast)}</td>
-						<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.broadcast)}</td>
-						<td class="py-0.5 text-right">{n(row.count.interrogated)}</td>
-						<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.interrogated)}</td>
+		<div class="overflow-x-auto lg:overflow-visible">
+			<table class="w-full min-w-xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+				<colgroup>
+					<col class="w-14" />
+					<col />
+					<col class="w-24" />
+					<col class="w-20" />
+					<col class="w-24" />
+					<col class="w-20" />
+				</colgroup>
+				<thead class="text-left text-xs text-zinc-500">
+					<tr>
+						<th class="py-1 font-normal">BDS</th>
+						<th class="py-1 font-normal">Register</th>
+						<th class="py-1 text-right font-normal" colspan="2">Broadcast (ADS-B)</th>
+						<th class="py-1 text-right font-normal" colspan="2">Interrogated (Comm-B)</th>
 					</tr>
-				{:else}
-					<tr><td colspan="6" class="py-4 text-zinc-500">Waiting for frames…</td></tr>
-				{/each}
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					{#each rows as row (row.key)}
+						<tr
+							class={[
+								'cursor-pointer border-t border-zinc-900 hover:bg-zinc-900',
+								register === row.key && 'bg-sky-950'
+							]}
+							onclick={() => (register = register === row.key ? null : row.key)}
+						>
+							<td class="py-0.5 font-mono">{row.key in SPECIAL ? '' : row.key}</td>
+							<td class={['py-0.5', row.key in SPECIAL && 'text-zinc-400']}>{row.name}</td>
+							<td class="py-0.5 text-right">{n(row.count.broadcast)}</td>
+							<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.broadcast)}</td>
+							<td class="py-0.5 text-right">{n(row.count.interrogated)}</td>
+							<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.interrogated)}</td>
+						</tr>
+					{:else}
+						<tr><td colspan="6" class="py-4 text-zinc-500">Waiting for frames…</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</section>
 
 	<AircraftTable
@@ -279,14 +281,16 @@
 
 		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
 		     so new readings never shift the columns; Content gets the rest and wraps. -->
-		<div class="overflow-x-auto">
-			<table class="w-full min-w-6xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+		<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
+		     off the header tooltips when the table is shorter than they are. -->
+		<div class="overflow-x-auto lg:overflow-visible">
+			<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<thead class="text-left text-xs text-zinc-500">
 					<tr>
 						<th class="w-28 py-1 font-normal">Received</th>
 						<th class="w-36 py-1 font-normal">Aircraft</th>
 						<th class="w-10 py-1 font-normal">DF</th>
-						<th class="w-32 py-1 font-normal">BDS</th>
+						<th class="w-28 py-1 font-normal">BDS</th>
 						<th class="w-36 py-1 font-normal">
 							<InfoTip label="MB">
 								<p>
@@ -307,7 +311,7 @@
 							</InfoTip>
 						</th>
 						<th class="py-1 font-normal">Content</th>
-						<th class="w-72 py-1 font-normal">
+						<th class="w-56 py-1 font-normal xl:w-72">
 							<InfoTip label="vs ADS-B" align="right">
 								<p>
 									The Comm-B reading next to what the same aircraft broadcast via ADS-B (at most 30

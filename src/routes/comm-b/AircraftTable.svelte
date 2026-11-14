@@ -92,18 +92,23 @@
 
 	<!-- Fixed layout: the register columns share what the fixed ones leave, so new readings
 	     wrap inside their cell instead of moving the columns. -->
-	<div class="overflow-x-auto">
-		<table class="w-full min-w-6xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+	<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
+	     off the header tooltips when the table is shorter than they are. -->
+	<div class="overflow-x-auto lg:overflow-visible">
+		<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
-					<th class="w-36 py-1 font-normal">Aircraft</th>
+					<th class="w-32 py-1 font-normal xl:w-36">Aircraft</th>
 					<th
-						class="w-18 py-1 text-right font-normal"
+						class="w-16 py-1 text-right font-normal xl:w-18"
 						title="Comm-B replies since the aircraft appeared here"
 					>
 						Replies
 					</th>
-					<th class="w-14 py-1 text-right font-normal" title="Seconds since its last Comm-B reply">
+					<th
+						class="w-12 py-1 text-right font-normal xl:w-14"
+						title="Seconds since its last Comm-B reply"
+					>
 						Last
 					</th>
 					<th class="py-1 font-normal">
@@ -146,7 +151,7 @@
 							</p>
 						</InfoTip>
 					</th>
-					<th class="w-80 py-1 font-normal">
+					<th class="w-52 py-1 font-normal xl:w-80">
 						<InfoTip label="Registers" align="right">
 							<p>
 								Every register a radar read from this aircraft, plus the ones it says it has.
@@ -171,9 +176,10 @@
 				{#each aircraft as a (a.icao)}
 					<tr
 						class={[
-							// h-16: three lines (3 × 20 px) plus padding, the most a row needs at the
-							// table's minimum width, so rows don't grow and shrink as readings change.
-							'h-16 cursor-pointer border-t border-zinc-900 align-top hover:bg-zinc-900',
+							// A fixed height, so rows don't grow and shrink as readings change: the most a
+							// row needs, plus padding. From xl that's three lines (3 × 20 px); narrower,
+							// the reading columns need a fourth.
+							'h-20 cursor-pointer border-t border-zinc-900 align-top hover:bg-zinc-900 xl:h-16',
 							selected === a.icao && 'bg-sky-950'
 						]}
 						onclick={() => onselect(a.icao)}

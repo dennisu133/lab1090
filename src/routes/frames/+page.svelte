@@ -261,7 +261,8 @@
 	</header>
 
 	<!-- Counts -->
-	<div class="grid gap-6 lg:grid-cols-2">
+	<!-- Side by side only from xl: at 1024 px two columns leave too little room for the names. -->
+	<div class="grid gap-6 xl:grid-cols-2">
 		<CountTable
 			title="Downlink formats"
 			keyLabel="DF"
@@ -304,7 +305,7 @@
 		</CountTable>
 	</div>
 
-	<div class="grid gap-6 lg:grid-cols-2">
+	<div class="grid gap-6 xl:grid-cols-2">
 		<CountTable
 			title="Parity check"
 			keyLabel=""
@@ -368,8 +369,10 @@
 
 		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
 		     so new frames never shift the columns; Content gets the rest and wraps. -->
-		<div class="overflow-x-auto">
-			<table class="w-full min-w-5xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+		<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
+		     off the header tooltips when the table is shorter than they are. -->
+		<div class="overflow-x-auto lg:overflow-visible">
+			<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<thead class="text-left text-xs text-zinc-500">
 					<tr>
 						<th class="w-28 py-1 font-normal">Received</th>

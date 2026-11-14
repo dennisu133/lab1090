@@ -130,27 +130,30 @@
 	{:else}
 		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">{title}</h2>
 	{/if}
-	<!-- Fixed layout: only Name takes the remaining width, so changing counts never move the columns. -->
-	<table class="w-full table-fixed text-sm tabular-nums">
-		<thead class="text-left text-xs text-zinc-500">
-			<tr>
-				<!-- the arrow column is only there if a row can expand; Share and / s are kept narrow so Name has room -->
-				<th class={['py-1 font-normal', expandable ? 'w-18 pl-5' : 'w-14']}>{keyLabel}</th>
-				<th class="py-1 font-normal">Name</th>
-				<th class="w-20 py-1 text-right font-normal">Count</th>
-				<th class="w-32 py-1 pl-4 font-normal">Share</th>
-				<th class="w-14 py-1 text-right font-normal">/ s</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each rows as row (row.key)}
-				{@render line(row, false)}
-				{#if expanded.has(row.key)}
-					{#each row.children ?? [] as sub (sub.key)}
-						{@render line(sub, true)}
-					{/each}
-				{/if}
-			{/each}
-		</tbody>
-	</table>
+	<!-- Fixed layout: only Name takes the remaining width, so changing counts never move the columns.
+	     min-w-xl leaves Name room for one line; narrower than that, the table scrolls. -->
+	<div class="overflow-x-auto lg:overflow-visible">
+		<table class="w-full min-w-xl table-fixed text-sm tabular-nums">
+			<thead class="text-left text-xs text-zinc-500">
+				<tr>
+					<!-- the arrow column is only there if a row can expand; Share and / s are kept narrow so Name has room -->
+					<th class={['py-1 font-normal', expandable ? 'w-18 pl-5' : 'w-14']}>{keyLabel}</th>
+					<th class="py-1 font-normal">Name</th>
+					<th class="w-20 py-1 text-right font-normal">Count</th>
+					<th class="w-32 py-1 pl-4 font-normal">Share</th>
+					<th class="w-14 py-1 text-right font-normal">/ s</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each rows as row (row.key)}
+					{@render line(row, false)}
+					{#if expanded.has(row.key)}
+						{#each row.children ?? [] as sub (sub.key)}
+							{@render line(sub, true)}
+						{/each}
+					{/if}
+				{/each}
+			</tbody>
+		</table>
+	</div>
 </section>
