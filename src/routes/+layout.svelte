@@ -10,7 +10,8 @@
 	const links = [
 		{ route: '/', href: resolve('/'), label: 'Home' },
 		{ route: '/frames', href: resolve('/frames'), label: 'Raw frames' },
-		{ route: '/comm-b', href: resolve('/comm-b'), label: 'Comm-B registers' }
+		{ route: '/comm-b', href: resolve('/comm-b'), label: 'Comm-B registers' },
+		{ route: '/weather', href: resolve('/weather'), label: 'Weather' }
 	];
 
 	/**
@@ -18,7 +19,7 @@
 	 * support 1024 px and up (tables scroll sideways below their minimum width); narrower
 	 * screens get a notice. The tracker (/) is meant to work on phones too, so it doesn't.
 	 */
-	const WIDE_ONLY = new Set(['/frames', '/comm-b']);
+	const WIDE_ONLY = new Set(['/frames', '/comm-b', '/weather']);
 </script>
 
 <svelte:head>

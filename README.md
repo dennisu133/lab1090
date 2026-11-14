@@ -21,6 +21,9 @@ Pages:
   per downlink format, type code and parity verdict, signal histogram.
 - **/comm-b**: Comm-B replies (DF20/21), which register they most likely came from and how
   that was inferred, compared with what the same aircraft broadcasts via ADS-B.
+- **/weather**: wind and temperature at each aircraft, worked out from its Comm-B registers
+  (5,0 and 6,0): the wind triangle with the World Magnetic Model for the declination, and
+  the temperature from true airspeed and Mach. Every step shown with its own numbers.
 - **/**: the tracker (planned).
 
 ## Hardware
@@ -84,6 +87,10 @@ aircraft is in, so it just has to be within about 150 NM of airborne aircraft (4
 aircraft on the ground). Round it to one decimal (≤ 6 km off): /frames shows it in its
 status bar. The only visible effect of rounding is on the distances and directions in the
 feed ("67 km SW"), which are measured from the reference point, not from the antenna.
+
+/weather uses it too, for aircraft that don't broadcast an ADS-B position: it looks up the
+magnetic declination there. Rounding doesn't matter for that (the declination changes by
+about a degree per 250 km here).
 
 ## Development
 

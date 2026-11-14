@@ -1,0 +1,145 @@
+/**
+ * What /weather shows of an observation (lib/weather/observation.ts): the wind, the
+ * temperature and the register values behind them, as Fields. Each tooltip carries the
+ * calculation with this observation's own numbers, so any value can be checked by hand.
+ */
+import { compass } from '#lib/geo.ts';
+import { A0, T0 } from '#lib/modes/air-data.ts';
+import { MAX_ROLL, MAX_SKEW_MS, type Observation } from '#lib/weather/observation.ts';
+import type { Wind } from '#lib/weather/wind.ts';
+import type { Field } from './frame';
+
+/** "070°": three digits, like on a chart or in a weather report. */
+export const degrees = (x: number) => `${String(Math.round(x) % 360).padStart(3, '0')}°`;
+
+/** −53.5 °C, with a real minus sign. */
+export function celsius(kelvin: number, digits = 1): string {
+	const c = kelvin - 273.15;
+	const text = Math.abs(c).toFixed(digits);
+	return `${c < 0 && Number(text) !== 0 ? '−' : ''}${text} °C`;
+}
+
+/**
+ * "W  251° 57 kt": the 8-point compass direction first (padded, so columns line up in a
+ * monospace font), then the exact one. Both say where the wind comes *from*.
+ */
+export const windText = (w: Wind) =>
+	`${compass(w.direction).padEnd(2, '\u00a0')} ${degrees(w.direction)} ${Math.round(w.speed)} kt`;
+
+/** Signed with a real minus: −0.2 */
+export const signed = (x: number, digits = 1) =>
+	`${x < 0 ? '−' : x > 0 ? '+' : ''}${Math.abs(x).toFixed(digits)}`;
+
+/** "FL370" above 18,000 ft (where everyone uses the standard pressure setting), else feet. */
+export function flightLevel(feet: number): string {
+	return feet >= 18_000
+		? `FL${String(Math.round(feet / 100)).padStart(3, '0')}`
+		: `${feet.toLocaleString()} ft`;
+}
+
+export function windFields(o: Observation): Field[] {
+	if (!o.wind) return [{ value: '—', title: o.windProblem ?? '', tone: 'minor' }];
+	const { wind, speedRange, directionSpread, declination, trueHeading } = o.wind;
+	const { groundSpeed, track, tas } = o.inputs.trackAndTurn.value;
+	const heading = o.inputs.headingAndSpeed.value.heading!;
+	const title = [
+		`Wind from ${wind.direction.toFixed(1)}° (${compass(wind.direction)}) at ${wind.speed.toFixed(1)} kt.`,
+		'',
+		`True heading = magnetic heading + declination = ${heading.toFixed(1)}° ${signed(declination)}° = ${trueHeading.toFixed(1)}°`,
+		`Ground vector: ${groundSpeed} kt towards ${track!.toFixed(1)}° (5,0)`,
+		`Air vector: ${tas} kt towards ${trueHeading.toFixed(1)}° (TAS from 5,0, heading from 6,0)`,
+		`Wind = ground − air: ${wind.speed.toFixed(1)} kt towards ${((wind.direction + 180) % 360).toFixed(1)}°, so from ${wind.direction.toFixed(1)}°`,
+		'',
+		`Rounding of the four inputs allows ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, ±${directionSpread.toFixed(1)}°.`
+	].join('\n');
+	const fields: Field[] = [
+		{ value: windText(wind), title, tone: o.windProblem ? 'minor' : 'main', mono: true }
+	];
+	if (o.windProblem) fields.push(problemField(o.windProblem, 'wind'));
+	else
+		fields.push({
+			value: `±${Math.max(Math.round((speedRange[1] - speedRange[0]) / 2), 1)}`,
+			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors (the aircraft's own magnetic variation table, compass calibration) come on top: each 1° is ${(tas! * Math.sin(Math.PI / 180)).toFixed(0)} kt at this airspeed.`,
+			tone: 'minor'
+		});
+	return fields;
+}
+
+export function temperatureFields(o: Observation): Field[] {
+	if (!o.temperature) return [{ value: '—', title: o.temperatureProblem ?? '', tone: 'minor' }];
+	const { kelvin, speedOfSound, range } = o.temperature;
+	const tas = o.inputs.trackAndTurn.value.tas!;
+	const mach = o.inputs.headingAndSpeed.value.mach!;
+	const title = [
+		`Static air temperature ${celsius(kelvin, 2)} (${kelvin.toFixed(2)} K).`,
+		'',
+		`Speed of sound a = TAS / Mach = ${tas} kt / ${mach.toFixed(3)} = ${speedOfSound.toFixed(1)} kt`,
+		`a = ${A0.toFixed(2)} kt × √(T / ${T0} K), so`,
+		`T = ${T0} K × (${speedOfSound.toFixed(1)} / ${A0.toFixed(2)})² = ${kelvin.toFixed(1)} K`,
+		'',
+		`Rounding (TAS ±1 kt, Mach ±0.002) allows ${celsius(range[0])} to ${celsius(range[1])}.`
+	].join('\n');
+	const fields: Field[] = [
+		{ value: celsius(kelvin), title, tone: o.temperatureProblem ? 'minor' : 'main' }
+	];
+	if (o.temperatureProblem) fields.push(problemField(o.temperatureProblem, 'temperature'));
+	else
+		fields.push({
+			value: `±${((range[1] - range[0]) / 2).toFixed(1)}`,
+			title: `From rounding alone: ${celsius(range[0])} to ${celsius(range[1])}`,
+			tone: 'minor'
+		});
+	return fields;
+}
+
+function problemField(problem: string, what: string): Field {
+	return { value: 'not used', title: `This ${what} isn't trusted: ${problem}`, tone: 'alert' };
+}
+
+/** The checks: time between the two replies and the bank angle. */
+export function checkFields(o: Observation): Field[] {
+	const { roll, trackRate } = o.inputs.trackAndTurn.value;
+	const skewOk = o.skewMs <= MAX_SKEW_MS;
+	const fields: Field[] = [
+		{
+			label: 'Δt',
+			value: o.skewMs < 1000 ? `${Math.round(o.skewMs)} ms` : `${(o.skewMs / 1000).toFixed(1)} s`,
+			title: `Time between the 5,0 and the 6,0 reply (receiver clock). At most ${MAX_SKEW_MS / 1000} s, so both describe the same moment.`,
+			tone: skewOk ? 'minor' : 'alert'
+		}
+	];
+	if (roll !== null)
+		fields.push({
+			label: 'bank',
+			value: `${Math.abs(roll).toFixed(1)}°`,
+			title: `Roll angle from 5,0${roll > 0 ? ' (right wing down)' : roll < 0 ? ' (left wing down)' : ''}. More than ${MAX_ROLL}° and the aircraft is turning: its heading changes too fast for the wind triangle (the temperature doesn't mind).`,
+			tone: Math.abs(roll) > MAX_ROLL ? 'alert' : 'minor'
+		});
+	else if (trackRate !== null)
+		fields.push({
+			label: 'turn',
+			value: `${trackRate.toFixed(2)}°/s`,
+			title: '5,0 has no roll angle, so its track rate decides whether the aircraft is turning',
+			tone: o.windProblem?.startsWith('turning') ? 'alert' : 'minor'
+		});
+	return fields;
+}
+
+/** The register values that go into the calculation. */
+export function inputFields(o: Observation): Field[] {
+	const { groundSpeed, track, tas } = o.inputs.trackAndTurn.value;
+	const { heading, mach } = o.inputs.headingAndSpeed.value;
+	const f = (label: string, value: string | null, title: string): Field[] =>
+		value === null ? [] : [{ label, value, title, tone: 'minor' }];
+	return [
+		...f('GS', groundSpeed === null ? null : `${groundSpeed}`, 'Ground speed, kt (5,0)'),
+		...f('TRK', track === null ? null : degrees(track), `True track: ${track?.toFixed(2)}° (5,0)`),
+		...f('TAS', tas === null ? null : `${tas}`, 'True airspeed, kt (5,0)'),
+		...f(
+			'HDG',
+			heading === null ? null : degrees(heading),
+			`Magnetic heading: ${heading?.toFixed(2)}° (6,0)${o.wind ? `; true ${o.wind.trueHeading.toFixed(2)}° with the declination of ${signed(o.wind.declination, 2)}°` : ''}`
+		),
+		...f('M', mach === null ? null : mach.toFixed(3), 'Mach number (6,0)')
+	];
+}

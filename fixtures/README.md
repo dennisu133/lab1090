@@ -35,3 +35,12 @@ Replayed in order through `AddressFilter`, 13 AP messages come out "unknown": th
 their aircraft's first DF11/17 in the recording.
 
 `oracle/` holds reference values from pyModeS for the capture's messages; see `tools/README.md`.
+
+## `wmm/`
+
+`WMM2025_TestValues.txt`: NOAA's test values for the World Magnetic Model 2025, as shipped
+with the coefficients (`WMM2025COF.zip` from
+<https://www.ncei.noaa.gov/products/world-magnetic-model>). 100 points from pole to pole,
+2025–2029.5, with declination, inclination and field components. Public domain (US
+government work). Tested in `src/lib/weather/wmm.test.ts`; the coefficients themselves are
+in `src/lib/weather/wmm2025.ts`.
