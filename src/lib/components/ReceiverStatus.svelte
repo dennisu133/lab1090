@@ -3,9 +3,9 @@
 	server ↔ Pi (the Beast connection).
 -->
 <script lang="ts">
-	import type { RawUpdate } from '#lib/receiver-types.ts';
+	import type { StreamUpdate } from '#lib/receiver-types.ts';
 
-	let { online, update }: { online: boolean; update: RawUpdate | null } = $props();
+	let { online, update }: { online: boolean; update: StreamUpdate | null } = $props();
 
 	let status = $derived(update?.status);
 </script>

@@ -10,7 +10,12 @@ import { airbornePosition, surfacePosition } from '#lib/modes/position.ts';
 import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { toSearchParams, type FrameQuery } from '#lib/frame-query.ts';
-import type { FramesResponse, RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
+import type {
+	FramesResponse,
+	StreamUpdate,
+	ReceiverCounts,
+	WireFrame
+} from '#lib/receiver-types.ts';
 import { describe, type Field, type Located } from '#lib/describe/frame.ts';
 
 export interface FeedFrame extends WireFrame {
@@ -33,10 +38,10 @@ export const LIVE_FRAMES = 1000;
 const RATE_WINDOW_MS = 10_000;
 
 /**
- * /raw's view of the live stream: every frame, decoded, plus message rates. Rates are
+ * The /frames page's view of the live stream: every frame, decoded, plus message rates. Rates are
  * computed here from how the server's running totals change over the last 10 s.
  */
-export class RawStream extends LiveFeed<FeedFrame> {
+export class FrameStream extends LiveFeed<FeedFrame> {
 	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {}, byVerdict: {} });
 
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
@@ -76,7 +81,7 @@ export class RawStream extends LiveFeed<FeedFrame> {
 		this.#samples = []; // the totals start over: so does the rate window
 	}
 
-	protected process(frames: WireFrame[], update: RawUpdate): FeedFrame[] {
+	protected process(frames: WireFrame[], update: StreamUpdate): FeedFrame[] {
 		this.#updateRates(update.counts);
 		if (frames.length === 0) return [];
 		// In arrival order: pairing depends on it.

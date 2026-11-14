@@ -9,7 +9,7 @@
 
 	const links = [
 		{ route: '/', href: resolve('/'), label: 'Home' },
-		{ route: '/raw', href: resolve('/raw'), label: 'Raw frames' },
+		{ route: '/frames', href: resolve('/frames'), label: 'Raw frames' },
 		{ route: '/comm-b', href: resolve('/comm-b'), label: 'Comm-B registers' }
 	];
 </script>

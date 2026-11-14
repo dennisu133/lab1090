@@ -88,8 +88,8 @@
 					doesn't say, so a receiver that only listens has to work it out.
 				</p>
 				<p class="text-zinc-400">
-					Not to be confused with a "Comm-B broadcast" (DR 4/5 on /raw): that's the aircraft telling
-					every radar it has a new message waiting. It's still read out by interrogation.
+					Not to be confused with a "Comm-B broadcast" (DR 4/5 on /frames): that's the aircraft
+					telling every radar it has a new message waiting. It's still read out by interrogation.
 				</p>
 			</InfoTip>
 		</div>
@@ -238,7 +238,7 @@
 								fix the Mach number, whatever the temperature.
 							</p>
 							<p class="text-zinc-400">
-								Replies whose address can't be verified (unknown on /raw) are not compared.
+								Replies whose address can't be verified (unknown on /frames) are not compared.
 							</p>
 						</InfoTip>
 					</th>

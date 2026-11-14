@@ -114,7 +114,7 @@ describe('local decoding (one message + a reference point)', () => {
 		const reference = { lat: p.lat + 3.5, lon: p.lon }; // 210 NM north: more than half a zone
 		const decoded = decodeLocal(encode(p, 'even'), reference);
 		expect(decoded.lat - p.lat).toBeCloseTo(6, 3); // one even zone = 6° (360 NM) north
-		// A global pair still knows better, which is how /raw notices.
+		// A global pair still knows better, which is how /frames notices.
 		const global = decodeGlobal(encode(p, 'even'), encode(p, 'odd'), 'even')!;
 		expect(distanceKm(global, p)).toBeLessThan(0.02);
 	});

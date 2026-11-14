@@ -1,5 +1,5 @@
 /**
- * The /raw feed filter: which frames to show, by downlink format, type code and parity
+ * The /frames feed filter: which frames to show, by downlink format, type code and parity
  * verdict. Shared by the page (filtering live frames, building the URL) and the server
  * (answering from its frame buffers), so both agree on what matches.
  */

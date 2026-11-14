@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * The latest stored frames matching a filter, e.g. /api/frames?tc=23 or ?df=20&verdict=known.
- * Lets /raw find frames that are long gone from the live feed (see FrameBuffers).
+ * Lets /frames find frames that are long gone from the live feed (see FrameBuffers).
  */
 export const GET: RequestHandler = ({ url }) => {
 	let query;

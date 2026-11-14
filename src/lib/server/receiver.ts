@@ -3,14 +3,14 @@ import type { BeastFrame } from './beast/parser';
 import { FrameBuffers } from './frame-buffers';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
-import type { RawUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
+import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
 const HISTORY = 1000;
 /** Frames kept per downlink format, type code and verdict (see FrameBuffers). */
 const PER_KIND = 200;
 
-type Subscriber = { send: (update: RawUpdate) => void; close: () => void };
+type Subscriber = { send: (update: StreamUpdate) => void; close: () => void };
 
 /**
  * The app's single connection to the Pi. Counts every frame and fans the stream out to any
@@ -102,7 +102,7 @@ export class Receiver {
 		for (const s of this.#subscribers) s.send(update);
 	}
 
-	#update(frames: WireFrame[]): RawUpdate {
+	#update(frames: WireFrame[]): StreamUpdate {
 		return {
 			status: this.status,
 			source: this.source,

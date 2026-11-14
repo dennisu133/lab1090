@@ -1,6 +1,6 @@
 import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
 
-/** How the parity verdicts are shown on /raw, in table order. */
+/** How the parity verdicts are shown on /frames, in table order. */
 export const VERDICTS: Record<Verdict, { symbol: string; label: string; color: string }> = {
 	valid: {
 		symbol: '✓',

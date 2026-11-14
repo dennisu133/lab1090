@@ -99,7 +99,7 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		}
 
 		if (df === 20 || df === 21) {
-			// Only compare with ADS-B if the address is trustworthy (see /raw's parity check).
+			// Only compare with ADS-B if the address is trustworthy (see the parity check on /frames).
 			const adsb = addr.verdict === 'known' ? this.#memory.get(addr.icao) : null;
 			const inference = inferRegister(mb, {
 				now: f.rx,

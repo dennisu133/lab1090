@@ -1,7 +1,7 @@
 import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
 import type { BeastClientStatus } from '#lib/server/beast/client.ts';
 
-/** Shape of the messages on the /api/raw Server-Sent Events stream. Shared by server and page. */
+/** Shape of the messages on the /api/stream Server-Sent Events stream. Shared by server and page. */
 
 export interface WireFrame {
 	/** Sequence number, unique per server run (a stable key for lists). */
@@ -32,7 +32,7 @@ export interface ReceiverCounts {
 	byVerdict: Partial<Record<Verdict, number>>;
 }
 
-export interface RawUpdate {
+export interface StreamUpdate {
 	status: BeastClientStatus;
 	/** Where the receiver connects to, e.g. "pi:30005". */
 	source: string;
@@ -45,7 +45,7 @@ export interface RawUpdate {
 
 /** Answer of /api/frames: stored frames matching a filter, oldest first. */
 export interface FramesResponse {
-	/** Server start, like RawUpdate.since: frame ids only compare within one run. */
+	/** Server start, like StreamUpdate.since: frame ids only compare within one run. */
 	since: number;
 	frames: WireFrame[];
 }

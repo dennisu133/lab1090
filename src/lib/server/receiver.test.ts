@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { Receiver } from './receiver';
 import { capture, fakeReceiver, stopFakeReceivers, waitFor } from './beast/testing';
-import type { RawUpdate } from '#lib/receiver-types.ts';
+import type { StreamUpdate } from '#lib/receiver-types.ts';
 
 const TOTAL = 33968; // Mode S frames in the capture
 
@@ -29,7 +29,7 @@ function start(port: number) {
 }
 
 function collect(r: Receiver) {
-	const updates: RawUpdate[] = [];
+	const updates: StreamUpdate[] = [];
 	r.subscribe(
 		(u) => updates.push(u),
 		() => {}

@@ -1,5 +1,5 @@
 import { receiver } from '#lib/server/live-receiver.ts';
-import type { RawUpdate } from '#lib/receiver-types.ts';
+import type { StreamUpdate } from '#lib/receiver-types.ts';
 import type { RequestHandler } from './$types';
 
 /**
@@ -12,7 +12,7 @@ export const GET: RequestHandler = () => {
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
-			const send = (update: RawUpdate) => {
+			const send = (update: StreamUpdate) => {
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(update)}\n\n`));
 				} catch {

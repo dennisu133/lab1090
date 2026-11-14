@@ -10,14 +10,14 @@
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
-	import { LIVE_FRAMES, RawStream, type FeedFrame } from './raw-stream.svelte';
+	import { LIVE_FRAMES, FrameStream, type FeedFrame } from './frame-stream.svelte';
 	import { VERDICTS, addressTitle, interrogatorLabel } from './verdicts';
 
 	const FEED_ROWS = 200;
 
 	let { data } = $props();
 
-	const stream = new RawStream(() => data.reference);
+	const stream = new FrameStream(() => data.reference);
 	$effect(() => stream.connect());
 
 	/**

@@ -17,7 +17,7 @@ tested against [pyModeS](https://github.com/junzis/pyModeS), see [tools/](tools/
 
 Pages:
 
-- **/raw**: every frame as it arrives, color-coded hex, decoded content, counts and rates
+- **/frames**: every frame as it arrives, color-coded hex, decoded content, counts and rates
   per downlink format, type code and parity verdict, signal histogram.
 - **/comm-b**: Comm-B replies (DF20/21), which register they most likely came from and how
   that was inferred, compared with what the same aircraft broadcasts via ADS-B.
@@ -76,12 +76,12 @@ Copy `.env.example` to `.env`. Everything is optional:
 
 ### Reference point
 
-`REFERENCE_POINT` lets /raw decode a position from a single ADS-B message (local CPR
+`REFERENCE_POINT` lets /frames decode a position from a single ADS-B message (local CPR
 decoding). Without it, positions are only decoded from even/odd message pairs.
 
 **It doesn't have to be exact, and shouldn't be.** It only picks which CPR zone the
 aircraft is in, so it just has to be within about 150 NM of airborne aircraft (45 NM for
-aircraft on the ground). Round it to one decimal (≤ 6 km off): /raw shows it in its
+aircraft on the ground). Round it to one decimal (≤ 6 km off): /frames shows it in its
 status bar. The only visible effect of rounding is on the distances and directions in the
 feed ("67 km SW"), which are measured from the reference point, not from the antenna.
 
