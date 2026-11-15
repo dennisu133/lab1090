@@ -140,6 +140,7 @@ export function aircraftSections(
 	identity.push({
 		label: 'Registered in',
 		value: block?.state ?? 'no State’s block',
+		flag: block ? { country: block.country, name: block.state } : undefined,
 		title: block
 			? `ICAO gives each State a block of addresses (Annex 10, Vol. III, Table 9-1), and the State gives each aircraft on its register one from it, so the address alone says where the aircraft is registered. This one is in ${block.from}–${block.to} (${block.size.toLocaleString()} addresses), allocated to: ${block.state}. That's not necessarily where it flies or whose airline it is: leased aircraft often keep a foreign registration.${block.marks.length ? ` Registrations there start with ${block.marks.join(' or ')}.` : ''}`
 			: 'The address is in no State’s block (Annex 10, Vol. III, Table 9-1): ICAO hasn’t allocated it to anyone.',

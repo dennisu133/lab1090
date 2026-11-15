@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { AddressFilter } from './address-filter';
 import { ADDRESS_BLOCKS } from './address-blocks';
+import { COUNTRY_CODES } from './country-codes';
 import { downlinkFormat } from './frame';
 import { allocation, formatRegistration, NATIONALITY_MARKS, nationalityMark } from './nationality';
 import { timedMessages } from './testing';
@@ -51,6 +53,25 @@ describe('the address blocks (ICAO Annex 10, Vol. III, Table 9-1)', () => {
 			states.add(a!.state);
 		}
 		expect(states.has('Germany')).toBe(true);
+	});
+});
+
+describe('country codes (for the flags)', () => {
+	test('every State has an ISO code with a flag in flag-icons; the ICAO blocks have none', () => {
+		for (const [from, , state] of ADDRESS_BLOCKS) {
+			const { country } = allocation(from)!;
+			if (state.startsWith('ICAO')) {
+				expect(country).toBeNull();
+				continue;
+			}
+			const flag =
+				country !== null && existsSync(`node_modules/flag-icons/flags/4x3/${country}.svg`);
+			expect({ state, flag }).toEqual({ state, flag: true });
+		}
+		// No two States with the same code (a copy-paste slip would show the wrong flag).
+		expect(new Set(Object.values(COUNTRY_CODES)).size).toBe(Object.keys(COUNTRY_CODES).length);
+		expect(allocation('3C6586')!.country).toBe('de');
+		expect(allocation('A00001')!.country).toBe('us');
 	});
 });
 

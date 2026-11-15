@@ -17,6 +17,8 @@ export interface Field {
 	/** main: the headline values. minor: details, dimmed. alert: worth noticing. */
 	tone: 'main' | 'minor' | 'alert';
 	mono?: boolean;
+	/** A flag before the value: ISO 3166-1 alpha-2 code and the State's name. */
+	flag?: { country: string | null; name: string };
 }
 
 export const n = (x: number) => x.toLocaleString();

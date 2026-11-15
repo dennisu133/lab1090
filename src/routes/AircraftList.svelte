@@ -3,12 +3,14 @@
 	ones without a position. Tap one for its details.
 -->
 <script lang="ts">
+	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { distanceText } from '#lib/describe/aircraft.ts';
 	import { distanceKm } from '#lib/geo.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
+	import { allocation } from '#lib/modes/nationality.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 
 	interface Props {
@@ -38,6 +40,11 @@
 		a.position?.surface ? 'GND' : a.altitude ? flightLevel(a.altitude.value) : '–';
 </script>
 
+{#snippet flag(icao: string)}
+	{@const block = allocation(icao)}
+	<Flag country={block?.country ?? null} name={block?.state ?? ''} />
+{/snippet}
+
 {#snippet row(a: TrackedAircraft, km: number | null)}
 	<li>
 		<button
@@ -49,7 +56,10 @@
 				class="size-2 rounded-full"
 				style:background-color={altitudeCss(a.altitude?.value ?? null, !!a.position?.surface)}
 			></span>
-			<span class="truncate font-mono text-zinc-100">{a.callsign?.value ?? a.icao}</span>
+			<span class="flex min-w-0 items-center gap-2">
+				{@render flag(a.icao)}
+				<span class="truncate font-mono text-zinc-100">{a.callsign?.value ?? a.icao}</span>
+			</span>
 			<span class="text-right text-zinc-300 tabular-nums">{altitudeText(a)}</span>
 			<span class="text-right text-zinc-400 tabular-nums">
 				{a.ground && !a.position?.surface ? Math.round(a.ground.value.speed) : ''}
@@ -82,6 +92,11 @@
 			<p>
 				The callsign (airline code + flight number), or the transponder's 24-bit address while no
 				callsign has come in.
+			</p>
+			<p>
+				The flag: the State the aircraft is registered in. Each State has its own block of addresses
+				(ICAO Annex 10), so the address alone says it. Not necessarily the airline's country: leased
+				aircraft often keep a foreign registration.
 			</p>
 		</InfoTip>
 	</span>

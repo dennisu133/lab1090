@@ -3,6 +3,7 @@
 	explanation: tappable on phones, where `title` tooltips never show.
 -->
 <script lang="ts">
+	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import type { Section } from '#lib/describe/aircraft.ts';
 
@@ -28,6 +29,9 @@
 						field.mono && 'font-mono'
 					]}
 				>
+					{#if field.flag?.country}
+						<span class="mr-1"><Flag {...field.flag} /></span>
+					{/if}
 					{field.value}
 				</dd>
 			{/each}

@@ -25,6 +25,7 @@
  * Shared by server and browser; no state here.
  */
 import { ADDRESS_BLOCKS } from './address-blocks';
+import { COUNTRY_CODES } from './country-codes';
 
 export interface Allocation {
 	/** As Table 9-1 names it, e.g. "Germany", "Iran (Islamic Republic of)". */
@@ -36,6 +37,8 @@ export interface Allocation {
 	size: number;
 	/** Nationality marks, with a trailing '-' where the State writes a dash. Empty: unknown. */
 	marks: readonly string[];
+	/** ISO 3166-1 alpha-2, lower case ("de"), for the flag; null for the ICAO blocks. */
+	country: string | null;
 }
 
 /**
@@ -261,7 +264,7 @@ export function allocation(icao: string): Allocation | null {
 	if (!block) return null;
 	const { from, to, state, start, end } = block;
 	const marks = BLOCK_MARKS[from] ?? NATIONALITY_MARKS[state] ?? [];
-	return { state, from, to, size: end - start + 1, marks };
+	return { state, from, to, size: end - start + 1, marks, country: COUNTRY_CODES[state] ?? null };
 }
 
 /**
