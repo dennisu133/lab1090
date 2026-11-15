@@ -63,21 +63,21 @@ Visual only, no sound.
 - [x] **Weather in the aircraft panel**: its wind (corrected if its heading is off, with the
       as-sent value), head/tailwind and drift, the heading check, the temperature and ISA
       deviation.
-- [ ] **Barometric vs inertial vertical rate** (both in register 6,0, both decoded already).
-      The autopilot holds _pressure_ altitude, so in level flight the inertial rate shows the
-      pressure surface tilting: the same physics as `geostrophic.ts`, seen from another side.
-      Vertical gusts and mountain waves show up in both; the static system's lag shows as the
-      barometric rate trailing the inertial one. Second source: TC 19's GNSS − baro difference
-      over time.
-  - [ ] **Check on the capture first.** Two doubts. The inertial vertical channel is unstable
-        on its own, so most inertial systems blend it with the barometric altitude
-        (baro-inertial); then its long-term mean follows the pressure surface and the tilt
-        never shows. And the signal is small: ~10–20 ft/min for a 50 kt geostrophic wind,
-        under the register's 32 ft/min step (in level flight the capture's inertial rates
-        scatter by 52 ft/min). Compare each aircraft's mean inertial rate in level flight with
-        its geometric rate (GNSS − baro over time) and what `geostrophic.ts` predicts along
-        its track. If it stays near 0: drop the tilt, keep both rates in the panel with what
-        each sensor measures.
+- [x] **Barometric vs inertial vertical rate**: checked on the capture, the tilt dropped. The
+      idea: the autopilot holds _pressure_ altitude, so in level flight the inertial rate
+      (register 6,0) would show the aircraft riding the tilted pressure surface, the physics
+      of `geostrophic.ts` seen from another side. It doesn't. 7 aircraft in level flight
+      (±25 ft for 2–8 min): the true height change from GNSS − baro over time is real and
+      fits the geostrophic slope (440822 at FL350: +22 ft/min, predicted +20), but the
+      inertial rate doesn't follow it (440822: +3; 4400F8 and 3C65D4 the wrong sign; r = 0.27
+      over all 7). It's baro-inertial: the inertial channel is unstable on its own, so it's
+      held to the barometric altitude and follows the pressure surface too. Side finding:
+      TC 19's vertical rate, flagged barometric, is the same blended rate (2,298 pairs: 23
+      ft/min rms from 6,0's inertial rate, within TC 19's 64 ft/min step; 142 from 6,0's
+      barometric one, which scatters by 90–235 ft/min in level flight: the raw pressure
+      change). The capture has too few climbs to see the static system's lag.
+  - [ ] Maybe later: both 6,0 rates in the panel, each with what it measures, and the
+        geometric rate (GNSS − baro over time), the only one that shows the tilt.
 - [ ] **Contrails** (Schmidt–Appleman criterion): from the measured temperature at each level,
       the altitude above which engines leave contrails. Humidity is almost never known (4,4 is
       rare), so show it as a range: threshold at 0 % and at 100 % relative humidity. Whether
