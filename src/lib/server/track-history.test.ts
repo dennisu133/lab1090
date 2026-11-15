@@ -31,7 +31,8 @@ describe('TrackHistory on the capture', () => {
 		const data = fromHex(f.hex);
 		history.add(f, data, downlinkFormat(data), typeCode(data));
 	}
-	const kept = history.frames(end);
+	history.prune(end);
+	const kept = history.frames;
 	const full = track(frames);
 	const thin = track(kept);
 
@@ -80,7 +81,9 @@ describe('TrackHistory on the capture', () => {
 	});
 
 	test(`forgets frames older than ${TRACK_HISTORY_MS / 60_000} minutes`, () => {
-		expect(history.frames(end + TRACK_HISTORY_MS).length).toBeLessThan(kept.length);
-		expect(history.frames(end + TRACK_HISTORY_MS + 1)).toEqual([]);
+		history.prune(end + TRACK_HISTORY_MS);
+		expect(history.frames.length).toBeLessThan(kept.length);
+		history.prune(end + TRACK_HISTORY_MS + 1);
+		expect(history.frames).toEqual([]);
 	});
 });

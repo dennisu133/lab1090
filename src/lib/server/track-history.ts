@@ -51,12 +51,19 @@ export class TrackHistory {
 		this.#frames.push(frame);
 	}
 
-	/** The kept frames of the last TRACK_HISTORY_MS, oldest first. */
-	frames(now: number): WireFrame[] {
+	/** The kept frames, oldest first: the last TRACK_HISTORY_MS as of the latest prune(). */
+	get frames(): WireFrame[] {
+		return this.#frames;
+	}
+
+	/**
+	 * Forget frames (and aircraft) older than TRACK_HISTORY_MS. The receiver calls this with
+	 * every batch: the history must stay 10 minutes long whether or not a page ever asks for it.
+	 */
+	prune(now: number): void {
 		const from = now - TRACK_HISTORY_MS;
 		const keep = this.#frames.findIndex((f) => f.rx >= from);
-		this.#frames = keep === -1 ? [] : this.#frames.slice(keep);
+		if (keep !== 0) this.#frames = keep === -1 ? [] : this.#frames.slice(keep);
 		for (const [icao, last] of this.#last) if (last.rx < from) this.#last.delete(icao);
-		return this.#frames;
 	}
 }

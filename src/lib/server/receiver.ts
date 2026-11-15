@@ -80,7 +80,7 @@ export class Receiver {
 			// Position frames still pending are in TrackHistory already but come with the next
 			// batch: leave them out here, or the tracker would get them twice.
 			const last = this.#history.at(-1)?.id ?? 0;
-			update.tracks = this.tracks.frames(Date.now()).filter((f) => f.id <= last);
+			update.tracks = this.tracks.frames.filter((f) => f.id <= last);
 		}
 		send(update);
 		return () => this.#subscribers.delete(subscriber);
@@ -114,7 +114,9 @@ export class Receiver {
 	}
 
 	#flush(): void {
-		this.#addresses.prune(Date.now());
+		const now = Date.now();
+		this.#addresses.prune(now);
+		this.tracks.prune(now);
 		const frames = this.#pending;
 		this.#pending = [];
 		this.#history = [...this.#history, ...frames].slice(-HISTORY);
