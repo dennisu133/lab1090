@@ -210,7 +210,8 @@ export function mapStyle(): StyleSpecification {
 				maxzoom: 7,
 				filter: ['==', ['get', 'class'], 'country'],
 				layout: {
-					'text-field': ['coalesce', ['get', 'name:latin'], ['get', 'name']],
+					// In English ("Norway", not "Norge"); the local name if a country has none.
+					'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name:latin'], ['get', 'name']],
 					'text-font': FONT,
 					'text-size': 11,
 					'text-transform': 'uppercase',
