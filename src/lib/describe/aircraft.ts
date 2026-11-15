@@ -5,6 +5,7 @@
  * hover titles: every field here has a `label`.
  */
 import { bearing, compass, distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import type { DbAircraft } from '#lib/aircraft-db.ts';
 import type { Timed } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { allocation } from '#lib/modes/nationality.ts';
@@ -105,11 +106,53 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 	return fields;
 }
 
+/** Said of every database value: where it came from and why it can be wrong. */
+const FROM_DB =
+	' Not from the radio: looked up by the address in adsbdb.com (aircraft data from PlaneBase). A database can lag behind: an airframe that changed hands or registration may still show its old entry.';
+
+/** The database's entry: what the messages can't say (lib/aircraft-db.ts). */
+function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
+	const fields: Section['fields'] = [];
+	if (db.type || db.icaoType)
+		fields.push({
+			label: 'Type',
+			value: [db.icaoType, `${db.manufacturer} ${db.type}`.trim()].filter(Boolean).join(' · '),
+			title: `The aircraft type. First the ICAO type designator (Doc 8643), the 2–4 characters a flight plan and the controller's screen use: A21N = Airbus A321neo, B738 = Boeing 737-800. Then the manufacturer's model designation, which also says the variant and engines. ADS-B itself only says the weight class (the category).${FROM_DB}`,
+			tone: 'main'
+		});
+	if (db.registration) {
+		const decoded = a.registration?.value;
+		fields.push({
+			label: 'Registration',
+			value: db.registration,
+			title: `The "tail number" painted on the aircraft, starting with its State's nationality mark (D- for Germany). Military aircraft carry serials instead (15+10).${
+				decoded === undefined
+					? ''
+					: decoded === db.registration
+						? ' The same as the one a radar read from the transponder (register 2,1).'
+						: ` A radar read ${decoded} from the transponder (register 2,1): one of the two is out of date.`
+			}${FROM_DB}`,
+			tone: decoded !== undefined && decoded !== db.registration ? 'alert' : 'main',
+			mono: true
+		});
+	}
+	if (db.owner)
+		fields.push({
+			label: 'Owner',
+			value: db.owner,
+			title: `Who the aircraft is registered to. For airliners usually the airline, but leasing companies own about half of them, and an airline can fly another's aircraft with its crew (wet lease): the callsign says who flies it today.${FROM_DB}`,
+			tone: 'main'
+		});
+	return fields;
+}
+
 export function aircraftSections(
 	a: TrackedAircraft,
 	now: number,
 	receiver: LatLon | null,
-	unit: Unit
+	unit: Unit,
+	/** What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet). */
+	db: DbAircraft | null = null
 ): Section[] {
 	const sections: Section[] = [];
 	const add = (title: string, fields: Section['fields']) => {
@@ -178,6 +221,7 @@ export function aircraftSections(
 		});
 	}
 	add('Identity', identity);
+	if (db) add('Airframe (adsbdb)', airframeFields(a, db));
 
 	// --- position ------------------------------------------------------------------------
 	const position: Section['fields'] = [];

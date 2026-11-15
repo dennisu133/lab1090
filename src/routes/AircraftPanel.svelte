@@ -1,14 +1,17 @@
 <!--
 	Everything about the selected aircraft: identity, position, flight, autopilot, what radars
-	read from it, reception, and its latest messages.
+	read from it, reception, and its latest messages. Plus what the airframe database knows
+	(adsbdb: photo, type, registration, owner), once the lookup comes back.
 -->
 <script lang="ts">
+	import { lookupAircraft, type DbAircraft } from '#lib/aircraft-db.ts';
 	import { aircraftSections } from '#lib/describe/aircraft.ts';
 	import type { Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import Flag from '#lib/components/Flag.svelte';
 	import { allocation } from '#lib/modes/nationality.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
+	import AircraftPhoto from './AircraftPhoto.svelte';
 	import Details from './Details.svelte';
 	import MessageFeed from './MessageFeed.svelte';
 	import type { Message } from './tracker-stream.svelte.ts';
@@ -24,7 +27,22 @@
 
 	let { aircraft, messages, now, receiver, unit, onclose }: Props = $props();
 
-	let sections = $derived(aircraftSections(aircraft, now, receiver, unit));
+	// The snapshot is replaced every update; the address isn't, so this looks it up once.
+	let icao = $derived(aircraft.icao);
+	let db = $state<DbAircraft | null>(null);
+	$effect(() => {
+		let current = true;
+		lookupAircraft(icao).then(
+			(entry) => {
+				if (current) db = entry;
+			},
+			// Offline or adsbdb down: no photo, no airframe section; the next look retries.
+			() => {}
+		);
+		return () => (current = false);
+	});
+
+	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db));
 	let block = $derived(allocation(aircraft.icao));
 </script>
 
@@ -48,5 +66,8 @@
 		aria-label="Close and show all aircraft">✕</button
 	>
 </header>
+{#if db?.photo}
+	<AircraftPhoto photo={db.photo} registration={db.registration} />
+{/if}
 <Details {sections} />
 <MessageFeed {messages} />

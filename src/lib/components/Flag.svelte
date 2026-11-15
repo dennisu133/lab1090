@@ -37,7 +37,7 @@
 	<img
 		{src}
 		alt={name}
-		class="inline-block h-3 w-4 shrink-0 rounded-[2px] object-cover opacity-90 ring-1 ring-white/15"
+		class="inline-block h-3 w-4 shrink-0 rounded-xs object-cover opacity-90 ring-1 ring-white/15"
 	/>
 {:else}
 	<span class="inline-block h-3 w-4 shrink-0" aria-hidden="true"></span>
