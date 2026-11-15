@@ -15,6 +15,7 @@
 	import type { Judged } from '#lib/tracker/route.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 	import type { HeadingCheck } from '#lib/weather/headings.ts';
+	import type { Layer } from '#lib/weather/profile.ts';
 	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import AircraftPhoto from './AircraftPhoto.svelte';
 	import Details from './Details.svelte';
@@ -30,8 +31,11 @@
 		flight: DbFlight | null;
 		/** Whether its route fits (lib/tracker/route.ts); a dismissed one isn't shown. */
 		judged: Judged | null;
-		/** Its wind and temperature (/weather's pipeline) and heading check; null: none. */
-		weather: { aircraft: WeatherAircraft; check: HeadingCheck | null } | null;
+		/**
+		 * Its wind and temperature (/weather's pipeline), heading check, and the temperature
+		 * layer at its level (for the contrail line); null: none.
+		 */
+		weather: { aircraft: WeatherAircraft; check: HeadingCheck | null; layer: Layer | null } | null;
 		now: number;
 		receiver: LatLon | null;
 		unit: Unit;

@@ -22,6 +22,7 @@ import type { Judged } from '#lib/tracker/route.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import type { HeadingCheck } from '#lib/weather/headings.ts';
+import type { Layer } from '#lib/weather/profile.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 import {
 	EXTRAPOLATE_MS,
@@ -33,6 +34,7 @@ import {
 	type Unit
 } from '#lib/map/features.ts';
 import { alertSection, identField } from './alert';
+import { contrailField } from './contrail';
 import type { Field } from './field';
 import { routeSection } from './route';
 import { weatherHereFields } from './weather';
@@ -183,8 +185,15 @@ export function aircraftSections(
 	judged: Judged | null = null,
 	/** Every aircraft: for an ACAS advisory's threat. */
 	all: TrackedAircraft[] = [],
-	/** Its wind and temperature (lib/weather/tracker.ts) and heading check; null: none. */
-	weather: { aircraft: WeatherAircraft; check: HeadingCheck | null } | null = null
+	/**
+	 * Its wind and temperature (lib/weather/tracker.ts), heading check, and the temperature
+	 * layer at its level (lib/weather/profile.ts, for the contrail line); null: none.
+	 */
+	weather: {
+		aircraft: WeatherAircraft;
+		check: HeadingCheck | null;
+		layer: Layer | null;
+	} | null = null
 ): Section[] {
 	const sections: Section[] = [];
 	const add = (title: string, fields: Section['fields']) => {
@@ -548,8 +557,13 @@ export function aircraftSections(
 	add('Autopilot', intent);
 
 	// --- weather, from its Comm-B registers ----------------------------------------------
-	if (weather)
-		add('Weather where it flies', weatherHereFields(weather.aircraft, weather.check, now));
+	if (weather) {
+		const contrail = contrailField(weather.aircraft, weather.layer);
+		add('Weather where it flies', [
+			...weatherHereFields(weather.aircraft, weather.check, now),
+			...(contrail ? [contrail] : [])
+		]);
+	}
 
 	// --- Comm-B --------------------------------------------------------------------------
 	const radar: Section['fields'] = [];

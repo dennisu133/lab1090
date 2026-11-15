@@ -9,7 +9,9 @@
 		temperatureFields,
 		windFields
 	} from '#lib/describe/weather.ts';
+	import { trackerContrail } from '#lib/describe/contrail.ts';
 	import type { Observation } from '#lib/weather/observation.ts';
+	import { layerAt, layers } from '#lib/weather/profile.ts';
 	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import AircraftTable from '../AircraftTable.svelte';
@@ -54,6 +56,14 @@
 			stream.aircraft[0];
 		if (a && a.icao !== selected) picked = a.icao;
 		return a ? { observation: a.latest, callsign: a.callsign } : null;
+	});
+
+	/** The tracker panel's contrail answer for the example's aircraft, for the third card. */
+	let temperatureLayers = $derived(layers(stream.sky.temperatures, [], []));
+	let contrail = $derived.by(() => {
+		const a = example && stream.aircraft.find((a) => a.icao === example.observation.icao);
+		const feet = a?.lastTemperature?.inputs.altitude?.feet;
+		return a && feet !== undefined ? trackerContrail(a, layerAt(temperatureLayers, feet)) : null;
 	});
 
 	let feed = $derived(
@@ -118,10 +128,10 @@
 			{/if}
 		</div>
 		{#if example}
-			<Calculation observation={example.observation} />
+			<Calculation observation={example.observation} {contrail} />
 		{:else}
-			<!-- As tall as the cards will be, so nothing jumps when the first pair arrives. -->
-			<p class="h-176 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
+			<!-- As tall as the three cards will be, so nothing jumps when the first pair arrives. -->
+			<p class="h-266 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
 				Waiting for a 5,0/6,0 pair…
 			</p>
 		{/if}

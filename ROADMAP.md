@@ -78,18 +78,31 @@ Visual only, no sound.
       change). The capture has too few climbs to see the static system's lag.
   - [ ] Maybe later: both 6,0 rates in the panel, each with what it measures, and the
         geometric rate (GNSS − baro over time), the only one that shows the tilt.
-- [ ] **Contrails** (Schmidt–Appleman criterion): from the measured temperature at each level,
-      the altitude above which engines leave contrails. Humidity is almost never known (4,4 is
-      rare), so show it as a range: threshold at 0 % and at 100 % relative humidity. Whether
-      contrails _persist_ (ice supersaturation) can't be known; say so. One engine efficiency
-      for all, η = 0.3; the tooltip says how much 0.4 would move it (~1.5 K, ~500 ft). The
-      capture's air sits between the two thresholds at FL350 and FL380: "depends on the
-      humidity" will be a common answer. The Lindenberg balloons have the humidity to check it.
-  - [ ] `src/lib/weather/contrail.ts`, tested against Schumann (1996) and the balloons.
-  - [ ] On /weather "Now": both threshold curves in the temperature profile, and a line in the
-        summary (the measured levels rarely reach below the threshold, so no single altitude).
-  - [ ] In the aircraft panel: "probably leaving a contrail", with the reasoning. The part
-        anyone can check by looking up.
+- [x] **Contrails** (Schmidt–Appleman criterion): from the measured temperature, whether
+      engines leave contrails. Humidity is almost never known (4,4 is rare), so a range:
+      the threshold for saturated air (100 % relative humidity over water) and for dry air
+      (0 %), ~10 K colder; in between, the humidity the air would need. Whether contrails
+      _persist_ (ice supersaturation) can't be known; the tooltips say so. One engine
+      efficiency for all, η = 0.3; a modern engine's 0.4 moves both thresholds 1.5–1.8 K
+      warmer. The balloons' check showed the catch: near the thresholds 1 K moves the
+      humidity needed by 20–25 points, and single aircraft read 2 K cold on average (one 7 K).
+      So every answer allows ±2 K (`TEMPERATURE_MARGIN`), and the panel uses the layer's mean
+      when the layer has enough aircraft. The balloons found 6–9 % humidity at FL360–FL380,
+      where contrails needed 31–46 %: none that afternoon. The capture's FL370 still says
+      "in any air", from its two cold aircraft: the margin can't catch a 7 K error.
+  - [x] `src/lib/weather/contrail.ts`: exact tangent, within 0.04 K of Schumann's (1996)
+        fit; checked against the balloons in `sounding.test.ts`.
+  - [x] On /weather "Now": the band between the two thresholds in the temperature profile,
+        and a line under it per run of layers ("FL370 in any air · FL380 needs 10–80 %
+        humidity").
+  - [x] In the aircraft panel: "Contrail" in "Weather where it flies", with the reasoning
+        and what looking up tells you.
+  - [x] On /weather/aircraft: a third card in the worked example, the panel's "why": the
+        Schmidt–Appleman diagram (water and ice curves, the engine's line, this air as a bar)
+        and every step with the observation's own numbers, ending with what the panel says
+        for the same aircraft (it may use the layer's mean).
+  - [ ] Maybe later: a temperature check like the heading check (each aircraft's
+        temperature against the others' at its level), to catch the 7 K aircraft.
 
 ## 4. Flight phase
 

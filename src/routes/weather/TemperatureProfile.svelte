@@ -3,9 +3,12 @@
 	dashed line is the standard atmosphere; where the measured dots stop moving left (no
 	longer getting colder) is the tropopause. Hollow dots have fewer than MIN_SAMPLES
 	samples or come from one aircraft only; the bar is the spread between the samples.
+	The blue band is where contrails depend on the humidity (lib/weather/contrail.ts): left
+	of it, colder, engines leave them even in dry air; right of it, warmer, never.
 -->
 <script lang="ts">
-	import { T11, isaTemperature } from '#lib/modes/air-data.ts';
+	import { T11, isaTemperature, staticPressure } from '#lib/modes/air-data.ts';
+	import { thresholds } from '#lib/weather/contrail.ts';
 	import { enough, type Layer, type Tropopause } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, H_MAX, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
 
@@ -29,13 +32,29 @@
 	const temperatures = [-60, -40, -20, 0, 20];
 
 	let measured = $derived(layers.filter((l) => l.temperature));
+
+	/**
+	 * The two contrail thresholds from FL100 up, every 1,000 ft: below FL100 contrails need
+	 * air colder than −30 °C, which over Europe hardly happens outside the polar winter.
+	 */
+	const CONTRAIL_FROM = 10_000;
+	const contrailLevels = Array.from(
+		{ length: (H_MAX - CONTRAIL_FROM) / 1000 + 1 },
+		(_, i) => CONTRAIL_FROM + i * 1000
+	);
+	const contrail = contrailLevels.map((h) => ({ h, ...thresholds(staticPressure(h)) }));
+	const line = (pick: (t: (typeof contrail)[number]) => number) =>
+		contrail.map((t) => `${x(pick(t))},${y(t.h)}`);
+	const dryLine = line((t) => t.dry).join(' ');
+	const saturatedLine = line((t) => t.saturated).join(' ');
+	const band = [...line((t) => t.dry), ...line((t) => t.saturated).reverse()].join(' ');
 </script>
 
 <svg
 	viewBox="0 0 {W} {H}"
 	class="h-auto w-full rounded bg-zinc-950"
 	role="img"
-	aria-label="Temperature against altitude, per 1,000 ft layer, with the standard atmosphere"
+	aria-label="Temperature against altitude, per 1,000 ft layer, with the standard atmosphere and the contrail thresholds"
 >
 	<g class="fill-zinc-500 text-[10px]">
 		{#each temperatures as c (c)}
@@ -48,6 +67,19 @@
 		{/each}
 		<text x={(LEFT + W - RIGHT) / 2} y={H - 4} text-anchor="middle">temperature, °C</text>
 	</g>
+
+	<polygon points={band} class="fill-sky-400/10" />
+	<polyline points={dryLine} class="fill-none stroke-sky-400/60" stroke-width="1">
+		<title>Colder than this, engines leave contrails even in dry air (0 % humidity)</title>
+	</polyline>
+	<polyline points={saturatedLine} class="fill-none stroke-sky-400/60" stroke-width="1">
+		<title>Warmer than this, no contrails even in saturated air (100 % humidity)</title>
+	</polyline>
+	<text
+		x={x(contrail[0].saturated) + 4}
+		y={y(CONTRAIL_FROM) - 4}
+		class="fill-sky-300/80 text-[10px]">contrails</text
+	>
 
 	<polyline
 		points={isa}

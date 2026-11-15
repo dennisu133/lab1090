@@ -1,6 +1,7 @@
 <!--
 	Sections of labelled values (lib/describe/aircraft.ts). Every label is an InfoTip with the
-	explanation: tappable on phones, where `title` tooltips never show.
+	explanation: tappable on phones, where `title` tooltips never show. A blank line in it
+	starts a new paragraph.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
@@ -27,7 +28,10 @@
 		<dl class="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-1.5 text-sm">
 			{#each section.fields as field (field.label)}
 				<dt class="text-zinc-400">
-					<InfoTip label={field.label}><p>{field.title}</p></InfoTip>
+					<InfoTip label={field.label}>
+						<!-- A blank line in the explanation starts a new paragraph. -->
+						{#each field.title.split('\n\n') as paragraph, i (i)}<p>{paragraph}</p>{/each}
+					</InfoTip>
 				</dt>
 				<dd
 					class={[

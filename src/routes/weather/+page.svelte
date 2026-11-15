@@ -7,8 +7,10 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import { contrailRuns, runLevels } from '#lib/describe/contrail.ts';
 	import { flightLevel, hpa, isaText, signed, windText } from '#lib/describe/weather.ts';
 	import { column, type HeightReference } from '#lib/weather/column.ts';
+	import { ETA, ETA_MODERN, TEMPERATURE_MARGIN } from '#lib/weather/contrail.ts';
 	import {
 		JET_KT,
 		MIN_AIRCRAFT,
@@ -55,6 +57,7 @@
 	);
 	let top = $derived(tropopause(all));
 	let strongest = $derived(strongestWind(all));
+	let contrails = $derived(contrailRuns(all));
 	let geo = $derived(geostrophicWind(sky.columns, stream.reference, heights));
 	/** The aircraft's own mean wind over the levels the geostrophic fit covers. */
 	let measuredThere = $derived(
@@ -226,8 +229,54 @@
 					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
 					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
+				<p>
+					The blue band: where contrails depend on the humidity. Left of it engines leave them even
+					in dry air, right of it never. Explained below the chart.
+				</p>
 			</InfoTip>
 			<TemperatureProfile layers={all} tropopause={top} />
+			<div class="mt-2 text-xs text-zinc-400">
+				<InfoTip label="Contrails" class="font-semibold" wide above>
+					<p>
+						A contrail is a cloud made by the engines. Burning kerosene makes water vapour and heat;
+						behind the engine the hot, wet exhaust mixes with the cold air and cools. If the mixture
+						passes the point where water condenses, droplets form and freeze at once (the
+						Schmidt–Appleman criterion; Schumann 1996).
+					</p>
+					<p>
+						How cold the air must be depends on the pressure and on how humid the air already is.
+						The band's right edge is the limit for saturated air (100 % relative humidity over
+						water), the left edge for perfectly dry air, about 10 K colder. Humidity at cruise level
+						is almost never known here (register 4,4 is rarely sent), so in between the answer is
+						the humidity the air would need. If you see trails, the air is at least that humid.
+					</p>
+					<p>
+						Temperatures are a couple of kelvin off (against weather balloons, aircraft read 2 K too
+						cold on average), and near the edges 1 K changes the humidity needed by 20 points. So a
+						layer only counts as "any air" or "too warm" if it still holds {TEMPERATURE_MARGIN}
+						K either way. Only layers with enough samples from enough aircraft are listed.
+					</p>
+					<p class="text-zinc-400">
+						Engines: {ETA * 100} % of the fuel's energy goes into thrust. Modern ones reach about {ETA_MODERN *
+							100} %, with a cooler exhaust: contrails in air about 1.6 K warmer. Whether contrails last
+						(ice-supersaturated air) can't be told from the data at all.
+					</p>
+				</InfoTip>
+				<p class="mt-0.5">
+					{#each contrails as run, i (run.from)}
+						{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-sky-300' : ''}
+							>{runLevels(run)}
+							{run.verdict === 'always'
+								? 'in any air'
+								: run.verdict === 'never'
+									? 'too warm'
+									: `needs ${run.needed} humidity`}</span
+						>
+					{:else}
+						No layer with enough temperatures yet.
+					{/each}
+				</p>
+			</div>
 		</div>
 		<div class="rounded-lg bg-zinc-900 p-4">
 			<InfoTip heading="h2" class="mb-2 text-sm font-semibold text-zinc-400" label="Wind">

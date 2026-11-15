@@ -9,6 +9,7 @@
 	import { lookupFlight, type DbFlight } from '#lib/aircraft-db.ts';
 	import { RouteJudge } from '#lib/tracker/route.ts';
 	import type { Unit } from '#lib/map/features.ts';
+	import { layerAt, layers as profileLayers } from '#lib/weather/profile.ts';
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
@@ -75,10 +76,18 @@
 	});
 
 	let selected = $derived(stream.get(stream.selected));
+	/** /weather's temperature profile, for the contrail line (read only with a selection). */
+	let temperatureLayers = $derived(profileLayers(weather.sky.temperatures, [], []));
 	let selectedWeather = $derived.by(() => {
 		const icao = selected?.icao;
 		const aircraft = icao && weather.aircraft.find((a) => a.icao === icao);
-		return aircraft ? { aircraft, check: weather.checks.get(aircraft.icao) ?? null } : null;
+		if (!aircraft) return null;
+		const feet = aircraft.lastTemperature?.inputs.altitude?.feet;
+		return {
+			aircraft,
+			check: weather.checks.get(aircraft.icao) ?? null,
+			layer: feet === undefined ? null : layerAt(temperatureLayers, feet)
+		};
 	});
 
 	/**

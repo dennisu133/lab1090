@@ -129,6 +129,12 @@ function group<T extends { altitude: number }>(samples: T[]): Map<number, T[]> {
 	return byLayer;
 }
 
+/** The layer a pressure altitude (ft) falls in, if it has any samples. */
+export function layerAt(all: Layer[], feet: number): Layer | null {
+	const level = layerOf(feet);
+	return all.find((l) => l.level === level) ?? null;
+}
+
 /** Every layer with at least one sample of any kind, lowest first. */
 export function layers(
 	temperatures: TemperatureSample[],

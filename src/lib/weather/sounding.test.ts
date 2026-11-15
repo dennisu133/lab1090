@@ -21,10 +21,12 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { isaTemperature, pressureAltitude, staticPressure } from '#lib/modes/air-data.ts';
 import { R_OVER_G_FT, column, feetPerKelvin, pressurePart } from './column';
+import { contrail, humidityOf } from './contrail';
 import { enough, layers, strongestWind, tropopause } from './profile';
 import {
 	atPressure,
 	balloonTropopause,
+	CAPTURE_START,
 	inLayer,
 	loadSounding,
 	qnhOf,
@@ -395,6 +397,37 @@ describe('the capture against the balloons', () => {
 		const usable = all.filter((l) => enough(l.temperature)).map((l) => l.level);
 		expect(usable).toEqual([36_000, 37_000, 38_000]);
 		expect(tropopause(all).found).toBe(false);
+	});
+
+	test('contrails: the balloons say no at FL360–FL380, the aircraft are too cold to tell', () => {
+		// Schmidt–Appleman (contrail.ts) with the balloons' own temperature and humidity,
+		// interpolated to the middle of the capture. The radiosonde found the air very dry:
+		// 0.010 g/kg of water, reported to 0.01 g/kg, so 6–9 % relative humidity over water.
+		// Contrails there needed 31–46 %: none formed, whatever the engine.
+		const time = CAPTURE_START + 5 * 60_000;
+		const usable = all.filter((l) => enough(l.temperature));
+		for (const l of usable) {
+			const p = staticPressure(l.level);
+			const [a, b] = [atPressure(morning, p), atPressure(evening, p)];
+			const k = (time - a.time) / (b.time - a.time);
+			const kelvin = a.kelvin + k * (b.kelvin - a.kelvin);
+			const mixing = a.mixingRatio + k * (b.mixingRatio - a.mixingRatio);
+			expect(humidityOf(mixing + 0.005e-3, p, kelvin)).toBeLessThan(0.1);
+			const truth = contrail(kelvin, p);
+			expect(truth.verdict).toBe('humid');
+			expect(truth.humidityNeeded!).toBeGreaterThan(0.3);
+			// One kelvin either way moves that by 20–25 points: the answer hinges on
+			// the temperature far more finely than any single aircraft measures it.
+			const colder = contrail(kelvin - 1, p).humidityNeeded!;
+			const warmer = contrail(kelvin + 1, p).humidityNeeded!;
+			expect(truth.humidityNeeded! - colder).toBeGreaterThan(0.2);
+			expect(warmer - truth.humidityNeeded!).toBeGreaterThan(0.15);
+		}
+		// The aircraft's layers (2–4 aircraft each, 2 K cold on average, see above) put
+		// FL360 and FL370 3–6 K colder than the balloons: "contrails in any air" there.
+		// FL380, within 0.5 K, agrees: it depends on the humidity.
+		const verdicts = usable.map((l) => contrail(l.temperature!.kelvin, staticPressure(l.level)));
+		expect(verdicts.map((v) => v.verdict)).toEqual(['always', 'always', 'humid']);
 	});
 });
 

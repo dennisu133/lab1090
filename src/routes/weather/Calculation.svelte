@@ -1,6 +1,7 @@
 <!--
 	One observation worked through step by step, with its own numbers: the wind triangle
-	(with a drawing) and the temperature. Everything here can be checked with a calculator.
+	(with a drawing), the temperature, and whether engines leave a contrail in that air.
+	Everything here can be checked with a calculator.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -18,10 +19,18 @@
 	import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
 	import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
 	import { WMM_VALID } from '#lib/weather/wmm.ts';
+	import type { TrackerContrail } from '#lib/describe/contrail.ts';
+	import ContrailCalculation from './ContrailCalculation.svelte';
 	import IsaChart from './IsaChart.svelte';
 	import WindTriangle from './WindTriangle.svelte';
 
-	let { observation: o }: { observation: Observation } = $props();
+	interface Props {
+		observation: Observation;
+		/** What the tracker panel decides for the same aircraft (describe/contrail.ts). */
+		contrail: TrackerContrail | null;
+	}
+
+	let { observation: o, contrail }: Props = $props();
 
 	let track = $derived(o.inputs.trackAndTurn.value);
 	let heading = $derived(o.inputs.headingAndSpeed.value);
@@ -330,4 +339,6 @@
 			</div>
 		{/if}
 	</div>
+
+	<ContrailCalculation observation={o} tracker={contrail} />
 </div>
