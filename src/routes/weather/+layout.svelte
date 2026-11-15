@@ -1,6 +1,6 @@
 <!--
-	/weather: the shared header and the tabs. The layout owns the WeatherStream (context.ts),
-	so the data survives switching tabs: "Now" needs up to half an hour of it.
+	/weather: the shared header and the tabs. The WeatherStream belongs to the root layout
+	(routes/streams.ts), so it collects all the time: "Now" needs up to half an hour of data.
 
 	- Now (/weather): the air above the receiver, from all aircraft together.
 	- Per aircraft (/weather/aircraft): each aircraft's wind and temperature, worked through.
@@ -10,13 +10,8 @@
 	import { page } from '$app/state';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
-	import { setWeatherStream } from './context';
-	import { WeatherStream } from './weather-stream.svelte';
 
-	let { data, children } = $props();
-
-	const stream = setWeatherStream(new WeatherStream(() => data.reference));
-	$effect(() => stream.connect());
+	let { children } = $props();
 
 	const tabs = [
 		{ route: '/weather', href: resolve('/weather'), label: 'Now' },

@@ -5,7 +5,7 @@ import { downlinkFormat, fromHex, toHex, typeCode } from '#lib/modes/frame.ts';
 import { timedMessages } from '#lib/modes/testing.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
 import { Tracker } from '#lib/tracker/tracker.ts';
-import { mergeFrames, TRACK_HISTORY_MS, TrackHistory } from './track-history';
+import { TRACK_HISTORY_MS, TrackHistory } from './track-history';
 
 /** The capture as the server sees it: wire frames with verdicts, rx = receiver time in ms. */
 const filter = new AddressFilter();
@@ -83,10 +83,4 @@ describe('TrackHistory on the capture', () => {
 		expect(history.frames(end + TRACK_HISTORY_MS).length).toBeLessThan(kept.length);
 		expect(history.frames(end + TRACK_HISTORY_MS + 1)).toEqual([]);
 	});
-});
-
-test('mergeFrames: arrival order, each frame once', () => {
-	const f = (id: number) => ({ ...frames[0], id });
-	const merged = mergeFrames([f(1), f(4), f(6)], [f(2), f(4), f(5)]);
-	expect(merged.map((x) => x.id)).toEqual([1, 2, 4, 5, 6]);
 });

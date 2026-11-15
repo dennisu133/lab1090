@@ -1,10 +1,10 @@
-import { receiverLink } from '#lib/receiver-link.svelte.ts';
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 
 /**
- * Browser side of the /api/stream event stream, shared by the pages that show live frames: opens the
- * EventSource, keeps the latest update and a list of recent items (newest first), and can
- * pause the list without losing what arrives meanwhile.
+ * One page's view of the live stream: keeps the latest update and a list of recent items
+ * (newest first), and can pause the list without losing what arrives meanwhile. The updates
+ * come from the app's one StreamConnection, which feeds every page's view all the time,
+ * also while another page is shown (see routes/streams.ts).
  *
  * Two things pause it: the Pause button, and scrolling down into the list (see
  * PauseButton.svelte). New items go on top, so while you read further down they would push
@@ -12,9 +12,6 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  * button paused it too.
  *
  * What an item is depends on the page: subclasses turn each batch of frames into items.
- *
- * It also reports both links (browser ↔ server, server ↔ Pi) to `receiverLink`, for the
- * status in the navigation bar.
  */
 export abstract class LiveFeed<T> {
 	update = $state.raw<StreamUpdate | null>(null);
@@ -30,12 +27,9 @@ export abstract class LiveFeed<T> {
 
 	#heldItems: T[] = [];
 	#maxItems: number;
-	#url: string;
 
-	/** `url`: the stream, e.g. '/api/stream?tracks' for the tracker's position history. */
-	constructor(maxItems: number, url = '/api/stream') {
+	constructor(maxItems: number) {
 		this.#maxItems = maxItems;
-		this.#url = url;
 	}
 
 	/**
@@ -46,15 +40,6 @@ export abstract class LiveFeed<T> {
 
 	/** The server restarted (e.g. dev reload): forget whatever depends on its counters. */
 	protected reset(): void {}
-
-	/** Open the stream; returns a cleanup function (use from an $effect). */
-	connect(): () => void {
-		const source = new EventSource(this.#url);
-		source.onopen = () => (receiverLink.online = true);
-		source.onerror = () => (receiverLink.online = false); // EventSource retries by itself
-		source.onmessage = (e) => this.#receive(JSON.parse(e.data));
-		return () => source.close();
-	}
 
 	get paused(): boolean {
 		return this.pausedByUser || this.scrolledAway;
@@ -80,7 +65,8 @@ export abstract class LiveFeed<T> {
 		this.held = 0;
 	}
 
-	#receive(update: StreamUpdate): void {
+	/** An update from the StreamConnection: every frame once, in arrival order. */
+	receive(update: StreamUpdate): void {
 		if (this.update && update.since !== this.update.since) {
 			this.reset();
 			this.items = [];
@@ -88,8 +74,6 @@ export abstract class LiveFeed<T> {
 			this.held = 0;
 		}
 		this.update = update;
-		receiverLink.status = update.status;
-		receiverLink.source = update.source;
 		const fresh = this.process(update.frames, update).reverse();
 		if (fresh.length === 0) return;
 		if (this.paused) {

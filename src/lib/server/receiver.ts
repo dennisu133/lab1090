@@ -1,7 +1,7 @@
 import { BeastClient, type BeastClientStatus } from './beast/client';
 import type { BeastFrame } from './beast/parser';
 import { FrameBuffers } from './frame-buffers';
-import { mergeFrames, TrackHistory } from './track-history';
+import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
@@ -62,8 +62,9 @@ export class Receiver {
 
 	/**
 	 * Get an update right away (with recent history), then one every 250 ms. `tracks`: the
-	 * first update also holds the position history (TrackHistory), merged into the recent
-	 * frames in arrival order, so the tracker sees one sequence, every frame once.
+	 * first update also holds the position history (TrackHistory) in its own field. Only the
+	 * tracker wants it (the other pages would count 10 minutes of old positions as new), so
+	 * the browser merges it in for the tracker alone.
 	 */
 	subscribe(
 		send: Subscriber['send'],
@@ -74,10 +75,14 @@ export class Receiver {
 		this.#subscribers.add(subscriber);
 		// History only: frames still pending go out with the next batch, to everyone.
 		// (Sending them here too would deliver them twice.)
-		const history = tracks
-			? mergeFrames(this.tracks.frames(Date.now()), this.#history)
-			: this.#history;
-		send(this.#update(history));
+		const update = this.#update(this.#history);
+		if (tracks) {
+			// Position frames still pending are in TrackHistory already but come with the next
+			// batch: leave them out here, or the tracker would get them twice.
+			const last = this.#history.at(-1)?.id ?? 0;
+			update.tracks = this.tracks.frames(Date.now()).filter((f) => f.id <= last);
+		}
+		send(update);
 		return () => this.#subscribers.delete(subscriber);
 	}
 

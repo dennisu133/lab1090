@@ -31,9 +31,9 @@
 	import QnhCard from './QnhCard.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
 	import WindProfile from './WindProfile.svelte';
-	import { getWeatherStream } from './context';
+	import { getStreams } from '../streams';
 
-	const stream = getWeatherStream();
+	const stream = getStreams().weather;
 
 	let heights = $state<HeightReference>('ellipsoid');
 	/** The layer picked in the table for the worked example. */
@@ -96,9 +96,9 @@
 	<div class="flex flex-wrap items-baseline gap-x-1 text-sm text-zinc-400">
 		<InfoTip label="Collected" wide>
 			<p>
-				All decoding happens here in the browser, so collecting starts when you open the page and
-				keeps going while you switch tabs. Samples older than {WINDOW_MS / 60_000} minutes are dropped:
-				the weather changes, and aircraft move on.
+				All decoding happens here in the browser, so collecting starts when you open the app (on any
+				page) and keeps going while you switch pages; reloading starts over. Samples older than {WINDOW_MS /
+					60_000} minutes are dropped: the weather changes, and aircraft move on.
 			</p>
 			<p>
 				A profile needs aircraft at many levels. Cruising aircraft fill FL300–FL410 within minutes;

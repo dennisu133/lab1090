@@ -13,13 +13,13 @@
 	import AltitudeLegend from './AltitudeLegend.svelte';
 	import MapLayers, { type Layers } from './MapLayers.svelte';
 	import TrackerMap from './TrackerMap.svelte';
-	import { TrackerStream } from './tracker-stream.svelte.ts';
+	import { getStreams } from './streams';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	const stream = new TrackerStream(() => data.receiver);
-	$effect(() => stream.connect());
+	/** Collecting since the app opened, also while other pages were shown (streams.ts). */
+	const stream = getStreams().tracker;
 
 	/** Range rings and distances: nautical miles (aviation's unit) or km. Remembered. */
 	const UNIT_KEY = 'tracker.unit';
@@ -69,7 +69,7 @@
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
-		<TrackerMap {stream} receiver={data.receiver} {unit} {layers} />
+		<TrackerMap {stream} receiver={data.reference} {unit} {layers} />
 
 		<div
 			class="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur"
@@ -84,7 +84,7 @@
 						Dashed circles around the receiver (the white dot) at equal distances, like on a radar
 						screen. Nautical miles are aviation's unit: one minute of latitude, 1,852 m.
 					</p>
-					{#if !data.receiver}
+					{#if !data.reference}
 						<p>
 							No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
 							<code>.env</code> to draw it.
@@ -121,7 +121,7 @@
 					aircraft={selected}
 					messages={stream.messages}
 					{now}
-					receiver={data.receiver}
+					receiver={data.reference}
 					{unit}
 					onclose={() => stream.select(null)}
 				/>
@@ -130,7 +130,7 @@
 			<AircraftList
 				aircraft={stream.aircraft}
 				{now}
-				receiver={data.receiver}
+				receiver={data.reference}
 				{unit}
 				onselect={(icao) => stream.select(icao)}
 			/>

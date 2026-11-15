@@ -4,9 +4,17 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import { setStreams, Streams } from './streams';
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
+	let { data, children }: LayoutProps = $props();
+
+	/**
+	 * Every page's view of the live stream, on one connection, created here so they keep
+	 * collecting while you switch pages (streams.ts). Pages get them with getStreams().
+	 */
+	const streams = setStreams(new Streams(() => data.reference));
+	$effect(() => streams.connect());
 
 	const links = [
 		{ route: '/', href: resolve('/'), label: 'Tracker' },

@@ -41,6 +41,12 @@ export interface StreamUpdate {
 	counts: ReceiverCounts;
 	/** New frames since the previous update (the first update holds recent history). */
 	frames: WireFrame[];
+	/**
+	 * First update of a `?tracks` stream only: the thinned positions of the last 10 minutes
+	 * (TrackHistory), oldest first, for the tracker's trails. Partly the same frames as
+	 * `frames` (same ids): mergeFrames joins the two.
+	 */
+	tracks?: WireFrame[];
 }
 
 /** Answer of /api/frames: stored frames matching a filter, oldest first. */

@@ -1,5 +1,6 @@
 import { describe, type Field } from '#lib/describe/frame.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
+import { mergeFrames } from '#lib/merge-frames.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import {
 	DF_NAMES,
@@ -9,7 +10,7 @@ import {
 	typeCode,
 	typeCodeName
 } from '#lib/modes/frame.ts';
-import type { WireFrame } from '#lib/receiver-types.ts';
+import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 import { Tracker, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 
 /** One message of the selected aircraft, decoded for the detail panel's feed. */
@@ -30,8 +31,9 @@ const MESSAGES = 40;
  * The tracker page's view of the live stream: every frame goes into a Tracker
  * (lib/tracker), which keeps the picture of the sky the map draws.
  *
- * It asks for `?tracks`: the first update then holds the last 10 minutes of positions too, so
- * the trails are there right away (see TrackHistory on the server).
+ * The app's stream asks for `?tracks`: the first update then holds the last 10 minutes of
+ * positions too (see TrackHistory on the server). Only this view merges them in, so the
+ * trails are there right away.
  */
 export class TrackerStream extends LiveFeed<never> {
 	/** Every aircraft heard in the last minute (Tracker snapshots). */
@@ -50,7 +52,7 @@ export class TrackerStream extends LiveFeed<never> {
 	#clock: { rx: number; at: number } | null = null;
 
 	constructor(receiver: () => LatLon | null) {
-		super(0, '/api/stream?tracks');
+		super(0);
 		this.#receiver = receiver;
 		this.#tracker = new Tracker(receiver);
 	}
@@ -83,7 +85,8 @@ export class TrackerStream extends LiveFeed<never> {
 		this.messages = [];
 	}
 
-	protected process(frames: WireFrame[]): never[] {
+	protected process(recent: WireFrame[], update: StreamUpdate): never[] {
+		const frames = update.tracks ? mergeFrames(update.tracks, recent) : recent;
 		if (frames.length === 0) return [];
 		for (const f of frames) {
 			const data = fromHex(f.hex);

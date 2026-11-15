@@ -49,7 +49,7 @@ const RATE_WINDOW_MS = 10_000;
  * Valid ADS-B goes into an AdsbMemory first, so Comm-B replies can be compared with it.
  */
 export class CommBStream extends LiveFeed<RegisterRow> {
-	/** Readings per register and source, since the page was opened. */
+	/** Readings per register and source, since the app was opened (routes/streams.ts). */
 	counts = $state.raw<Counts>({});
 	/** Per second, over the last 10 s. */
 	rates = $state.raw<Counts>({});

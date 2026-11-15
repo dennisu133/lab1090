@@ -14,11 +14,11 @@
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import AircraftTable from '../AircraftTable.svelte';
 	import Calculation from '../Calculation.svelte';
-	import { getWeatherStream } from '../context';
+	import { getStreams } from '../../streams';
 
 	const FEED_ROWS = 200;
 
-	const stream = getWeatherStream();
+	const stream = getStreams().weather;
 
 	/** The aircraft picked in the table (filters the feed, picks the worked example). */
 	let selected = $state<string | null>(null);

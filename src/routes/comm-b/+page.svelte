@@ -5,7 +5,8 @@
 	import { HOW, NAMES, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
 	import { DF_NAMES } from '#lib/modes/frame.ts';
 	import AircraftTable from './AircraftTable.svelte';
-	import { CommBStream, type RegisterRow, type Source } from './comm-b-stream.svelte';
+	import { getStreams } from '../streams';
+	import type { RegisterRow, Source } from './comm-b-stream.svelte';
 
 	const FEED_ROWS = 200;
 	/** Keys that aren't registers, shown last. */
@@ -15,8 +16,7 @@
 		unknown: 'Unknown'
 	};
 
-	const stream = new CommBStream();
-	$effect(() => stream.connect());
+	const stream = getStreams().commB;
 
 	let source = $state<Source | null>(null);
 	let register = $state<string | null>(null);
@@ -189,7 +189,7 @@
 	<!-- Registers -->
 	<section>
 		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
-			Registers since this page opened
+			Registers since the app opened
 		</h2>
 		<!-- Fixed layout: only Register takes the remaining width, so changing counts never move
 		     the columns. Widths go on <col>: the header's colspan cells can't carry them. -->
