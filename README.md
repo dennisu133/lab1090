@@ -45,7 +45,11 @@ Pages:
   last 10 minutes, a dotted line predicting where each one goes next, circles showing how
   accurate its position is (all three can be switched off), and range rings around the receiver.
   Tap one for everything known about it (identity, position, flight, autopilot settings,
-  what radars read from it, reception) and its live messages, each value explained. Works on phones too. How positions are
+  what radars read from it, reception) and its live messages, each value explained. Plus
+  what no radio message says, looked up in a database: a photo, the type, registration and
+  owner, the airline, how the callsign is said on the radio, and the route, drawn on the map
+  and checked against what the aircraft actually does (callsigns get reused, and routes in
+  the database go stale). Works on phones too. How positions are
   checked before they're believed: `src/lib/tracker/positions.ts`; how the path ahead is
   predicted: `src/lib/tracker/motion.ts`.
 
@@ -53,6 +57,11 @@ Pages:
   [OpenFreeMap](https://openfreemap.org/) (OpenStreetMap data) and hillshading from the
   [Terrain Tiles on AWS](https://registry.opendata.aws/terrain-tiles/), all free and without
   an API key. The browser loads the tiles from those servers directly.
+
+  Aircraft and flights: [adsbdb](https://www.adsbdb.com/) by Jack Wills, with aircraft data
+  from PlaneBase, photos from [airport-data.com](https://www.airport-data.com/) and routes
+  collected by David Taylor and Jim Mason. The browser asks adsbdb directly, for the selected
+  aircraft only, and keeps nothing beyond the tab.
 
 ## Hardware
 

@@ -1,15 +1,18 @@
 <!--
 	Everything about the selected aircraft: identity, position, flight, autopilot, what radars
 	read from it, reception, and its latest messages. Plus what the airframe database knows
-	(adsbdb: photo, type, registration, owner), once the lookup comes back.
+	(adsbdb: photo, type, registration, owner), once the lookup comes back, and about its
+	flight (route, airline: looked up by the page, which draws the route on the map too).
 -->
 <script lang="ts">
-	import { lookupAircraft, type DbAircraft } from '#lib/aircraft-db.ts';
+	import { lookupAircraft, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
 	import { aircraftSections } from '#lib/describe/aircraft.ts';
+	import { routeText } from '#lib/describe/route.ts';
 	import type { Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import Flag from '#lib/components/Flag.svelte';
 	import { allocation } from '#lib/modes/nationality.ts';
+	import type { Judged } from '#lib/tracker/route.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 	import AircraftPhoto from './AircraftPhoto.svelte';
 	import Details from './Details.svelte';
@@ -19,13 +22,17 @@
 	interface Props {
 		aircraft: TrackedAircraft;
 		messages: Message[];
+		/** adsbdb's route and airline for its callsign; null: none (yet). */
+		flight: DbFlight | null;
+		/** Whether its route fits (lib/tracker/route.ts); a dismissed one isn't shown. */
+		judged: Judged | null;
 		now: number;
 		receiver: LatLon | null;
 		unit: Unit;
 		onclose: () => void;
 	}
 
-	let { aircraft, messages, now, receiver, unit, onclose }: Props = $props();
+	let { aircraft, messages, flight, judged, now, receiver, unit, onclose }: Props = $props();
 
 	// The snapshot is replaced every update; the address isn't, so this looks it up once.
 	let icao = $derived(aircraft.icao);
@@ -42,7 +49,9 @@
 		return () => (current = false);
 	});
 
-	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db));
+	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db, flight, judged));
+	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
+
 	let block = $derived(allocation(aircraft.icao));
 </script>
 
@@ -54,10 +63,15 @@
 			{/if}
 			<span class="truncate">{aircraft.callsign?.value ?? aircraft.icao}</span>
 		</h2>
-		<p class="truncate text-sm text-zinc-400">
-			{aircraft.callsign ? aircraft.icao : 'no callsign (yet)'}
-			{#if aircraft.category}· {aircraft.category.value.name}{/if}
-		</p>
+		<!-- With a route: where it goes (the address and category are under Identity). -->
+		{#if route}
+			<p class="truncate text-sm text-zinc-300">{routeText(route)}</p>
+		{:else}
+			<p class="truncate text-sm text-zinc-400">
+				{aircraft.callsign ? aircraft.icao : 'no callsign (yet)'}
+				{#if aircraft.category}· {aircraft.category.value.name}{/if}
+			</p>
+		{/if}
 	</div>
 	<button
 		type="button"

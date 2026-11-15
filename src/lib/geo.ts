@@ -67,3 +67,22 @@ export function parseLatLon(value: string | undefined): LatLon | null {
 	}
 	return { lat, lon };
 }
+
+/**
+ * The point a fraction `f` (0–1) of the way from a to b along the great circle: the
+ * "intermediate point" formula, spherical linear interpolation of the two unit vectors.
+ */
+export function intermediate(a: LatLon, b: LatLon, f: number): LatLon {
+	const d = distanceKm(a, b) / EARTH_RADIUS_KM;
+	if (d === 0) return { lat: a.lat, lon: a.lon };
+	const wa = Math.sin((1 - f) * d) / Math.sin(d);
+	const wb = Math.sin(f * d) / Math.sin(d);
+	const [p1, l1, p2, l2] = [rad(a.lat), rad(a.lon), rad(b.lat), rad(b.lon)];
+	const x = wa * Math.cos(p1) * Math.cos(l1) + wb * Math.cos(p2) * Math.cos(l2);
+	const y = wa * Math.cos(p1) * Math.sin(l1) + wb * Math.cos(p2) * Math.sin(l2);
+	const z = wa * Math.sin(p1) + wb * Math.sin(p2);
+	return {
+		lat: (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI,
+		lon: (Math.atan2(y, x) * 180) / Math.PI
+	};
+}

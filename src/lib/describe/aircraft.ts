@@ -5,7 +5,7 @@
  * hover titles: every field here has a `label`.
  */
 import { bearing, compass, distanceKm, KM_PER_NM } from '#lib/geo.ts';
-import type { DbAircraft } from '#lib/aircraft-db.ts';
+import { airlineDesignator, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
 import type { Timed } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { allocation } from '#lib/modes/nationality.ts';
@@ -17,6 +17,7 @@ import {
 	TURNING,
 	trueHeading
 } from '#lib/tracker/motion.ts';
+import type { Judged } from '#lib/tracker/route.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import {
@@ -29,6 +30,7 @@ import {
 	type Unit
 } from '#lib/map/features.ts';
 import type { Field } from './field';
+import { routeSection } from './route';
 
 export interface Section {
 	title: string;
@@ -122,10 +124,16 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 		});
 	if (db.registration) {
 		const decoded = a.registration?.value;
+		const block = allocation(a.icao);
+		const register = db.country
+			? block?.country && block.country === db.country.iso.toLowerCase()
+				? ` It's on ${db.country.name}'s register: the State the address block says too (Registered in, above).`
+				: ` It's on ${db.country.name}'s register, ${block ? `but the address is from ${block.state}'s block` : 'but the address is in no State’s block'}: an aircraft that changed registers keeps its address until the new State assigns one from its own block, and databases mix up owner and register countries.`
+			: '';
 		fields.push({
 			label: 'Registration',
 			value: db.registration,
-			title: `The "tail number" painted on the aircraft, starting with its State's nationality mark (D- for Germany). Military aircraft carry serials instead (15+10).${
+			title: `The "tail number" painted on the aircraft, starting with its State's nationality mark (D- for Germany). Military aircraft carry serials instead (15+10).${register}${
 				decoded === undefined
 					? ''
 					: decoded === db.registration
@@ -136,13 +144,22 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 			mono: true
 		});
 	}
-	if (db.owner)
+	if (db.owner) {
+		const flying = a.callsign ? airlineDesignator(a.callsign.value) : null;
+		const operator = db.operator
+			? flying === null
+				? ` The database names ${db.operator} as its operator (the airline's ICAO designator).`
+				: flying === db.operator
+					? ` The database names ${db.operator} as its operator: the airline in the callsign, so it flies for its usual operator today.`
+					: ` The database names ${db.operator} as its operator, but the callsign says ${flying}: it's flying for another airline today (a wet lease or charter), or it changed hands.`
+			: '';
 		fields.push({
 			label: 'Owner',
-			value: db.owner,
-			title: `Who the aircraft is registered to. For airliners usually the airline, but leasing companies own about half of them, and an airline can fly another's aircraft with its crew (wet lease): the callsign says who flies it today.${FROM_DB}`,
+			value: db.operator ? `${db.owner} (${db.operator})` : db.owner,
+			title: `Who the aircraft is registered to. For airliners usually the airline, but leasing companies own about half of them, and an airline can fly another's aircraft with its crew (wet lease): the callsign says who flies it today.${operator}${FROM_DB}`,
 			tone: 'main'
 		});
+	}
 	return fields;
 }
 
@@ -152,7 +169,11 @@ export function aircraftSections(
 	receiver: LatLon | null,
 	unit: Unit,
 	/** What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet). */
-	db: DbAircraft | null = null
+	db: DbAircraft | null = null,
+	/** What adsbdb knows about the flight under its callsign; null: nothing (yet). */
+	trip: DbFlight | null = null,
+	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
+	judged: Judged | null = null
 ): Section[] {
 	const sections: Section[] = [];
 	const add = (title: string, fields: Section['fields']) => {
@@ -221,6 +242,8 @@ export function aircraftSections(
 		});
 	}
 	add('Identity', identity);
+	const route = trip && routeSection(a, trip, judged, unit);
+	if (route) sections.push(route);
 	if (db) add('Airframe (adsbdb)', airframeFields(a, db));
 
 	// --- position ------------------------------------------------------------------------

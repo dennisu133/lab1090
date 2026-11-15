@@ -6,6 +6,8 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { lookupFlight, type DbFlight } from '#lib/aircraft-db.ts';
+	import { RouteJudge } from '#lib/tracker/route.ts';
 	import type { Unit } from '#lib/map/features.ts';
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
@@ -64,6 +66,37 @@
 	});
 
 	let selected = $derived(stream.get(stream.selected));
+
+	/**
+	 * What adsbdb knows about the selected aircraft's flight: route and airline, by its
+	 * callsign (lib/aircraft-db.ts). For both the panel and the map (the route's line). Only
+	 * the selected one is looked up: adsbdb is a free service run by one person.
+	 */
+	let callsign = $derived(selected?.callsign?.value ?? null);
+	let flight = $state<DbFlight | null>(null);
+	$effect(() => {
+		const cs = callsign;
+		flight = null;
+		if (!cs) return;
+		let current = true;
+		lookupFlight(cs).then(
+			(f) => {
+				if (current) flight = f;
+			},
+			// Offline or adsbdb down: no route; the next selection retries.
+			() => {}
+		);
+		return () => (current = false);
+	});
+
+	/**
+	 * Does the route fit what the aircraft does (lib/tracker/route.ts)? One that doesn't is
+	 * dismissed (most likely another flight's): not drawn, and "unknown" in the panel. The
+	 * judge remembers that, so the route doesn't come back as the aircraft turns.
+	 */
+	const judge = new RouteJudge();
+	let judged = $derived(selected && flight?.route ? judge.judge(selected, flight.route) : null);
+	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 </script>
 
 <svelte:head>
@@ -72,7 +105,7 @@
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
-		<TrackerMap {stream} receiver={data.reference} {unit} {layers} />
+		<TrackerMap {stream} receiver={data.reference} {unit} {layers} {route} />
 
 		<div class="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2">
 			<MapLayers bind:layers bind:unit receiver={!!data.reference} />
@@ -89,6 +122,8 @@
 				<AircraftPanel
 					aircraft={selected}
 					messages={stream.messages}
+					{flight}
+					{judged}
 					{now}
 					receiver={data.reference}
 					{unit}

@@ -15,7 +15,8 @@
  * or "velocity leader": where the aircraft will be in a minute or two.
  */
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
-import { destination, KM_PER_NM } from '#lib/geo.ts';
+import type { DbAirport, DbRoute } from '#lib/aircraft-db.ts';
+import { destination, distanceKm, intermediate, KM_PER_NM } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { advance, headingReference, motion, path, trueHeading } from '#lib/tracker/motion.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
@@ -355,6 +356,53 @@ export function ringFeatures(
 					geometry: { type: 'Point', coordinates: [p.lon, p.lat] }
 				};
 			})
+		}
+	};
+}
+
+const EMPTY = { type: 'FeatureCollection' as const, features: [] };
+
+/** The great circle of a route is drawn in pieces of at most this length (km). */
+const ROUTE_STEP_KM = 25;
+
+/**
+ * The selected aircraft's route (adsbdb, lib/aircraft-db.ts): the great circle from origin
+ * to destination (via the stop, if any), the shortest way on the globe, which on this flat
+ * map is a curve; and the airports, labelled with their IATA code (else ICAO). Longitudes
+ * are unwrapped (beyond ±180°), so a route across the Pacific doesn't jump across the world.
+ */
+export function routeFeatures(route: DbRoute | null): {
+	line: FeatureCollection<LineString>;
+	airports: FeatureCollection<Point, { label: string }>;
+} {
+	if (!route) return { line: EMPTY, airports: EMPTY };
+	const stops = [route.origin, route.via, route.destination].filter(
+		(a): a is DbAirport => a !== null
+	);
+	const coordinates: [number, number][] = [];
+	for (let i = 1; i < stops.length; i++) {
+		const [a, b] = [stops[i - 1], stops[i]];
+		const pieces = Math.max(1, Math.ceil(distanceKm(a, b) / ROUTE_STEP_KM));
+		for (let k = i === 1 ? 0 : 1; k <= pieces; k++) {
+			const p = intermediate(a, b, k / pieces);
+			const previous = coordinates.at(-1)?.[0];
+			const lon =
+				previous === undefined ? p.lon : previous + (((p.lon - previous + 540) % 360) - 180);
+			coordinates.push([lon, p.lat]);
+		}
+	}
+	return {
+		line: {
+			type: 'FeatureCollection',
+			features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }]
+		},
+		airports: {
+			type: 'FeatureCollection',
+			features: stops.map((a) => ({
+				type: 'Feature',
+				properties: { label: a.iata ?? a.icao },
+				geometry: { type: 'Point', coordinates: [a.lon, a.lat] }
+			}))
 		}
 	};
 }

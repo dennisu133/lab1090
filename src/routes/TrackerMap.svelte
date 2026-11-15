@@ -7,6 +7,9 @@
 	animation frame (dead
 	reckoning, lib/map/features.ts); trails only change with new positions.
 
+	The selected aircraft's route, if adsbdb knows it: a dashed great circle from origin to
+	destination, with the airports' codes.
+
 	Tap or click an aircraft to select it; tap the map elsewhere to deselect.
 -->
 <script lang="ts">
@@ -18,6 +21,7 @@
 	// file as is in dev and copies it into the build).
 	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 	import { untrack } from 'svelte';
+	import type { DbRoute } from '#lib/aircraft-db.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { altitudeColour } from '#lib/map/altitude.ts';
 	import {
@@ -25,6 +29,7 @@
 		headFeatures,
 		predictionFeatures,
 		ringFeatures,
+		routeFeatures,
 		shownPosition,
 		trailFeatures,
 		uncertaintyFeatures,
@@ -40,9 +45,11 @@
 		receiver: LatLon | null;
 		unit: Unit;
 		layers: Layers;
+		/** The selected aircraft's route (adsbdb); null: none. */
+		route: DbRoute | null;
 	}
 
-	let { stream, receiver, unit, layers }: Props = $props();
+	let { stream, receiver, unit, layers, route }: Props = $props();
 
 	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
 	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
@@ -91,6 +98,8 @@
 			for (const id of [
 				'rings',
 				'ring-labels',
+				'route',
+				'route-airports',
 				'trails',
 				'heads',
 				'prediction',
@@ -119,6 +128,44 @@
 					'text-offset': [0, -0.2]
 				},
 				paint: { 'text-color': '#71717a', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			});
+			// The route: under everything the aircraft draw, faint, so it reads as background.
+			// Dash-dot, unlike the dashed range rings and the dotted predictions.
+			m.addLayer({
+				id: 'route',
+				type: 'line',
+				source: 'route',
+				paint: {
+					'line-color': '#a1a1aa', // zinc-400
+					'line-width': 1.5,
+					'line-opacity': 0.8,
+					'line-dasharray': [6, 3, 1, 3]
+				}
+			});
+			m.addLayer({
+				id: 'route-airport-dots',
+				type: 'circle',
+				source: 'route-airports',
+				paint: {
+					'circle-radius': 3.5,
+					'circle-color': '#a1a1aa',
+					'circle-stroke-color': HALO,
+					'circle-stroke-width': 1.5
+				}
+			});
+			m.addLayer({
+				id: 'route-airports',
+				type: 'symbol',
+				source: 'route-airports',
+				layout: {
+					'text-field': ['get', 'label'],
+					'text-font': FONT,
+					'text-size': 11,
+					'text-anchor': 'bottom',
+					'text-offset': [0, -0.5],
+					'text-allow-overlap': true
+				},
+				paint: { 'text-color': '#e4e4e7', 'text-halo-color': HALO, 'text-halo-width': 2 }
 			});
 			for (const id of ['trails', 'heads'])
 				m.addLayer({
@@ -315,6 +362,14 @@
 			properties: {},
 			geometry: { type: 'Point', coordinates: [receiver.lon, receiver.lat] }
 		});
+	});
+
+	// The selected aircraft's route: when it's looked up or the selection changes.
+	$effect(() => {
+		const { line, airports } = routeFeatures(route);
+		if (!map) return;
+		source(map, 'route').setData(line);
+		source(map, 'route-airports').setData(airports);
 	});
 
 	// Trails: with every update from the tracker.

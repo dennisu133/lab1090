@@ -13,17 +13,21 @@ on the capture (`fixtures/capture.beast`) before any UI is built.
 adsbdb is already the one non-decoded source (photo, type, registration, owner). It knows
 more:
 
-- [ ] **Route** from `GET /v0/callsign/{callsign}`: origin and destination airports with
+- [x] **Route** from `GET /v0/callsign/{callsign}`: origin and destination airports with
       coordinates. Great circle on the map, progress ("flown 312 of 1,040 km").
-- [ ] **Plausibility check of the route.** adsbdb's routes are crowdsourced and can be out of
-      date. Compare them with what the aircraft actually does (is its track heading for the
-      destination? how far is it from the great circle?) and say so when they don't fit.
-- [ ] **Airline** from the same response: name and radiotelephony callsign (DLH is called
+- [x] **Plausibility check of the route.** adsbdb's routes can be out of date. Compared with
+      what the aircraft does, from positions only (never the heading: controllers vector
+      aircraft near airports): near the way (the detour via its position, at most 25 % or
+      100 km) and going the right way (over the last minutes closer to the destination or
+      further from the origin). Fits, doesn't fit, or can't tell yet. A route that
+      doesn't fit isn't shown at all ("unknown"): either adsbdb is right or it's ignored
+      (`src/lib/tracker/route.ts`). First live look: 2 of 6 routes stale.
+- [x] **Airline** from the same response: name and radiotelephony callsign (DLH is called
       "LUFTHANSA" on the radio). Explain how ICAO airline designators and flight numbers make up
       the callsign.
-- [ ] **Owner vs operator**: `registered_owner_operator_flag_code` against the callsign's
+- [x] **Owner vs operator**: `registered_owner_operator_flag_code` against the callsign's
       airline prefix. A mismatch usually means a leased or wet-leased aircraft.
-- [ ] **Registration country vs address block**: `registered_owner_country_iso_name` against
+- [x] **Registration country vs address block**: `registered_owner_country_iso_name` against
       the State the 24-bit address was allocated to (the flag). They should agree; explain why
       they sometimes don't (re-registered aircraft, military).
 

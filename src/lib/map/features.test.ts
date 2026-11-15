@@ -10,6 +10,7 @@ import {
 	PREDICT_SELECTED_S,
 	predictionFeatures,
 	ringFeatures,
+	routeFeatures,
 	SHOW_MS,
 	uncertaintyFeatures,
 	shownPosition,
@@ -204,5 +205,64 @@ describe('features', () => {
 			expect(distanceKm(receiver, { lat, lon })).toBeCloseTo(185.2, 6);
 		}
 		expect(ringFeatures(receiver, 'km').labels.features[0].properties.label).toBe('50 km');
+	});
+});
+
+describe('route', () => {
+	const airport = (icao: string, iata: string | null, lat: number, lon: number) => ({
+		icao,
+		iata,
+		lat,
+		lon,
+		name: icao,
+		city: icao,
+		country: '',
+		elevation: null
+	});
+
+	test('nothing to draw without a route', () => {
+		const { line, airports } = routeFeatures(null);
+		expect(line.features).toEqual([]);
+		expect(airports.features).toEqual([]);
+	});
+
+	test('the great circle in pieces of at most 25 km, through the stop; airports by IATA code', () => {
+		const origin = airport('LEVC', 'VLC', 39.4893, -0.48163);
+		const via = airport('EDDF', null, 50.03333, 8.57056);
+		const dest = airport('EDDB', 'BER', 52.35139, 13.49389);
+		const { line, airports } = routeFeatures({
+			callsign: 'TST1',
+			airline: null,
+			origin,
+			destination: dest,
+			via
+		});
+		const c = line.features[0].geometry.coordinates;
+		const at =
+			(p: { lat: number; lon: number }) =>
+			([lon, lat]: number[]) =>
+				Math.abs(lon - p.lon) < 1e-9 && Math.abs(lat - p.lat) < 1e-9;
+		expect(at(origin)(c[0])).toBe(true);
+		expect(at(dest)(c.at(-1)!)).toBe(true);
+		expect(c.some(at(via))).toBe(true);
+		for (let i = 1; i < c.length; i++) {
+			const km = distanceKm({ lon: c[i - 1][0], lat: c[i - 1][1] }, { lon: c[i][0], lat: c[i][1] });
+			expect(km).toBeLessThanOrEqual(25);
+		}
+		expect(airports.features.map((f) => f.properties.label)).toEqual(['VLC', 'EDDF', 'BER']);
+	});
+
+	test('across the date line, the longitudes go on instead of jumping back', () => {
+		// Tokyo Haneda to San Francisco.
+		const { line } = routeFeatures({
+			callsign: 'TST2',
+			airline: null,
+			origin: airport('RJTT', 'HND', 35.5523, 139.78),
+			destination: airport('KSFO', 'SFO', 37.619, -122.375),
+			via: null
+		});
+		const lons = line.features[0].geometry.coordinates.map(([lon]) => lon);
+		for (let i = 1; i < lons.length; i++) expect(Math.abs(lons[i] - lons[i - 1])).toBeLessThan(5);
+		expect(lons.at(-1)).toBeCloseTo(-122.375 + 360, 6);
 	});
 });
