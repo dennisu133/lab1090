@@ -21,6 +21,8 @@ import { alertsOf, identing, type Tier } from '#lib/tracker/alerts.ts';
 import type { Judged } from '#lib/tracker/route.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
+import type { HeadingCheck } from '#lib/weather/headings.ts';
+import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 import {
 	EXTRAPOLATE_MS,
 	flightLevel,
@@ -33,6 +35,7 @@ import {
 import { alertSection, identField } from './alert';
 import type { Field } from './field';
 import { routeSection } from './route';
+import { weatherHereFields } from './weather';
 
 export interface Section {
 	title: string;
@@ -179,7 +182,9 @@ export function aircraftSections(
 	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
 	judged: Judged | null = null,
 	/** Every aircraft: for an ACAS advisory's threat. */
-	all: TrackedAircraft[] = []
+	all: TrackedAircraft[] = [],
+	/** Its wind and temperature (lib/weather/tracker.ts) and heading check; null: none. */
+	weather: { aircraft: WeatherAircraft; check: HeadingCheck | null } | null = null
 ): Section[] {
 	const sections: Section[] = [];
 	const add = (title: string, fields: Section['fields']) => {
@@ -541,6 +546,10 @@ export function aircraftSections(
 			tone: 'minor'
 		});
 	add('Autopilot', intent);
+
+	// --- weather, from its Comm-B registers ----------------------------------------------
+	if (weather)
+		add('Weather where it flies', weatherHereFields(weather.aircraft, weather.check, now));
 
 	// --- Comm-B --------------------------------------------------------------------------
 	const radar: Section['fields'] = [];

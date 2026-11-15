@@ -55,19 +55,39 @@ Visual only, no sound.
 
 ## 3. Weather on the map and in the air
 
-- [ ] **Wind barbs on the tracker map**: the per-aircraft winds drawn where they were measured.
-      A new switch in `MapLayers`.
+- [x] **Wind barbs on the tracker map**: the per-aircraft winds drawn where they were measured
+      (the ADS-B position moved on to the reply's time), one per aircraft and minute, over the
+      last 30 min, fading, coloured by altitude; dimmed away from the selected aircraft's
+      level; tap for a card. Heading-corrected like /weather's default. A "Wind" switch in
+      `MapLayers` (`src/lib/map/winds.ts`).
+- [x] **Weather in the aircraft panel**: its wind (corrected if its heading is off, with the
+      as-sent value), head/tailwind and drift, the heading check, the temperature and ISA
+      deviation.
 - [ ] **Barometric vs inertial vertical rate** (both in register 6,0, both decoded already).
       The autopilot holds _pressure_ altitude, so in level flight the inertial rate shows the
       pressure surface tilting: the same physics as `geostrophic.ts`, seen from another side.
       Vertical gusts and mountain waves show up in both; the static system's lag shows as the
       barometric rate trailing the inertial one. Second source: TC 19's GNSS − baro difference
       over time.
+  - [ ] **Check on the capture first.** Two doubts. The inertial vertical channel is unstable
+        on its own, so most inertial systems blend it with the barometric altitude
+        (baro-inertial); then its long-term mean follows the pressure surface and the tilt
+        never shows. And the signal is small: ~10–20 ft/min for a 50 kt geostrophic wind,
+        under the register's 32 ft/min step (in level flight the capture's inertial rates
+        scatter by 52 ft/min). Compare each aircraft's mean inertial rate in level flight with
+        its geometric rate (GNSS − baro over time) and what `geostrophic.ts` predicts along
+        its track. If it stays near 0: drop the tilt, keep both rates in the panel with what
+        each sensor measures.
 - [ ] **Contrails** (Schmidt–Appleman criterion): from the measured temperature at each level,
       the altitude above which engines leave contrails. Humidity is almost never known (4,4 is
       rare), so show it as a range: threshold at 0 % and at 100 % relative humidity. Whether
-      contrails _persist_ (ice supersaturation) can't be known; say so.
-  - [ ] On /weather "Now": a line in the profile.
+      contrails _persist_ (ice supersaturation) can't be known; say so. One engine efficiency
+      for all, η = 0.3; the tooltip says how much 0.4 would move it (~1.5 K, ~500 ft). The
+      capture's air sits between the two thresholds at FL350 and FL380: "depends on the
+      humidity" will be a common answer. The Lindenberg balloons have the humidity to check it.
+  - [ ] `src/lib/weather/contrail.ts`, tested against Schumann (1996) and the balloons.
+  - [ ] On /weather "Now": both threshold curves in the temperature profile, and a line in the
+        summary (the measured levels rarely reach below the threshold, so no single altitude).
   - [ ] In the aircraft panel: "probably leaving a contrail", with the reasoning. The part
         anyone can check by looking up.
 

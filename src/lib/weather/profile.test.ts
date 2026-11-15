@@ -55,7 +55,8 @@ describe('layers', () => {
 			altitude: 35_000,
 			wind: toVector(50, from + 180), // vectors point where the air goes
 			air: toVector(450, 0),
-			from: '5,0/6,0' as const
+			from: '5,0/6,0' as const,
+			at: null
 		}));
 		const w = layers([], winds, [])[0].wind!;
 		expect(Math.round(w.wind.direction) % 360).toBe(0);
@@ -152,7 +153,8 @@ describe('strongest wind', () => {
 			altitude,
 			wind: toVector(kt, 90), // from the west
 			air: toVector(450, 0),
-			from: '5,0/6,0' as const
+			from: '5,0/6,0' as const,
+			at: null
 		}));
 
 	test('the fastest layer, and whether it reaches jet stream strength (30 m/s = 58.3 kt)', () => {

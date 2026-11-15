@@ -1,6 +1,6 @@
 <!--
-	Everything about the selected aircraft: identity, position, flight, autopilot, what radars
-	read from it, reception, and its latest messages. Plus what the airframe database knows
+	Everything about the selected aircraft: identity, position, flight, autopilot, the weather
+	it measures, what radars read from it, reception, and its latest messages. Plus what the airframe database knows
 	(adsbdb: photo, type, registration, owner), once the lookup comes back, and about its
 	flight (route, airline: looked up by the page, which draws the route on the map too).
 -->
@@ -14,6 +14,8 @@
 	import { allocation } from '#lib/modes/nationality.ts';
 	import type { Judged } from '#lib/tracker/route.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
+	import type { HeadingCheck } from '#lib/weather/headings.ts';
+	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import AircraftPhoto from './AircraftPhoto.svelte';
 	import Details from './Details.svelte';
 	import MessageFeed from './MessageFeed.svelte';
@@ -28,13 +30,16 @@
 		flight: DbFlight | null;
 		/** Whether its route fits (lib/tracker/route.ts); a dismissed one isn't shown. */
 		judged: Judged | null;
+		/** Its wind and temperature (/weather's pipeline) and heading check; null: none. */
+		weather: { aircraft: WeatherAircraft; check: HeadingCheck | null } | null;
 		now: number;
 		receiver: LatLon | null;
 		unit: Unit;
 		onclose: () => void;
 	}
 
-	let { aircraft, all, messages, flight, judged, now, receiver, unit, onclose }: Props = $props();
+	let { aircraft, all, messages, flight, judged, weather, now, receiver, unit, onclose }: Props =
+		$props();
 
 	// The snapshot is replaced every update; the address isn't, so this looks it up once.
 	let icao = $derived(aircraft.icao);
@@ -51,7 +56,9 @@
 		return () => (current = false);
 	});
 
-	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db, flight, judged, all));
+	let sections = $derived(
+		aircraftSections(aircraft, now, receiver, unit, db, flight, judged, all, weather)
+	);
 	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 
 	let block = $derived(allocation(aircraft.icao));

@@ -20,8 +20,14 @@
  * settings from register 4,0 (same rules as 5,0/6,0) and ADS-B TC 29, and the winds from
  * turns: every ADS-B ground vector (TC 19) goes to the TurnTracker (circle.ts).
  *
+ * Each wind also gets where it was measured, for the tracker map's wind barbs: the
+ * aircraft's last ADS-B position, if at most MEASURED_AT_MS old, moved on to the time of
+ * the wind with its ADS-B ground speed and track (10 s at 450 kt is 2.3 km; the 60 s the
+ * declination may use would be 14 km).
+ *
  * Shared by server and browser; state is the aircraft heard so far.
  */
+import { destination, KM_PER_NM } from '#lib/geo.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
@@ -42,6 +48,8 @@ const ALTITUDE_MAX_AGE_MS = 30_000;
  * difference itself the aircraft computes. Position messages come twice a second.
  */
 const COLUMN_ALTITUDE_MS = 5_000;
+/** A wind is put on the map only with a position at most this old (see above). */
+export const MEASURED_AT_MS = 10_000;
 
 export class WeatherPipeline {
 	readonly tracker = new WeatherTracker();
@@ -122,7 +130,7 @@ export class WeatherPipeline {
 				callsign: this.#callsigns.get(addr.icao)?.callsign ?? null
 			}
 		);
-		if (o) this.sky.addObservation(o);
+		if (o) this.sky.addObservation(o, this.#measuredAt(addr.icao, o.rx));
 		return o;
 	}
 
@@ -143,7 +151,7 @@ export class WeatherPipeline {
 				vector: toVector(a.ground.value.speed, a.ground.value.track),
 				altitude
 			});
-			if (turn) this.sky.addTurn(turn);
+			if (turn) this.sky.addTurn(turn, this.#measuredAt(icao, turn.end));
 		}
 		if (a.qnh?.t === rx)
 			this.sky.addSetting({
@@ -158,7 +166,8 @@ export class WeatherPipeline {
 	prune(now: number): void {
 		this.#memory.prune(now);
 		this.tracker.prune(now);
-		for (const turn of this.turns.prune(now)) this.sky.addTurn(turn);
+		for (const turn of this.turns.prune(now))
+			this.sky.addTurn(turn, this.#measuredAt(turn.icao, turn.end));
 		this.sky.prune(now);
 		for (const [icao, a] of this.#altitudes) {
 			if (now - a.rx > ALTITUDE_MAX_AGE_MS) this.#altitudes.delete(icao);
@@ -171,6 +180,17 @@ export class WeatherPipeline {
 	#altitude(icao: string, now: number): Inputs['altitude'] {
 		const a = this.#altitudes.get(icao);
 		return a && now - a.rx <= ALTITUDE_MAX_AGE_MS ? { feet: a.feet, from: a.from } : null;
+	}
+
+	/** Where the aircraft was at `t`: see the top of this file. */
+	#measuredAt(icao: string, t: number): LatLon | null {
+		const a = this.#memory.get(icao);
+		const p = a?.position;
+		if (!p || Math.abs(t - p.t) > MEASURED_AT_MS) return null;
+		const ground = a.ground && Math.abs(a.ground.t - p.t) <= MEASURED_AT_MS ? a.ground : null;
+		if (!ground) return p.value;
+		const hours = (t - p.t) / 3_600_000;
+		return destination(p.value, ground.value.track, ground.value.speed * KM_PER_NM * hours);
 	}
 
 	#position(icao: string, now: number): Inputs['position'] {

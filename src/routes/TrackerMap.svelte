@@ -10,6 +10,11 @@
 	The selected aircraft's route, if adsbdb knows it: a dashed great circle from origin to
 	destination, with the airports' codes.
 
+	Wind barbs (lib/map/winds.ts) where the aircraft measured the wind, from /weather's
+	pipeline. Their images are drawn when first needed (styleimagemissing). Tap one for a card
+	with its numbers. While an aircraft is selected, the barbs far from its level are dimmed:
+	what's left is the wind it flies in.
+
 	Alerts (lib/tracker/alerts.ts): a ring around the symbol in the alert's colour (red for an
 	emergency, amber for a caution), its badge above the label, rings pulsing out when it
 	starts, and a line between two aircraft in an ACAS advisory. Their trails stay on with the
@@ -35,6 +40,7 @@
 	import {
 		aircraftFeatures,
 		alertLinkFeatures,
+		flightLevel,
 		headFeatures,
 		predictionFeatures,
 		ringFeatures,
@@ -44,13 +50,20 @@
 		uncertaintyFeatures,
 		type Unit
 	} from '#lib/map/features.ts';
-	import { iconImages } from '#lib/map/icons.ts';
+	import { barbImage, iconImages } from '#lib/map/icons.ts';
+	import { BARB_BELOW, barbFeatures, type BarbProperties } from '#lib/map/winds.ts';
+	import { compass } from '#lib/geo.ts';
+	import { degrees } from '#lib/describe/weather.ts';
+	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 	import { mapStyle } from '#lib/map/style.ts';
 	import type { Layers } from './MapLayers.svelte';
 	import type { TrackerStream } from './tracker-stream.svelte.ts';
+	import type { WeatherStream } from './weather/weather-stream.svelte.ts';
 
 	interface Props {
 		stream: TrackerStream;
+		/** The winds the aircraft measured: the barbs. */
+		weather: WeatherStream;
 		receiver: LatLon | null;
 		unit: Unit;
 		layers: Layers;
@@ -58,14 +71,25 @@
 		route: DbRoute | null;
 	}
 
-	let { stream, receiver, unit, layers, route }: Props = $props();
+	let { stream, weather, receiver, unit, layers, route }: Props = $props();
 
 	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
 	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
 		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown'],
-		rings: ['rings', 'ring-labels']
+		rings: ['rings', 'ring-labels'],
+		winds: ['winds']
 	};
+
+	/** Barbs further than this from the selected aircraft's altitude are dimmed, ft. */
+	const LEVEL_BAND_FT = 2000;
+	/** Redraw the barbs at least this often, for the fading. */
+	const BARB_REFRESH_MS = 10_000;
+
+	/** The barb tapped last, and where on the map it is; its card shows its numbers. */
+	let picked = $state<{ barb: BarbProperties; lon: number; lat: number } | null>(null);
+	/** Where the card's point is on screen, px; follows the map as it moves. */
+	let pickedAt = $state<{ x: number; y: number; width: number } | null>(null);
 
 	/** Set once the style has loaded and our sources and layers exist. */
 	let map = $state<maplibregl.Map | null>(null);
@@ -123,6 +147,14 @@
 		});
 		m.touchZoomRotate.disableRotation();
 
+		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
+		m.on('styleimagemissing', (e) => {
+			const barb = barbImage(e.id);
+			if (barb && !m.hasImage(e.id))
+				m.addImage(e.id, barb.image, { sdf: true, pixelRatio: barb.pixelRatio });
+		});
+		m.on('move', placeCard);
+
 		m.on('load', () => {
 			for (const { name, image, pixelRatio } of iconImages())
 				m.addImage(name, image, { sdf: true, pixelRatio });
@@ -139,7 +171,8 @@
 				'uncertainty',
 				'alert-links',
 				'aircraft',
-				'receiver'
+				'receiver',
+				'winds'
 			])
 				m.addSource(id, { type: 'geojson', data: empty });
 
@@ -213,6 +246,30 @@
 						'line-opacity': 0.7
 					}
 				});
+			// Wind barbs: over the trails they were measured on, under everything else. They give
+			// way to each other (the newest stays) and to the aircraft labels.
+			m.addLayer({
+				id: 'winds',
+				type: 'symbol',
+				source: 'winds',
+				layout: {
+					'icon-image': ['get', 'icon'],
+					'icon-rotate': ['get', 'direction'],
+					'icon-rotation-alignment': 'map',
+					// Turned around the station (the dot), which sits on the point.
+					'icon-anchor': 'bottom',
+					'icon-offset': [0, BARB_BELOW / 2],
+					'icon-size': 0.9,
+					'icon-padding': 0,
+					'symbol-sort-key': ['get', 'sort']
+				},
+				paint: {
+					'icon-color': altitudeColour(),
+					'icon-halo-color': HALO,
+					'icon-halo-width': 1.5,
+					'icon-opacity': ['get', 'opacity']
+				}
+			});
 			// Uncertainty, to scale: the radii are pixels at zoom 0 (features.ts), doubling with
 			// every zoom level. Accuracy filled, containment as a ring.
 			const toScale = (key: string): maplibregl.ExpressionSpecification => [
@@ -434,10 +491,21 @@
 					[e.point.x + 12, e.point.y + 12]
 				];
 				const hit = m.queryRenderedFeatures(box, { layers: ['aircraft'] })[0];
+				const barb =
+					!hit && layers.winds ? m.queryRenderedFeatures(box, { layers: ['winds'] })[0] : null;
+				if (barb && barb.geometry.type === 'Point') {
+					const [lon, lat] = barb.geometry.coordinates;
+					picked = { barb: barb.properties as BarbProperties, lon, lat };
+					placeCard();
+					return;
+				}
+				picked = null;
 				stream.select(hit ? (hit.properties.icao as string) : null);
 			});
-			m.on('mouseenter', 'aircraft', () => (m.getCanvas().style.cursor = 'pointer'));
-			m.on('mouseleave', 'aircraft', () => (m.getCanvas().style.cursor = ''));
+			for (const id of ['aircraft', 'winds']) {
+				m.on('mouseenter', id, () => (m.getCanvas().style.cursor = 'pointer'));
+				m.on('mouseleave', id, () => (m.getCanvas().style.cursor = ''));
+			}
 
 			// The credits open expanded; on a narrow map they'd cover the legend. Collapsed,
 			// they're one tap on the ⓘ away.
@@ -475,6 +543,64 @@
 		if (!map) return;
 		source(map, 'route').setData(line);
 		source(map, 'route-airports').setData(airports);
+	});
+
+	// Wind barbs: when a wind comes in, and every BARB_REFRESH_MS for the fading.
+	let barbClock = $state(0);
+	$effect(() => {
+		const timer = setInterval(() => (barbClock = Date.now()), BARB_REFRESH_MS);
+		return () => clearInterval(timer);
+	});
+	$effect(() => {
+		void barbClock;
+		const winds = weather.correctedWinds;
+		const checks = weather.checks;
+		if (!map) return;
+		// The clock alone mustn't redraw them: it moves with every update (4 a second).
+		const now = untrack(() => weather.now);
+		source(map, 'winds').setData(barbFeatures(winds, checks, now));
+	});
+
+	// With an aircraft selected: the barbs near its level stay, the others are dimmed.
+	let selectedLevel = $derived.by(() => {
+		const feet = stream.get(stream.selected)?.altitude?.value;
+		return feet === undefined ? null : Math.round(feet / 500) * 500;
+	});
+	$effect(() => {
+		const level = selectedLevel;
+		if (!map) return;
+		map.setPaintProperty(
+			'winds',
+			'icon-opacity',
+			level === null
+				? ['get', 'opacity']
+				: [
+						'*',
+						['get', 'opacity'],
+						['case', ['<=', ['abs', ['-', ['get', 'altitude'], level]], LEVEL_BAND_FT], 1, 0.3]
+					]
+		);
+	});
+
+	/** Put the card over its barb (on tap, and as the map moves). */
+	function placeCard() {
+		if (!map || !picked) return;
+		const { x, y } = map.project([picked.lon, picked.lat]);
+		pickedAt = { x, y, width: map.getContainer().clientWidth };
+	}
+	// The barb switched off: no card for it.
+	$effect(() => {
+		if (!layers.winds) picked = null;
+	});
+
+	/** Who measured the picked barb: callsign if known, else the address. */
+	let pickedBy = $derived.by(() => {
+		if (!picked) return null;
+		const icao = picked.barb.icao;
+		const tracked = stream.get(icao);
+		const callsign =
+			tracked?.callsign?.value ?? weather.aircraft.find((a) => a.icao === icao)?.callsign ?? null;
+		return { icao, name: callsign ?? icao, tracked: !!tracked };
 	});
 
 	// Trails: with every update from the tracker.
@@ -567,4 +693,58 @@
      `absolute`): the positioning goes on a wrapper. -->
 <div class="absolute inset-0">
 	<div class="h-full w-full" {@attach create}></div>
+
+	{#if picked && pickedAt && pickedBy}
+		{@const b = picked.barb}
+		{@const age = Math.max(0, Math.round((weather.now - b.rx) / 60_000))}
+		<!-- Above the barb, kept inside the map sideways. -->
+		<div
+			class="absolute z-10 w-64 -translate-y-full rounded-md bg-zinc-950/95 px-3 py-2 text-xs text-zinc-300 shadow-lg ring-1 ring-zinc-800"
+			style:left="{Math.min(Math.max(pickedAt.x - 128, 8), pickedAt.width - 264)}px"
+			style:top="{pickedAt.y - 12}px"
+			role="dialog"
+			aria-label="Wind barb"
+		>
+			<div class="flex items-start justify-between gap-2">
+				<p class="text-sm font-semibold text-zinc-100 tabular-nums">
+					{compass(b.direction)}
+					{degrees(b.direction)} · {Math.round(b.speed)} kt
+					<span class="font-normal text-zinc-400">at {flightLevel(b.altitude)}</span>
+				</p>
+				<button
+					type="button"
+					onclick={() => (picked = null)}
+					class="-mt-0.5 -mr-1 rounded px-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					aria-label="Close">✕</button
+				>
+			</div>
+			<p class="mt-1">
+				Measured by
+				{#if pickedBy.tracked}
+					<button
+						type="button"
+						class="font-mono text-zinc-100 underline decoration-zinc-600 underline-offset-2 hover:decoration-zinc-300"
+						onclick={() => {
+							stream.select(pickedBy.icao);
+							picked = null;
+						}}>{pickedBy.name}</button
+					>
+				{:else}
+					<span class="font-mono text-zinc-100">{pickedBy.name}</span> (gone){/if}
+				{age < 1 ? 'in the last minute' : `${age} min ago`}, here.
+			</p>
+			<p class="mt-1 text-zinc-400">
+				{#if b.from === 'turn'}
+					From a turn: its ground speed and track all the way round trace a circle whose centre is
+					the wind.
+				{:else}
+					{b.samples === 1 ? 'From one reading' : `Mean of ${b.samples} readings`}: its ground
+					vector minus its air vector (registers 5,0 and 6,0).{#if b.corrected}
+						Its heading was turned {Math.abs(b.corrected).toFixed(1)}° first: the other aircraft's
+						winds say it's off (at least {MIN_CORRECTION}°).{/if}
+				{/if}
+				The staff points where the wind comes from.
+			</p>
+		</div>
+	{/if}
 </div>

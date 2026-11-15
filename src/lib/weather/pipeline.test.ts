@@ -3,7 +3,8 @@ import { column } from './column';
 import { layers, strongestWind } from './profile';
 import { qnh } from './sky';
 import { runCapture } from './testing';
-import { angleDifference } from './wind';
+import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { angleDifference, speedOf } from './wind';
 
 /** The capture, through the same pipeline as /weather (testing.ts). */
 const { pipeline, observations } = runCapture();
@@ -153,5 +154,32 @@ describe('the capture, for the "Now" tab', () => {
 		expect(w.wind.direction).toBeCloseTo(275, 0);
 		expect(w.jet).toBe(true); // just: 58.3 kt is the threshold
 		expect(w.atBottom).toBe(true); // nothing lower with enough samples
+	});
+});
+
+describe('the capture, for the map', () => {
+	const winds = pipeline.sky.samples.winds;
+
+	test('205 of 213 winds know where they were measured', () => {
+		// The rest: CCA749 never sent a position (no GNSS fix, NACp 0), and a few came
+		// more than 10 s after the last position that got through.
+		expect([winds.filter((w) => w.at).length, winds.length]).toEqual([205, 213]);
+	});
+
+	test('consecutive positions of one aircraft are as far apart as its ground speed says', () => {
+		const ratios: number[] = [];
+		for (const own of Map.groupBy(winds, (w) => w.icao).values()) {
+			for (let i = 1; i < own.length; i++) {
+				const [a, b] = [own[i - 1], own[i]];
+				if (!a.at || !b.at || !a.air || b.rx - a.rx > 30_000) continue;
+				const ground = { north: a.wind.north + a.air.north, east: a.wind.east + a.air.east };
+				const expected = (speedOf(ground) * KM_PER_NM * (b.rx - a.rx)) / 3_600_000;
+				ratios.push(distanceKm(a.at, b.at) / expected);
+			}
+		}
+		expect(ratios.length).toBeGreaterThan(100);
+		// Within 5 % (worst 2.2 %): the positions are moved on to the reply's time. Left where
+		// the last position message was, the worst is 62 % off.
+		for (const r of ratios) expect(Math.abs(r - 1)).toBeLessThan(0.05);
 	});
 });

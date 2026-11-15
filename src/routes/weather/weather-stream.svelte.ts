@@ -3,7 +3,9 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 import { fromHex } from '#lib/modes/frame.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
 import type { Observation } from '#lib/weather/observation.ts';
+import { applyHeadingChecks, headingChecks, type HeadingCheck } from '#lib/weather/headings.ts';
 import { WeatherPipeline } from '#lib/weather/pipeline.ts';
+import type { WindSample } from '#lib/weather/profile.ts';
 import type { SkySamples } from '#lib/weather/sky.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 
@@ -36,6 +38,13 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		settings: [],
 		turns: []
 	});
+	/**
+	 * Each aircraft's wind against the others' (lib/weather/headings.ts), and the winds with
+	 * the clearly-off headings corrected: what the tracker map draws, and what /weather
+	 * uses unless switched to "as sent". Computed only while a page reads them.
+	 */
+	checks: Map<string, HeadingCheck> = $derived(headingChecks(this.sky.winds));
+	correctedWinds: WindSample[] = $derived(applyHeadingChecks(this.sky.winds, this.checks));
 	/** When the first frame arrived (server clock): how long we've been collecting. */
 	since = $state<number | null>(null);
 

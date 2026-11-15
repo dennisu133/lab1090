@@ -1,7 +1,7 @@
 <!--
 	Switches for what the map draws: the range rings around the receiver, and around the
-	aircraft the trails behind them, the predicted paths ahead and the position uncertainty
-	circles. All on by default. With the trails off, the selected aircraft still has one. Each
+	aircraft the trails behind them, the predicted paths ahead, the position uncertainty
+	circles and the wind barbs where they measured the wind. All on by default. With the trails off, the selected aircraft still has one. Each
 	label explains what it shows (tappable: phones never show `title`). The rings' row also
 	holds the NM/km switch, which the distances in the list and the panel follow too.
 -->
@@ -11,6 +11,7 @@
 		trail: boolean;
 		prediction: boolean;
 		uncertainty: boolean;
+		winds: boolean;
 	}
 </script>
 
@@ -19,6 +20,8 @@
 	import { PREDICT_S, PREDICT_SELECTED_S, type Unit } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { GAP_MS, STEP_MS, TRAIL_MS } from '#lib/tracker/trail.ts';
+	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
+	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 
 	interface Props {
 		layers: Layers;
@@ -183,6 +186,48 @@
 				<strong class="text-amber-400">Amber ring</strong>, not to scale: the aircraft says it knows
 				neither (NACp 0, NIC 0). Its position may be anywhere from fine to far off.
 			</p>
+		</InfoTip>
+	</div>
+	<div class="flex items-center gap-2">
+		<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<input
+				type="checkbox"
+				bind:checked={layers.winds}
+				class="size-3.5 accent-zinc-300"
+				aria-label="Show the wind barbs"
+			/>
+			<!-- A barb lying down, like a west wind on the map: staff, two feathers, a dot. -->
+			<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+				<g stroke="currentColor" stroke-width="1.25" stroke-linecap="round" fill="none">
+					<line x1="17" y1="9" x2="3" y2="9" />
+					<line x1="3" y1="9" x2="1.5" y2="2.5" />
+					<line x1="6" y1="9" x2="5" y2="5.5" />
+				</g>
+				<circle cx="17" cy="9" r="1.5" fill="currentColor" />
+			</svg>
+		</label>
+		<InfoTip label="Wind" above>
+			<p>
+				The wind the aircraft measured, drawn where they were when they measured it: one barb per
+				aircraft and {BARB_BIN_MS / 60_000} min (the mean of its readings), for the last {BARB_FADE_MS /
+					60_000} min, fading with age. Coloured by altitude like the trails: the wind at FL350 can differ
+				from the one at FL390 over the same spot. Tap one for the numbers.
+			</p>
+			<p>
+				<strong>How to read one</strong>, as on any weather chart: the staff points from the dot
+				towards where the wind comes from. The feathers at its end add up to the speed, in steps of
+				5 kt: a long feather is 10 kt, a short one 5 kt, a filled triangle (pennant) 50 kt. Two long
+				and a short one: 25 kt. They sit on the side of the lower pressure: in the northern
+				hemisphere, the right-hand side looking along the staff from the dot.
+			</p>
+			<p>
+				Nobody sends a wind. It comes from the wind triangle: how the aircraft moves over the ground
+				minus how it moves through the air (its airspeed along its heading). Both are in registers
+				5,0 and 6,0, which only some radars ask for (Enhanced Surveillance): aircraft that aren't
+				asked get no barbs. A heading clearly off from what the other aircraft's winds say (at least {MIN_CORRECTION}°)
+				is corrected first, as on /weather.
+			</p>
+			<p>Collected here in the browser, so a reload starts with none.</p>
 		</InfoTip>
 	</div>
 </div>

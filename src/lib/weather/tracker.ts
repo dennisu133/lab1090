@@ -13,7 +13,7 @@
  */
 import type { HeadingAndSpeed, TrackAndTurn } from '#lib/modes/registers.ts';
 import { observe, type Inputs, type Observation, type Reading } from './observation';
-import { meanWind, type Wind } from './wind';
+import { meanWind, type Vector, type Wind } from './wind';
 
 /** Aircraft without a 5,0 or 6,0 for this long are dropped. */
 export const AIRCRAFT_TTL_MS = 60_000;
@@ -24,6 +24,12 @@ const PARTNER_MAX_AGE_MS = 30_000;
 
 export interface Average {
 	wind: Wind | null;
+	/**
+	 * The mean air vector (TAS along the true heading) behind `wind`, kt. A heading
+	 * correction (headings.ts) turns it, and since turning is linear, the corrected mean
+	 * wind is mean ground − turned mean air: wind + air − turn(air).
+	 */
+	air: Vector | null;
 	windCount: number;
 	kelvin: number | null;
 	temperatureCount: number;
@@ -56,7 +62,7 @@ interface State {
 	trackAndTurn: Reading<TrackAndTurn> | null;
 	headingAndSpeed: Reading<HeadingAndSpeed> | null;
 	/** Trusted values of the last AVERAGE_MS. */
-	winds: { rx: number; wind: Wind }[];
+	winds: { rx: number; wind: Wind; air: Vector }[];
 	kelvins: { rx: number; kelvin: number; isaDeviation: number | null }[];
 	snapshot: WeatherAircraft | null;
 }
@@ -96,7 +102,8 @@ export class WeatherTracker {
 			altitude: context.altitude,
 			position: context.position
 		});
-		if (o.wind && !o.windProblem) state.winds.push({ rx: o.rx, wind: o.wind.wind });
+		if (o.wind && !o.windProblem)
+			state.winds.push({ rx: o.rx, wind: o.wind.wind, air: o.wind.air });
 		if (o.temperature && !o.temperatureProblem)
 			state.kelvins.push({
 				rx: o.rx,
@@ -157,6 +164,12 @@ function average(state: State): Average {
 	const deviations = state.kelvins.flatMap((k) => k.isaDeviation ?? []);
 	return {
 		wind: meanWind(state.winds.map((w) => w.wind)),
+		air: state.winds.length
+			? {
+					north: state.winds.reduce((s, w) => s + w.air.north, 0) / state.winds.length,
+					east: state.winds.reduce((s, w) => s + w.air.east, 0) / state.winds.length
+				}
+			: null,
 		windCount: state.winds.length,
 		kelvin: mean(state.kelvins.map((k) => k.kelvin)),
 		temperatureCount: state.kelvins.length,

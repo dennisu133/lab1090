@@ -26,6 +26,7 @@ function aircraft(
 		altitude,
 		air: reported,
 		from: '5,0/6,0' as const,
+		at: null,
 		wind: { north: ground.north - reported.north, east: ground.east - reported.east }
 	}));
 }

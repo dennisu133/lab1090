@@ -20,7 +20,6 @@
 	} from '#lib/weather/profile.ts';
 	import { WINDOW_MS, qnh } from '#lib/weather/sky.ts';
 	import { geostrophicWind } from '#lib/weather/geostrophic.ts';
-	import { applyHeadingChecks, headingChecks } from '#lib/weather/headings.ts';
 	import { meanWind } from '#lib/weather/wind.ts';
 	import ColumnCalculation from './ColumnCalculation.svelte';
 	import ColumnChart from './ColumnChart.svelte';
@@ -44,8 +43,8 @@
 	let correctHeadings = $state(true);
 
 	let sky = $derived(stream.sky);
-	let checks = $derived(headingChecks(sky.winds));
-	let winds = $derived(correctHeadings ? applyHeadingChecks(sky.winds, checks) : sky.winds);
+	let checks = $derived(stream.checks);
+	let winds = $derived(correctHeadings ? stream.correctedWinds : sky.winds);
 	let all = $derived(layers(sky.temperatures, winds, sky.columns));
 	let callsigns = $derived(
 		new Map(stream.aircraft.flatMap((a) => (a.callsign ? [[a.icao, a.callsign]] : [])))

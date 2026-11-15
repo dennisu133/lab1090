@@ -22,6 +22,8 @@
 
 	/** Collecting since the app opened, also while other pages were shown (streams.ts). */
 	const stream = getStreams().tracker;
+	/** The winds and temperatures the aircraft measure (/weather's pipeline): barbs, panel. */
+	const weather = getStreams().weather;
 
 	/**
 	 * Range rings and distances: nautical miles (aviation's unit) or km, switched next to
@@ -42,12 +44,18 @@
 
 	/** What the map draws on top of the aircraft (MapLayers.svelte). Remembered. */
 	const LAYERS_KEY = 'tracker.layers';
-	let layers = $state<Layers>({ rings: true, trail: true, prediction: true, uncertainty: true });
+	let layers = $state<Layers>({
+		rings: true,
+		trail: true,
+		prediction: true,
+		uncertainty: true,
+		winds: true
+	});
 	let layersLoaded = false;
 	onMount(() => {
 		try {
 			const saved = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? 'null');
-			for (const key of ['rings', 'trail', 'prediction', 'uncertainty'] as const)
+			for (const key of ['rings', 'trail', 'prediction', 'uncertainty', 'winds'] as const)
 				if (typeof saved?.[key] === 'boolean') layers[key] = saved[key];
 		} catch {
 			// Not ours or broken: keep the defaults.
@@ -67,6 +75,11 @@
 	});
 
 	let selected = $derived(stream.get(stream.selected));
+	let selectedWeather = $derived.by(() => {
+		const icao = selected?.icao;
+		const aircraft = icao && weather.aircraft.find((a) => a.icao === icao);
+		return aircraft ? { aircraft, check: weather.checks.get(aircraft.icao) ?? null } : null;
+	});
 
 	/**
 	 * What adsbdb knows about the selected aircraft's flight: route and airline, by its
@@ -104,7 +117,7 @@
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
-		<TrackerMap {stream} receiver={data.reference} {unit} {layers} {route} />
+		<TrackerMap {stream} {weather} receiver={data.reference} {unit} {layers} {route} />
 
 		<div class="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2">
 			<MapLayers bind:layers bind:unit receiver={!!data.reference} />
@@ -124,6 +137,7 @@
 					messages={stream.messages}
 					{flight}
 					{judged}
+					weather={selectedWeather}
 					{now}
 					receiver={data.reference}
 					{unit}

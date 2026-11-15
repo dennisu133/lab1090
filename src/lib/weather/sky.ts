@@ -10,6 +10,7 @@
  *
  * Shared by server and browser; state is the samples of the last half hour.
  */
+import type { LatLon } from '#lib/modes/cpr.ts';
 import type { TurnWind } from './circle';
 import { geoidUndulation } from './geoid';
 import type { Observation } from './observation';
@@ -46,7 +47,8 @@ export class Sky {
 	/** Last accepted sample per aircraft and kind, for the thinning. */
 	#last = new Map<string, number>();
 
-	addObservation(o: Observation): void {
+	/** `at`: where it was measured, for the map (WindSample.at). */
+	addObservation(o: Observation, at: LatLon | null = null): void {
 		const altitude = o.inputs.altitude?.feet;
 		if (altitude === undefined) return;
 		if (o.temperature && !o.temperatureProblem && this.#due('t', o.icao, o.rx))
@@ -63,7 +65,8 @@ export class Sky {
 				altitude,
 				wind: o.wind.wind.vector,
 				air: o.wind.air,
-				from: '5,0/6,0'
+				from: '5,0/6,0',
+				at
 			});
 	}
 
@@ -86,8 +89,8 @@ export class Sky {
 		});
 	}
 
-	/** A wind from a turn (circle.ts): one per turn, so no thinning. */
-	addTurn(t: TurnWind): void {
+	/** A wind from a turn (circle.ts): one per turn, so no thinning. `at`: where it ended. */
+	addTurn(t: TurnWind, at: LatLon | null = null): void {
 		this.#push('turns', t);
 		this.#push('winds', {
 			icao: t.icao,
@@ -95,7 +98,8 @@ export class Sky {
 			altitude: t.altitude,
 			wind: t.wind.vector,
 			air: null,
-			from: 'turn'
+			from: 'turn',
+			at
 		});
 	}
 

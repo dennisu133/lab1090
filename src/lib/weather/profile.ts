@@ -15,6 +15,7 @@
  * Shared by server and browser; no state here.
  */
 import { isaTemperature } from '#lib/modes/air-data.ts';
+import type { LatLon } from '#lib/modes/cpr.ts';
 import type { ColumnInputs } from './column';
 import { meanWind, speedOf, type Vector, type Wind } from './wind';
 
@@ -54,6 +55,12 @@ export interface WindSample {
 	 */
 	air: Vector | null;
 	from: '5,0/6,0' | 'turn';
+	/**
+	 * Where it was measured, for the map's wind barbs: the aircraft's ADS-B position, moved
+	 * on to the sample's time with its ground speed and track (pipeline.ts). null without a
+	 * fresh one; the profile doesn't need it.
+	 */
+	at: LatLon | null;
 }
 
 export interface ColumnSample extends ColumnInputs {

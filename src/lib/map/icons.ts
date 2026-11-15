@@ -11,8 +11,11 @@
  * then draws the edge wherever that distance crosses the threshold, sharp at any size, and
  * the halo (a dark outline for contrast) is just a second threshold further out. So each
  * silhouette is drawn once into a canvas and turned into an SDF (sdf() below).
+ *
+ * The wind barbs (winds.ts) are SDFs too, for the same reason: coloured by altitude.
  */
 import type { EmitterCategory } from '#lib/modes/identification.ts';
+import { barbShape, CALM_RADIUS, parseBarbIcon } from './winds';
 
 export type IconName = 'jet' | 'light' | 'glider' | 'helicopter' | 'balloon' | 'vehicle';
 
@@ -92,14 +95,60 @@ export function iconImages(): { name: IconName; image: ImageData; pixelRatio: nu
 }
 
 function draw(paths: string[]): ImageData {
-	const canvas = document.createElement('canvas');
-	canvas.width = canvas.height = SIZE;
-	const ctx = canvas.getContext('2d')!;
+	const { canvas, ctx } = blank(SIZE, SIZE);
 	const offset = (SIZE - 64) / 2;
 	ctx.translate(offset, offset);
-	ctx.fillStyle = '#fff';
 	for (const d of paths) ctx.fill(new Path2D(d));
-	return ctx.getImageData(0, 0, SIZE, SIZE);
+	return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+function blank(width: number, height: number) {
+	const canvas = document.createElement('canvas');
+	canvas.width = width;
+	canvas.height = height;
+	const ctx = canvas.getContext('2d')!;
+	ctx.fillStyle = ctx.strokeStyle = '#fff';
+	return { canvas, ctx };
+}
+
+/** Stroke width of a barb's staff and feathers, px (1.5 CSS px). */
+const BARB_STROKE = 3;
+
+/**
+ * A wind barb's SDF image (lib/map/winds.ts), by its name ("barb-n-65"); null if the name
+ * isn't a barb's. Made when the map first needs it (TrackerMap: styleimagemissing): only
+ * the speeds that occur, a dozen or so.
+ */
+export function barbImage(name: string): { image: ImageData; pixelRatio: number } | null {
+	const parsed = parseBarbIcon(name);
+	if (!parsed) return null;
+	const shape = barbShape(parsed.knots, parsed.south);
+	const { ctx } = blank(shape.width, shape.height);
+	ctx.lineWidth = BARB_STROKE;
+	ctx.lineCap = 'round';
+	ctx.beginPath();
+	for (const [x1, y1, x2, y2] of shape.lines) {
+		ctx.moveTo(x1, y1);
+		ctx.lineTo(x2, y2);
+	}
+	ctx.stroke();
+	for (const [first, ...rest] of shape.triangles) {
+		ctx.beginPath();
+		ctx.moveTo(...first);
+		for (const p of rest) ctx.lineTo(...p);
+		ctx.closePath();
+		ctx.fill();
+	}
+	const { x, y, calm } = shape.station;
+	ctx.beginPath();
+	if (calm) {
+		ctx.arc(x, y, CALM_RADIUS, 0, 2 * Math.PI);
+		ctx.stroke();
+	} else {
+		ctx.arc(x, y, 3.5, 0, 2 * Math.PI);
+		ctx.fill();
+	}
+	return { image: sdf(ctx.getImageData(0, 0, shape.width, shape.height)), pixelRatio: PIXEL_RATIO };
 }
 
 /**
