@@ -1,7 +1,7 @@
 <!--
 	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
 	the dotted predicted paths ahead of them and the circles of their position uncertainty
-	(either can be switched off: MapLayers.svelte). MapLibre draws with WebGL from GeoJSON
+	(trails, predictions and circles can be switched off: MapLayers.svelte). MapLibre draws with WebGL from GeoJSON
 	sources; this component keeps those sources up to date with the tracker. Aircraft, the
 	pieces of trail up to them and the predictions move every animation frame (dead
 	reckoning, lib/map/features.ts); trails only change with new positions.
@@ -43,8 +43,8 @@
 
 	let { stream, receiver, unit, layers }: Props = $props();
 
-	/** The map layers each switch shows or hides. */
-	const LAYER_IDS: Record<keyof Layers, string[]> = {
+	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
+	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
 		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown']
 	};
@@ -74,7 +74,11 @@
 			// Rotating the map would make "north up" and the tracks confusing; pinch-zoom stays.
 			dragRotate: false,
 			pitchWithRotate: false,
-			touchPitch: false
+			touchPitch: false,
+			// No fading labels. MapLibre tells labels apart by their text, so when FL123 turns
+			// into FL124 it sees a new label and fades it in from nothing: a climbing aircraft's
+			// label would flicker with every 100 ft. Base map labels now appear without a fade too.
+			fadeDuration: 0
 		});
 		m.touchZoomRotate.disableRotation();
 
@@ -350,13 +354,15 @@
 				m.setLayoutProperty(id, 'visibility', layers[key as keyof Layers] ? 'visible' : 'none');
 	});
 
-	// The selection: a ring around the symbol, its trail brighter and wider.
+	// The selection: a ring around the symbol, its trail brighter and wider. With the trails
+	// switched off, its trail is the only one.
 	$effect(() => {
 		const icao = stream.selected ?? '';
 		if (!map) return;
 		map.setFilter('selected', ['==', ['get', 'icao'], icao]);
 		const mine = ['==', ['get', 'icao'], icao] as maplibregl.ExpressionSpecification;
 		for (const id of ['trails', 'heads']) {
+			map.setFilter(id, layers.trail ? null : mine);
 			map.setPaintProperty(id, 'line-width', ['case', mine, 3, 1.5]);
 			map.setPaintProperty(id, 'line-opacity', ['case', mine, 1, icao ? 0.35 : 0.7]);
 		}

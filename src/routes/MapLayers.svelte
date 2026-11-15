@@ -1,10 +1,12 @@
 <!--
-	Switches for what the map draws on top of the aircraft: the predicted paths and the
-	position uncertainty circles. Both on by default; off is the classic tracker. Each label
-	explains what it shows (tappable: phones never show `title`).
+	Switches for what the map draws around the aircraft: the trails behind them, the
+	predicted paths ahead and the position uncertainty circles. All on by default. With the
+	trails off, the selected aircraft still has one. Each label explains what it shows
+	(tappable: phones never show `title`).
 -->
 <script lang="ts" module>
 	export interface Layers {
+		trail: boolean;
 		prediction: boolean;
 		uncertainty: boolean;
 	}
@@ -14,11 +16,45 @@
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
+	import { GAP_MS, STEP_MS, TRAIL_MS } from '#lib/tracker/trail.ts';
 
 	let { layers = $bindable() }: { layers: Layers } = $props();
 </script>
 
 <div class="space-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur">
+	<div class="flex items-center gap-2">
+		<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<input
+				type="checkbox"
+				bind:checked={layers.trail}
+				class="size-3.5 accent-zinc-300"
+				aria-label="Show the trails"
+			/>
+			<!-- A solid line, like on the map. -->
+			<svg viewBox="0 0 20 6" class="hidden h-1.5 w-5 sm:block" aria-hidden="true">
+				<line
+					x1="2"
+					y1="3"
+					x2="18"
+					y2="3"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+				/>
+			</svg>
+		</label>
+		<InfoTip label="Trail" above>
+			<p>
+				The line behind each aircraft: where it has been in the last {TRAIL_MS / 60_000} min, a point
+				every {STEP_MS / 1000} s, coloured by the altitude it had there, so a climb or descent shows as
+				a change of colour. A gap means nothing was received for over {GAP_MS / 1000} s (out of reach,
+				or behind a hill).
+			</p>
+			<p>
+				Switched off, only the selected aircraft keeps its trail: handy when many are on screen.
+			</p>
+		</InfoTip>
+	</div>
 	<div class="flex items-center gap-2">
 		<label class="flex cursor-pointer items-center gap-2 py-0.5">
 			<input

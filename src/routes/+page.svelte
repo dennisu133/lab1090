@@ -35,12 +35,12 @@
 
 	/** What the map draws on top of the aircraft (MapLayers.svelte). Remembered. */
 	const LAYERS_KEY = 'tracker.layers';
-	let layers = $state<Layers>({ prediction: true, uncertainty: true });
+	let layers = $state<Layers>({ trail: true, prediction: true, uncertainty: true });
 	let layersLoaded = false;
 	onMount(() => {
 		try {
 			const saved = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? 'null');
-			for (const key of ['prediction', 'uncertainty'] as const)
+			for (const key of ['trail', 'prediction', 'uncertainty'] as const)
 				if (typeof saved?.[key] === 'boolean') layers[key] = saved[key];
 		} catch {
 			// Not ours or broken: keep the defaults.
