@@ -11,6 +11,7 @@
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
+	import MapLayers, { type Layers } from './MapLayers.svelte';
 	import TrackerMap from './TrackerMap.svelte';
 	import { TrackerStream } from './tracker-stream.svelte.ts';
 	import type { PageProps } from './$types';
@@ -32,6 +33,25 @@
 		localStorage.setItem(UNIT_KEY, u);
 	}
 
+	/** What the map draws on top of the aircraft (MapLayers.svelte). Remembered. */
+	const LAYERS_KEY = 'tracker.layers';
+	let layers = $state<Layers>({ prediction: true, uncertainty: true });
+	let layersLoaded = false;
+	onMount(() => {
+		try {
+			const saved = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? 'null');
+			for (const key of ['prediction', 'uncertainty'] as const)
+				if (typeof saved?.[key] === 'boolean') layers[key] = saved[key];
+		} catch {
+			// Not ours or broken: keep the defaults.
+		}
+		layersLoaded = true;
+	});
+	$effect(() => {
+		const json = JSON.stringify(layers);
+		if (layersLoaded) localStorage.setItem(LAYERS_KEY, json);
+	});
+
 	/** The server's clock, once a second: for "3 s ago" and the list (the map runs on its own). */
 	let now = $state(Date.now());
 	$effect(() => {
@@ -49,7 +69,7 @@
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
-		<TrackerMap {stream} receiver={data.receiver} {unit} />
+		<TrackerMap {stream} receiver={data.receiver} {unit} {layers} />
 
 		<div
 			class="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur"
@@ -85,8 +105,9 @@
 			</div>
 		</div>
 
-		<div class="absolute bottom-2 left-2">
+		<div class="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2">
 			<AltitudeLegend />
+			<MapLayers bind:layers />
 		</div>
 	</div>
 

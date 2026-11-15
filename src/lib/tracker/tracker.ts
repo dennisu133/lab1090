@@ -128,8 +128,20 @@ export interface TrackedAircraft {
 	 */
 	air: Timed<NonNullable<Velocity['air']>> | null;
 	verticalRate: Timed<{ rate: number; source: 'GNSS' | 'baro' }> | null;
-	/** From the operational status (TC 31): the ADS-B version and the heading reference. */
-	operational: Timed<Pick<OperationalStatus, 'version' | 'hrd'>> | null;
+	/**
+	 * From the operational status (TC 31): the ADS-B version (decides how other messages are
+	 * read), the heading reference, and what the integrity of positions needs (integrity.ts).
+	 */
+	operational: Timed<
+		Pick<OperationalStatus, 'version' | 'hrd' | 'sil' | 'silSupplement'> & {
+			nicA: number | null;
+			nicC: number | null;
+		}
+	> | null;
+	/** NACp, the position's 95 % accuracy (integrity.ts): from TC 31 or TC 29, the latest. */
+	nacP: Timed<number> | null;
+	/** The latest position message's type code and NIC-B bit: its integrity (integrity.ts). */
+	positionCode: Timed<{ tc: number; nicB: number }> | null;
 	/** What the autopilot is set to (TC 29, ADS-B version 2). */
 	target: Timed<
 		Pick<TargetStateV2, 'selectedAltitude' | 'selectedHeading' | 'qnh' | 'modes'>
@@ -174,6 +186,8 @@ function blank(icao: string, t: number): TrackedAircraft {
 		air: null,
 		verticalRate: null,
 		operational: null,
+		nacP: null,
+		positionCode: null,
 		target: null,
 		position: null,
 		confirmed: false,
@@ -279,6 +293,7 @@ export class Tracker {
 				break;
 			case 'surface-position':
 				a.onGround = true;
+				a.positionCode = stamp({ tc: s.tc, nicB: 0 });
 				a.surface = stamp({ movement: s.movement, direction: s.track });
 				return this.#position(a, s.cpr, t, true);
 			case 'airborne-position': {
@@ -288,7 +303,10 @@ export class Tracker {
 					if (s.altitudeSource === 'baro') a.altitude = stamp(feet);
 					else a.gnssHeight = stamp(feet);
 				}
-				if (s.cpr) return this.#position(a, s.cpr, t);
+				if (s.cpr) {
+					a.positionCode = stamp({ tc: s.tc, nicB: s.nicB });
+					return this.#position(a, s.cpr, t);
+				}
 				break;
 			}
 			case 'velocity':
@@ -304,12 +322,21 @@ export class Tracker {
 				if (s.squawk) a.squawk = stamp(s.squawk);
 				break;
 			case 'operational-status':
-				a.operational = stamp({ version: s.version, hrd: s.hrd });
+				a.operational = stamp({
+					version: s.version,
+					hrd: s.hrd,
+					sil: s.sil,
+					silSupplement: s.silSupplement,
+					nicA: s.nicSupplementA,
+					nicC: s.capabilities?.nicSupplementC ?? null
+				});
+				if (s.nacP !== null) a.nacP = stamp(s.nacP);
 				break;
 			case 'target-state':
 				if (s.subtype === 1) {
 					const { selectedAltitude, selectedHeading, qnh, modes } = s;
 					a.target = stamp({ selectedAltitude, selectedHeading, qnh, modes });
+					a.nacP = stamp(s.nacP);
 				}
 				break;
 		}

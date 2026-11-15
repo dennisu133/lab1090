@@ -6,7 +6,7 @@
 
 <div class="rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur">
 	<div class="mb-1">
-		<InfoTip label="Altitude">
+		<InfoTip label="Altitude" above>
 			<p>
 				Aircraft and trails are coloured by barometric altitude: warm near the ground (taking off,
 				landing), cool at cruising level. A climbing aircraft leaves a trail that changes colour.
@@ -19,7 +19,7 @@
 	</div>
 	<div class="flex items-center gap-2">
 		<span class="size-2.5 rounded-full" style:background-color={GROUND_COLOUR}></span>
-		<div class="w-40">
+		<div class="w-28 sm:w-40">
 			<div class="h-2 rounded-full" style:background-image={altitudeGradient()}></div>
 			<div class="mt-0.5 flex justify-between tabular-nums">
 				<span>0</span><span>10k</span><span>20k</span><span>30k</span><span>40k ft</span>

@@ -26,6 +26,8 @@
 		align?: 'left' | 'right';
 		/** Room for longer explanations, e.g. with a table. */
 		wide?: boolean;
+		/** Open above the label instead of below: for labels at the bottom of the screen. */
+		above?: boolean;
 		children: Snippet;
 	}
 
@@ -35,6 +37,7 @@
 		class: labelClass,
 		align = 'left',
 		wide = false,
+		above = false,
 		children
 	}: Props = $props();
 
@@ -87,7 +90,8 @@
 		{id}
 		role="tooltip"
 		class={[
-			'invisible absolute top-full z-20 pt-2 opacity-0 transition-opacity',
+			'invisible absolute z-20 opacity-0 transition-opacity',
+			above ? 'bottom-full pb-2' : 'top-full pt-2',
 			'group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100',
 			wide ? 'w-160' : 'w-96',
 			'max-w-[calc(100vw-1rem)]',

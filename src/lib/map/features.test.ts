@@ -11,6 +11,7 @@ import {
 	predictionFeatures,
 	ringFeatures,
 	SHOW_MS,
+	uncertaintyFeatures,
 	shownPosition,
 	trailFeatures
 } from './features';
@@ -37,6 +38,8 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		air: null,
 		verticalRate: null,
 		operational: null,
+		nacP: null,
+		positionCode: null,
 		target: null,
 		position: { lat: 52, lon: 14, t: 0, from: 'pair', surface: false },
 		confirmed: true,
@@ -149,6 +152,42 @@ describe('features', () => {
 	test('no prediction once faded, or without a ground velocity', () => {
 		expect(predictionFeatures([aircraft()], 11_000, null).lines.features).toEqual([]);
 		expect(predictionFeatures([aircraft({ ground: null })], 0, null).lines.features).toEqual([]);
+	});
+
+	test('uncertainty circles: metres to pixels at zoom 0, at the latitude', () => {
+		const a = aircraft({
+			nacP: { value: 9, t: 0, from: 'TC 29' },
+			positionCode: { value: { tc: 11, nicB: 1 }, t: 0, from: 'TC 11' },
+			operational: {
+				value: { version: 2, hrd: 'true', sil: 3, silSupplement: 0, nicA: 1, nicC: null },
+				t: 0,
+				from: 'TC 31'
+			}
+		});
+		const [f] = uncertaintyFeatures([a], 0).features;
+		// The world is 512 px wide at zoom 0; at 52°N a pixel covers cos 52° of the equator's.
+		const metresPerPixel = (40_075_016.686 / 512) * Math.cos((52 * Math.PI) / 180);
+		expect(f.properties.accuracy).toBeCloseTo(30 / metresPerPixel, 9); // NACp 9: 30 m
+		expect(f.properties.containment).toBeCloseTo(75 / metresPerPixel, 9); // NIC 9
+		expect(f.properties.unknown).toBe(false);
+		// At zoom 15 (×2^15) a pixel is 1.47 m: 30 m are 20 px, the symbol's size. The 75 m
+		// ring reaches that at zoom 13.7 or so: zoomed in on a town.
+		expect(f.properties.accuracy! * 2 ** 15).toBeCloseTo(20.4, 1);
+	});
+
+	test('uncertainty unknown (NACp 0, TC 18): the warning ring; nothing said yet: nothing', () => {
+		const blind = aircraft({
+			nacP: { value: 0, t: 0, from: 'TC 31' },
+			positionCode: { value: { tc: 18, nicB: 0 }, t: 0, from: 'TC 18' }
+		});
+		const [f] = uncertaintyFeatures([blind], 0).features;
+		expect(f.properties).toEqual({
+			icao: 'ABC123',
+			altitude: 35_000,
+			ground: false,
+			unknown: true
+		});
+		expect(uncertaintyFeatures([aircraft()], 0).features).toEqual([]);
 	});
 
 	test('range rings: every point the same distance from the receiver', () => {

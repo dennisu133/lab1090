@@ -42,10 +42,10 @@ Pages:
   Every step shown with its own numbers.
 
 - **/**: the tracker. Live aircraft on a map, coloured by altitude, with their trails of the
-  last 10 minutes, a dotted line predicting where each one goes next, and range rings around
-  the receiver. Tap one for everything known about
-  it (identity, position, flight, autopilot settings, what radars read from it, reception)
-  and its live messages, each value explained. Works on phones too. How positions are
+  last 10 minutes, a dotted line predicting where each one goes next, circles showing how
+  accurate its position is (both can be switched off), and range rings around the receiver.
+  Tap one for everything known about it (identity, position, flight, autopilot settings,
+  what radars read from it, reception) and its live messages, each value explained. Works on phones too. How positions are
   checked before they're believed: `src/lib/tracker/positions.ts`; how the path ahead is
   predicted: `src/lib/tracker/motion.ts`.
 

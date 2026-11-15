@@ -28,6 +28,8 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		air: null,
 		verticalRate: null,
 		operational: null,
+		nacP: null,
+		positionCode: null,
 		target: null,
 		position: { lat: 52, lon: 14, t: 0, from: 'pair', surface: false },
 		confirmed: true,
@@ -38,6 +40,9 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		...changes
 	};
 }
+
+const op = (version: number, hrd: 'true' | 'magnetic' | null) =>
+	at({ version, hrd, sil: 3, silSupplement: 0, nicA: 0, nicC: null }, 'TC 31');
 
 const autopilot = (selectedHeading: number, lnav = false) =>
 	at(
@@ -94,7 +99,7 @@ describe('sideways', () => {
 		const a = aircraft({
 			turnRate: at(1.5),
 			target: autopilot(120),
-			operational: at({ version: 2, hrd: 'true' }, 'TC 31')
+			operational: op(2, 'true')
 		});
 		const m = motion(a)!;
 		expect(m.rollOut).toBe(120);
@@ -112,11 +117,11 @@ describe('sideways', () => {
 		const a = aircraft({
 			turnRate: at(1.5),
 			target: autopilot(120),
-			operational: at({ version: 2, hrd: 'magnetic' }, 'TC 31')
+			operational: op(2, 'magnetic')
 		});
 		expect(motion(a)!.rollOut).toBeCloseTo(120 + declination, 9);
 		// Versions 0/1 have no HRD bit: headings were magnetic.
-		const v1 = aircraft({ ...a, operational: at({ version: 1, hrd: null }, 'TC 31') });
+		const v1 = aircraft({ ...a, operational: op(1, null) });
 		expect(motion(v1)!.rollOut).toBeCloseTo(120 + declination, 9);
 		expect(trueHeading(120, 'true', start, 0)).toBe(120);
 		expect(trueHeading(120, 'magnetic', null, 0)).toBe(120); // no place: as given

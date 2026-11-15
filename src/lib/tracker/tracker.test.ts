@@ -7,6 +7,7 @@ import { downlinkFormat, toHex } from '#lib/modes/frame.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
 import { build, cprOracle, encodeCpr, registration21, timedMessages } from '#lib/modes/testing.ts';
 import { AIRCRAFT_TTL_MS, Tracker, TURN_WINDOW_MS, type TrackedAircraft } from './tracker';
+import { uncertainty } from './uncertainty';
 
 /** Rounded from the capture itself, like the CPR oracle's reference (tools/README.md). */
 const receiver = { lat: 52, lon: 14 };
@@ -87,7 +88,34 @@ describe('the capture', () => {
 		expect(cca.ground).toBeNull();
 		// The last heading: 644 × 360/1024 (10 bits for a full circle, 0.35° steps).
 		expect(cca.air?.value).toEqual({ speed: 253, type: 'IAS', heading: (644 * 360) / 1024 });
-		expect(cca.operational?.value).toEqual({ version: 2, hrd: 'true' });
+		expect(cca.operational?.value).toMatchObject({ version: 2, hrd: 'true' });
+		expect(cca.nacP?.value).toBe(0);
+	});
+
+	test('position uncertainty: satellite navigation (NACp 8–11) for all but two', () => {
+		const byIcao = (icao: string) => aircraft.find((a) => a.icao === icao)!;
+		const sent = aircraft.filter((a) => a.nacP);
+		expect(sent.length).toBe(18);
+		const unknown = sent.filter((a) => a.nacP!.value === 0).map((a) => a.callsign?.value);
+		expect(unknown.sort()).toEqual(['CCA749', 'DLH895']);
+		expect(sent.every((a) => a.nacP!.value === 0 || a.nacP!.value >= 8)).toBe(true);
+		// DLH895 sends positions, but vouches for nothing: TC 18 is NIC 0.
+		expect(uncertainty(byCallsign('DLH895'))).toMatchObject({
+			accuracy: null,
+			containment: { nic: 0, rc: null }
+		});
+		// JSY3M: TC 11 with NIC-A (TC 31) and NIC-B (in the position) both set: NIC 9, 75 m.
+		expect(uncertainty(byCallsign('JSY3M')).containment).toEqual({
+			nic: 9,
+			rc: 75,
+			assumed: false
+		});
+		// DLH3AJ: no operational status received, so NIC-A is missing: the larger radius.
+		expect(uncertainty(byIcao('3C64A7')).containment).toEqual({
+			nic: 8,
+			rc: 0.1 * 1852,
+			assumed: true
+		});
 	});
 
 	test('turn rates: straight flight within ±0.05°/s, the two course changes turn up to 0.4 and 0.7°/s', () => {

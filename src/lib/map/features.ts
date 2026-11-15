@@ -19,6 +19,7 @@ import { destination, KM_PER_NM } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { advance, headingReference, motion, path, trueHeading } from '#lib/tracker/motion.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
+import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import { iconFor } from './icons';
 
 /** A position older than this isn't drawn: the aircraft is out of reach, or stopped sending. */
@@ -255,6 +256,62 @@ export function predictionFeatures(
 		lines: { type: 'FeatureCollection', features: lines },
 		minutes: { type: 'FeatureCollection', features: minutes }
 	};
+}
+
+/**
+ * Metres per pixel at zoom 0 on the equator: MapLibre's world is one 512 px tile there,
+ * around 40,075,016.686 m (WGS84's equator). Each zoom level halves it; away from the
+ * equator, Web Mercator stretches the map by 1 / cos(latitude), so a metre takes more pixels.
+ */
+const METRES_PER_PIXEL_Z0 = 40_075_016.686 / 512;
+
+export interface UncertaintyProperties {
+	icao: string;
+	altitude: number | null;
+	ground: boolean;
+	/** The radii in pixels at zoom 0 (see METRES_PER_PIXEL_Z0); absent if unknown. */
+	accuracy?: number;
+	containment?: number;
+	/** It says neither: NACp 0 and NIC 0 (e.g. TC 18). Drawn as a warning, not to scale. */
+	unknown: boolean;
+}
+
+/**
+ * Circles around each aircraft on the map, true to scale: how accurate its position is
+ * (NACp, 95 %) and the radius it vouches for (NIC → Rc). See lib/modes/integrity.ts. With
+ * satellite navigation working, both are tens to a couple of hundred metres: hidden under
+ * the symbol until you zoom in close. Large circles mean the aircraft navigates without
+ * satellites (inertial, radio beacons), or its receiver is disturbed. An aircraft that
+ * states neither (NACp 0, and a type code that says "NIC 0") gets a warning ring of a fixed
+ * size: in the capture, DLH895 sent positions like that. Not for faded aircraft.
+ */
+export function uncertaintyFeatures(
+	list: TrackedAircraft[],
+	now: number
+): FeatureCollection<Point, UncertaintyProperties> {
+	const features: Feature<Point, UncertaintyProperties>[] = [];
+	for (const a of list) {
+		const shown = shownPosition(a, now);
+		if (!shown || shown.age > STALE_MS) continue;
+		const u = uncertainty(a);
+		const rc = u.containment?.rc ?? null;
+		// Nothing received about it yet (no NACp, no position type code): nothing to say.
+		if (u.accuracy === null && rc === null && (u.nacP === null || !u.containment)) continue;
+		const scale = METRES_PER_PIXEL_Z0 * Math.cos((shown.lat * Math.PI) / 180);
+		features.push({
+			type: 'Feature',
+			geometry: { type: 'Point', coordinates: [shown.lon, shown.lat] },
+			properties: {
+				icao: a.icao,
+				altitude: a.position!.surface ? null : (a.altitude?.value ?? null),
+				ground: a.position!.surface,
+				...(u.accuracy !== null && { accuracy: u.accuracy / scale }),
+				...(rc !== null && { containment: rc / scale }),
+				unknown: u.accuracy === null && rc === null
+			}
+		});
+	}
+	return { type: 'FeatureCollection', features };
 }
 
 /** Ring radii: round numbers that cover what a receiver like this one hears. */

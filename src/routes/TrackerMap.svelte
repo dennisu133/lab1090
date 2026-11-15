@@ -1,6 +1,7 @@
 <!--
 	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
-	and the dotted predicted paths ahead of them. MapLibre draws with WebGL from GeoJSON
+	the dotted predicted paths ahead of them and the circles of their position uncertainty
+	(either can be switched off: MapLayers.svelte). MapLibre draws with WebGL from GeoJSON
 	sources; this component keeps those sources up to date with the tracker. Aircraft, the
 	pieces of trail up to them and the predictions move every animation frame (dead
 	reckoning, lib/map/features.ts); trails only change with new positions.
@@ -25,19 +26,28 @@
 		ringFeatures,
 		shownPosition,
 		trailFeatures,
+		uncertaintyFeatures,
 		type Unit
 	} from '#lib/map/features.ts';
 	import { iconImages } from '#lib/map/icons.ts';
 	import { mapStyle } from '#lib/map/style.ts';
+	import type { Layers } from './MapLayers.svelte';
 	import type { TrackerStream } from './tracker-stream.svelte.ts';
 
 	interface Props {
 		stream: TrackerStream;
 		receiver: LatLon | null;
 		unit: Unit;
+		layers: Layers;
 	}
 
-	let { stream, receiver, unit }: Props = $props();
+	let { stream, receiver, unit, layers }: Props = $props();
+
+	/** The map layers each switch shows or hides. */
+	const LAYER_IDS: Record<keyof Layers, string[]> = {
+		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
+		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown']
+	};
 
 	/** Set once the style has loaded and our sources and layers exist. */
 	let map = $state<maplibregl.Map | null>(null);
@@ -79,6 +89,7 @@
 				'heads',
 				'prediction',
 				'prediction-minutes',
+				'uncertainty',
 				'aircraft',
 				'receiver'
 			])
@@ -116,6 +127,55 @@
 						'line-opacity': 0.7
 					}
 				});
+			// Uncertainty, to scale: the radii are pixels at zoom 0 (features.ts), doubling with
+			// every zoom level. Accuracy filled, containment as a ring.
+			const toScale = (key: string): maplibregl.ExpressionSpecification => [
+				'interpolate',
+				['exponential', 2],
+				['zoom'],
+				0,
+				['get', key],
+				24,
+				['*', ['get', key], 2 ** 24]
+			];
+			m.addLayer({
+				id: 'accuracy',
+				type: 'circle',
+				source: 'uncertainty',
+				filter: ['has', 'accuracy'],
+				paint: {
+					'circle-radius': toScale('accuracy'),
+					'circle-color': altitudeColour(),
+					'circle-opacity': 0.15
+				}
+			});
+			m.addLayer({
+				id: 'containment',
+				type: 'circle',
+				source: 'uncertainty',
+				filter: ['has', 'containment'],
+				paint: {
+					'circle-radius': toScale('containment'),
+					'circle-color': 'rgba(0,0,0,0)',
+					'circle-stroke-color': altitudeColour(),
+					'circle-stroke-width': 1,
+					'circle-stroke-opacity': 0.6
+				}
+			});
+			// Neither accuracy nor integrity known: a fixed-size amber ring, a warning.
+			m.addLayer({
+				id: 'uncertainty-unknown',
+				type: 'circle',
+				source: 'uncertainty',
+				filter: ['==', ['get', 'unknown'], true],
+				paint: {
+					'circle-radius': 13,
+					'circle-color': 'rgba(0,0,0,0)',
+					'circle-stroke-color': '#fbbf24', // amber-400
+					'circle-stroke-width': 1.5,
+					'circle-stroke-opacity': 0.8
+				}
+			});
 			// Dots: zero-length dashes with round caps, a gap of 2.5 line widths between them.
 			m.addLayer({
 				id: 'prediction',
@@ -125,7 +185,7 @@
 				paint: {
 					'line-color': altitudeColour(),
 					'line-width': 1.5,
-					'line-opacity': 0.6,
+					'line-opacity': 0.75,
 					'line-dasharray': [0, 2.5]
 				}
 			});
@@ -275,9 +335,19 @@
 			const prediction = predictionFeatures(list, now, stream.selected);
 			source(m, 'prediction').setData(prediction.lines);
 			source(m, 'prediction-minutes').setData(prediction.minutes);
+			source(m, 'uncertainty').setData(uncertaintyFeatures(list, now));
 		};
 		frame = requestAnimationFrame(draw);
 		return () => cancelAnimationFrame(frame);
+	});
+
+	// The switches: show or hide their layers (the data keeps flowing; it's cheap).
+	$effect(() => {
+		const m = map;
+		if (!m) return;
+		for (const [key, ids] of Object.entries(LAYER_IDS))
+			for (const id of ids)
+				m.setLayoutProperty(id, 'visibility', layers[key as keyof Layers] ? 'visible' : 'none');
 	});
 
 	// The selection: a ring around the symbol, its trail brighter and wider.
@@ -291,7 +361,7 @@
 			map.setPaintProperty(id, 'line-opacity', ['case', mine, 1, icao ? 0.35 : 0.7]);
 		}
 		map.setPaintProperty('prediction', 'line-width', ['case', mine, 2.5, 1.5]);
-		map.setPaintProperty('prediction', 'line-opacity', ['case', mine, 0.9, icao ? 0.3 : 0.6]);
+		map.setPaintProperty('prediction', 'line-opacity', ['case', mine, 0.9, icao ? 0.3 : 0.75]);
 	});
 
 	// Selected from the list, but off screen: bring it into view.

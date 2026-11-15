@@ -17,6 +17,7 @@ import {
 	trueHeading
 } from '#lib/tracker/motion.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
+import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import {
 	flightLevel,
 	PREDICT_S,
@@ -58,6 +59,48 @@ function source<T>(v: Timed<T>, now: number): string {
 export function distanceText(km: number, unit: Unit): string {
 	const d = unit === 'NM' ? km / KM_PER_NM : km;
 	return `${d < 10 ? d.toFixed(1) : n(d)} ${unit}`;
+}
+
+/** "30 m", "0.3 NM (556 m)": metres up to 100, then nautical miles as well. */
+function radius(metres: number): string {
+	if (metres < 100) return `${n(metres)} m`;
+	const nm = metres / 1852;
+	const m = metres < 10_000 ? `${n(metres)} m` : `${n(metres / 1000)} km`;
+	return `${nm < 1 ? Number(nm.toFixed(2)) : n(nm)} NM (${m})`;
+}
+
+const SIL_ODDS = ['unknown', '1 in 1,000', '1 in 100,000', '1 in 10 million'];
+
+/** Accuracy (NACp) and integrity (NIC, SIL) of the position: lib/modes/integrity.ts. */
+function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
+	const u = uncertainty(a);
+	const fields: Section['fields'] = [];
+	if (a.nacP)
+		fields.push({
+			label: 'Accuracy',
+			value: u.accuracy === null ? 'unknown (NACp 0)' : `< ${radius(u.accuracy)} (NACp ${u.nacP})`,
+			title: `How accurate the position is: the true position is within this distance 95 % of the time, as the navigation system estimates its own error (Navigation Accuracy Category, position: 0–11). Satellite navigation gives NACp 8–10 (93 m down to 10 m); larger means it navigates without satellites (inertial navigation drifts by about 1 NM per hour, radio beacons), or its receiver is disturbed, e.g. by jamming. On the map: the filled circle.${u.accuracy === null ? " Unknown: it can't say, usually because it has no satellite fix." : ''}${source(a.nacP, now)}`,
+			tone: u.accuracy === null || u.accuracy > 0.3 * 1852 ? 'alert' : 'main'
+		});
+	const c = u.containment;
+	if (c && a.positionCode) {
+		const sil = u.sil;
+		const per = u.silSupplement ? 'per position' : 'per hour';
+		fields.push({
+			label: 'Integrity',
+			value:
+				c.rc === null
+					? 'unknown'
+					: `< ${radius(c.rc)}${c.nic === null ? ' (HPL)' : ` (NIC ${c.nic})`}${sil ? `, SIL ${sil}` : ''}`,
+			title: `The radius of containment: the position is guaranteed to be within it, unless the navigation system fails without noticing (SIL says how likely that is${sil ? `: ${SIL_ODDS[sil]} ${per}` : ''}). Air traffic control separates aircraft relying on this, not on the accuracy. It's not sent as a number: the position message's type code (${a.positionCode.value.tc}) says it, ${
+				c.nic === null
+					? 'as the horizontal protection limit (ADS-B version 0, which has no NIC).'
+					: 'refined by supplement bits: NIC-A from the operational status (TC 31), NIC-B from the position message itself.'
+			}${c.assumed ? ' A supplement bit is missing (no operational status yet), so this is the larger of the possible radii.' : ''} On the map: the ring.${source(a.positionCode, now)}`,
+			tone: c.rc === null || c.rc > 1852 ? 'alert' : 'main'
+		});
+	}
+	return fields;
 }
 
 export function aircraftSections(
@@ -159,6 +202,7 @@ export function aircraftSections(
 				tone: 'main'
 			});
 		}
+		position.push(...uncertaintyFields(a, now));
 		if (!a.confirmed)
 			position.push({
 				label: 'Not on the map',
