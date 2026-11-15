@@ -12,12 +12,13 @@
  * the halo (a dark outline for contrast) is just a second threshold further out. So each
  * silhouette is drawn once into a canvas and turned into an SDF (sdf() below).
  *
- * The wind barbs (winds.ts) are SDFs too, for the same reason: coloured by altitude.
+ * The wind barbs (winds.ts) are SDFs too, for the same reason: coloured by altitude. And
+ * the radar sites' symbol (radars.ts), for the halo.
  */
 import type { EmitterCategory } from '#lib/modes/identification.ts';
 import { barbShape, CALM_RADIUS, parseBarbIcon } from './winds';
 
-export type IconName = 'jet' | 'light' | 'glider' | 'helicopter' | 'balloon' | 'vehicle';
+export type IconName = 'jet' | 'light' | 'glider' | 'helicopter' | 'balloon' | 'vehicle' | 'radar';
 
 const PATHS: Record<IconName, string[]> = {
 	// Swept wings and a T-less tail: an airliner.
@@ -41,6 +42,13 @@ const PATHS: Record<IconName, string[]> = {
 		'M51.46 10.66 L49.34 8.54 L12.54 45.34 L14.66 47.46 Z'
 	],
 	balloon: ['M32 12 A15 15 0 1 0 32 42 A15 15 0 1 0 32 12 Z', 'M29 47 L35 47 L35 53 L29 53 Z'],
+	// A radar site (lib/map/radars.ts), not an aircraft: a secondary radar's antenna, a long
+	// horizontal bar (it forms a beam narrow sideways, wide up and down), on its mast.
+	radar: [
+		'M8 12 L56 12 L56 21 L8 21 Z',
+		'M28.5 21 L35.5 21 L40 52 L24 52 Z',
+		'M16 52 L48 52 L48 58 L16 58 Z'
+	],
 	// A rounded box: a car or truck on the apron.
 	vehicle: [
 		'M24 18 L40 18 A3 3 0 0 1 43 21 L43 43 A3 3 0 0 1 40 46 L24 46 A3 3 0 0 1 21 43 L21 21 A3 3 0 0 1 24 18 Z'

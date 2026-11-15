@@ -71,6 +71,20 @@ Pages:
   collected by David Taylor and Jim Mason. The browser asks adsbdb directly, for the selected
   aircraft only, and keeps nothing beyond the tab.
 
+- **/experimental**: methods that worked on the recording but aren't trusted yet. Nothing
+  there feeds the other pages.
+  - **Radars**: the ground radars, found from the replies alone. Every all-call reply
+    (DF11) names the radar that asked, and a rotating radar asks only while its beam points
+    at the aircraft. So its replies come in bursts, one per turn, which give the rotation
+    period, and the moments the beam passed aircraft whose positions we know give where the
+    radar stands (a resection). On a map with an uncertainty ellipse and the beam sweeping
+    round as the fit predicts; tap one for every step with its own numbers. On the
+    10-minute capture it places four radars 180–470 km away within 0–11 km of the sites
+    mapped on OpenStreetMap. Live, it also piled up radars that weren't there, so a radar
+    is only shown once its position is pinned down (an ellipse at most 50 km long) and
+    every fit has found it again for 2 minutes. Starts when the page is first opened:
+    `src/lib/radar/`.
+
 ## Hardware
 
 The reference setup:

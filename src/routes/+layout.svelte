@@ -23,7 +23,9 @@
 		{ route: '/', href: resolve('/'), label: 'Tracker' },
 		{ route: '/frames', href: resolve('/frames'), label: 'Raw frames' },
 		{ route: '/comm-b', href: resolve('/comm-b'), label: 'Comm-B registers' },
-		{ route: '/weather', href: resolve('/weather'), label: 'Weather' }
+		{ route: '/weather', href: resolve('/weather'), label: 'Weather' },
+		// Short: at 1280 px a longer label wraps the bar onto a second line.
+		{ route: '/experimental', href: resolve('/experimental'), label: 'Labs' }
 	];
 
 	/**
@@ -33,8 +35,12 @@
 	 */
 	const WIDE_ONLY = ['/frames', '/comm-b', '/weather'];
 
-	/** The tracker fills the window below the navigation: a map, no margins, no page scrolling. */
-	const fullScreen = $derived(page.route.id === '/');
+	/**
+	 * The map pages (the tracker, the radar experiment) fill the window below the navigation:
+	 * a map, no margins, no page scrolling.
+	 */
+	const FULL_SCREEN = ['/', '/experimental/radars'];
+	const fullScreen = $derived(FULL_SCREEN.includes(page.route.id ?? ''));
 
 	/** Is the current page this route or one of its sub-pages (the /weather tabs)? */
 	const within = (route: string) =>

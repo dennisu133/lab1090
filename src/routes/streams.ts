@@ -6,6 +6,7 @@ import { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
 import { StreamConnection } from '#lib/stream-connection.ts';
 import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
+import { RadarStream } from './experimental/radars/radar-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
 import { TrackerStream } from './tracker-stream.svelte';
 import { WeatherStream } from './weather/weather-stream.svelte';
@@ -15,7 +16,8 @@ import { WeatherStream } from './weather/weather-stream.svelte';
  * connection. So they all collect from the moment the app opens, whichever page is shown:
  * switching from the map to /weather and back loses nothing. Each view decodes every frame
  * itself (the server only checks CRCs), which costs little: the four together take ~2 s of
- * CPU for 10 minutes of the capture's traffic (~57 frames/s).
+ * CPU for 10 minutes of the capture's traffic (~57 frames/s). The radar experiment costs
+ * more than that on its own, so it waits until its page is opened.
  */
 export class Streams {
 	/** The server's message counts and the rates: for the navigation bar and /frames. */
@@ -26,6 +28,8 @@ export class Streams {
 	readonly weather: WeatherStream;
 	/** Emergencies and ACAS advisories, from the tracker's picture: banner, notifications. */
 	readonly alerts: AlertCenter;
+	/** The radar experiment (/experimental/radars): idle until that page is first opened. */
+	readonly radars: RadarStream;
 	#connection: StreamConnection;
 
 	/** `reference`: the receiver's position (RECEIVER_POSITION), if set. */
@@ -35,10 +39,12 @@ export class Streams {
 		this.commB = new CommBStream();
 		this.weather = new WeatherStream(reference);
 		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
+		this.radars = new RadarStream(this.tracker);
 		this.#connection = new StreamConnection('/api/stream', [
 			this.stats,
 			this.tracker,
 			this.alerts, // after the tracker: reads what it made of the update
+			this.radars, // the same
 			this.frames,
 			this.commB,
 			this.weather

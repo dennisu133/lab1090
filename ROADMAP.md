@@ -47,7 +47,7 @@ Visual only, no sound.
         distress: amber, unless the squawk is an emergency code.
   - [x] ACAS resolution advisories (TC 28 subtype 2, register 3,0, DF16)
   - [x] IDENT (SPI): not an alert, the aircraft blinks on the map.
-  - [ ] An aircraft losing GNSS integrity (NACp / NIC dropping to 0): moved to phase 5's GNSS
+  - [ ] An aircraft losing GNSS integrity (NACp / NIC dropping to 0): moved to phase 4's GNSS
         interference experiment. Near jammed areas it could fire for every aircraft, so
         whether it's an alert at all depends on what that shows.
 - [x] Tests with synthetic frames; a way to play them through `tools/replay.ts` to see the UI
@@ -104,26 +104,7 @@ Visual only, no sound.
   - [ ] Maybe later: a temperature check like the heading check (each aircraft's
         temperature against the others' at its level), to catch the 7 K aircraft.
 
-## 4. Flight phase
-
-Most receivers, this one included, mostly see cruise traffic. But others will run this near
-airports, and the rare phases are the interesting ones. Tags only where they add something
-the altitude colour and vertical rate don't already say.
-
-- [ ] Phases worth detecting, each with the evidence that led to it:
-  - [ ] **Holding**: a racetrack pattern (two 180° turns joined by straight legs of about 1 min,
-        or 1.5 min above FL140), repeated over the same fix
-  - [ ] **Go-around**: descending on an approach at low altitude, then climbing again
-  - [ ] **Approach / final**: descending, low, slowing, lined up with a runway
-  - [ ] **Levelling off**: approaching the selected altitude (4,0 / TC 29)
-  - [ ] **Climb / cruise / descent** as the base layer the others build on
-- [ ] Literature: Sun, Ellerbroek, Hoekstra (2017), _Flight extraction and phase identification
-      for large automatic dependent surveillance–broadcast datasets_ (fuzzy-logic phases).
-- [ ] Tested synthetically (like `weather/circle.ts`), since the capture has none of the rare
-      phases. Approach and runway need airport positions: decide on a source (OurAirports is
-      public domain; adsbdb's route only names the destination).
-
-## 5. Experiments
+## 4. Experiments
 
 Each one starts as a check on the capture. If it doesn't work there, it gets dropped and the
 reason written down here.
@@ -135,12 +116,74 @@ reason written down here.
       shadows from a line-of-sight trace over the same tiles. Kept per tab, like everything
       else: the tool isn't meant to run 24/7 and antenna setups are temporary, so coverage
       from an earlier session may not apply anymore. It fills slowly; explain that on the page.
-- [ ] **Locating the radars**: a rotating secondary radar interrogates an aircraft when its beam
+      First look at the capture (10 min, 16 aircraft with positions): the farthest is 193 km
+      at FL350, 45 % of its 425 km horizon, so the signal limits this receiver, not the
+      Earth's curvature; the farthest aircraft gave only 1–2 positions each; nothing at all
+      between 50° and 170°, a shadow or just no traffic. Needs ~1 h of busy-time recording to
+      tell; where tracks end (in cruise, flying away) could separate the two.
+- [x] **Locating the radars**: a rotating secondary radar interrogates an aircraft when its beam
       points at it. Reply times (12 MHz Beast timestamps) of aircraft whose positions are known
       → rotation period and phase → the radar's position. Catch: Mode S lockout makes DF11
       replies with an interrogator code sparse, so the periods probably have to come from
       roll-call reply bursts. First step: do rotation periods show up in the capture at all?
       Checkable against public radar sites (OpenStreetMap, the national ANSP).
+      First check on the capture: yes, and lockout isn't the problem. DF11 replies carry 60+
+      different II/SI codes; each code's replies come in bursts (a few replies within 10–40 ms,
+      the beam sweeping past) at a steady period per code, the same for every aircraft:
+      SI44 5.000 s, SI17 4.878, SI28 3.957, SI33 3.998, SI35 10.03. Each burst is the moment
+      the beam points at an aircraft whose ADS-B position is known, so the radar's position,
+      phase and direction can be fitted (errors capped at 10°, so a few stray bursts don't
+      pull it). Five codes fit: median 0.4–1.1°, 94–100 % of bursts within 5°, all clockwise
+      (the other direction fits far worse). Leaving one aircraft out moves SI44 (216 km away)
+      by ≤ 2 km, SI17/SI28/SI33 (360–440 km) by ≤ 17 km, SI35 (10 s, fewer bursts) by up to
+      60 km. SI60 and II1 mix two periods (4.7 and 5.0 s), probably two radars sharing a
+      code: no fit yet. Compared with radar sites from OpenStreetMap and the ANSPs: SI44 is
+      0.9 km from the radar at Neubrandenburg-Trollenhagen airfield, SI33 2.9 km from Austro
+      Control's Feichtberg station, SI28 8.2 km from LPS SR's secondary radar on Veľký
+      Javorník, SI17 5.9 km from PANSA's new PSR/MSSR tower at Sączów near Katowice (in
+      service since March 2026), SI35 maybe the military long-range radar post at Wronowice
+      (~9 km; nothing confirms the code). The errors grow with distance, as leaving
+      aircraft out predicted.
+  - [x] Built (`src/lib/radar/`): in the browser, per tab, first on the tracker map with an
+        uncertainty ellipse (jackknife over aircraft, 2 standard errors) and the beam sweeping
+        as the fit predicts; tap for a panel with every step. Two things the first check
+        missed: SI 60 is a Mode S cluster (two radars, one code, the same 5 s period at
+        different phases), so the period comes from a sharp comb that ignores the gaps between
+        the two, the phase from the densest cluster, and the final position from a sharp score
+        (with the capped one, a phantom between the two won); synthetic clusters are found
+        within 1 km, the capture's SI 60 is too thin (two aircraft). With the final method:
+        SI 44 0.3 km, SI 33 2 km, SI 35 7 km, SI 17 8 km, SI 28 11 km from the mapped sites;
+        all inside their ellipses but SI 17 (1.7×, across: maybe the older radar at the
+        airport). Shuffled burst times give none. Radars appear after 4–10 min.
+  - [x] **Moved to `/experimental/radars`**, off the tracker map. After a longer run on the
+        dev server, the map was full of radars that weren't there: eight on SI 52 (all 4.0 s,
+        hundreds of km apart), two SI 35 near Łódź, SI 12 and SI 1 with ellipses well over
+        100 km long. Two causes. A radar once found stayed for good, and each new fit more than 60 km from the
+        last counted as another one, so every lucky fit added a radar. And the gates only
+        asked whether a fit explains bursts, not whether it pins a place down: at a 4 s
+        period with enough bursts, a long line of places explains 40 %. Now:
+    - an ellipse gate: semi-major axis ≤ 50 km (2 SE). Capture: SI 44 5–13 km, SI 17 13–56,
+      SI 28 39–102, SI 33 33, SI 35 130–306. So SI 35 is never placed: its fits landed
+      4–44 km from Wronowice only because the site lies on that line.
+    - confirmation: a new fit is a candidate (listed, not drawn) until every fit has found
+      it again for 2 min; one miss and it's gone. A confirmed radar goes after 3 fits in a
+      row that find other radars on its code but not it; fits that find nothing (too few
+      aircraft: a restart, thin traffic) don't count against it. A second radar on a code
+      must stand > 60 km from the first (a cluster's radars are different sites).
+    - On the capture: SI 44 and SI 17 confirmed (6.3 and 7.5 min), SI 28 and SI 33
+      candidates at the end (found at 9.3 and 9.6 min); same positions as before. Played
+      3× in a row like `replay.ts --loop` (the clock restarts): the confirmed ones stay,
+      candidates come and go, nothing else shows. With timestamps run on across the seams
+      instead (every radar's phase jumps, which can't happen live): before the 60 km rule
+      a ghost "SI 44 b" at SI 44's site; after it, only short-lived candidates.
+    - Starts when the page is first opened (~2–4 s CPU per 10 min, more than all other
+      views together), then runs on every page until the tab closes.
+  - [ ] An hour of live traffic on the new page: are the phantoms gone, and do the real
+        radars survive? If yes, back on the tracker map (a layer switch, off by default).
+  - [ ] Check on a longer recording: whether a period stays steady beyond 10 minutes (the
+        window), and whether the clusters separate with more aircraft.
+  - [ ] Maybe later: roll-call replies (DF4/5/20/21, most of the traffic) assigned to a
+        radar by its predicted beam, for more bursts per turn.
 - [ ] **GNSS interference**: where aircraft lose position integrity. With a single receiver
       and data kept per tab, events and dots rather than a heat map. Compare with gpsjam.org,
       which builds its daily map from the same ADS-B fields.
@@ -150,7 +193,7 @@ reason written down here.
       overhead. Blocker: `--gain auto` in `pi/readsb.default` shifts the signal scale over time;
       only worth it with a fixed gain.
 
-## 6. Release
+## 5. Release
 
 - [ ] **License**: decided at the end (likely MIT). All direct dependencies are MIT,
       BSD-3-Clause (MapLibre) or Apache-2.0 (TypeScript); WMM and EGM96 are public domain.
@@ -171,3 +214,11 @@ reason written down here.
   CRC, and readsb warns they produce false positives.
 - **Second receiver at 1030 MHz** (to hear the interrogations too): extra hardware.
 - **Sound alerts**.
+- **Flight phase tags** (holding, go-around, approach): climb, cruise and
+  descent can already be read from the altitude-coloured trail, and the basic trend is in
+  the panel (`src/lib/tracker/phase.ts`). The interesting phases are the rare ones, and
+  there's no data to build and check them against: this receiver mostly sees cruise
+  traffic, the capture has none of them, and synthetic ones would only test our own idea of
+  what they look like. Sun, Ellerbroek, Hoekstra (2017), _Flight extraction and phase
+  identification for large automatic dependent surveillance–broadcast datasets_ (fuzzy-logic
+  phases) was tried for the basic phases and not used.

@@ -128,7 +128,10 @@
 	<div class="relative min-h-0 flex-1">
 		<TrackerMap {stream} {weather} receiver={data.reference} {unit} {layers} {route} />
 
-		<div class="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2">
+		<!-- Taps between the boxes go through to the map (on a phone this spans much of it). -->
+		<div
+			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto"
+		>
 			<MapLayers bind:layers bind:unit receiver={!!data.reference} />
 			<AltitudeLegend />
 		</div>
