@@ -19,9 +19,11 @@ import {
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import {
+	EXTRAPOLATE_MS,
 	flightLevel,
 	PREDICT_S,
 	PREDICT_SELECTED_S,
+	SHOW_MS,
 	shownPosition,
 	type Unit
 } from '#lib/map/features.ts';
@@ -211,13 +213,38 @@ export function aircraftSections(
 					'A first position counts only once the next one agrees with it (or the last one is more than a minute old). One wrong pair of messages would otherwise put the aircraft anywhere for a moment. The map only draws confirmed positions.',
 				tone: 'alert'
 			});
-		else if (shown && shown.extrapolatedKm > 0 && shown.age >= 1000)
-			position.push({
-				label: 'On the map',
-				value: `moved on ${distanceText(shown.extrapolatedKm, unit)} (${Math.round(shown.age / 1000)} s)`,
-				title: `The last position is ${(shown.age / 1000).toFixed(1)} s old. Positions come about twice a second, but some get lost. In between, the map moves the symbol along from the last position with the ground speed and track (dead reckoning), for up to 15 s; in a turn along the arc, at the measured turn rate.`,
-				tone: 'minor'
-			});
+		else {
+			// Always this one row, whatever the age: a row that comes and goes with every
+			// position message makes the whole panel jump.
+			const age = Math.max(0, now - p.t);
+			const deadReckoning = `Positions come about twice a second, but some get lost. In between, the map moves the symbol along from the last position with the ground speed and track (dead reckoning), for up to ${EXTRAPOLATE_MS / 1000} s; in a turn along the arc, at the measured turn rate.`;
+			position.push(
+				!shown
+					? {
+							label: 'On the map',
+							value: `hidden (no position for ${Math.round(age / 1000)} s)`,
+							title: `The last position is ${Math.round(age / 1000)} s old. After ${SHOW_MS / 1000} s without one the map stops drawing the aircraft: it has probably flown out of range, or behind a hill or below the radio horizon. It stays in the list while other messages still come.`,
+							tone: 'alert'
+						}
+					: shown.extrapolatedKm > 0 && shown.age >= 1000
+						? {
+								label: 'On the map',
+								value: `moved on ${distanceText(shown.extrapolatedKm, unit)} (${Math.round(shown.age / 1000)} s)`,
+								title: `The last position is ${(shown.age / 1000).toFixed(1)} s old. ${deadReckoning}`,
+								tone: 'minor'
+							}
+						: {
+								label: 'On the map',
+								value: `at the last position (${Math.round(shown.age / 1000)} s)`,
+								title: `The last position is ${(shown.age / 1000).toFixed(1)} s old${
+									shown.extrapolatedKm > 0
+										? ', too fresh to move the symbol on yet.'
+										: ', and without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol there.'
+								} ${deadReckoning}`,
+								tone: 'minor'
+							}
+			);
+		}
 		if (a.rejected > 0)
 			position.push({
 				label: 'Rejected',
