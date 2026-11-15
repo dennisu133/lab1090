@@ -7,7 +7,7 @@ import { compass } from '#lib/geo.ts';
 import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
 import { MAX_ROLL, MAX_SKEW_MS, type Observation } from '#lib/weather/observation.ts';
 import type { Wind } from '#lib/weather/wind.ts';
-import type { Field } from './frame';
+import type { Field } from './field';
 
 /** "070°": three digits, like on a chart or in a weather report. */
 export const degrees = (x: number) => `${String(Math.round(x) % 360).padStart(3, '0')}°`;

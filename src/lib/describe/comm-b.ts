@@ -18,7 +18,8 @@ import {
 	type MeteoRoutine,
 	type Register
 } from '#lib/modes/registers.ts';
-import { advisoryFields, squitterFields, type Field } from './frame';
+import { advisoryFields, type Field } from './field';
+import { squitterFields } from './squitter';
 
 /** All register names, including the ADS-B ones that are only seen broadcast here. */
 export const NAMES: Record<string, string> = {

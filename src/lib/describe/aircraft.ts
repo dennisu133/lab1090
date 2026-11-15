@@ -25,7 +25,7 @@ import {
 	shownPosition,
 	type Unit
 } from '#lib/map/features.ts';
-import type { Field } from './frame';
+import type { Field } from './field';
 
 export interface Section {
 	title: string;

@@ -4,7 +4,8 @@ import {
 	comparisonFields,
 	registerFields
 } from '#lib/describe/comm-b.ts';
-import { squitterFields, type Field } from '#lib/describe/frame.ts';
+import type { Field } from '#lib/describe/field.ts';
+import { squitterFields } from '#lib/describe/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { Verdict } from '#lib/modes/address-filter.ts';
 import { AdsbMemory } from '#lib/modes/adsb-memory.ts';

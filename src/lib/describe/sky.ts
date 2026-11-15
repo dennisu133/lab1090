@@ -13,7 +13,7 @@ import {
 	type Layer
 } from '#lib/weather/profile.ts';
 import { SAMPLE_EVERY_MS } from '#lib/weather/sky.ts';
-import type { Field } from './frame';
+import type { Field } from './field';
 import { celsius, flightLevel, isaText, signed, windText } from './weather';
 
 /** "12 from 3 aircraft" */

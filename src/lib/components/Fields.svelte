@@ -3,7 +3,7 @@
 	for things worth noticing. Each value has a tooltip.
 -->
 <script lang="ts">
-	import type { Field } from '#lib/describe/frame.ts';
+	import type { Field } from '#lib/describe/field.ts';
 
 	let { fields }: { fields: Field[] } = $props();
 </script>

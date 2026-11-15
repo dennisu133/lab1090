@@ -11,7 +11,8 @@ import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { toSearchParams, type FrameQuery } from '#lib/frame-query.ts';
 import type { FramesResponse, WireFrame } from '#lib/receiver-types.ts';
-import { describe, type Field, type Located } from '#lib/describe/frame.ts';
+import type { Field } from '#lib/describe/field.ts';
+import { describe, type Located } from '#lib/describe/frame.ts';
 
 export interface FeedFrame extends WireFrame {
 	df: number;

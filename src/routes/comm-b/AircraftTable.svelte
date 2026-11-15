@@ -7,7 +7,7 @@
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { NAMES, registerFields } from '#lib/describe/comm-b.ts';
-	import type { Field } from '#lib/describe/frame.ts';
+	import type { Field } from '#lib/describe/field.ts';
 	import { GICB_MAP, type Register } from '#lib/modes/registers.ts';
 	import {
 		AIRCRAFT_TTL_MS,

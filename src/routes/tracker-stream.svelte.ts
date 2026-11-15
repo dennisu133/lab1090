@@ -1,4 +1,5 @@
-import { describe, type Field } from '#lib/describe/frame.ts';
+import type { Field } from '#lib/describe/field.ts';
+import { describe } from '#lib/describe/frame.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { mergeFrames } from '#lib/merge-frames.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
