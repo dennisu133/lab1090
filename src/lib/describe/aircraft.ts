@@ -9,8 +9,21 @@ import type { Timed } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { allocation } from '#lib/modes/nationality.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
-import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
-import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
+import {
+	headingReference,
+	MAX_OPEN_TURN,
+	motion,
+	TURNING,
+	trueHeading
+} from '#lib/tracker/motion.ts';
+import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
+import {
+	flightLevel,
+	PREDICT_S,
+	PREDICT_SELECTED_S,
+	shownPosition,
+	type Unit
+} from '#lib/map/features.ts';
 import type { Field } from './frame';
 
 export interface Section {
@@ -158,7 +171,7 @@ export function aircraftSections(
 			position.push({
 				label: 'On the map',
 				value: `moved on ${distanceText(shown.extrapolatedKm, unit)} (${Math.round(shown.age / 1000)} s)`,
-				title: `The last position is ${(shown.age / 1000).toFixed(1)} s old. Positions come about twice a second, but some get lost. In between, the map moves the symbol along from the last position with the ground speed and track (dead reckoning), for up to 15 s. Straight ahead only, so in a turn it's a little off until the next position.`,
+				title: `The last position is ${(shown.age / 1000).toFixed(1)} s old. Positions come about twice a second, but some get lost. In between, the map moves the symbol along from the last position with the ground speed and track (dead reckoning), for up to 15 s; in a turn along the arc, at the measured turn rate.`,
 				tone: 'minor'
 			});
 		if (a.rejected > 0)
@@ -237,6 +250,80 @@ export function aircraftSections(
 				tone: 'main'
 			}
 		);
+	}
+	if (a.turnRate && a.ground && !p?.surface) {
+		const r = a.turnRate.value;
+		const straight = Math.abs(r) < TURNING;
+		flight.push({
+			label: 'Turn',
+			value: straight ? 'straight' : `${Math.abs(r).toFixed(1)}°/s ${r > 0 ? 'right' : 'left'}`,
+			title: `How fast the track changes, measured here from the ground tracks of the last ${TURN_WINDOW_MS / 1000} s (a straight line fitted through them), so it lags a few seconds behind the start and end of a turn. Under ${TURNING}°/s counts as straight: flying straight, the track wobbles by a few hundredths of a degree per second. A "standard rate" turn is 3°/s (a full circle in two minutes); airliners at cruise turn at 1–1.5°/s, at 25° of bank.${source(a.turnRate, now)}`,
+			tone: straight ? 'minor' : 'main'
+		});
+	}
+	if (a.air && !p?.surface) {
+		const { heading, speed, type } = a.air.value;
+		const why =
+			"It sends its speed through the air instead of over the ground (TC 19 subtype 3, or 4 when supersonic). Aircraft do that when they can't measure their ground speed: normally the satellite receiver measures it (from the Doppler shift of the satellites' signals), so this usually means it has no satellite fix: jamming, or a fault. Without knowing the wind, heading and airspeed don't say where it goes over the ground, so the map doesn't move it along.";
+		if (heading !== null) {
+			const ref = headingReference(a);
+			const at = p ?? receiver;
+			const asTrue = trueHeading(heading, ref, at, a.air.t);
+			flight.push({
+				label: 'Heading',
+				value:
+					ref === 'magnetic' && at
+						? `${deg(heading)} magnetic (${deg(asTrue)} true)`
+						: `${deg(heading)}${ref ? ` ${ref}` : ''}`,
+				title: `Where the nose points, not where it goes: the wind blows it sideways (the drift angle). ${
+					ref === null
+						? 'Relative to true or magnetic north: its operational status (TC 31) will say which.'
+						: ref === 'magnetic'
+							? `Relative to magnetic north, where the compass points (its operational status says so, or it's ADS-B version 0/1, where headings are always magnetic). True north is ${deg(asTrue)}: the World Magnetic Model gives the declination there.`
+							: 'Relative to true north (its operational status, TC 31, says so: HRD).'
+				} ${why}${source(a.air, now)}`,
+				tone: 'main'
+			});
+		}
+		if (speed !== null)
+			flight.push({
+				label: 'Airspeed',
+				value: `${n(speed)} kt ${type}`,
+				title: `${
+					type === 'IAS'
+						? 'Indicated airspeed: what the pitot tube measures, the speed the wings feel. Up high the air is thin, so it reads far less than the speed through the air: 250 kt IAS is about 460 kt true at FL380.'
+						: 'True airspeed: the speed through the air. Over the ground, add the tailwind or subtract the headwind.'
+				} ${why}${source(a.air, now)}`,
+				tone: 'main'
+			});
+	}
+	const m = motion(a);
+	if (m && a.confirmed) {
+		const sideways =
+			m.turnRate === 0 || m.turnLeft === 0
+				? 'straight on'
+				: m.rollOut !== null
+					? `turning ${m.turnRate > 0 ? 'right' : 'left'} to ${deg(m.rollOut)}`
+					: `turning ${m.turnRate > 0 ? 'right' : 'left'}, end unknown`;
+		const vertical =
+			m.verticalRate === 0
+				? 'level'
+				: `${m.verticalRate > 0 ? 'climbing' : 'descending'}${m.levelOff !== null ? ` to ${flightLevel(m.levelOff)}` : ''}`;
+		flight.push({
+			label: 'Predicted',
+			value: `${sideways}, ${vertical}`,
+			title: `The dotted line ahead of the symbol: where it gets to if it keeps doing what it does now, ${PREDICT_S / 60} min ahead (${PREDICT_SELECTED_S / 60} min with minute marks while selected), in the colour of the altitude it will have there. Radar screens draw the same (straight) as a "speed vector". The model: the same ground speed; the measured turn rate, ending at the selected heading if the autopilot steers by heading (in LNAV it follows a route we can't see, so the line stops after ${MAX_OPEN_TURN}° of turn); the vertical rate, levelling off at the selected altitude if that's where it's heading. It can't foresee a turn or a climb before it starts.`,
+			tone: 'minor'
+		});
+	} else if (p && !p.surface && a.confirmed) {
+		flight.push({
+			label: 'Predicted',
+			value: 'no',
+			title: a.air
+				? "No dotted line ahead of it: it sends its airspeed and heading, not its speed and direction over the ground, and without the wind those don't say where it goes."
+				: 'No dotted line ahead of it: that needs a ground speed and track (TC 19) from within 10 s of the position, and none got through. Weak or distant aircraft lose many of their messages.',
+			tone: 'minor'
+		});
 	}
 	if (a.surface && p?.surface) {
 		const { movement, direction } = a.surface.value;

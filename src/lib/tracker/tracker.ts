@@ -31,6 +31,9 @@
  * airborne ones (no altitude; a speed and a direction instead). Rare here: on the ground,
  * the radio horizon is a few km, so only an airfield near the antenna is in view.
  *
+ * Turns: the tracker measures how fast each aircraft's ground track changes (TURN_WINDOW_MS,
+ * see #turn), for dead reckoning along the arc and the predicted path (lib/map/prediction.ts).
+ *
  * Immutable snapshots, like /comm-b's aircraft list: every change makes a new object, so a
  * page holding the list in $state.raw re-renders only what changed.
  *
@@ -48,7 +51,8 @@ import type { Cpr, Movement } from '#lib/modes/position.ts';
 import type { HeadingAndSpeed, TrackAndTurn, VerticalIntention } from '#lib/modes/registers.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
 import { squitter } from '#lib/modes/squitter.ts';
-import type { TargetStateV2 } from '#lib/modes/status.ts';
+import type { OperationalStatus, TargetStateV2 } from '#lib/modes/status.ts';
+import type { Velocity } from '#lib/modes/velocity.ts';
 import { Positions, type Located, type Outcome } from './positions';
 import { extend, prune, type Trail } from './trail';
 
@@ -70,6 +74,16 @@ const ALTITUDE_SLACK_FT = 500;
 
 /** A trail point takes the altitude if it's at most this old (position messages carry it). */
 const TRAIL_ALTITUDE_MS = 10_000;
+
+/**
+ * The turn rate is measured over the ground tracks of this long (#turn): long enough to
+ * average out the velocity's 1 kt steps, short enough to see a turn start within seconds.
+ * Velocity messages come twice a second; this receiver catches about one a second.
+ */
+export const TURN_WINDOW_MS = 10_000;
+/** …from at least this many tracks, spanning at least TURN_MIN_SPAN_MS. */
+const TURN_MIN_SAMPLES = 3;
+const TURN_MIN_SPAN_MS = 4_000;
 
 export interface TrackedAircraft {
 	/** 24-bit ICAO address, as hex (uppercase, like the address filter's). */
@@ -99,9 +113,23 @@ export interface TrackedAircraft {
 	 * which is the ground track or the heading (the operational status's TAH bit says which).
 	 */
 	surface: Timed<{ movement: Movement; direction: number | null }> | null;
-	/** Over the ground (TC 19): what moves the dot on the map. */
+	/** Over the ground (TC 19 subtypes 1/2): what moves the dot on the map. */
 	ground: Timed<{ speed: number; track: number }> | null;
+	/**
+	 * How fast the ground track changes, degrees per second, positive = turning right. Measured
+	 * from the TC 19 tracks of the last TURN_WINDOW_MS (a straight line fitted to them);
+	 * null without enough of them.
+	 */
+	turnRate: Timed<number> | null;
+	/**
+	 * Through the air (TC 19 subtypes 3/4): sent instead of the ground speed by aircraft that
+	 * can't measure that, i.e. without a satellite fix. The heading is relative to true or
+	 * magnetic north (see headingReference).
+	 */
+	air: Timed<NonNullable<Velocity['air']>> | null;
 	verticalRate: Timed<{ rate: number; source: 'GNSS' | 'baro' }> | null;
+	/** From the operational status (TC 31): the ADS-B version and the heading reference. */
+	operational: Timed<Pick<OperationalStatus, 'version' | 'hrd'>> | null;
 	/** What the autopilot is set to (TC 29, ADS-B version 2). */
 	target: Timed<
 		Pick<TargetStateV2, 'selectedAltitude' | 'selectedHeading' | 'qnh' | 'modes'>
@@ -142,7 +170,10 @@ function blank(icao: string, t: number): TrackedAircraft {
 		onGround: null,
 		surface: null,
 		ground: null,
+		turnRate: null,
+		air: null,
 		verticalRate: null,
+		operational: null,
 		target: null,
 		position: null,
 		confirmed: false,
@@ -159,6 +190,8 @@ export class Tracker {
 	#positions: Positions;
 	/** For Comm-B inference: replies are compared with what the aircraft broadcast (comm-b.ts). */
 	#memory = new AdsbMemory();
+	/** Recent ground tracks per aircraft, oldest first, for the turn rate (#turn). */
+	#tracks = new Map<string, { t: number; track: number }[]>();
 	/** Reply values waiting for confirmation, per `${icao} ${field}`. */
 	#pending = new Map<string, Timed<string | number>>();
 	/** Reply values that weren't taken (yet): the tests read this. */
@@ -222,6 +255,7 @@ export class Tracker {
 			if (now - a.lastSeen > AIRCRAFT_TTL_MS) {
 				this.#aircraft.delete(icao);
 				this.#positions.delete(icao);
+				this.#tracks.delete(icao);
 				for (const field of ['altitude', 'squawk', 'callsign'])
 					this.#pending.delete(`${icao} ${field}`);
 				continue;
@@ -258,12 +292,19 @@ export class Tracker {
 				break;
 			}
 			case 'velocity':
-				if (s.ground) a.ground = stamp(s.ground);
+				if (s.ground) {
+					a.ground = stamp(s.ground);
+					a.turnRate = this.#turn(a.icao, s.ground.track, t, from);
+				}
+				if (s.air) a.air = stamp(s.air);
 				if (s.verticalRate !== null)
 					a.verticalRate = stamp({ rate: s.verticalRate, source: s.verticalRateSource });
 				break;
 			case 'aircraft-status':
 				if (s.squawk) a.squawk = stamp(s.squawk);
+				break;
+			case 'operational-status':
+				a.operational = stamp({ version: s.version, hrd: s.hrd });
 				break;
 			case 'target-state':
 				if (s.subtype === 1) {
@@ -273,6 +314,33 @@ export class Tracker {
 				break;
 		}
 		return a;
+	}
+
+	/**
+	 * The turn rate from the ground tracks of the last TURN_WINDOW_MS: the slope of a straight
+	 * line fitted to track over time (least squares), so no single track decides. Tracks are
+	 * unwrapped first (359° → 1° is +2°, not −358°). In the capture, aircraft flying straight
+	 * come out within ±0.04°/s; the two course changes in it turned at up to 0.4 and 0.8°/s.
+	 */
+	#turn(icao: string, track: number, t: number, from: string): Timed<number> | null {
+		const recent = (this.#tracks.get(icao) ?? []).filter((s) => t - s.t <= TURN_WINDOW_MS);
+		recent.push({ t, track });
+		this.#tracks.set(icao, recent);
+		if (recent.length < TURN_MIN_SAMPLES || t - recent[0].t < TURN_MIN_SPAN_MS) return null;
+		let unwrapped = recent[0].track;
+		const points = recent.map((s, i) => {
+			if (i > 0) unwrapped += ((s.track - recent[i - 1].track + 540) % 360) - 180;
+			return { x: (s.t - t) / 1000, y: unwrapped };
+		});
+		const mx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+		const my = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+		let sxy = 0;
+		let sxx = 0;
+		for (const p of points) {
+			sxy += (p.x - mx) * (p.y - my);
+			sxx += (p.x - mx) ** 2;
+		}
+		return { value: sxy / sxx, t, from };
 	}
 
 	#position(a: TrackedAircraft, cpr: Cpr, t: number, surface = false): TrackedAircraft {

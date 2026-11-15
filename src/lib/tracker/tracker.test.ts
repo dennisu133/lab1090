@@ -5,8 +5,8 @@ import { replyAltitude } from '#lib/modes/altitude.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, toHex } from '#lib/modes/frame.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
-import { cprOracle, encodeCpr, registration21, timedMessages } from '#lib/modes/testing.ts';
-import { AIRCRAFT_TTL_MS, Tracker, type TrackedAircraft } from './tracker';
+import { build, cprOracle, encodeCpr, registration21, timedMessages } from '#lib/modes/testing.ts';
+import { AIRCRAFT_TTL_MS, Tracker, TURN_WINDOW_MS, type TrackedAircraft } from './tracker';
 
 /** Rounded from the capture itself, like the CPR oracle's reference (tools/README.md). */
 const receiver = { lat: 52, lon: 14 };
@@ -18,6 +18,8 @@ function runCapture() {
 	const last = new Map<string, TrackedAircraft>();
 	/** Every altitude each aircraft was shown at. */
 	const seenAltitudes = new Map<string, Set<number>>();
+	/** Every turn rate each aircraft was measured at, deg/s. */
+	const turnRates = new Map<string, number[]>();
 	/** Every position the tracker took, with the message it came from. */
 	const taken: { t: number; hex: string; lat: number; lon: number }[] = [];
 	for (const { t, data } of timedMessages) {
@@ -27,13 +29,15 @@ function runCapture() {
 		last.set(a.icao, a);
 		if (a.altitude)
 			seenAltitudes.set(a.icao, (seenAltitudes.get(a.icao) ?? new Set()).add(a.altitude.value));
+		if (a.turnRate?.t === t)
+			turnRates.set(a.icao, [...(turnRates.get(a.icao) ?? []), a.turnRate.value]);
 		if (a.position?.t === t)
 			taken.push({ t, hex: toHex(data), lat: a.position.lat, lon: a.position.lon });
 	}
-	return { tracker, aircraft: [...last.values()], taken, seenAltitudes };
+	return { tracker, aircraft: [...last.values()], taken, seenAltitudes, turnRates };
 }
 
-const { tracker, aircraft, taken, seenAltitudes } = runCapture();
+const { tracker, aircraft, taken, seenAltitudes, turnRates } = runCapture();
 const byCallsign = (callsign: string) => aircraft.find((a) => a.callsign?.value === callsign)!;
 
 describe('the capture', () => {
@@ -74,6 +78,29 @@ describe('the capture', () => {
 		expect(cca.position).toBeNull();
 		expect(cca.altitude?.value).toBe(38_000);
 		expect(cca.squawk?.value).toBe('7546');
+	});
+
+	test('CCA749 has no satellite fix: airspeed and heading instead of a ground velocity', () => {
+		// TC 19 subtype 3 (air-referenced): what an aircraft sends when it can't measure its
+		// ground velocity. Its operational status says NACp 0 (accuracy unknown) too.
+		const cca = byCallsign('CCA749');
+		expect(cca.ground).toBeNull();
+		// The last heading: 644 × 360/1024 (10 bits for a full circle, 0.35° steps).
+		expect(cca.air?.value).toEqual({ speed: 253, type: 'IAS', heading: (644 * 360) / 1024 });
+		expect(cca.operational?.value).toEqual({ version: 2, hrd: 'true' });
+	});
+
+	test('turn rates: straight flight within ±0.05°/s, the two course changes turn up to 0.4 and 0.7°/s', () => {
+		const extremes = new Map(
+			[...turnRates].map(([icao, rates]) => [icao, [Math.min(...rates), Math.max(...rates)]])
+		);
+		const { ['440822']: left, ['501C2B']: right, ...straight } = Object.fromEntries(extremes);
+		expect(left[0]).toBeCloseTo(-0.35, 1); // 18° to the left in all
+		expect(right[1]).toBeCloseTo(0.75, 1); // 8° to the right
+		for (const [lo, hi] of Object.values(straight)) {
+			expect(lo).toBeGreaterThan(-0.05);
+			expect(hi).toBeLessThan(0.05);
+		}
 	});
 
 	test('a long track: one segment, a point every 4–5 s', () => {
@@ -237,6 +264,59 @@ function surfaceFrame(icao: string, p: LatLon, format: 'even' | 'odd', mov: numb
 	put(me + 21, 1, format === 'odd' ? 1 : 0);
 	put(me + 22, 17, cpr.lat);
 	put(me + 39, 17, cpr.lon);
+	return data;
+}
+
+describe('turn rate', () => {
+	const addr: Checked = { icao: 'ABC123', source: 'clear', verdict: 'valid', interrogator: null };
+
+	test('across north: 355° → 3° is turning right at 2°/s, not left at 88°/s', () => {
+		const t = new Tracker(() => receiver);
+		for (let i = 0; i <= 4; i++) t.add(velocityFrame('ABC123', 355 + 2 * i), addr, i * 1000);
+		// 1 kt steps on 1,000 kt components: the tracks are within 0.03° of the intended.
+		expect(t.get('ABC123')!.turnRate?.value).toBeCloseTo(2, 1);
+	});
+
+	test(`from at least 3 tracks over 4 s, of the last ${TURN_WINDOW_MS / 1000} s`, () => {
+		const t = new Tracker(() => receiver);
+		t.add(velocityFrame('ABC123', 90), addr, 0);
+		t.add(velocityFrame('ABC123', 91), addr, 2000);
+		t.add(velocityFrame('ABC123', 92), addr, 3000);
+		expect(t.get('ABC123')!.turnRate).toBeNull(); // 3 s
+		t.add(velocityFrame('ABC123', 94), addr, 5000);
+		expect(t.get('ABC123')!.turnRate?.value).toBeCloseTo(0.8, 1);
+		// 20 s later: the old ones are out of the window, one new one isn't enough.
+		t.add(velocityFrame('ABC123', 94), addr, 25_000);
+		expect(t.get('ABC123')!.turnRate).toBeNull();
+	});
+});
+
+/**
+ * A DF17 airborne velocity, subtype 1 (ground speed as components), 1,000 kt along `track`.
+ * ME: TC (5) | ST (3) | IC, IFR (2) | NACv (3) | S-EW (1) | V-EW (10) | S-NS (1) | V-NS (10) | …
+ * (velocity.ts). V = |component| + 1; S = 1 for west/south.
+ */
+function velocityFrame(icao: string, track: number) {
+	const rad = (track * Math.PI) / 180;
+	const ew = Math.round(1000 * Math.sin(rad));
+	const ns = Math.round(1000 * Math.cos(rad));
+	const data = new Uint8Array(14);
+	data[0] = (17 << 3) | 5;
+	data.set(
+		[parseInt(icao.slice(0, 2), 16), parseInt(icao.slice(2, 4), 16), parseInt(icao.slice(4), 16)],
+		1
+	);
+	data.set(
+		build(
+			[1, 5, 19],
+			[6, 3, 1],
+			[14, 1, ew < 0 ? 1 : 0],
+			[15, 10, Math.abs(ew) + 1],
+			[25, 1, ns < 0 ? 1 : 0],
+			[26, 10, Math.abs(ns) + 1]
+		),
+		4
+	);
 	return data;
 }
 

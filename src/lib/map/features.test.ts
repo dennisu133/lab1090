@@ -1,11 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, distanceKm, KM_PER_NM } from '#lib/geo.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import {
 	aircraftFeatures,
 	EXTRAPOLATE_MS,
 	flightLevel,
 	headFeatures,
+	PREDICT_S,
+	PREDICT_SELECTED_S,
+	predictionFeatures,
 	ringFeatures,
 	SHOW_MS,
 	shownPosition,
@@ -30,7 +33,10 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		onGround: false,
 		surface: null,
 		ground: { value: { speed: 480, track: 90 }, t: 0, from: 'TC 19' },
+		turnRate: null,
+		air: null,
 		verticalRate: null,
+		operational: null,
 		target: null,
 		position: { lat: 52, lon: 14, t: 0, from: 'pair', surface: false },
 		confirmed: true,
@@ -58,6 +64,14 @@ describe('dead reckoning', () => {
 		expect(shown.age).toBe(3000);
 	});
 
+	test('in a turn: along the arc, the symbol turning with it', () => {
+		// 3°/s right for 10 s: 30° on. Moving the chord's length along the mean track (105°).
+		const a = aircraft({ turnRate: { value: 3, t: 0, from: 'TC 19' } });
+		const shown = shownPosition(a, 10_000)!;
+		expect(shown.track).toBeCloseTo(120, 0);
+		expect(bearing({ lat: 52, lon: 14 }, shown)).toBeCloseTo(105, 0);
+	});
+
 	test(`at most ${EXTRAPOLATE_MS / 1000} s ahead, hidden after ${SHOW_MS / 1000} s`, () => {
 		const far = shownPosition(aircraft(), 25_000)!;
 		expect(far.extrapolatedKm).toBeCloseTo((480 * KM_PER_NM * 15) / 3600, 9);
@@ -83,7 +97,7 @@ describe('features', () => {
 			label: 'DLH4LW\nFL350',
 			icon: 'jet',
 			size: 0.8,
-			track: 90,
+			track: expect.closeTo(90, 1), // + the meridians' convergence, 0.003° in 1 s
 			altitude: 35_000,
 			ground: false,
 			stale: false
@@ -105,6 +119,36 @@ describe('features', () => {
 		expect(head.geometry.coordinates[1][0]).toBeGreaterThan(14);
 		expect(headFeatures([aircraft()], 0).features).toEqual([]); // not moved: nothing to add
 		expect(trailFeatures([aircraft()], SHOW_MS + 1).features).toEqual([]); // off the map
+	});
+
+	test(`the predicted path: ${PREDICT_S} s in 5 s pieces, ${PREDICT_SELECTED_S} s with minute marks when selected`, () => {
+		const climbing = aircraft({
+			verticalRate: { value: { rate: 1200, source: 'baro' }, t: 0, from: 'TC 19' }
+		});
+		const { lines, minutes } = predictionFeatures([climbing], 2000, null);
+		expect(lines.features.length).toBe(PREDICT_S / 5);
+		expect(minutes.features).toEqual([]);
+		// It starts at the symbol, and each piece has the altitude at its end: +100 ft per 5 s.
+		const [first] = lines.features;
+		const symbol = shownPosition(climbing, 2000)!;
+		expect(first.geometry.coordinates[0]).toEqual([symbol.lon, symbol.lat]);
+		expect(first.properties.altitude).toBeCloseTo(35_000 + (1200 * 7) / 60, 6);
+
+		const selected = predictionFeatures([climbing], 2000, 'ABC123');
+		expect(selected.lines.features.length).toBe(PREDICT_SELECTED_S / 5);
+		expect(selected.minutes.features.map((f) => f.properties.label)).toEqual([
+			'1 min',
+			'2 min',
+			'3 min'
+		]);
+		// 1 min ahead of the symbol: 8 NM at 480 kt.
+		const [lon, lat] = selected.minutes.features[0].geometry.coordinates;
+		expect(distanceKm(symbol, { lat, lon })).toBeCloseTo(8 * KM_PER_NM, 3);
+	});
+
+	test('no prediction once faded, or without a ground velocity', () => {
+		expect(predictionFeatures([aircraft()], 11_000, null).lines.features).toEqual([]);
+		expect(predictionFeatures([aircraft({ ground: null })], 0, null).lines.features).toEqual([]);
 	});
 
 	test('range rings: every point the same distance from the receiver', () => {

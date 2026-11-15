@@ -1,8 +1,9 @@
 <!--
-	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft.
-	MapLibre draws with WebGL from GeoJSON sources; this component keeps those sources up to
-	date with the tracker. Aircraft and the pieces of trail up to them move every animation
-	frame (dead reckoning, lib/map/features.ts); trails only change with new positions.
+	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
+	and the dotted predicted paths ahead of them. MapLibre draws with WebGL from GeoJSON
+	sources; this component keeps those sources up to date with the tracker. Aircraft, the
+	pieces of trail up to them and the predictions move every animation frame (dead
+	reckoning, lib/map/features.ts); trails only change with new positions.
 
 	Tap or click an aircraft to select it; tap the map elsewhere to deselect.
 -->
@@ -20,6 +21,7 @@
 	import {
 		aircraftFeatures,
 		headFeatures,
+		predictionFeatures,
 		ringFeatures,
 		shownPosition,
 		trailFeatures,
@@ -70,7 +72,16 @@
 			for (const { name, image, pixelRatio } of iconImages())
 				m.addImage(name, image, { sdf: true, pixelRatio });
 
-			for (const id of ['rings', 'ring-labels', 'trails', 'heads', 'aircraft', 'receiver'])
+			for (const id of [
+				'rings',
+				'ring-labels',
+				'trails',
+				'heads',
+				'prediction',
+				'prediction-minutes',
+				'aircraft',
+				'receiver'
+			])
 				m.addSource(id, { type: 'geojson', data: empty });
 
 			m.addLayer({
@@ -105,6 +116,44 @@
 						'line-opacity': 0.7
 					}
 				});
+			// Dots: zero-length dashes with round caps, a gap of 2.5 line widths between them.
+			m.addLayer({
+				id: 'prediction',
+				type: 'line',
+				source: 'prediction',
+				layout: { 'line-cap': 'round' },
+				paint: {
+					'line-color': altitudeColour(),
+					'line-width': 1.5,
+					'line-opacity': 0.6,
+					'line-dasharray': [0, 2.5]
+				}
+			});
+			m.addLayer({
+				id: 'prediction-minutes',
+				type: 'symbol',
+				source: 'prediction-minutes',
+				layout: {
+					'text-field': ['get', 'label'],
+					'text-font': FONT,
+					'text-size': 10,
+					'text-anchor': 'left',
+					'text-offset': [0.6, 0],
+					'text-allow-overlap': true
+				},
+				paint: { 'text-color': '#a1a1aa', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			});
+			m.addLayer({
+				id: 'prediction-ticks',
+				type: 'circle',
+				source: 'prediction-minutes',
+				paint: {
+					'circle-radius': 2.5,
+					'circle-color': '#f4f4f5',
+					'circle-stroke-color': HALO,
+					'circle-stroke-width': 1
+				}
+			});
 			m.addLayer({
 				id: 'receiver',
 				type: 'circle',
@@ -223,6 +272,9 @@
 			const now = stream.now();
 			source(m, 'aircraft').setData(aircraftFeatures(list, now));
 			source(m, 'heads').setData(headFeatures(list, now));
+			const prediction = predictionFeatures(list, now, stream.selected);
+			source(m, 'prediction').setData(prediction.lines);
+			source(m, 'prediction-minutes').setData(prediction.minutes);
 		};
 		frame = requestAnimationFrame(draw);
 		return () => cancelAnimationFrame(frame);
@@ -233,11 +285,13 @@
 		const icao = stream.selected ?? '';
 		if (!map) return;
 		map.setFilter('selected', ['==', ['get', 'icao'], icao]);
+		const mine = ['==', ['get', 'icao'], icao] as maplibregl.ExpressionSpecification;
 		for (const id of ['trails', 'heads']) {
-			const mine = ['==', ['get', 'icao'], icao] as maplibregl.ExpressionSpecification;
 			map.setPaintProperty(id, 'line-width', ['case', mine, 3, 1.5]);
 			map.setPaintProperty(id, 'line-opacity', ['case', mine, 1, icao ? 0.35 : 0.7]);
 		}
+		map.setPaintProperty('prediction', 'line-width', ['case', mine, 2.5, 1.5]);
+		map.setPaintProperty('prediction', 'line-opacity', ['case', mine, 0.9, icao ? 0.3 : 0.6]);
 	});
 
 	// Selected from the list, but off screen: bring it into view.
