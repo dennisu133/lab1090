@@ -168,12 +168,6 @@
 		fractionalSecondDigits: 3,
 		hour12: false
 	});
-	const clock = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		hour12: false
-	});
-
 	function signalTitle(dbfs: number) {
 		const amplitude = 10 ** (dbfs / 20) * 100;
 		const power = 10 ** (dbfs / 10) * 100;
@@ -199,14 +193,6 @@
 	<header
 		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
 	>
-		<div class="tabular-nums">
-			<span class="font-semibold">{stream.rates.total.toFixed(1)}</span>
-			<span class="text-zinc-400">msg/s</span>
-		</div>
-		<div class="text-zinc-400 tabular-nums">
-			<span class="text-zinc-100">{update ? update.counts.total.toLocaleString() : '–'}</span>
-			messages{#if update}&nbsp;since {clock.format(update.since)}{/if}
-		</div>
 		<div class="text-zinc-400">
 			{#if data.reference}
 				<InfoTip label="Receiver position set">

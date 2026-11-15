@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import MessageCounts from './MessageCounts.svelte';
 	import { setStreams, Streams } from './streams';
 	import type { LayoutProps } from './$types';
 
@@ -58,7 +59,8 @@
 				aria-current={within(route) ? 'page' : undefined}>{label}</a
 			>
 		{/each}
-		<div class="ml-auto">
+		<div class="ml-auto flex items-center gap-6">
+			<MessageCounts stream={streams.frames} />
 			<ReceiverStatus />
 		</div>
 	</nav>

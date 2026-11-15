@@ -1,11 +1,13 @@
 <!--
-	Switches for what the map draws around the aircraft: the trails behind them, the
-	predicted paths ahead and the position uncertainty circles. All on by default. With the
-	trails off, the selected aircraft still has one. Each label explains what it shows
-	(tappable: phones never show `title`).
+	Switches for what the map draws: the range rings around the receiver, and around the
+	aircraft the trails behind them, the predicted paths ahead and the position uncertainty
+	circles. All on by default. With the trails off, the selected aircraft still has one. Each
+	label explains what it shows (tappable: phones never show `title`). The rings' row also
+	holds the NM/km switch, which the distances in the list and the panel follow too.
 -->
 <script lang="ts" module>
 	export interface Layers {
+		rings: boolean;
 		trail: boolean;
 		prediction: boolean;
 		uncertainty: boolean;
@@ -14,14 +16,75 @@
 
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
+	import { PREDICT_S, PREDICT_SELECTED_S, type Unit } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { GAP_MS, STEP_MS, TRAIL_MS } from '#lib/tracker/trail.ts';
 
-	let { layers = $bindable() }: { layers: Layers } = $props();
+	interface Props {
+		layers: Layers;
+		/** Distances: the rings' labels, the list and the panel. */
+		unit: Unit;
+		/** Is the receiver's position known? Without it there are no rings to draw. */
+		receiver: boolean;
+	}
+
+	let { layers = $bindable(), unit = $bindable(), receiver }: Props = $props();
 </script>
 
 <div class="space-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur">
+	<div class="flex items-center gap-2">
+		<label class={['flex items-center gap-2 py-0.5', receiver ? 'cursor-pointer' : 'opacity-50']}>
+			<input
+				type="checkbox"
+				bind:checked={layers.rings}
+				disabled={!receiver}
+				class="size-3.5 accent-zinc-300"
+				aria-label="Show the range rings"
+			/>
+			<!-- A dashed circle, like on the map. -->
+			<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+				<circle
+					cx="10"
+					cy="6"
+					r="5"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1"
+					stroke-dasharray="2 2"
+				/>
+			</svg>
+		</label>
+		<InfoTip label="Rings" above>
+			<p>
+				Dashed circles around the receiver (the white dot) at equal distances, like on a radar
+				screen: how far away the aircraft are, and how far the antenna reaches. Nautical miles are
+				aviation's unit: one minute of latitude, 1,852 m.
+			</p>
+			<p>
+				NM / km, next to this label: the unit of the rings and of the distances in the list and the
+				panel. Altitudes stay in feet, aviation's unit almost everywhere.
+			</p>
+			{#if !receiver}
+				<p>
+					No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
+					<code>.env</code> to draw them.
+				</p>
+			{/if}
+		</InfoTip>
+		<div class="ml-auto flex" role="group" aria-label="Distance unit">
+			{#each ['NM', 'km'] as const as u (u)}
+				<button
+					type="button"
+					onclick={() => (unit = u)}
+					aria-pressed={unit === u}
+					class={[
+						'rounded px-1.5 py-0.5',
+						unit === u ? 'bg-zinc-700 text-zinc-100' : 'hover:bg-zinc-800'
+					]}>{u}</button
+				>
+			{/each}
+		</div>
+	</div>
 	<div class="flex items-center gap-2">
 		<label class="flex cursor-pointer items-center gap-2 py-0.5">
 			<input

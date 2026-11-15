@@ -1,9 +1,10 @@
 <!--
 	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
 	the dotted predicted paths ahead of them and the circles of their position uncertainty
-	(trails, predictions and circles can be switched off: MapLayers.svelte). MapLibre draws with WebGL from GeoJSON
-	sources; this component keeps those sources up to date with the tracker. Aircraft, the
-	pieces of trail up to them and the predictions move every animation frame (dead
+	(rings, trails, predictions and circles can be switched off: MapLayers.svelte). MapLibre
+	draws with WebGL from GeoJSON sources; this component keeps those sources up to date with
+	the tracker. Aircraft, the pieces of trail up to them and the predictions move every
+	animation frame (dead
 	reckoning, lib/map/features.ts); trails only change with new positions.
 
 	Tap or click an aircraft to select it; tap the map elsewhere to deselect.
@@ -46,7 +47,8 @@
 	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
 	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
-		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown']
+		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown'],
+		rings: ['rings', 'ring-labels']
 	};
 
 	/** Set once the style has loaded and our sources and layers exist. */
