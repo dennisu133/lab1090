@@ -1,16 +1,19 @@
 <!--
 	Every aircraft heard in the last minute: the ones on the map, nearest first, then the
-	ones without a position. Tap one for its details.
+	ones without a position. Tap one for its details. Aircraft with an alert get a ring around
+	their dot in its colour and its badge next to the name ("7700", "RA ↑"), as on the map.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { distanceText } from '#lib/describe/aircraft.ts';
+	import { badge } from '#lib/describe/alert.ts';
 	import { distanceKm } from '#lib/geo.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { allocation } from '#lib/modes/nationality.ts';
+	import { alertsOf, identing } from '#lib/tracker/alerts.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 
 	interface Props {
@@ -46,6 +49,8 @@
 {/snippet}
 
 {#snippet row(a: TrackedAircraft, km: number | null)}
+	{@const alerts = alertsOf(a, now)}
+	{@const emergency = alerts.some((x) => x.tier === 'emergency')}
 	<li>
 		<button
 			type="button"
@@ -53,12 +58,30 @@
 			class="grid w-full grid-cols-[0.5rem_1fr_3.5rem_3.5rem_4.5rem] items-center gap-x-3 px-4 py-1.5 text-left text-sm hover:bg-zinc-900"
 		>
 			<span
-				class="size-2 rounded-full"
+				class={[
+					'size-2 rounded-full',
+					alerts.length && 'ring-2 ring-offset-2 ring-offset-zinc-950',
+					emergency ? 'ring-red-500' : 'ring-amber-400'
+				]}
 				style:background-color={altitudeCss(a.altitude?.value ?? null, !!a.position?.surface)}
 			></span>
 			<span class="flex min-w-0 items-center gap-2">
 				{@render flag(a.icao)}
-				<span class="truncate font-mono text-zinc-100">{a.callsign?.value ?? a.icao}</span>
+				<!-- On a phone the badges give way, not the name. -->
+				<span class={['font-mono text-zinc-100', alerts.length ? 'shrink-0' : 'truncate']}
+					>{a.callsign?.value ?? a.icao}</span
+				>
+				{#each alerts as x (x.kind)}
+					<span
+						class={[
+							'min-w-0 truncate text-xs font-semibold',
+							x.tier === 'emergency' ? 'text-red-400' : 'text-amber-300'
+						]}>{badge(x)}</span
+					>
+				{/each}
+				{#if identing(a, now)}
+					<span class="shrink-0 text-xs text-zinc-300">IDENT</span>
+				{/if}
 			</span>
 			<span class="text-right text-zinc-300 tabular-nums">{altitudeText(a)}</span>
 			<span class="text-right text-zinc-400 tabular-nums">
@@ -97,6 +120,12 @@
 				The flag: the State the aircraft is registered in. Each State has its own block of addresses
 				(ICAO Annex 10), so the address alone says it. Not necessarily the airline's country: leased
 				aircraft often keep a foreign registration.
+			</p>
+			<p>
+				A ring around the dot and a code after the name: an alert, red for an emergency (7700, 7600,
+				7500), amber for an ACAS resolution advisory (RA) or a flight asking for priority. Open it
+				to see what it means. IDENT: the pilot pressed the button that makes it stand out on the
+				controller's screen.
 			</p>
 		</InfoTip>
 	</span>

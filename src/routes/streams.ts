@@ -1,7 +1,10 @@
 import { createContext } from 'svelte';
+import { goto } from '$app/navigation';
+import { resolve } from '$app/paths';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
 import { StreamConnection } from '#lib/stream-connection.ts';
+import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
 import { TrackerStream } from './tracker-stream.svelte';
@@ -21,6 +24,8 @@ export class Streams {
 	readonly frames: FrameStream;
 	readonly commB: CommBStream;
 	readonly weather: WeatherStream;
+	/** Emergencies and ACAS advisories, from the tracker's picture: banner, notifications. */
+	readonly alerts: AlertCenter;
 	#connection: StreamConnection;
 
 	/** `reference`: the receiver's position (RECEIVER_POSITION), if set. */
@@ -29,9 +34,11 @@ export class Streams {
 		this.frames = new FrameStream(reference);
 		this.commB = new CommBStream();
 		this.weather = new WeatherStream(reference);
+		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
 		this.#connection = new StreamConnection('/api/stream', [
 			this.stats,
 			this.tracker,
+			this.alerts, // after the tracker: reads what it made of the update
 			this.frames,
 			this.commB,
 			this.weather
@@ -40,7 +47,14 @@ export class Streams {
 
 	/** Open the connection; returns a cleanup function (use from an $effect). */
 	connect(): () => void {
+		this.alerts.notifications.start();
 		return this.#connection.connect();
+	}
+
+	/** Select an aircraft on the tracker, from whatever page is open. */
+	show(icao: string): void {
+		this.tracker.select(icao);
+		goto(resolve('/'));
 	}
 }
 

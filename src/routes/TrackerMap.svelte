@@ -10,6 +10,12 @@
 	The selected aircraft's route, if adsbdb knows it: a dashed great circle from origin to
 	destination, with the airports' codes.
 
+	Alerts (lib/tracker/alerts.ts): a ring around the symbol in the alert's colour (red for an
+	emergency, amber for a caution), its badge above the label, rings pulsing out when it
+	starts, and a line between two aircraft in an ACAS advisory. Their trails stay on with the
+	trail switch off. IDENT blinks the symbol. No pulsing or blinking for users who asked
+	their system for less motion.
+
 	Tap or click an aircraft to select it; tap the map elsewhere to deselect.
 -->
 <script lang="ts">
@@ -21,11 +27,14 @@
 	// file as is in dev and copies it into the build).
 	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 	import { untrack } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import type { DbRoute } from '#lib/aircraft-db.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { altitudeColour } from '#lib/map/altitude.ts';
+	import { activeAlerts } from '#lib/tracker/alerts.ts';
 	import {
 		aircraftFeatures,
+		alertLinkFeatures,
 		headFeatures,
 		predictionFeatures,
 		ringFeatures,
@@ -65,6 +74,29 @@
 	const FRAME_MS = 50;
 	const FONT = ['Noto Sans Regular'];
 	const HALO = '#09090b';
+	/** Alert colours: red-500 for emergencies, amber-400 for cautions (as the banner). */
+	const TIER_COLOUR: maplibregl.ExpressionSpecification = [
+		'match',
+		['get', 'tier'],
+		'emergency',
+		'#ef4444',
+		'#fbbf24'
+	];
+	/** The label's colour: the alert's, or the normal one. */
+	const LABEL_COLOUR: maplibregl.ExpressionSpecification = [
+		'match',
+		['get', 'tier'],
+		'',
+		'#f4f4f5',
+		TIER_COLOUR
+	];
+
+	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce');
+
+	/** The aircraft with alerts, as one string: the trail filter only changes when it does. */
+	let alerting = $derived(
+		[...new Set(activeAlerts(stream.aircraft, stream.now()).map((x) => x.icao))].sort().join(' ')
+	);
 
 	const toLngLat = (p: LatLon): LngLatLike => [p.lon, p.lat];
 	const source = (m: maplibregl.Map, id: string) => m.getSource(id) as GeoJSONSource;
@@ -105,6 +137,7 @@
 				'prediction',
 				'prediction-minutes',
 				'uncertainty',
+				'alert-links',
 				'aircraft',
 				'receiver'
 			])
@@ -278,6 +311,56 @@
 					'circle-stroke-width': 2
 				}
 			});
+			// ACAS advisories: the two aircraft joined by a line, with how far apart vertically.
+			m.addLayer({
+				id: 'alert-links',
+				type: 'line',
+				source: 'alert-links',
+				paint: { 'line-color': TIER_COLOUR, 'line-width': 2, 'line-dasharray': [2, 1.5] }
+			});
+			m.addLayer({
+				id: 'alert-link-labels',
+				type: 'symbol',
+				source: 'alert-links',
+				layout: {
+					'symbol-placement': 'line-center',
+					'text-field': ['get', 'label'],
+					'text-font': FONT,
+					'text-size': 11,
+					'text-offset': [0, -0.8],
+					'text-allow-overlap': true
+				},
+				paint: { 'text-color': TIER_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 2 }
+			});
+			// When an alert starts: rings pulsing out from the symbol (features.ts PULSES).
+			m.addLayer({
+				id: 'alert-pulse',
+				type: 'circle',
+				source: 'aircraft',
+				filter: ['>=', ['get', 'pulse'], 0],
+				paint: {
+					'circle-radius': ['+', 18, ['*', 40, ['get', 'pulse']]],
+					'circle-color': 'rgba(0,0,0,0)',
+					'circle-stroke-color': TIER_COLOUR,
+					'circle-stroke-width': 2,
+					'circle-stroke-opacity': ['-', 1, ['get', 'pulse']]
+				}
+			});
+			// Larger and bolder than the amber "integrity unknown" ring (13 px, thin), and
+			// outside the selection ring (17 px), so all three can be told apart.
+			m.addLayer({
+				id: 'alert-ring',
+				type: 'circle',
+				source: 'aircraft',
+				filter: ['!=', ['get', 'tier'], ''],
+				paint: {
+					'circle-radius': 21,
+					'circle-color': TIER_COLOUR,
+					'circle-opacity': 0.12,
+					'circle-stroke-color': TIER_COLOUR,
+					'circle-stroke-width': 2.5
+				}
+			});
 			m.addLayer({
 				id: 'selected',
 				type: 'circle',
@@ -303,19 +386,41 @@
 					'icon-allow-overlap': true,
 					'icon-ignore-placement': true,
 					// Labels only when zoomed in enough to have room; they give way to each other.
-					'text-field': ['step', ['zoom'], '', 7, ['get', 'label']],
+					// An alert's badge goes above, at any zoom, and alerts are placed first.
+					'text-field': [
+						'step',
+						['zoom'],
+						['get', 'badge'],
+						7,
+						[
+							'format',
+							['case', ['==', ['get', 'badge'], ''], '', ['concat', ['get', 'badge'], '\n']],
+							{ 'text-color': LABEL_COLOUR },
+							['get', 'label'],
+							{}
+						]
+					],
+					'symbol-sort-key': ['get', 'sort'],
 					'text-font': FONT,
 					'text-size': 10,
 					'text-anchor': 'top',
-					'text-offset': [0, 1.3],
+					// Below the symbol; with a badge, below the alert ring too.
+					'text-offset': [
+						'case',
+						['==', ['get', 'badge'], ''],
+						['literal', [0, 1.3]],
+						['literal', [0, 2.3]]
+					],
 					'text-optional': true
 				},
 				paint: {
 					'icon-color': altitudeColour(),
 					'icon-halo-color': HALO,
 					'icon-halo-width': 2,
-					'icon-opacity': ['case', ['get', 'stale'], 0.45, 1],
-					'text-color': '#d4d4d8',
+					'icon-opacity': ['case', ['get', 'dim'], 0.15, ['get', 'stale'], 0.45, 1],
+					// The badge alone (zoomed out) in the alert's colour; with the label, the
+					// format above colours the badge.
+					'text-color': ['step', ['zoom'], LABEL_COLOUR, 7, '#d4d4d8'],
 					'text-halo-color': HALO,
 					'text-halo-width': 1.5,
 					'text-opacity': ['case', ['get', 'stale'], 0.45, 1]
@@ -391,7 +496,8 @@
 			last = time;
 			const list = stream.aircraft;
 			const now = stream.now();
-			source(m, 'aircraft').setData(aircraftFeatures(list, now));
+			source(m, 'aircraft').setData(aircraftFeatures(list, now, !reducedMotion.current));
+			source(m, 'alert-links').setData(alertLinkFeatures(list, now));
 			source(m, 'heads').setData(headFeatures(list, now));
 			const prediction = predictionFeatures(list, now, stream.selected);
 			source(m, 'prediction').setData(prediction.lines);
@@ -412,14 +518,16 @@
 	});
 
 	// The selection: a ring around the symbol, its trail brighter and wider. With the trails
-	// switched off, its trail is the only one.
+	// switched off, its trail is the only one, with those of aircraft with an alert.
 	$effect(() => {
 		const icao = stream.selected ?? '';
+		const shown = [icao, ...alerting.split(' ')].filter(Boolean);
 		if (!map) return;
 		map.setFilter('selected', ['==', ['get', 'icao'], icao]);
 		const mine = ['==', ['get', 'icao'], icao] as maplibregl.ExpressionSpecification;
+		const kept = ['in', ['get', 'icao'], ['literal', shown]] as maplibregl.ExpressionSpecification;
 		for (const id of ['trails', 'heads']) {
-			map.setFilter(id, layers.trail ? null : mine);
+			map.setFilter(id, layers.trail ? null : kept);
 			map.setPaintProperty(id, 'line-width', ['case', mine, 3, 1.5]);
 			map.setPaintProperty(id, 'line-opacity', ['case', mine, 1, icao ? 0.35 : 0.7]);
 		}

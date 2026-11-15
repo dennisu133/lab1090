@@ -12,7 +12,16 @@
 
 {#each sections as section (section.title)}
 	<section class="border-t border-zinc-800 px-4 py-3">
-		<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+		<h3
+			class={[
+				'mb-2 text-xs font-semibold tracking-wide uppercase',
+				section.tier === 'emergency'
+					? 'text-red-400'
+					: section.tier === 'caution'
+						? 'text-amber-300'
+						: 'text-zinc-500'
+			]}
+		>
 			{section.title}
 		</h3>
 		<dl class="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-1.5 text-sm">

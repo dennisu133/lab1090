@@ -53,6 +53,14 @@ Pages:
   checked before they're believed: `src/lib/tracker/positions.ts`; how the path ahead is
   predicted: `src/lib/tracker/motion.ts`.
 
+  Alerts, on every page: emergencies (squawk 7500/7600/7700, the ADS-B emergency states),
+  ACAS resolution advisories and flights asking for priority get a banner, a ring on the map
+  (with a line between the two aircraft of an advisory), a mark in the list and in the tab
+  title, and a section in the panel on what it means and what happens next. IDENT makes the
+  aircraft blink, as on a controller's screen. Optionally also as system notifications
+  (desktop browsers, HTTPS or `localhost` only; the switch is in the navigation bar). The
+  rules: `src/lib/tracker/alerts.ts`.
+
   Map: [MapLibre GL JS](https://maplibre.org/) with vector tiles from
   [OpenFreeMap](https://openfreemap.org/) (OpenStreetMap data) and hillshading from the
   [Terrain Tiles on AWS](https://registry.opendata.aws/terrain-tiles/), all free and without

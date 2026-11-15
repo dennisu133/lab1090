@@ -13,12 +13,19 @@
  * aircraft (PREDICT_S), longer with minute marks for the selected one (PREDICT_SELECTED_S).
  * Radar screens in air traffic control draw the same thing, straight, as a "speed vector"
  * or "velocity leader": where the aircraft will be in a minute or two.
+ *
+ * Alerts (lib/tracker/alerts.ts) mark the aircraft: a ring in the alert's colour, a badge
+ * above the label ("7700", "RA ↑"), a few rings pulsing out when it starts, and a line
+ * between the two aircraft of an ACAS advisory. IDENT blinks the symbol, as on a
+ * controller's screen. Without animations (prefers-reduced-motion), no pulse and no blink.
  */
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { DbAirport, DbRoute } from '#lib/aircraft-db.ts';
 import { destination, distanceKm, intermediate, KM_PER_NM } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { advance, headingReference, motion, path, trueHeading } from '#lib/tracker/motion.ts';
+import { badge as alertBadge } from '#lib/describe/alert.ts';
+import { alertsOf, identing, type Tier } from '#lib/tracker/alerts.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import { iconFor } from './icons';
@@ -32,6 +39,12 @@ export const EXTRAPOLATE_MS = 15_000;
 /** How far ahead the dotted line goes, s: for every aircraft, and for the selected one. */
 export const PREDICT_S = 60;
 export const PREDICT_SELECTED_S = 180;
+/** When an alert starts: this many rings pulse out from the symbol, each taking PULSE_MS. */
+export const PULSES = 4;
+export const PULSE_MS = 1500;
+/** IDENT: the symbol blinks, this long on and this long dimmed. */
+const BLINK_MS = 500;
+
 /** The predicted path is drawn in pieces of this many seconds, each in its altitude's colour. */
 const PREDICT_STEP_S = 5;
 
@@ -103,18 +116,40 @@ export interface AircraftProperties {
 	altitude: number | null;
 	ground: boolean;
 	stale: boolean;
+	/** The highest tier of its alerts; '' for none (MapLibre filters compare strings). */
+	tier: Tier | '';
+	/** Above the label: the alert's badge ("7700", "RA ↑"), or IDENT; '' for none. */
+	badge: string;
+	/** How far the onset pulse has got, 0–1; −1: none (or no animations). */
+	pulse: number;
+	/** IDENT's blink, in the dimmed half. */
+	dim: boolean;
+	/** Labels with a lower one are placed first: alerts win when labels collide. */
+	sort: number;
 }
 
 /** One point per aircraft on the map. */
 export function aircraftFeatures(
 	list: TrackedAircraft[],
-	now: number
+	now: number,
+	/** false: the user asked for less motion (prefers-reduced-motion). */
+	animate = true
 ): FeatureCollection<Point, AircraftProperties> {
 	const features: Feature<Point, AircraftProperties>[] = [];
 	for (const a of list) {
 		const shown = shownPosition(a, now);
 		if (!shown) continue;
 		const { icon, size } = iconFor(a.category?.value ?? null);
+		const alerts = alertsOf(a, now);
+		const tier = alerts.some((x) => x.tier === 'emergency')
+			? 'emergency'
+			: alerts.length
+				? 'caution'
+				: '';
+		const ident = identing(a, now);
+		const onset = alerts.length ? now - Math.max(...alerts.map((x) => x.since)) : Infinity;
+		const pulse =
+			animate && onset >= 0 && onset < PULSES * PULSE_MS ? (onset % PULSE_MS) / PULSE_MS : -1;
 		features.push({
 			type: 'Feature',
 			id: a.icao,
@@ -127,7 +162,12 @@ export function aircraftFeatures(
 				track: shown.track,
 				altitude: a.position!.surface ? null : (a.altitude?.value ?? null),
 				ground: a.position!.surface,
-				stale: shown.age > STALE_MS
+				stale: shown.age > STALE_MS,
+				tier,
+				badge: [...alerts.map(alertBadge), ...(ident ? ['IDENT'] : [])].join(' '),
+				pulse,
+				dim: animate && ident && Math.floor(now / BLINK_MS) % 2 === 1,
+				sort: tier === 'emergency' ? 0 : tier === 'caution' || ident ? 1 : 2
 			}
 		});
 	}
@@ -405,4 +445,50 @@ export function routeFeatures(route: DbRoute | null): {
 			}))
 		}
 	};
+}
+
+export interface AlertLinkProperties {
+	tier: Tier;
+	/** The vertical distance between the two, "1,000 ft"; '' if an altitude is missing. */
+	label: string;
+}
+
+/**
+ * ACAS advisories: a line from each aircraft to the threat its advisory names, if both are on
+ * the map. Both usually have one against the other at the same time: one line per pair.
+ */
+export function alertLinkFeatures(
+	list: TrackedAircraft[],
+	now: number
+): FeatureCollection<LineString, AlertLinkProperties> {
+	const features: Feature<LineString, AlertLinkProperties>[] = [];
+	const drawn = new Set<string>();
+	for (const a of list) {
+		for (const x of alertsOf(a, now)) {
+			if (x.kind !== 'advisory' || !x.threat) continue;
+			const pair = [a.icao, x.threat].sort().join(' ');
+			const other = list.find((o) => o.icao === x.threat);
+			const from = shownPosition(a, now);
+			const to = other && shownPosition(other, now);
+			if (drawn.has(pair) || !from || !to) continue;
+			drawn.add(pair);
+			const feet =
+				a.altitude && other.altitude ? Math.abs(a.altitude.value - other.altitude.value) : null;
+			features.push({
+				type: 'Feature',
+				geometry: {
+					type: 'LineString',
+					coordinates: [
+						[from.lon, from.lat],
+						[to.lon, to.lat]
+					]
+				},
+				properties: {
+					tier: x.tier,
+					label: feet === null ? '' : `${Math.round(feet).toLocaleString('en')} ft`
+				}
+			});
+		}
+	}
+	return { type: 'FeatureCollection', features };
 }

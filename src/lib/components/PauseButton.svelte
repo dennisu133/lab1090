@@ -8,11 +8,13 @@
 	charge: if you paused with it, scrolling back up doesn't resume.
 
 	While paused by scrolling, a notice at the top of the window says so, so the list never
-	looks frozen without a reason. Clicking it scrolls back up to the list's heading.
+	looks frozen without a reason (below the alert banner, if there is one). Clicking it
+	scrolls back up to the list's heading.
 -->
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { LiveFeed } from '#lib/live-feed.svelte.ts';
+	import Notice from './Notice.svelte';
 
 	interface Props {
 		feed: LiveFeed<unknown>;
@@ -54,11 +56,16 @@
 </button>
 
 {#if feed.scrolledAway && !feed.pausedByUser}
-	<button
-		class="fixed top-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-sky-800 bg-sky-950/95 px-4 py-1.5 text-sm text-sky-100 shadow-xl hover:bg-sky-900"
-		onclick={() => button?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-	>
-		Live {noun} paused while you scroll: {feed.held.toLocaleString()} new
-		<span class="ml-2 text-sky-300">↑ Back to live</span>
-	</button>
+	<!-- Below the alert banner, if one is showing (the layout sets its height). -->
+	<div class="fixed top-[calc(1rem+var(--alert-banner,0px))] left-1/2 z-30 -translate-x-1/2">
+		<Notice tone="live">
+			<button
+				class="px-4 py-1.5 hover:bg-sky-900"
+				onclick={() => button?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+			>
+				Live {noun} paused while you scroll: {feed.held.toLocaleString()} new
+				<span class="ml-2 text-sky-300">↑ Back to live</span>
+			</button>
+		</Notice>
+	</div>
 {/if}

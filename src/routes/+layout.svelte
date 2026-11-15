@@ -4,7 +4,9 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import AlertBanner from './AlertBanner.svelte';
 	import MessageCounts from './MessageCounts.svelte';
+	import NotificationSwitch from './NotificationSwitch.svelte';
 	import { setStreams, Streams } from './streams';
 	import type { LayoutProps } from './$types';
 
@@ -43,11 +45,13 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+<!-- --alert-banner: other notices (PauseButton) float below the alert banner, not over it. -->
 <div
 	class={[
 		'bg-zinc-950 text-zinc-100',
 		fullScreen ? 'flex h-dvh flex-col overflow-hidden' : 'min-h-screen'
 	]}
+	style:--alert-banner={streams.alerts.top ? '3rem' : null}
 >
 	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
 		<!-- Ten Ninety: 1090 MHz, the frequency of Mode S and ADS-B. -->
@@ -60,10 +64,12 @@
 			>
 		{/each}
 		<div class="ml-auto flex items-center gap-6">
+			<NotificationSwitch notifications={streams.alerts.notifications} />
 			<MessageCounts stats={streams.stats} />
 			<ReceiverStatus />
 		</div>
 	</nav>
+	<AlertBanner />
 	{#if WIDE_ONLY.some(within)}
 		<p
 			class="border-b border-amber-900/50 bg-amber-950/40 px-6 py-2 text-sm text-amber-200 lg:hidden"

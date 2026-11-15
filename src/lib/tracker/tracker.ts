@@ -31,6 +31,10 @@
  * airborne ones (no altitude; a speed and a direction instead). Rare here: on the ground,
  * the radio horizon is a few km, so only an airfield near the antenna is in view.
  *
+ * Alerts (alerts.ts): the emergency state and squawk, ACAS resolution advisories and IDENT
+ * are kept as streaks: the value, and how many messages in a row said so. An alert needs
+ * two, so one message can't raise one (see alerts.ts for why).
+ *
  * Turns: the tracker measures how fast each aircraft's ground track changes (TURN_WINDOW_MS,
  * see #turn), for dead reckoning along the arc and the predicted path (lib/map/prediction.ts).
  *
@@ -39,12 +43,14 @@
  *
  * Shared by server and browser; state is the aircraft heard so far.
  */
+import { inEffect, resolutionAdvisory, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory, type Timed } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { downlinkFormat, payload } from '#lib/modes/frame.ts';
+import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
+import { flightStatus } from '#lib/modes/header.ts';
 import type { EmitterCategory } from '#lib/modes/identification.ts';
 import { allocation, formatRegistration, nationalityMark } from '#lib/modes/nationality.ts';
 import type { Cpr, Movement } from '#lib/modes/position.ts';
@@ -85,6 +91,43 @@ export const TURN_WINDOW_MS = 10_000;
 const TURN_MIN_SAMPLES = 3;
 const TURN_MIN_SPAN_MS = 4_000;
 
+/**
+ * Advisories more than this far apart are separate streaks: while ACAS gives one, TC 28
+ * subtype 2 goes out about once a second (DO-260B), so a 10 s silence means
+ * it's over or out of reach.
+ */
+export const ADVISORY_GAP_MS = 10_000;
+/** The SPI bit stays set for 18 s after the pilot presses IDENT (ICAO Annex 10 Vol IV). */
+export const IDENT_GAP_MS = 20_000;
+
+/** A value, and how many messages in a row said so (alerts.ts wants two). */
+export interface Streak<T> extends Timed<T> {
+	/** When the first of them arrived. */
+	since: number;
+	count: number;
+}
+
+/**
+ * The next streak: one more if `value` is the same as the old one's (`same`) and came within
+ * `gap` ms of it, else a new one of `count` (a reply value confirmed by an earlier one: 2).
+ */
+function streak<T>(
+	old: Streak<T> | null,
+	value: T,
+	t: number,
+	from: string,
+	same: (a: T, b: T) => boolean = (a, b) => a === b,
+	gap = Infinity,
+	count = 1
+): Streak<T> {
+	if (old && same(old.value, value) && t - old.t <= gap)
+		return { value, t, from, since: old.since, count: old.count + 1 };
+	return { value, t, from, since: t, count };
+}
+
+/** Advisories continue a streak while both are, or both aren't, in effect. */
+const sameEffect = (a: ResolutionAdvisory, b: ResolutionAdvisory) => inEffect(a) === inEffect(b);
+
 export interface TrackedAircraft {
 	/** 24-bit ICAO address, as hex (uppercase, like the address filter's). */
 	icao: string;
@@ -101,7 +144,23 @@ export interface TrackedAircraft {
 	/** From Comm-B 2,1, with the dash put back ("D-AIZA"). Rare: radars here don't ask for it. */
 	registration: Timed<string> | null;
 	category: Timed<EmitterCategory> | null;
-	squawk: Timed<string> | null;
+	squawk: Streak<string> | null;
+	/**
+	 * TC 28 subtype 1: the emergency/priority state (EMERGENCY_STATES: 0 none, 1 general, 2
+	 * medical, 3 minimum fuel, 4 no communications, 5 unlawful interference, 6 downed).
+	 */
+	emergency: Streak<number> | null;
+	/**
+	 * The latest ACAS resolution advisory, from TC 28 subtype 2, Comm-B 3,0 or a DF16
+	 * coordination reply (acas.ts). The streak counts messages in a row that agree on whether
+	 * one is in effect, at most ADVISORY_GAP_MS apart.
+	 */
+	advisory: Streak<ResolutionAdvisory> | null;
+	/**
+	 * The pilot pressed IDENT: the SPI bit (SS 3 in TC 9–18, FS 4/5 in replies). Null once a
+	 * message says it's off.
+	 */
+	ident: Streak<true> | null;
 	/** Barometric (pressure) altitude, ft: ADS-B TC 9–18, or a radar reply's AC field. */
 	altitude: Timed<number> | null;
 	/** GNSS height above the WGS84 ellipsoid, ft (TC 20–22, rare). */
@@ -177,6 +236,9 @@ function blank(icao: string, t: number): TrackedAircraft {
 		registration: null,
 		category: null,
 		squawk: null,
+		emergency: null,
+		advisory: null,
+		ident: null,
 		altitude: null,
 		gnssHeight: null,
 		onGround: null,
@@ -253,9 +315,17 @@ export class Tracker {
 		if (df === 5 || df === 21) {
 			const squawk = replySquawk(data);
 			const same = (b: Timed<string | number>) => b.value === squawk;
-			if (this.#fromReply(a.icao, 'squawk', a.squawk, squawk, t, same))
-				a.squawk = { value: squawk, t, from };
+			const taken = this.#fromReply(a.icao, 'squawk', a.squawk, squawk, t, same);
+			// Confirmed by a waiting reply: that one started the streak.
+			if (taken === 'current') a.squawk = streak(a.squawk, squawk, t, from);
+			else if (taken) a.squawk = { value: squawk, t, from, since: taken.pending, count: 2 };
 		}
+		// FS (bits 6–8): codes 4 and 5 carry SPI. DF0/16 have no FS.
+		if ([4, 5, 20, 21].includes(df))
+			a = this.#ident(a, flightStatus(bits(data, 6, 3)).spi, t, from);
+		// DF16 MV with VDS 0x30: the aircraft's own RA, as its ACAS tells another one's.
+		if (df === 16 && mb && mb[0] === 0x30)
+			a.advisory = this.#advisory(a.advisory, resolutionAdvisory(mb), t, from);
 		if ((df === 20 || df === 21) && mb) a = this.#commB(a, data, mb, t);
 		this.#aircraft.set(addr.icao, a);
 		return true;
@@ -298,6 +368,9 @@ export class Tracker {
 				return this.#position(a, s.cpr, t, true);
 			case 'airborne-position': {
 				a.onGround = false;
+				// SS (surveillance status) 3: SPI. 1 and 2 are the alert flags, which the
+				// squawk says more precisely.
+				a = this.#ident(a, s.surveillanceStatus === 3, t, from);
 				const feet = s.altitude.feet;
 				if (feet !== null) {
 					if (s.altitudeSource === 'baro') a.altitude = stamp(feet);
@@ -319,7 +392,9 @@ export class Tracker {
 					a.verticalRate = stamp({ rate: s.verticalRate, source: s.verticalRateSource });
 				break;
 			case 'aircraft-status':
-				if (s.squawk) a.squawk = stamp(s.squawk);
+				if (s.squawk) a.squawk = streak(a.squawk, s.squawk, t, from);
+				if (s.emergency !== null) a.emergency = streak(a.emergency, s.emergency, t, from);
+				if (s.advisory) a.advisory = this.#advisory(a.advisory, s.advisory, t, from);
 				break;
 			case 'operational-status':
 				a.operational = stamp({
@@ -408,6 +483,8 @@ export class Tracker {
 	 * current one within REPLY_CURRENT_MS and a second reply agrees with this one. Otherwise
 	 * it waits for that second reply. So one corrupted reply changes nothing, and a real
 	 * change (a new squawk from ATC) shows from the second reply on.
+	 *
+	 * Returns what agreed: 'current', or the time of the waiting reply; null: not taken.
 	 */
 	#fromReply(
 		icao: string,
@@ -416,20 +493,35 @@ export class Tracker {
 		value: string | number,
 		t: number,
 		agrees: (other: Timed<string | number>) => boolean
-	): boolean {
+	): 'current' | { pending: number } | null {
 		const key = `${icao} ${field}`;
 		if (current && t - current.t <= REPLY_CURRENT_MS && agrees(current)) {
 			this.#pending.delete(key);
-			return true;
+			return 'current';
 		}
 		const pending = this.#pending.get(key);
 		if (pending && t - pending.t <= REPLY_PENDING_MS && agrees(pending)) {
 			this.#pending.delete(key);
-			return true;
+			return { pending: pending.t };
 		}
 		this.#pending.set(key, { value, t, from: field });
 		this.heldBack++;
-		return false;
+		return null;
+	}
+
+	/** SPI on or off, from a message that carries the bit. */
+	#ident(a: TrackedAircraft, spi: boolean, t: number, from: string): TrackedAircraft {
+		a.ident = spi ? streak<true>(a.ident, true, t, from, () => true, IDENT_GAP_MS) : null;
+		return a;
+	}
+
+	#advisory(
+		old: Streak<ResolutionAdvisory> | null,
+		r: ResolutionAdvisory,
+		t: number,
+		from: string
+	): Streak<ResolutionAdvisory> {
+		return streak(old, r, t, from, sameEffect, ADVISORY_GAP_MS);
 	}
 
 	#commB(a: TrackedAircraft, data: Uint8Array, mb: Uint8Array, t: number): TrackedAircraft {
@@ -456,6 +548,7 @@ export class Tracker {
 			const mark = nationalityMark(r.registration, marks);
 			if (mark) a.registration = stamped(formatRegistration(r.registration, mark));
 		}
+		if (r.bds === '3,0') a.advisory = this.#advisory(a.advisory, r, t, r.bds);
 		if (r.bds === '4,0') a.commB = { ...a.commB, intention: stamped(r) };
 		if (r.bds === '5,0') a.commB = { ...a.commB, trackAndTurn: stamped(r) };
 		if (r.bds === '6,0') a.commB = { ...a.commB, headingAndSpeed: stamped(r) };

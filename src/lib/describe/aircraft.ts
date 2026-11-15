@@ -17,6 +17,7 @@ import {
 	TURNING,
 	trueHeading
 } from '#lib/tracker/motion.ts';
+import { alertsOf, identing, type Tier } from '#lib/tracker/alerts.ts';
 import type { Judged } from '#lib/tracker/route.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
@@ -29,12 +30,15 @@ import {
 	shownPosition,
 	type Unit
 } from '#lib/map/features.ts';
+import { alertSection, identField } from './alert';
 import type { Field } from './field';
 import { routeSection } from './route';
 
 export interface Section {
 	title: string;
 	fields: (Field & { label: string })[];
+	/** An alert's section: its colour. */
+	tier?: Tier;
 }
 
 const n = (x: number) => Math.round(x).toLocaleString('en');
@@ -173,12 +177,17 @@ export function aircraftSections(
 	/** What adsbdb knows about the flight under its callsign; null: nothing (yet). */
 	trip: DbFlight | null = null,
 	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
-	judged: Judged | null = null
+	judged: Judged | null = null,
+	/** Every aircraft: for an ACAS advisory's threat. */
+	all: TrackedAircraft[] = []
 ): Section[] {
 	const sections: Section[] = [];
 	const add = (title: string, fields: Section['fields']) => {
 		if (fields.length) sections.push({ title, fields });
 	};
+
+	// --- alerts, on top: what it means and what happens next -----------------------------
+	for (const x of alertsOf(a, now)) sections.push(alertSection(x, a, all, now, unit));
 
 	// --- identity ------------------------------------------------------------------------
 	const identity: Section['fields'] = [];
@@ -241,6 +250,7 @@ export function aircraftSections(
 			mono: true
 		});
 	}
+	if (identing(a, now)) identity.push(identField());
 	add('Identity', identity);
 	const route = trip && routeSection(a, trip, judged, unit);
 	if (route) sections.push(route);

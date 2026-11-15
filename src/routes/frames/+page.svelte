@@ -10,6 +10,7 @@
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
+	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
 	import { LIVE_FRAMES, type FeedFrame } from './frame-stream.svelte';
 	import { VERDICTS, addressTitle, interrogatorLabel } from './verdicts';
@@ -184,9 +185,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Raw frames · Ten Ninety</title>
-</svelte:head>
+<PageTitle page="Raw frames" />
 
 <div class="space-y-6">
 	<!-- Status bar -->

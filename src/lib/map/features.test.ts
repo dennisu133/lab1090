@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { bearing, distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { resolutionAdvisory } from '#lib/modes/acas.ts';
+import { advisoryField } from '#lib/tracker/alert-scenario.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import {
+	alertLinkFeatures,
+	PULSE_MS,
+	PULSES,
 	aircraftFeatures,
 	EXTRAPOLATE_MS,
 	flightLevel,
@@ -30,6 +35,9 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		registration: null,
 		category: { value: { set: 'A', code: 3, name: 'Large (34–136 t)' }, t: 0, from: 'TC 4' },
 		squawk: null,
+		emergency: null,
+		advisory: null,
+		ident: null,
 		altitude: { value: 35_000, t: 0, from: 'TC 11' },
 		gnssHeight: null,
 		onGround: false,
@@ -104,9 +112,60 @@ describe('features', () => {
 			track: expect.closeTo(90, 1), // + the meridians' convergence, 0.003° in 1 s
 			altitude: 35_000,
 			ground: false,
-			stale: false
+			stale: false,
+			tier: '',
+			badge: '',
+			pulse: -1,
+			dim: false,
+			sort: 2
 		});
 		expect(aircraftFeatures([aircraft()], 11_000).features[0].properties.stale).toBe(true);
+	});
+
+	test('alerts: ring tier, badge, a pulse when it starts, IDENT blinking', () => {
+		const streak = <T>(value: T, since: number, from = 'TC 28') => ({
+			value,
+			t: 1000,
+			from,
+			since,
+			count: 2
+		});
+		const mayday = aircraft({ squawk: streak('7700', 0), emergency: streak(1, 0) });
+		const at = (now: number, animate = true) =>
+			aircraftFeatures([mayday], now, animate).features[0].properties;
+		expect(at(1000)).toMatchObject({ tier: 'emergency', badge: '7700', sort: 0 });
+		expect(at(750).pulse).toBeCloseTo(0.5); // half way through the first of the pulses
+		expect(at(PULSES * PULSE_MS).pulse).toBe(-1);
+		expect(at(750, false).pulse).toBe(-1);
+		const ident = aircraft({ ident: streak(true as const, 0, 'TC 11') });
+		const blink = (now: number) => aircraftFeatures([ident], now).features[0].properties;
+		expect(blink(1000)).toMatchObject({ badge: 'IDENT', dim: false, tier: '' });
+		expect(blink(1500).dim).toBe(true);
+	});
+
+	test('an ACAS advisory: one line between the two aircraft, with their vertical distance', () => {
+		const ra = (threat: string, sense: 'up' | 'down') => ({
+			value: {
+				...resolutionAdvisory(advisoryField(0xe2, { sense, threat }))
+			},
+			t: 1000,
+			from: 'TC 28',
+			since: 0,
+			count: 2
+		});
+		const up = aircraft({ icao: 'AAAAAA', advisory: ra('BBBBBB', 'up') });
+		const down = aircraft({
+			icao: 'BBBBBB',
+			altitude: { value: 34_000, t: 0, from: 'TC 11' },
+			position: { lat: 52.05, lon: 14, t: 0, from: 'pair', surface: false },
+			advisory: ra('AAAAAA', 'down')
+		});
+		const { features } = alertLinkFeatures([up, down], 1000);
+		expect(features).toHaveLength(1);
+		expect(features[0].properties).toEqual({ tier: 'caution', label: '1,000 ft' });
+		expect(aircraftFeatures([up], 1000).features[0].properties.badge).toBe('RA ↑');
+		// The threat out of sight: no line.
+		expect(alertLinkFeatures([up], 1000).features).toEqual([]);
 	});
 
 	test('flight levels: hundreds of feet, three digits', () => {

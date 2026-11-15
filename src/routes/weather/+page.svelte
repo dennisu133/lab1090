@@ -31,6 +31,7 @@
 	import QnhCard from './QnhCard.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
 	import WindProfile from './WindProfile.svelte';
+	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
 
 	const stream = getStreams().weather;
@@ -88,9 +89,7 @@
 	);
 </script>
 
-<svelte:head>
-	<title>Weather now · Ten Ninety</title>
-</svelte:head>
+<PageTitle page="Weather now" />
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-baseline gap-x-1 text-sm text-zinc-400">

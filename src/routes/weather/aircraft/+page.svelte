@@ -14,6 +14,7 @@
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import AircraftTable from '../AircraftTable.svelte';
 	import Calculation from '../Calculation.svelte';
+	import PageTitle from '../../PageTitle.svelte';
 	import { getStreams } from '../../streams';
 
 	const FEED_ROWS = 200;
@@ -80,9 +81,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Weather per aircraft · Ten Ninety</title>
-</svelte:head>
+<PageTitle page="Weather per aircraft" />
 
 <div class="space-y-6">
 	<!-- Worked example -->

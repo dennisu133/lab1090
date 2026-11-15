@@ -14,6 +14,7 @@
 	import AltitudeLegend from './AltitudeLegend.svelte';
 	import MapLayers, { type Layers } from './MapLayers.svelte';
 	import TrackerMap from './TrackerMap.svelte';
+	import PageTitle from './PageTitle.svelte';
 	import { getStreams } from './streams';
 	import type { PageProps } from './$types';
 
@@ -99,9 +100,7 @@
 	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 </script>
 
-<svelte:head>
-	<title>Tracker · Ten Ninety</title>
-</svelte:head>
+<PageTitle page="Tracker" />
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
@@ -114,13 +113,14 @@
 	</div>
 
 	<aside
-		class="max-h-[45dvh] shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-950 pb-4 md:max-h-none md:w-[26rem] md:border-t-0 md:border-l"
+		class="max-h-[45dvh] shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-950 pb-4 md:max-h-none md:w-104 md:border-t-0 md:border-l"
 	>
 		{#if selected}
 			<!-- Keyed: another aircraft gets a fresh panel (e.g. its own paused feed). -->
 			{#key selected.icao}
 				<AircraftPanel
 					aircraft={selected}
+					all={stream.aircraft}
 					messages={stream.messages}
 					{flight}
 					{judged}

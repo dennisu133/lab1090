@@ -35,18 +35,23 @@ more:
 
 Visual only, no sound.
 
-- [ ] **On the page**: banner, the aircraft highlighted on the map and in the list, a marker in
+- [x] **On the page**: banner, the aircraft highlighted on the map and in the list, a marker in
       the tab title (for a window left open on a second screen).
-- [ ] **System notifications**, opt-in, via the Notification API from the open tab (no push
+- [x] **System notifications**, opt-in, via the Notification API from the open tab (no push
       server, no service worker). Browsers only allow it in a secure context (HTTPS or
       `localhost`), so it can't be required: explain that where the switch is.
-- [ ] **Triggers**, each with an explanation of what it means and what happens next:
-  - [ ] Squawk 7500 / 7600 / 7700
-  - [ ] TC 28 subtype 1 emergency states (general, medical, minimum fuel, no communications,
-        unlawful interference, downed aircraft)
-  - [ ] ACAS resolution advisories (TC 28 subtype 2, register 3,0, DF16)
-  - [ ] An aircraft losing GNSS integrity (NACp / NIC dropping to 0), see phase 5
-- [ ] Tests with synthetic frames; a way to play them through `tools/replay.ts` to see the UI.
+- [x] **Triggers**, each with an explanation of what it means and what happens next:
+  - [x] Squawk 7500 / 7600 / 7700
+  - [x] TC 28 subtype 1 emergency states (general, medical, minimum fuel, no communications,
+        unlawful interference, downed aircraft). Medical and minimum fuel are priority, not
+        distress: amber, unless the squawk is an emergency code.
+  - [x] ACAS resolution advisories (TC 28 subtype 2, register 3,0, DF16)
+  - [x] IDENT (SPI): not an alert, the aircraft blinks on the map.
+  - [ ] An aircraft losing GNSS integrity (NACp / NIC dropping to 0): moved to phase 5's GNSS
+        interference experiment. Near jammed areas it could fire for every aircraft, so
+        whether it's an alert at all depends on what that shows.
+- [x] Tests with synthetic frames; a way to play them through `tools/replay.ts` to see the UI
+      (`--alerts`, `src/lib/tracker/alert-scenario.ts`).
 
 ## 3. Weather on the map and in the air
 

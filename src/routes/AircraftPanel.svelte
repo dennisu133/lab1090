@@ -21,6 +21,8 @@
 
 	interface Props {
 		aircraft: TrackedAircraft;
+		/** Every aircraft: for an ACAS advisory's threat. */
+		all: TrackedAircraft[];
 		messages: Message[];
 		/** adsbdb's route and airline for its callsign; null: none (yet). */
 		flight: DbFlight | null;
@@ -32,7 +34,7 @@
 		onclose: () => void;
 	}
 
-	let { aircraft, messages, flight, judged, now, receiver, unit, onclose }: Props = $props();
+	let { aircraft, all, messages, flight, judged, now, receiver, unit, onclose }: Props = $props();
 
 	// The snapshot is replaced every update; the address isn't, so this looks it up once.
 	let icao = $derived(aircraft.icao);
@@ -49,7 +51,7 @@
 		return () => (current = false);
 	});
 
-	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db, flight, judged));
+	let sections = $derived(aircraftSections(aircraft, now, receiver, unit, db, flight, judged, all));
 	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 
 	let block = $derived(allocation(aircraft.icao));

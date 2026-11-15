@@ -139,7 +139,7 @@ bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11
 ## Replaying a recording
 
 ```sh
-bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop]
+bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
 RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
 ```
 
@@ -148,4 +148,7 @@ RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
   (by their 12 MHz timestamps), so CPR pairs, trails and dead reckoning behave as live.
   `--speed 2` plays twice as fast; `--loop` starts over at the end, where the aircraft jump
   back to their starting points (the tracker rejects that jump three times, then starts
-  their tracks afresh).
+  their tracks afresh). `--alerts` mixes synthetic emergencies, an IDENT and an ACAS
+  advisory into the recording (`src/lib/tracker/alert-scenario.ts` has the timeline; the
+  capture itself has none), to see the alerts work: with `--speed 4 --loop` every one of
+  them comes round within 2.5 minutes.

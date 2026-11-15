@@ -75,3 +75,33 @@ export function resolutionAdvisory(field: Uint8Array): ResolutionAdvisory {
 					: null
 	};
 }
+
+/**
+ * Is an RA in effect? ARA bit 9 set: yes, against one threat, or against several in the same
+ * direction. Bit 9 clear with MTE (bit 28) set: yes, against several threats, passing above
+ * some and below others; the ARA bits then mean something else (splitAdvisory). Both clear:
+ * none. RAT (bit 27) set: it just ended; the ARA bits still show the last one, for 18 s.
+ * (ICAO Annex 10 Vol IV, ACAS: the ARA and RAT fields of the RA report; Doc 9871, register 3,0.)
+ */
+export function inEffect(r: ResolutionAdvisory): boolean {
+	return (r.active || r.multipleThreats) && !r.terminated;
+}
+
+/**
+ * Bit 9 clear, MTE set: bits 10–13 are, in this order, "correction upward", "positive climb",
+ * "correction downward" and "positive descent" (Annex 10 Vol IV, the ARA field). They come
+ * out of resolutionAdvisory under the single-threat names; this reads them as meant.
+ */
+export function splitAdvisory(r: ResolutionAdvisory): {
+	upward: boolean;
+	climb: boolean;
+	downward: boolean;
+	descend: boolean;
+} {
+	return {
+		upward: r.corrective,
+		climb: r.downward,
+		downward: r.increasedRate,
+		descend: r.senseReversal
+	};
+}

@@ -177,7 +177,13 @@ describe('Tracker', () => {
 		t.add(df5, as('known'), 2500);
 		const a = t.get('ABC123')!;
 		expect(a.altitude).toEqual({ value: replyAltitude(df4).feet!, t: 2000, from: 'DF4 reply' });
-		expect(a.squawk).toEqual({ value: replySquawk(df5), t: 2500, from: 'DF5 reply' });
+		expect(a.squawk).toEqual({
+			value: replySquawk(df5),
+			t: 2500,
+			from: 'DF5 reply',
+			since: 1500,
+			count: 2
+		});
 		expect(a).toMatchObject({ adsb: false, position: null, messages: 4, firstSeen: 1000 });
 	});
 

@@ -2,7 +2,7 @@
  * Play a Beast recording over TCP, like the Pi's readsb does live: for working on the app
  * when the sky is empty (at night), or with a recording that shows something specific.
  *
- *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop]
+ *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
  *   RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
  *
  * Frames go out at the pace they were recorded, by their Beast timestamps (the receiver's
@@ -10,9 +10,15 @@
  * client gets the recording from the start. --speed 2 plays twice as fast; --loop starts
  * over at the end (the aircraft then jump back to where they were at the start, and the
  * tracker's position check has to deal with that, as it would with a real jump).
+ *
+ * --alerts mixes synthetic emergencies, an IDENT and an ACAS advisory into the recording
+ * (src/lib/tracker/alert-scenario.ts has the timeline: 7700 from 30 s, IDENT at 60 s, a
+ * medical priority from 240 s, 7600 from 300 s, an RA between two aircraft at 425 s), to see
+ * the banner, the map and the notifications work. With --speed 4 they all come within 2 min.
  */
 import { encodeFrame } from '../src/lib/server/beast/encode.ts';
 import { BeastParser } from '../src/lib/server/beast/parser.ts';
+import { injectAlerts } from '../src/lib/tracker/alert-scenario.ts';
 
 const args = process.argv.slice(2);
 const option = (name: string, fallback: number) => {
@@ -22,11 +28,15 @@ const option = (name: string, fallback: number) => {
 const port = option('--port', 30105);
 const speed = option('--speed', 1);
 const loop = args.includes('--loop');
+const alerts = args.includes('--alerts');
+/** Options followed by a value; the others are switches. */
+const WITH_VALUE = ['--port', '--speed'];
 const path =
-	args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--')) ??
+	args.find((a, i) => !a.startsWith('--') && !WITH_VALUE.includes(args[i - 1])) ??
 	'fixtures/capture.beast';
 
-const frames = new BeastParser().push(new Uint8Array(await Bun.file(path).arrayBuffer()));
+const recorded = new BeastParser().push(new Uint8Array(await Bun.file(path).arrayBuffer()));
+const frames = alerts ? injectAlerts(recorded) : recorded;
 const t0 = frames[0].timestamp;
 /** When each frame is due, ms after the start (12,000 ticks per ms). */
 const due = frames.map((f) => (f.timestamp - t0) / 12_000 / speed);
@@ -69,5 +79,5 @@ Bun.listen<{ timer?: ReturnType<typeof setInterval> }>({
 	}
 });
 console.log(
-	`replaying ${path} on 127.0.0.1:${port}${speed === 1 ? '' : ` at ${speed}×`}${loop ? ', looping' : ''}`
+	`replaying ${path}${alerts ? ' with the alert scenario' : ''} on 127.0.0.1:${port}${speed === 1 ? '' : ` at ${speed}×`}${loop ? ', looping' : ''}`
 );

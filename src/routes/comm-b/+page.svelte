@@ -5,6 +5,7 @@
 	import { HOW, NAMES, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
 	import { DF_NAMES } from '#lib/modes/frame.ts';
 	import AircraftTable from './AircraftTable.svelte';
+	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
 	import type { RegisterRow, Source } from './comm-b-stream.svelte';
 
@@ -73,9 +74,7 @@
 	const rate = (x: number) => (x === 0 ? '' : `${x.toFixed(1)}/s`);
 </script>
 
-<svelte:head>
-	<title>Comm-B registers · Ten Ninety</title>
-</svelte:head>
+<PageTitle page="Comm-B registers" />
 
 <div class="space-y-6">
 	<header
