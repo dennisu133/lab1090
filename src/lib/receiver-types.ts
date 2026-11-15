@@ -1,7 +1,13 @@
 import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
-import type { BeastClientStatus } from '#lib/server/beast/client.ts';
 
 /** Shape of the messages on the /api/stream Server-Sent Events stream. Shared by server and page. */
+
+/** The server's connection to the Pi (BeastClient), for the status in the navigation bar. */
+export type BeastClientStatus =
+	| { state: 'connecting'; attempt: number }
+	| { state: 'connected' }
+	| { state: 'waiting'; retryInMs: number; reason: string }
+	| { state: 'closed' };
 
 export interface WireFrame {
 	/** Sequence number, unique per server run (a stable key for lists). */
@@ -42,8 +48,9 @@ export interface StreamUpdate {
 	/** New frames since the previous update (the first update holds recent history). */
 	frames: WireFrame[];
 	/**
-	 * First update of a `?tracks` stream only: the thinned positions of the last 10 minutes
-	 * (TrackHistory), oldest first, for the tracker's trails. Partly the same frames as
+	 * First update only: the thinned positions of the last 10 minutes (TrackHistory), oldest
+	 * first, for the tracker's trails. Only the tracker uses them: the other views would
+	 * count 10 minutes of old positions as new frames. Partly the same frames as
 	 * `frames` (same ids): mergeFrames joins the two.
 	 */
 	tracks?: WireFrame[];

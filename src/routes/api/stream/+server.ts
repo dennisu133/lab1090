@@ -5,12 +5,10 @@ import type { RequestHandler } from './$types';
 /**
  * Server-Sent Events: one long-lived HTTP response, one `data: <json>` message per update.
  * The browser's EventSource parses this and reconnects by itself if the stream ends.
- *
- * `?tracks`: the first update also holds the last 10 minutes of positions, for the tracker's
- * trails (see TrackHistory).
+ * The first update also holds the last 10 minutes of positions, for the tracker's trails
+ * (see TrackHistory).
  */
-export const GET: RequestHandler = ({ url }) => {
-	const tracks = url.searchParams.has('tracks');
+export const GET: RequestHandler = () => {
 	const encoder = new TextEncoder();
 	let unsubscribe = () => {};
 
@@ -30,7 +28,7 @@ export const GET: RequestHandler = ({ url }) => {
 					// already closed
 				}
 			};
-			unsubscribe = receiver().subscribe(send, close, { tracks });
+			unsubscribe = receiver().subscribe(send, close);
 		},
 		cancel() {
 			unsubscribe(); // the browser went away

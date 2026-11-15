@@ -27,7 +27,7 @@ export class StreamConnection {
 	#since: number | null = null;
 	#newest = 0;
 
-	/** `url`: the stream, e.g. '/api/stream?tracks' for the tracker's position history. */
+	/** `url`: the server's event stream, '/api/stream'. */
 	constructor(url: string, feeds: LiveFeed<unknown>[]) {
 		this.#url = url;
 		this.#feeds = feeds;

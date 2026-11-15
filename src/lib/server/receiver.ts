@@ -1,4 +1,4 @@
-import { BeastClient, type BeastClientStatus } from './beast/client';
+import { BeastClient } from './beast/client';
 import type { BeastFrame } from './beast/parser';
 import { FrameBuffers } from './frame-buffers';
 import { TrackHistory } from './track-history';
@@ -22,7 +22,6 @@ export class Receiver {
 	readonly source: string;
 	readonly since = Date.now();
 	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {}, byVerdict: {} };
-	status: BeastClientStatus = { state: 'closed' };
 	/** The latest frames of every kind, for filtering (/api/frames). */
 	readonly buffers = new FrameBuffers(PER_KIND);
 	/** Thinned position frames of the last 10 minutes, for the tracker's trails. */
@@ -42,8 +41,7 @@ export class Receiver {
 		this.#client = new BeastClient({
 			host,
 			port,
-			onFrame: (f) => this.#onFrame(f),
-			onStatus: (s) => (this.status = s)
+			onFrame: (f) => this.#onFrame(f)
 		});
 	}
 
@@ -61,28 +59,21 @@ export class Receiver {
 	}
 
 	/**
-	 * Get an update right away (with recent history), then one every 250 ms. `tracks`: the
-	 * first update also holds the position history (TrackHistory) in its own field. Only the
-	 * tracker wants it (the other pages would count 10 minutes of old positions as new), so
-	 * the browser merges it in for the tracker alone.
+	 * Get an update right away, then one every 250 ms. The first holds the recent history,
+	 * and the position history (TrackHistory) in its own field: the browser merges that in
+	 * for the tracker alone (StreamUpdate.tracks).
 	 */
-	subscribe(
-		send: Subscriber['send'],
-		close: Subscriber['close'],
-		{ tracks = false } = {}
-	): () => void {
+	subscribe(send: Subscriber['send'], close: Subscriber['close']): () => void {
 		const subscriber = { send, close };
 		this.#subscribers.add(subscriber);
 		// History only: frames still pending go out with the next batch, to everyone.
-		// (Sending them here too would deliver them twice.)
-		const update = this.#update(this.#history);
-		if (tracks) {
-			// Position frames still pending are in TrackHistory already but come with the next
-			// batch: leave them out here, or the tracker would get them twice.
-			const last = this.#history.at(-1)?.id ?? 0;
-			update.tracks = this.tracks.frames.filter((f) => f.id <= last);
-		}
-		send(update);
+		// (Sending them here too would deliver them twice.) The same for position frames:
+		// pending ones are in TrackHistory already.
+		const last = this.#history.at(-1)?.id ?? 0;
+		send({
+			...this.#update(this.#history),
+			tracks: this.tracks.frames.filter((f) => f.id <= last)
+		});
 		return () => this.#subscribers.delete(subscriber);
 	}
 
@@ -126,7 +117,7 @@ export class Receiver {
 
 	#update(frames: WireFrame[]): StreamUpdate {
 		return {
-			status: this.status,
+			status: this.#client.status,
 			source: this.source,
 			since: this.since,
 			counts: this.counts,

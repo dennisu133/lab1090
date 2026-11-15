@@ -105,32 +105,24 @@ test('keeps the latest 200 frames of every kind, however rare', async () => {
 	expect(df17).toEqual([...df17].sort((a, b) => a - b));
 });
 
-test('the tracker gets the position history too, in its own field', async () => {
+test('the first update holds the position history too, in its own field', async () => {
 	const r = start(trickle().port);
 	// until the last frame has gone out in a batch: pending frames aren't history yet
 	const all = collect(r);
 	await waitFor(() => all.ids().at(-1) === TOTAL, 5000);
-	let plain: StreamUpdate | undefined;
-	let tracks: StreamUpdate | undefined;
-	r.subscribe(
-		(u) => (plain ??= u),
-		() => {}
-	);
-	r.subscribe(
-		(u) => (tracks ??= u),
-		() => {},
-		{ tracks: true }
-	);
-	expect(plain!.frames.length).toBe(1000);
-	expect(plain!.tracks).toBeUndefined();
-	expect(tracks!.frames).toEqual(plain!.frames); // the same recent history
+	const late = collect(r);
+	const first = late.updates[0];
+	expect(first.frames.length).toBe(1000);
 	// The capture plays in ~1 s of wall-clock time, so TrackHistory (a frame per aircraft
 	// every 4 s) keeps a pair or so per aircraft: valid DF17 positions from most of the 19.
-	const kept = tracks!.tracks!;
+	const kept = first.tracks!;
 	expect(kept.every((f) => f.hex.startsWith('8d') && f.addr?.verdict === 'valid')).toBe(true);
 	expect(new Set(kept.map((f) => f.addr!.icao)).size).toBeGreaterThan(10);
 	const ids = kept.map((f) => f.id);
 	expect(ids).toEqual([...new Set(ids)].sort((a, b) => a - b)); // ascending, no repeats
 	// none newer than the history: those are still pending and come with the next batch
-	expect(Math.max(...ids)).toBeLessThanOrEqual(plain!.frames.at(-1)!.id);
+	expect(Math.max(...ids)).toBeLessThanOrEqual(first.frames.at(-1)!.id);
+	// only the first update
+	await waitFor(() => late.updates.length > 1, 1000);
+	expect(late.updates.slice(1).every((u) => u.tracks === undefined)).toBe(true);
 });

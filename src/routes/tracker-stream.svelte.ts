@@ -31,9 +31,8 @@ const MESSAGES = 40;
  * The tracker page's view of the live stream: every frame goes into a Tracker
  * (lib/tracker), which keeps the picture of the sky the map draws.
  *
- * The app's stream asks for `?tracks`: the first update then holds the last 10 minutes of
- * positions too (see TrackHistory on the server). Only this view merges them in, so the
- * trails are there right away.
+ * The stream's first update also holds the last 10 minutes of positions (see TrackHistory
+ * on the server). Only this view merges them in, so the trails are there right away.
  */
 export class TrackerStream extends LiveFeed<never> {
 	/** Every aircraft heard in the last minute (Tracker snapshots). */

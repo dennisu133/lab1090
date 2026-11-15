@@ -26,7 +26,7 @@ export class Streams {
 		this.frames = new FrameStream(reference);
 		this.commB = new CommBStream();
 		this.weather = new WeatherStream(reference);
-		this.#connection = new StreamConnection('/api/stream?tracks', [
+		this.#connection = new StreamConnection('/api/stream', [
 			this.tracker,
 			this.frames,
 			this.commB,

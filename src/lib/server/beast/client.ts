@@ -1,4 +1,5 @@
 import type { Socket } from 'bun';
+import type { BeastClientStatus } from '#lib/receiver-types.ts';
 import { BeastParser, type BeastFrame } from './parser';
 
 /**
@@ -13,11 +14,7 @@ import { BeastParser, type BeastFrame } from './parser';
  *   (`--net-heartbeat 60`), so 90 s of silence means something is wrong.
  */
 
-export type BeastClientStatus =
-	| { state: 'connecting'; attempt: number }
-	| { state: 'connected' }
-	| { state: 'waiting'; retryInMs: number; reason: string }
-	| { state: 'closed' };
+export type { BeastClientStatus };
 
 export interface BeastClientOptions {
 	host: string;
