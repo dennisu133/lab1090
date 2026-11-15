@@ -1,9 +1,10 @@
 import { BeastClient } from './beast/client';
 import type { BeastFrame } from './beast/parser';
 import { FrameBuffers } from './frame-buffers';
+import { FrameCounts } from './frame-counts';
 import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
-import { downlinkFormat, signalBucket, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
+import { downlinkFormat, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
@@ -14,20 +15,21 @@ const PER_KIND = 200;
 type Subscriber = { send: (update: StreamUpdate) => void; close: () => void };
 
 /**
- * The app's single connection to the Pi. Counts every frame and fans the stream out to any
- * number of subscribers (browser tabs), batched every 250 ms: one update with ~12 frames
- * instead of ~12 separate events.
+ * The app's single connection to the Pi. Each frame gets an address verdict (AddressFilter)
+ * and goes to the counts (FrameCounts), the per-kind buffers (FrameBuffers), the trail
+ * history (TrackHistory) and the next batch. Batches fan out to any number of subscribers
+ * (browser tabs) every 250 ms: one update with ~12 frames instead of ~12 separate events.
  */
 export class Receiver {
 	readonly source: string;
 	readonly since = Date.now();
-	readonly counts: ReceiverCounts = { total: 0, byDf: {}, byTc: {}, bySignal: {}, byVerdict: {} };
 	/** The latest frames of every kind, for filtering (/api/frames). */
 	readonly buffers = new FrameBuffers(PER_KIND);
 	/** Thinned position frames of the last 10 minutes, for the tracker's trails. */
 	readonly tracks = new TrackHistory();
 
 	#client: BeastClient;
+	#counts = new FrameCounts();
 	#addresses = new AddressFilter();
 	#nextId = 1;
 	/** Recent frames, so a new tab doesn't start with an empty feed. */
@@ -43,6 +45,11 @@ export class Receiver {
 			port,
 			onFrame: (f) => this.#onFrame(f)
 		});
+	}
+
+	/** Every frame since the server started (FrameCounts). */
+	get counts(): ReceiverCounts {
+		return this.#counts.counts;
 	}
 
 	start(): this {
@@ -79,17 +86,12 @@ export class Receiver {
 
 	#onFrame(f: BeastFrame): void {
 		if (f.kind === 'modeac') return; // only Mode S here (readsb doesn't send Mode A/C unless asked)
-		const c = this.counts;
-		c.total++;
-		const df = downlinkFormat(f.data);
-		c.byDf[df] = (c.byDf[df] ?? 0) + 1;
-		const tc = typeCode(f.data);
-		if (tc !== null && df === 17) c.byTc[tc] = (c.byTc[tc] ?? 0) + 1;
-		const bucket = signalBucket(signalDbfs(f.signal));
-		c.bySignal[bucket] = (c.bySignal[bucket] ?? 0) + 1;
 		const now = Date.now();
+		const df = downlinkFormat(f.data);
+		const tc = typeCode(f.data);
 		const addr = this.#addresses.check(f.data, now);
-		if (addr) c.byVerdict[addr.verdict] = (c.byVerdict[addr.verdict] ?? 0) + 1;
+		const traits = { df, tc, verdict: addr?.verdict ?? null };
+		this.#counts.add(traits, signalDbfs(f.signal));
 
 		const frame: WireFrame = {
 			id: this.#nextId++,
@@ -100,7 +102,7 @@ export class Receiver {
 			addr
 		};
 		this.#pending.push(frame);
-		this.buffers.add(frame, { df, tc, verdict: addr?.verdict ?? null });
+		this.buffers.add(frame, traits);
 		this.tracks.add(frame, f.data, df, tc);
 	}
 
