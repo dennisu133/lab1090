@@ -2,7 +2,6 @@
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
@@ -192,7 +191,7 @@
 </script>
 
 <svelte:head>
-	<title>Raw frames · ADS-B</title>
+	<title>Raw frames · Ten Ninety</title>
 </svelte:head>
 
 <div class="space-y-6">
@@ -200,7 +199,6 @@
 	<header
 		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
 	>
-		<ReceiverStatus online={stream.online} {update} />
 		<div class="tabular-nums">
 			<span class="font-semibold">{stream.rates.total.toFixed(1)}</span>
 			<span class="text-zinc-400">msg/s</span>

@@ -9,7 +9,6 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import { setWeatherStream } from './context';
 	import { WeatherStream } from './weather-stream.svelte';
@@ -29,7 +28,6 @@
 	<header
 		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
 	>
-		<ReceiverStatus online={stream.online} update={stream.update} />
 		<div class="text-zinc-400">
 			<InfoTip label="Weather from aircraft?" wide>
 				<p>

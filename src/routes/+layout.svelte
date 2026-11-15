@@ -3,6 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -40,7 +41,8 @@
 	]}
 >
 	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
-		<span class="font-semibold">ADS-B</span>
+		<!-- Ten Ninety: 1090 MHz, the frequency of Mode S and ADS-B. -->
+		<span class="font-semibold">Ten Ninety</span>
 		{#each links as { route, href, label } (route)}
 			<a
 				{href}
@@ -48,6 +50,9 @@
 				aria-current={within(route) ? 'page' : undefined}>{label}</a
 			>
 		{/each}
+		<div class="ml-auto">
+			<ReceiverStatus />
+		</div>
 	</nav>
 	{#if WIDE_ONLY.some(within)}
 		<p

@@ -6,7 +6,6 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { shownPosition, type Unit } from '#lib/map/features.ts';
 	import AircraftList from './AircraftList.svelte';
@@ -45,7 +44,7 @@
 </script>
 
 <svelte:head>
-	<title>Tracker · ADS-B</title>
+	<title>Tracker · Ten Ninety</title>
 </svelte:head>
 
 <div class="flex h-full flex-col md:flex-row">
@@ -55,7 +54,6 @@
 		<div
 			class="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur"
 		>
-			<ReceiverStatus online={stream.online} update={stream.update} />
 			<span class="text-zinc-300 tabular-nums">
 				{onMap} on the map{#if stream.aircraft.length > onMap}, {stream.aircraft.length - onMap} more
 					heard{/if}

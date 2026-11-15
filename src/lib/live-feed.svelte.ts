@@ -1,3 +1,4 @@
+import { receiverLink } from '#lib/receiver-link.svelte.ts';
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 
 /**
@@ -11,10 +12,11 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  * button paused it too.
  *
  * What an item is depends on the page: subclasses turn each batch of frames into items.
+ *
+ * It also reports both links (browser ↔ server, server ↔ Pi) to `receiverLink`, for the
+ * status in the navigation bar.
  */
 export abstract class LiveFeed<T> {
-	/** Is the browser <-> server stream open? (The server <-> Pi link is in `update.status`.) */
-	online = $state(false);
 	update = $state.raw<StreamUpdate | null>(null);
 	/** Newest first. */
 	items = $state.raw<T[]>([]);
@@ -48,8 +50,8 @@ export abstract class LiveFeed<T> {
 	/** Open the stream; returns a cleanup function (use from an $effect). */
 	connect(): () => void {
 		const source = new EventSource(this.#url);
-		source.onopen = () => (this.online = true);
-		source.onerror = () => (this.online = false); // EventSource retries by itself
+		source.onopen = () => (receiverLink.online = true);
+		source.onerror = () => (receiverLink.online = false); // EventSource retries by itself
 		source.onmessage = (e) => this.#receive(JSON.parse(e.data));
 		return () => source.close();
 	}
@@ -86,6 +88,8 @@ export abstract class LiveFeed<T> {
 			this.held = 0;
 		}
 		this.update = update;
+		receiverLink.status = update.status;
+		receiverLink.source = update.source;
 		const fresh = this.process(update.frames, update).reverse();
 		if (fresh.length === 0) return;
 		if (this.paused) {

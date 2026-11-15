@@ -81,7 +81,7 @@
 </script>
 
 <svelte:head>
-	<title>Weather per aircraft · ADS-B</title>
+	<title>Weather per aircraft · Ten Ninety</title>
 </svelte:head>
 
 <div class="space-y-6">

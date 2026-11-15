@@ -2,7 +2,6 @@
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import { HOW, NAMES, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
 	import { DF_NAMES } from '#lib/modes/frame.ts';
 	import AircraftTable from './AircraftTable.svelte';
@@ -75,14 +74,13 @@
 </script>
 
 <svelte:head>
-	<title>Comm-B registers · ADS-B</title>
+	<title>Comm-B registers · Ten Ninety</title>
 </svelte:head>
 
 <div class="space-y-6">
 	<header
 		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
 	>
-		<ReceiverStatus online={stream.online} update={stream.update} />
 		<div class="text-zinc-400">
 			<InfoTip label="What is a register?" wide>
 				<p>

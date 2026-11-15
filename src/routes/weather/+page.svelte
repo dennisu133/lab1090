@@ -89,7 +89,7 @@
 </script>
 
 <svelte:head>
-	<title>Weather now · ADS-B</title>
+	<title>Weather now · Ten Ninety</title>
 </svelte:head>
 
 <div class="space-y-6">

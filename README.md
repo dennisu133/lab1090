@@ -1,7 +1,8 @@
-# ADS-B receiver
+# Ten Ninety
 
 Live Mode S / ADS-B traffic from an RTL-SDR on a Raspberry Pi, decoded and shown by a
-SvelteKit app.
+SvelteKit app. The name is the frequency it all happens on: 1090 MHz, where transponders
+answer radars and broadcast ADS-B.
 
 ## What this is
 
