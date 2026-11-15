@@ -18,7 +18,7 @@
 
 	let { data } = $props();
 
-	const stream = getStreams().frames;
+	const { frames: stream, stats } = getStreams();
 
 	/**
 	 * Clicking a row in a count table shows only those frames; null = no filter.
@@ -37,11 +37,11 @@
 		].filter((c) => c.active)
 	);
 
-	let update = $derived(stream.update);
+	let counts = $derived(stats.counts);
 
 	/** Every defined format, received or not (plus any undefined one that shows up). */
 	let dfRows = $derived.by(() => {
-		const byDf = update?.counts.byDf ?? {};
+		const byDf = counts?.byDf ?? {};
 		const dfs = new Set([...Object.keys(DF_NAMES), ...Object.keys(byDf)].map(Number));
 		return [...dfs]
 			.sort((a, b) => a - b)
@@ -49,19 +49,19 @@
 				key: df,
 				label: DF_NAMES[df] ?? 'Unknown',
 				count: byDf[df] ?? 0,
-				rate: stream.rates.byDf[df] ?? 0
+				rate: stats.rates.byDf[df] ?? 0
 			}));
 	});
 
 	/** All type codes: one row per group, which expands into its codes. */
 	let tcRows = $derived.by(() => {
-		const byTc = update?.counts.byTc ?? {};
+		const byTc = counts?.byTc ?? {};
 		const row = (tc: number) => ({
 			key: `${tc}`,
 			label: codeLabel(tc),
 			title: `TC ${tc}: ${typeCodeName(tc)}`,
 			count: byTc[tc] ?? 0,
-			rate: stream.rates.byTc[tc] ?? 0
+			rate: stats.rates.byTc[tc] ?? 0
 		});
 		return TYPE_CODE_GROUPS.map((g) => {
 			const codes = [];
@@ -108,8 +108,8 @@
 			keyText: VERDICTS[v].symbol,
 			keyClass: VERDICTS[v].color,
 			label: VERDICTS[v].label,
-			count: update?.counts.byVerdict[v] ?? 0,
-			rate: stream.rates.byVerdict[v] ?? 0
+			count: counts?.byVerdict[v] ?? 0,
+			rate: stats.rates.byVerdict[v] ?? 0
 		}))
 	);
 
@@ -119,7 +119,7 @@
 		verdict: filter.verdict
 	});
 	/** Server start: frame ids, and the stored frames, belong to one server run. */
-	let since = $derived(update?.since);
+	let since = $derived(stats.since ?? undefined);
 
 	/**
 	 * With a filter set: the latest matching frames the server stored, newest first, so rare
@@ -322,7 +322,7 @@
 				</p>
 			{/snippet}
 		</CountTable>
-		<SignalHistogram counts={update?.counts.bySignal ?? {}} />
+		<SignalHistogram counts={counts?.bySignal ?? {}} />
 	</div>
 
 	<!-- Feed -->

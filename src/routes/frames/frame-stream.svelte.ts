@@ -10,12 +10,7 @@ import { airbornePosition, surfacePosition } from '#lib/modes/position.ts';
 import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { toSearchParams, type FrameQuery } from '#lib/frame-query.ts';
-import type {
-	FramesResponse,
-	StreamUpdate,
-	ReceiverCounts,
-	WireFrame
-} from '#lib/receiver-types.ts';
+import type { FramesResponse, WireFrame } from '#lib/receiver-types.ts';
 import { describe, type Field, type Located } from '#lib/describe/frame.ts';
 
 export interface FeedFrame extends WireFrame {
@@ -26,25 +21,14 @@ export interface FeedFrame extends WireFrame {
 	fields: Field[];
 }
 
-export interface Rates {
-	total: number;
-	byDf: Record<number, number>;
-	byTc: Record<number, number>;
-	byVerdict: Record<string, number>;
-}
-
 /** How many frames the live list keeps (stored frames come on top, see lookup). */
 export const LIVE_FRAMES = 1000;
-const RATE_WINDOW_MS = 10_000;
 
 /**
- * The /frames page's view of the live stream: every frame, decoded, plus message rates. Rates are
- * computed here from how the server's running totals change over the last 10 s.
+ * The /frames page's view of the live stream: every frame, decoded. The counts and rates in
+ * its tables come from ReceiverStats.
  */
 export class FrameStream extends LiveFeed<FeedFrame> {
-	rates = $state.raw<Rates>({ total: 0, byDf: {}, byTc: {}, byVerdict: {} });
-
-	#samples: { t: number; counts: ReceiverCounts }[] = [];
 	/** RECEIVER_POSITION from the server, if set (the reference point for local CPR decoding). */
 	#reference: () => LatLon | null;
 	#decoder: FrameDecoder;
@@ -77,36 +61,12 @@ export class FrameStream extends LiveFeed<FeedFrame> {
 		return this.items;
 	}
 
-	protected reset(): void {
-		this.#samples = []; // the totals start over: so does the rate window
-	}
-
-	protected process(frames: WireFrame[], update: StreamUpdate): FeedFrame[] {
-		this.#updateRates(update.counts);
+	protected process(frames: WireFrame[]): FeedFrame[] {
 		if (frames.length === 0) return [];
 		// In arrival order: pairing depends on it.
 		const decorated = frames.map((f) => this.#decoder.decorate(f));
 		this.#decoder.prune(frames.at(-1)!.rx); // the server's clock, like the frames'
 		return decorated;
-	}
-
-	#updateRates(counts: ReceiverCounts): void {
-		const now = performance.now();
-		this.#samples.push({ t: now, counts });
-		while (this.#samples.length > 2 && now - this.#samples[0].t > RATE_WINDOW_MS)
-			this.#samples.shift();
-
-		const oldest = this.#samples[0];
-		const seconds = (now - oldest.t) / 1000;
-		if (seconds < 1) return; // too short a window to say anything
-		const per = (a: Record<string, number>, b: Record<string, number>) =>
-			Object.fromEntries(Object.keys(a).map((k) => [k, ((a[k] ?? 0) - (b[k] ?? 0)) / seconds]));
-		this.rates = {
-			total: (counts.total - oldest.counts.total) / seconds,
-			byDf: per(counts.byDf, oldest.counts.byDf),
-			byTc: per(counts.byTc, oldest.counts.byTc),
-			byVerdict: per(counts.byVerdict, oldest.counts.byVerdict)
-		};
 	}
 }
 

@@ -1,10 +1,10 @@
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 
 /**
- * One page's view of the live stream: keeps the latest update and a list of recent items
- * (newest first), and can pause the list without losing what arrives meanwhile. The updates
- * come from the app's one StreamConnection, which feeds every page's view all the time,
- * also while another page is shown (see routes/streams.ts).
+ * One page's view of the live stream: keeps a list of recent items (newest first), and can
+ * pause the list without losing what arrives meanwhile. The updates come from the app's one
+ * StreamConnection, which feeds every page's view all the time, also while another page is
+ * shown (see routes/streams.ts).
  *
  * Two things pause it: the Pause button, and scrolling down into the list (see
  * PauseButton.svelte). New items go on top, so while you read further down they would push
@@ -14,7 +14,6 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  * What an item is depends on the page: subclasses turn each batch of frames into items.
  */
 export abstract class LiveFeed<T> {
-	update = $state.raw<StreamUpdate | null>(null);
 	/** Newest first. */
 	items = $state.raw<T[]>([]);
 
@@ -27,6 +26,8 @@ export abstract class LiveFeed<T> {
 
 	#heldItems: T[] = [];
 	#maxItems: number;
+	/** The server run the items come from (StreamUpdate.since). */
+	#since: number | null = null;
 
 	constructor(maxItems: number) {
 		this.#maxItems = maxItems;
@@ -67,13 +68,13 @@ export abstract class LiveFeed<T> {
 
 	/** An update from the StreamConnection: every frame once, in arrival order. */
 	receive(update: StreamUpdate): void {
-		if (this.update && update.since !== this.update.since) {
+		if (this.#since !== null && update.since !== this.#since) {
 			this.reset();
 			this.items = [];
 			this.#heldItems = [];
 			this.held = 0;
 		}
-		this.update = update;
+		this.#since = update.since;
 		const fresh = this.process(update.frames, update).reverse();
 		if (fresh.length === 0) return;
 		if (this.paused) {

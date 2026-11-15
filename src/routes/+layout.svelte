@@ -60,7 +60,7 @@
 			>
 		{/each}
 		<div class="ml-auto flex items-center gap-6">
-			<MessageCounts stream={streams.frames} />
+			<MessageCounts stats={streams.stats} />
 			<ReceiverStatus />
 		</div>
 	</nav>

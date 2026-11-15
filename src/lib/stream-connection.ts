@@ -1,10 +1,14 @@
-import type { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { receiverLink } from '#lib/receiver-link.svelte.ts';
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 
+/** Anything fed with the stream's updates: the pages' views (LiveFeed), ReceiverStats. */
+export interface UpdateListener {
+	receive(update: StreamUpdate): void;
+}
+
 /**
  * The browser's one connection to the server's event stream (/api/stream), feeding every
- * page's view of it (the LiveFeeds) with the same updates.
+ * page's view of it (the LiveFeeds) and the receiver's counts with the same updates.
  *
  * One connection for the whole app, not one per page: the root layout opens it, so it stays
  * open while you move between pages, and every view keeps collecting in the background. The
@@ -22,15 +26,15 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  */
 export class StreamConnection {
 	#url: string;
-	#feeds: LiveFeed<unknown>[];
+	#listeners: UpdateListener[];
 	/** The server run (`since`) and the newest frame id from it seen so far. */
 	#since: number | null = null;
 	#newest = 0;
 
 	/** `url`: the server's event stream, '/api/stream'. */
-	constructor(url: string, feeds: LiveFeed<unknown>[]) {
+	constructor(url: string, listeners: UpdateListener[]) {
 		this.#url = url;
-		this.#feeds = feeds;
+		this.#listeners = listeners;
 	}
 
 	/** Open the stream; returns a cleanup function (use from an $effect). */
@@ -53,6 +57,6 @@ export class StreamConnection {
 		const fresh: StreamUpdate = { ...update, frames: unseen(update.frames) };
 		if (update.tracks) fresh.tracks = unseen(update.tracks); // never newer than `frames`
 		this.#newest = fresh.frames.at(-1)?.id ?? this.#newest;
-		for (const feed of this.#feeds) feed.receive(fresh);
+		for (const listener of this.#listeners) listener.receive(fresh);
 	}
 }
