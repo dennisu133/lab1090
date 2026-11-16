@@ -1,7 +1,8 @@
 <!--
-	The coverage experiment's side panel: what it shows, the sky plot, the numbers of the
-	sector picked on it, a summary (the farthest position against its horizon, the open arcs),
-	and the terrain's part.
+	The receiver's panel (tap its white dot on the map): the antenna's coverage. What it
+	shows, the sky plot, the numbers of the sector picked on it (its wedge on the map), a
+	summary (the farthest position against its horizon, the open arcs), the terrain's part,
+	and how to read the outlines on the map, which show while it's open.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -19,6 +20,7 @@
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
 	import type { Unit } from '#lib/map/features.ts';
+	import { BAND_COLOUR_FT } from '#lib/map/coverage.ts';
 	import type { CoverageStream } from './coverage-stream.svelte';
 	import SkyPlot from './SkyPlot.svelte';
 
@@ -27,9 +29,10 @@
 		unit: Unit;
 		selected: number | null;
 		onselect: (index: number | null) => void;
+		onclose: () => void;
 	}
 
-	let { stream, unit, selected, onselect }: Props = $props();
+	let { stream, unit, selected, onselect, onclose }: Props = $props();
 
 	const km = (x: number) => distanceText(x, unit);
 	const deg = (x: number) => `${x.toFixed(1)}°`;
@@ -61,19 +64,25 @@
 	· {km(p.distance)}
 {/snippet}
 
-<header class="px-4 py-3">
-	<h2 class="text-xl font-semibold">
-		Coverage <span class="text-sm text-amber-300">experimental</span>
-	</h2>
-	<p class="text-sm text-zinc-400">
-		{#if stream.positions}
-			{ago(collecting).replace(' ago', '')} of traffic · {stream.positions.toLocaleString('en')} positions
-			·
-			{summary.heard} of {360 / SECTOR_DEG} directions heard
-		{:else}
-			Waiting for positions…
-		{/if}
-	</p>
+<header class="flex items-start justify-between gap-4 px-4 py-3">
+	<div class="min-w-0">
+		<h2 class="text-xl font-semibold">Receiver coverage</h2>
+		<p class="text-sm text-zinc-400">
+			{#if stream.positions}
+				{ago(collecting).replace(' ago', '')} of traffic · {stream.positions.toLocaleString('en')} positions
+				·
+				{summary.heard} of {360 / SECTOR_DEG} directions heard
+			{:else}
+				Waiting for positions…
+			{/if}
+		</p>
+	</div>
+	<button
+		type="button"
+		onclick={onclose}
+		class="rounded px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+		aria-label="Close and show all aircraft">✕</button
+	>
 </header>
 
 <div class="space-y-3 px-4 pb-3 text-sm text-zinc-300">
@@ -85,11 +94,42 @@
 		the horizon.
 	</p>
 	<p class="text-zinc-400">
-		It fills as aircraft fly by: a direction stays empty until one has flown there, so empty can
-		mean blocked or just no traffic yet. An hour of busy traffic tells them apart. Kept in this tab
-		only: an antenna moved since an earlier session would make old coverage wrong.
+		Collected here in the browser since the page opened. It fills as aircraft fly by: a direction
+		stays empty until one has flown there, so empty can mean blocked or just no traffic yet. An hour
+		of busy traffic tells them apart. Kept in this tab only: an antenna moved since an earlier
+		session would make old coverage wrong.
 	</p>
 </div>
+
+<section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
+	<InfoTip
+		heading="h3"
+		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
+		label="On the map"
+	>
+		<p>
+			Shown while this panel is open, and always with Coverage switched on under Layers. Each
+			outline joins, per {SECTOR_DEG}° direction, the farthest position heard in its band, drawn on
+			the direction's middle bearing: a clean star rather than a scribble. A direction with nothing
+			in the band pulls the line back to the receiver.
+		</p>
+	</InfoTip>
+	<ul class="space-y-1">
+		<li>
+			<span class="font-medium text-zinc-100">Outlines</span>: how far it hears, one per altitude
+			band:
+			{#each BANDS as band, i (band.name)}<span
+					class="whitespace-nowrap"
+					style:color={altitudeCss(BAND_COLOUR_FT[i])}>{band.name}</span
+				>{i < BANDS.length - 1 ? ', ' : ''}{/each}.
+		</li>
+		<li>
+			<span class="text-amber-300">Dashed amber</span>: the radio horizon at {fl(HORIZON_FT)},
+			{km(horizon(HORIZON_FT))} out.
+		</li>
+		<li>Dots: the positions behind it, as on the plot below (only while this panel is open).</li>
+	</ul>
+</section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm">
 	<InfoTip

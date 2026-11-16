@@ -1,6 +1,6 @@
 <!--
 	The radar codes heard in the replies lately, with the radars found on each: confirmed
-	ones to tap, candidates named. For the overview and, minus its own code, a radar's panel.
+	ones to tap, candidates named. At the end of a radar's panel, minus its own code.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -39,8 +39,8 @@
 				have an ADS-B position. They may appear as more aircraft pass.
 			</p>
 			<p>
-				A candidate has been found, but not yet by every fit for long enough to be shown (see the
-				overview).
+				A candidate has been found, but not yet by every fit for long enough to be shown (see "All
+				radars").
 			</p>
 			<p>
 				Codes with only a few bursts are left out. Some of them aren't even radars: the code sits in

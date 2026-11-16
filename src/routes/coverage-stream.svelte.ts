@@ -4,22 +4,23 @@ import { loadTerrain, type Terrain } from '#lib/coverage/terrain.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
-import type { TrackerStream } from '../../tracker-stream.svelte';
+import type { TrackerStream } from './tracker-stream.svelte';
 
 /** The sectors are published at most this often, ms; the plot's points less often. */
 const SECTORS_MS = 1000;
 const POINTS_MS = 5000;
 
 /**
- * The coverage experiment's view of the live stream (/experimental/coverage): every
- * confirmed airborne position the tracker keeps, into a Coverage (lib/coverage).
+ * The antenna's coverage, from the live stream (the tracker's Coverage layer and the panel
+ * behind the receiver's dot): every confirmed airborne position the tracker keeps, into a
+ * Coverage (lib/coverage).
  *
  * A stream listener after the tracker (streams.ts), like the radars, but it collects from
  * the start, on every page: a few sums per position, nothing to notice. It reads the
  * trails (lib/coverage/feed.ts), so it starts with the server's last 10 minutes.
  *
- * The terrain skyline (lib/coverage/terrain.ts) loads when the page is first opened: ~30
- * elevation tiles from AWS.
+ * The terrain skyline (lib/coverage/terrain.ts) loads when the layer or the panel is first
+ * shown: ~30 elevation tiles from AWS.
  */
 export class CoverageStream extends LiveFeed<never> {
 	sectors = $state.raw<Sector[]>([]);
@@ -47,7 +48,7 @@ export class CoverageStream extends LiveFeed<never> {
 		this.#receiver = receiver;
 	}
 
-	/** The page calls it: load the terrain (once). */
+	/** The layer or the panel calls it: load the terrain (once). */
 	start(): void {
 		const receiver = this.#receiver();
 		if (!receiver || this.terrainState === 'loading' || this.terrainState === 'ready') return;

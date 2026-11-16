@@ -1,8 +1,8 @@
 <!--
 	A radar the finder located (lib/radar/finder.ts), and how: every step with this radar's own
 	numbers, from the replies that name it to its position and how sure that is. Opens when a
-	radar is tapped on the map, in place of the overview. The other codes heard are listed at
-	the end.
+	radar is tapped on the tracker's map (experimental Radars layer). The other radars and the
+	codes heard are listed at the end.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -16,21 +16,27 @@
 		BEAM_FRESH_MS,
 		CONFIRM_MS,
 		MAX_ELLIPSE_KM,
+		MIN_ELLIPSE_KM,
 		MIN_AIRCRAFT,
 		MIN_BURSTS,
 		MIN_PER_AIRCRAFT,
 		MIN_SHARE,
 		seenFrom,
+		shownSpread,
 		WINDOW_MS,
 		type CodeSummary,
 		type Radar
 	} from '#lib/radar/finder.ts';
 	import { INLIER, OUTLIER } from '#lib/radar/resection.ts';
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
-	import CodeList from './CodeList.svelte';
+	import RadarCodes from './RadarCodes.svelte';
+	import RadarList from './RadarList.svelte';
 
 	interface Props {
 		radar: Radar;
+		/** Every radar shown and every candidate, for the list at the end. */
+		radars: Radar[];
+		candidates: Radar[];
 		/** Every code heard lately, for the list at the end. */
 		codes: CodeSummary[];
 		/** The aircraft on the map: callsigns, and which can be opened on the tracker. */
@@ -45,6 +51,8 @@
 
 	let {
 		radar: r,
+		radars,
+		candidates,
 		codes,
 		aircraft,
 		now,
@@ -69,6 +77,7 @@
 	let tracked = $derived(new Map(aircraft.map((a) => [a.icao, a])));
 	let heard = $derived(now - r.heard <= BEAM_FRESH_MS);
 	let others = $derived(codes.filter((c) => c.code !== r.code));
+	let shown = $derived(shownSpread(r));
 
 	// Chart 1: the gaps between each aircraft's bursts, 0.25 s bins up to 32 s.
 	const GAP_MAX = 32;
@@ -105,7 +114,10 @@
 
 <header class="flex items-start justify-between gap-4 px-4 py-3">
 	<div class="min-w-0">
-		<h2 class="font-mono text-xl font-semibold">Radar {r.id}</h2>
+		<h2 class="text-xl font-semibold">
+			Radar <span class="font-mono">{r.id}</span>
+			<span class="text-sm font-normal text-amber-300">experimental</span>
+		</h2>
 		<p class="text-sm text-zinc-400">
 			{fixed(rpm, 1)} rpm · {r.clockwise ? 'clockwise' : 'anticlockwise'}
 			{#if from}· {km(from.km)} {compass(from.bearing)} of the receiver{/if}
@@ -123,6 +135,11 @@
 	<p>
 		Nobody told us this radar is here, and the antenna never heard it: radars ask on 1030 MHz, we
 		listen on 1090. It was found from the answers of {r.codeAircraft} aircraft, in four steps.
+	</p>
+	<p class="text-zinc-400">
+		An experiment: checked against radar sites mapped on OpenStreetMap, the radars found lie 1–35 km
+		from one, the far ones furthest off, and a few have no mapped site nearby. Take the symbol as
+		"somewhere in the ellipse", not as the spot.
 	</p>
 	{#if r.sharing.length}
 		<p class="text-zinc-400">
@@ -326,8 +343,14 @@
 			Bearings pin a radar down sideways, but hardly how far away it is: seen from a distant radar,
 			the aircraft sit in a small slice of its sky. So the ellipses of far radars are long and thin,
 			pointing at the aircraft. With few aircraft the ellipse itself is rough: checked against radar
-			sites mapped by others, three of four lay well inside theirs, one outside (1.4 times as far as
-			its edge).
+			sites mapped by others, most lay inside theirs, a few outside (up to 1.7 times as far as the
+			edge).
+		</p>
+		<p>
+			The jackknife only sees how much the position hangs on single aircraft, not what all the
+			bursts get wrong together (the beam is about 2.4° wide; the positions are up to half a second
+			old). A radar many aircraft answer can get an ellipse of almost nothing and still be 5–15 km
+			off. So the map draws it at least {km(MIN_ELLIPSE_KM)} either way.
 		</p>
 		<p>
 			A radar whose ellipse is longer than {km(MAX_ELLIPSE_KM)} (from the middle) isn't shown at all:
@@ -340,7 +363,8 @@
 		The ellipse is {km(r.spread.major)} along {deg(r.spread.bearing)}/{deg(
 			(r.spread.bearing + 180) % 360
 		)}
-		and {km(r.spread.minor)} across. Without each aircraft the position moves:
+		and {km(r.spread.minor)} across{#if shown.major !== r.spread.major || shown.minor !== r.spread.minor}
+			(drawn {km(shown.major)} × {km(shown.minor)}){/if}. Without each aircraft the position moves:
 	</p>
 	<ul class="mt-1 space-y-0.5 font-mono text-xs text-zinc-400">
 		{#each moves as m (m.icao)}
@@ -416,4 +440,5 @@
 	</p>
 </section>
 
-<CodeList codes={others} label="Other codes heard" {onselectradar} />
+<RadarList {radars} {candidates} current={r.id} {now} {receiver} {unit} {onselectradar} />
+<RadarCodes codes={others} label="Other codes heard" {onselectradar} />

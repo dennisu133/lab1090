@@ -68,6 +68,15 @@ export const MIN_SHARE = 0.4;
  * happens to lie on its line. Most phantoms of that longer run had ellipses well over 100 km long.
  */
 export const MAX_ELLIPSE_KM = 50;
+/**
+ * The smallest ellipse shown, km (both semi-axes; the gates use the fitted one). The
+ * jackknife only says how much the position hangs on single aircraft, not what all the
+ * bursts get wrong together (a beam ~2.4° wide, positions up to half a second old), so a
+ * well-answered radar can get an ellipse of almost nothing. Against mapped sites (live,
+ * 16 Nov 2026, and the hour's recording): SI 26 (ellipse 0–6 km) 4 km from a Bundeswehr radar
+ * tower, SI 33 (7–11 km) 5–13 km from Feichtberg, SI 17 (10–16 km) 7–14 km from Sączów.
+ */
+export const MIN_ELLIPSE_KM = 15;
 /** A candidate is confirmed after being found again by every fit for this long, ms. */
 export const CONFIRM_MS = 120_000;
 /** A confirmed radar is dropped after this many fits in a row that find others on its code, not it. */
@@ -460,6 +469,16 @@ export function passes(sightings: Sighting[], fit: Fit): boolean {
 }
 
 /** The radar's distance and bearing from a point (the receiver), for the panel. */
+/** The ellipse as shown: the jackknife's, but no smaller than MIN_ELLIPSE_KM either way. */
+export function shownSpread(radar: Radar): { major: number; minor: number; bearing: number } {
+	const { major, minor, bearing } = radar.spread;
+	return {
+		major: Math.max(major, MIN_ELLIPSE_KM),
+		minor: Math.max(minor, MIN_ELLIPSE_KM),
+		bearing
+	};
+}
+
 export function seenFrom(radar: Radar, from: LatLon): { km: number; bearing: number } {
 	return { km: distanceKm(from, radar.position), bearing: bearing(from, radar.position) };
 }

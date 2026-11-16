@@ -49,8 +49,8 @@ Pages:
 
 - **/**: the tracker. Live aircraft on a map, coloured by altitude, with their trails of the
   last 10 minutes, a dotted line predicting where each one goes next, circles showing how
-  accurate its position is, and range rings around the receiver. These, the wind barbs, and the
-  base map's roads and place names can be switched off.
+  accurate its position is, and range rings around the receiver. These, the wind barbs, the
+  coverage, the radars and the base map's roads and place names can be switched on and off.
   Tap one for everything known about it (identity, position, flight, autopilot settings,
   what radars read from it, reception) and its live messages, each value explained. Plus
   what no radio message says, looked up in a database: a photo, the type, registration and
@@ -78,27 +78,26 @@ Pages:
   collected by David Taylor and Jim Mason. The browser asks adsbdb directly, for the selected
   aircraft only, and keeps nothing beyond the tab.
 
-- **/experimental**: methods that worked on the recording but aren't trusted yet. Nothing
-  there feeds the other pages.
-  - **Radars**: the ground radars, found from the replies alone. Every all-call reply
-    (DF11) names the radar that asked, and a rotating radar asks only while its beam points
-    at the aircraft. So its replies come in bursts, one per turn, which give the rotation
-    period, and the moments the beam passed aircraft whose positions we know give where the
-    radar stands (a resection). On a map with an uncertainty ellipse and the beam sweeping
-    round as the fit predicts; tap one for every step with its own numbers. On the
-    10-minute capture it places four radars 180–470 km away within 0–11 km of the sites
-    mapped on OpenStreetMap. Live, it also piled up radars that weren't there, so a radar
-    is only shown once its position is pinned down (an ellipse at most 50 km long) and
-    every fit has found it again for 2 minutes. On an hour's recording it confirmed nine,
-    each near a mapped radar site. Starts when the page is first opened: `src/lib/radar/`.
-  - **Coverage**: where this antenna hears aircraft. Each position is placed by its
-    elevation angle, how far above the horizon it stood as seen from the antenna, since a
-    wall or a hill hides everything below its own angle, near or far. A sky plot shows the
-    lowest angle heard in each direction against the terrain's own skyline (traced over the
-    same elevation tiles as the hillshading); the map shows, per altitude band, the farthest
-    position heard in each direction against the radio horizon. Where the measured skyline
-    stands well above the terrain's, something near the antenna is in the way. Collects from
-    the start, like the other pages: `src/lib/coverage/`.
+  **Coverage** (a map layer, and the panel behind the receiver's dot): where this antenna
+  hears aircraft. Each position is placed by its elevation angle, how far above the horizon
+  it stood as seen from the antenna, since a wall or a hill hides everything below its own
+  angle, near or far. A sky plot shows the lowest angle heard in each direction against the
+  terrain's own skyline (traced over the same elevation tiles as the hillshading); the map
+  shows, per altitude band, the farthest position heard in each direction against the radio
+  horizon. Where the measured skyline stands well above the terrain's, something near the
+  antenna is in the way. Collects from the start, like everything else: `src/lib/coverage/`.
+
+  **Radars** (an experimental map layer, off by default): the ground radars, found from the
+  replies alone. Every all-call reply (DF11) names the radar that asked, and a rotating radar
+  asks only while its beam points at the aircraft. So its replies come in bursts, one per
+  turn, which give the rotation period, and the moments the beam passed aircraft whose
+  positions we know give where the radar stands (a resection). Drawn with an uncertainty
+  ellipse and the beam sweeping round as the fit predicts; tap one for every step with its
+  own numbers. A radar is only shown once its position is pinned down (an ellipse at most
+  50 km long) and every fit has found it again for 2 minutes. Against the radar sites mapped
+  on OpenStreetMap, the ones it shows lie 1–35 km from one; a few have no mapped site nearby.
+  It costs more CPU than everything else together, so it only runs while switched on:
+  `src/lib/radar/`.
 
 ## Hardware
 

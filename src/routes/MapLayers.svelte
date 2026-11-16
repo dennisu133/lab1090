@@ -1,12 +1,13 @@
 <!--
 	Switches for what the map draws: the range rings around the receiver, and around the
 	aircraft the trails behind them, the predicted paths ahead, the position uncertainty
-	circles and the wind barbs where they measured the wind. Below a line, two parts of the
-	base map: roads and place names (borders, terrain and airports always stay: they're what
-	you find your way by). All on by default. With the trails off, the selected aircraft still
-	has one. Each label explains what it shows (tappable: phones never show `title`). The
-	rings' row also holds the NM/km switch, which the distances in the list and the panel
-	follow too.
+	circles and the wind barbs where they measured the wind; the antenna's coverage. Below a
+	line, two parts of the base map: roads and place names (borders, terrain and airports
+	always stay: they're what you find your way by). Below another, the experiments: the
+	ground radars. All on by default but coverage and the experiments. With the trails off,
+	the selected aircraft still has one. Each label explains what it shows (tappable: phones
+	never show `title`). The rings' row also holds the NM/km switch, which the distances in the
+	list and the panel follow too; the radars' row says how far the search has got.
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
@@ -19,6 +20,10 @@
 		prediction: boolean;
 		uncertainty: boolean;
 		winds: boolean;
+		/** How far the antenna hears, per altitude band, and the radio horizon. */
+		coverage: boolean;
+		/** Experimental: the ground radars found from the replies. Off: not searched for. */
+		radars: boolean;
 		/** Base map: motorways, trunk and primary roads. */
 		roads: boolean;
 		/** Base map: city and town names. */
@@ -34,17 +39,23 @@
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { GAP_MS, STEP_MS, TRAIL_MS } from '#lib/tracker/trail.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
+	import { BANDS, OPEN_DEG } from '#lib/coverage/coverage.ts';
+	import { HORIZON_FT } from '#lib/map/coverage.ts';
+	import { CONFIRM_MS, MIN_ELLIPSE_KM } from '#lib/radar/finder.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
+	import type { RadarStream } from './radar-stream.svelte';
 
 	interface Props {
 		layers: Layers;
 		/** Distances: the rings' labels, the list and the panel. */
 		unit: Unit;
-		/** Is the receiver's position known? Without it there are no rings to draw. */
+		/** Is the receiver's position known? Without it there are no rings or coverage. */
 		receiver: boolean;
+		/** The radar search: how far it has got, next to its switch. */
+		radars: RadarStream;
 	}
 
-	let { layers = $bindable(), unit = $bindable(), receiver }: Props = $props();
+	let { layers = $bindable(), unit = $bindable(), receiver, radars }: Props = $props();
 
 	/** Open or folded: null until the button is used (then it's by screen width, see above). */
 	const OPEN_KEY = 'tracker.layersOpen';
@@ -96,8 +107,8 @@
 			<InfoTip label="Rings" above>
 				<p>
 					Dashed circles around the receiver (the white dot) at equal distances, like on a radar
-					screen: how far away the aircraft are, and how far the antenna reaches. Nautical miles are
-					aviation's unit: one minute of latitude, 1,852 m.
+					screen: how far away the aircraft are. Tap the dot for how far the antenna reaches.
+					Nautical miles are aviation's unit: one minute of latitude, 1,852 m.
 				</p>
 				<p>
 					NM / km, next to this label: the unit of the rings and of the distances in the list and
@@ -267,6 +278,54 @@
 				<p>Collected here in the browser, so a reload starts with none.</p>
 			</InfoTip>
 		</div>
+		<div class="flex items-center gap-2">
+			<label class={['flex items-center gap-2 py-0.5', receiver ? 'cursor-pointer' : 'opacity-50']}>
+				<input
+					type="checkbox"
+					bind:checked={layers.coverage}
+					disabled={!receiver}
+					class="size-3.5 accent-zinc-300"
+					aria-label="Show the coverage"
+				/>
+				<!-- A jagged outline around a dot, like the coverage on the map. -->
+				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+					<path
+						d="M10 1 13 3.5 17.5 4 15 7 16 11 10 9.5 5 11 4.5 7.5 2 5 7 3.5Z"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1"
+						stroke-linejoin="round"
+					/>
+					<circle cx="10" cy="6.5" r="1.25" fill="currentColor" />
+				</svg>
+			</label>
+			<InfoTip label="Coverage" above>
+				<p>
+					How far this antenna hears, in every direction: one outline per altitude band ({BANDS.map(
+						(b) => b.name
+					).join(', ')}), coloured by altitude like the trails, out to the farthest position heard
+					in that band. The dashed amber circle is the radio horizon at FL{HORIZON_FT / 100}: how
+					far a line of sight reaches to an aircraft that high over a smooth Earth. Where an outline
+					stops well short of it, a building or a hill is in the way, or the signal gives out first.
+				</p>
+				<p>
+					<strong>Tap the receiver</strong> (the white dot) for the antenna's sky: in each
+					direction, how low above the horizon aircraft are heard. Heard down to a few degrees
+					(within {OPEN_DEG}°) means open; a wall hides everything below its own angle, near or far.
+				</p>
+				<p>
+					Collected here in the browser from the moment the page opened, also while it's switched
+					off: a direction stays empty until an aircraft has flown there. A reload starts with the
+					server's last 10 minutes.
+				</p>
+				{#if !receiver}
+					<p>
+						No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
+						<code>.env</code>: coverage is measured from there.
+					</p>
+				{/if}
+			</InfoTip>
+		</div>
 		<div class="flex items-center gap-2 border-t border-zinc-800 pt-1.5">
 			<label class="flex cursor-pointer items-center gap-2 py-0.5">
 				<input
@@ -322,6 +381,61 @@
 				</p>
 				<p>Country names stay with the borders.</p>
 			</InfoTip>
+		</div>
+		<p
+			class="border-t border-zinc-800 pt-1.5 text-[10px] tracking-wide text-amber-300/80 uppercase"
+		>
+			Experimental
+		</p>
+		<div class="flex items-center gap-2">
+			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+				<input
+					type="checkbox"
+					bind:checked={layers.radars}
+					class="size-3.5 accent-zinc-300"
+					aria-label="Search for the ground radars and show them"
+				/>
+				<!-- A radar dish on its mast, like the symbol on the map. -->
+				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+					<g stroke="currentColor" stroke-width="1.25" stroke-linecap="round" fill="none">
+						<line x1="4" y1="2" x2="16" y2="2" />
+						<line x1="10" y1="2" x2="10" y2="11" />
+						<line x1="7" y1="11" x2="13" y2="11" />
+					</g>
+				</svg>
+			</label>
+			<InfoTip label="Radars" above>
+				<p>
+					The ground radars that ask the aircraft we hear for their altitude and identity, found
+					from the answers alone: the antenna never hears a radar itself (radars ask on 1030 MHz, we
+					listen on 1090). Each all-call reply names the radar it answers, and a turning radar only
+					asks while its beam points at the aircraft. So its replies come once per turn: their times
+					give how fast it turns, and the moments the beam passed aircraft whose positions we know
+					give where it stands. Tap one for every step, with its own numbers.
+				</p>
+				<p>
+					<strong>Experimental.</strong> Checked against radar sites mapped on OpenStreetMap, the
+					radars it shows lie 1–35 km from one, the far ones (500 km and more) furthest off; a few
+					have no mapped site nearby. The dashed ellipse is how sure the fit is, at least {MIN_ELLIPSE_KM}
+					km either way; the line sweeping round is where the fit says the beam points now.
+				</p>
+				<p>
+					Starts when switched on: a radar shows after a few minutes (once every fit has found it
+					for {CONFIRM_MS / 60_000} minutes). It costs more of your computer's time than everything else
+					together, about a minute an hour when the sky is busy. Switched off, it stops and forgets what
+					it found.
+				</p>
+				<p>
+					The number next to it: the radars shown, + the candidates still being checked, with a
+					question mark.
+				</p>
+			</InfoTip>
+			{#if radars.started !== null}
+				<span class="ml-auto pl-2 text-zinc-500 tabular-nums">
+					{radars.radars.length}{#if radars.candidates.length}&thinsp;+&thinsp;{radars.candidates
+							.length}?{/if}
+				</span>
+			{/if}
 		</div>
 	</div>
 	<button

@@ -3,9 +3,12 @@
 	tracker-stream.svelte.ts and lib/tracker). Unlike the data pages (/frames, /comm-b: 1024 px
 	and up), this page works on phones too, down to 360 px: the map on top and the panel
 	below it, side by side from `md` on.
+
+	The panel shows the list, or a selected aircraft, or what was tapped on the map besides:
+	the receiver (its coverage) or a ground radar (experimental). One at a time.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { lookupFlight, type DbFlight } from '#lib/aircraft-db.ts';
 	import { RouteJudge } from '#lib/tracker/route.ts';
 	import type { Unit } from '#lib/map/features.ts';
@@ -13,18 +16,25 @@
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
+	import CoveragePanel from './CoveragePanel.svelte';
 	import MapLayers, { type Layers } from './MapLayers.svelte';
-	import TrackerMap from './TrackerMap.svelte';
+	import RadarPanel from './RadarPanel.svelte';
+	import TrackerMap, { type Focus } from './TrackerMap.svelte';
 	import PageTitle from './PageTitle.svelte';
 	import { getStreams } from './streams';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
+	const streams = getStreams();
 	/** Collecting since the app opened, also while other pages were shown (streams.ts). */
-	const stream = getStreams().tracker;
+	const stream = streams.tracker;
 	/** The winds and temperatures the aircraft measure (/weather's pipeline): barbs, panel. */
-	const weather = getStreams().weather;
+	const weather = streams.weather;
+	/** The antenna's coverage: collecting since the app opened. */
+	const coverage = streams.coverage;
+	/** The ground radars: searched for only while their layer is on. */
+	const radars = streams.radars;
 
 	/**
 	 * Range rings and distances: nautical miles (aviation's unit) or km, switched next to
@@ -51,6 +61,8 @@
 		prediction: true,
 		uncertainty: true,
 		winds: true,
+		coverage: false,
+		radars: false,
 		roads: true,
 		places: true
 	});
@@ -68,6 +80,33 @@
 	$effect(() => {
 		const json = JSON.stringify(layers);
 		if (layersLoaded) localStorage.setItem(LAYERS_KEY, json);
+	});
+
+	// The radar search runs only while its layer is on: it costs more than everything else.
+	$effect(() => {
+		const on = layers.radars;
+		untrack(() => (on ? radars.start() : radars.stop()));
+	});
+
+	/**
+	 * The receiver's or a radar's panel (tapped on the map). An aircraft's selection is the
+	 * tracker's, so other pages and the alerts can set it; selecting one closes these.
+	 */
+	let focus = $state<Focus>(null);
+	/** The direction picked on the receiver panel's sky plot (its wedge on the map). */
+	let sector = $state<number | null>(null);
+	function openFocus(next: Focus) {
+		if (next) stream.select(null);
+		focus = next;
+		sector = null;
+	}
+	$effect(() => {
+		if (stream.selected) focus = null;
+	});
+	let radar = $derived(focus?.kind === 'radar' ? radars.get(focus.id) : null);
+	// The terrain (for the sky plot's skyline and the antenna's height) loads on first need.
+	$effect(() => {
+		if (layers.coverage || focus?.kind === 'receiver') untrack(() => coverage.start());
 	});
 
 	/** The server's clock, once a second: for "3 s ago" and the list (the map runs on its own). */
@@ -128,7 +167,19 @@
 
 <div class="flex h-full flex-col md:flex-row">
 	<div class="relative min-h-0 flex-1">
-		<TrackerMap {stream} {weather} receiver={data.reference} {unit} {layers} {route} />
+		<TrackerMap
+			{stream}
+			{weather}
+			receiver={data.reference}
+			{unit}
+			{layers}
+			{route}
+			{coverage}
+			{radars}
+			{focus}
+			{sector}
+			onfocus={openFocus}
+		/>
 
 		<!-- Taps between the boxes go through to the map (on a phone this spans much of it).
 		     Each box has a backdrop blur, so it's its own stacking context and a later box would
@@ -136,7 +187,7 @@
 		<div
 			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
-			<MapLayers bind:layers bind:unit receiver={!!data.reference} />
+			<MapLayers bind:layers bind:unit receiver={!!data.reference} {radars} />
 			<AltitudeLegend />
 		</div>
 	</div>
@@ -160,6 +211,28 @@
 					onclose={() => stream.select(null)}
 				/>
 			{/key}
+		{:else if focus?.kind === 'receiver' && data.reference}
+			<CoveragePanel
+				stream={coverage}
+				{unit}
+				selected={sector}
+				onselect={(i) => (sector = i)}
+				onclose={() => openFocus(null)}
+			/>
+		{:else if radar}
+			<RadarPanel
+				{radar}
+				radars={radars.radars}
+				candidates={radars.candidates}
+				codes={radars.codes}
+				aircraft={stream.aircraft}
+				{now}
+				receiver={data.reference}
+				{unit}
+				onselect={(icao) => stream.select(icao)}
+				onselectradar={(id) => openFocus({ kind: 'radar', id })}
+				onclose={() => openFocus(null)}
+			/>
 		{:else}
 			<AircraftList
 				aircraft={stream.aircraft}

@@ -6,9 +6,9 @@ import { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
 import { StreamConnection } from '#lib/stream-connection.ts';
 import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
-import { CoverageStream } from './experimental/coverage/coverage-stream.svelte';
-import { RadarStream } from './experimental/radars/radar-stream.svelte';
+import { CoverageStream } from './coverage-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
+import { RadarStream } from './radar-stream.svelte';
 import { TrackerStream } from './tracker-stream.svelte';
 import { WeatherStream } from './weather/weather-stream.svelte';
 
@@ -18,7 +18,7 @@ import { WeatherStream } from './weather/weather-stream.svelte';
  * switching from the map to /weather and back loses nothing. Each view decodes every frame
  * itself (the server only checks CRCs), which costs little: the four together take ~2 s of
  * CPU for 10 minutes of the capture's traffic (~57 frames/s). The radar experiment costs
- * more than that on its own, so it waits until its page is opened.
+ * more than that on its own, so it only runs while its map layer is on.
  */
 export class Streams {
 	/** The server's message counts and the rates: for the navigation bar and /frames. */
@@ -29,9 +29,9 @@ export class Streams {
 	readonly weather: WeatherStream;
 	/** Emergencies and ACAS advisories, from the tracker's picture: banner, notifications. */
 	readonly alerts: AlertCenter;
-	/** The radar experiment (/experimental/radars): idle until that page is first opened. */
+	/** The ground radars (experimental map layer): idle unless that layer is on. */
 	readonly radars: RadarStream;
-	/** The coverage experiment (/experimental/coverage): collects from the start, it's cheap. */
+	/** The antenna's coverage (map layer, receiver panel): collects from the start, it's cheap. */
 	readonly coverage: CoverageStream;
 	#connection: StreamConnection;
 

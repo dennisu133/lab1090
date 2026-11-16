@@ -1,6 +1,6 @@
 /**
- * The coverage experiment on the map, as GeoJSON (lib/coverage):
- * - one outline per altitude band: in each sector, out to the farthest position heard in
+ * The antenna's coverage on the tracker's map, as GeoJSON (lib/coverage):
+ * - one outline per altitude band (a polygon, filled faintly on the map): in each sector, out to the farthest position heard in
  *   that band (the sector's middle bearing, so the outline is a clean star, not a scribble);
  *   a sector with nothing in the band pulls the line back to the receiver.
  * - the radio horizon for an altitude: where that outline would be over a smooth Earth with
@@ -22,26 +22,31 @@ export const BAND_COLOUR_FT = [5_000, 15_000, 25_000, 37_000] as const;
 
 const lonLat = (p: LatLon): [number, number] => [p.lon, p.lat];
 
+/**
+ * Polygons, so the map can fill them faintly: an area reads as "heard within", where a bare
+ * line coloured by altitude would look like one more trail. The bands nest (higher ones reach
+ * further), so the fills add up towards the receiver.
+ */
 export function outlineFeatures(
 	sectors: Sector[],
 	receiver: LatLon
-): FeatureCollection<LineString, { band: number; altitude: number; name: string }> {
+): FeatureCollection<Polygon, { band: number; altitude: number; name: string }> {
 	return {
 		type: 'FeatureCollection',
 		features: BANDS.flatMap((band, i) => {
 			if (!sectors.some((s) => s.farthest[i])) return [];
-			const coordinates = sectors.map((s) => {
+			const ring = sectors.map((s) => {
 				const far = s.farthest[i];
 				return lonLat(
 					far ? destination(receiver, s.from + SECTOR_DEG / 2, far.distance) : receiver
 				);
 			});
-			coordinates.push(coordinates[0]);
+			ring.push(ring[0]);
 			return [
 				{
 					type: 'Feature' as const,
 					properties: { band: i, altitude: BAND_COLOUR_FT[i], name: band.name },
-					geometry: { type: 'LineString' as const, coordinates }
+					geometry: { type: 'Polygon' as const, coordinates: [ring] }
 				}
 			];
 		})

@@ -144,7 +144,10 @@
 	</span>
 	<span class="text-right">
 		<InfoTip label="Dist" align="right">
-			<p>Distance from the receiver, along the great circle.</p>
+			<p>
+				Distance from the receiver, along the great circle. The receiver is the white dot on the
+				map: tap it for how far it hears in each direction.
+			</p>
 		</InfoTip>
 	</span>
 </div>

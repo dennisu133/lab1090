@@ -2,7 +2,7 @@ import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { downlinkFormat, fromHex } from '#lib/modes/frame.ts';
 import { codeName, RadarFinder, type CodeSummary, type Radar } from '#lib/radar/finder.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
-import type { TrackerStream } from '../../tracker-stream.svelte';
+import type { TrackerStream } from './tracker-stream.svelte';
 
 /** Beast timestamps count at 12 MHz. */
 const TICKS_PER_MS = 12_000;
@@ -10,18 +10,19 @@ const TICKS_PER_MS = 12_000;
 const CODES_MS = 5000;
 
 /**
- * The radar experiment's view of the live stream (/experimental/radars): every DF11 reply
- * and every position the tracker believes, into a RadarFinder (lib/radar/finder.ts).
+ * The ground radars' view of the live stream (the tracker's experimental Radars layer):
+ * every DF11 reply and every position the tracker believes, into a RadarFinder
+ * (lib/radar/finder.ts).
  *
  * A stream listener after the tracker (streams.ts), like the alerts: it reads the positions
  * the tracker made of the same update. ADS-B positions come twice a second and an update
  * every 250 ms, so the latest per aircraft is every one of them.
  *
- * It only starts when the page is first opened (`start`), unlike the other views: it costs
- * more CPU than all of them together (~2–4 s per 10 minutes of traffic) and it's an
- * experiment. Once started it keeps going on every page until the tab closes, so the
- * radars found survive a look at the tracker. Radars appear after a few minutes: the
- * server's history holds only ~20 s of replies.
+ * It only runs while the layer is switched on (`start`, `stop`), unlike the other views: it
+ * costs more CPU than all of them together (~2–4 s per 10 minutes of quiet traffic, ~44 s an
+ * hour when busy) and it's an experiment. Once on it keeps going on every page, so the radars
+ * found survive a look at /weather. Switched off, it forgets them. Radars appear after a few
+ * minutes: the server's history holds only ~20 s of replies.
  */
 export class RadarStream extends LiveFeed<never> {
 	/** The confirmed radars: shown on the map. */
@@ -30,9 +31,7 @@ export class RadarStream extends LiveFeed<never> {
 	candidates = $state.raw<Radar[]>([]);
 	/** Every interrogator code heard lately, located or not. */
 	codes = $state.raw<CodeSummary[]>([]);
-	/** The radar whose explanation is open; null: none. */
-	selected = $state<string | null>(null);
-	/** When it started (server clock), null: not yet. */
+	/** When it started (server clock); null: off. */
 	started = $state<number | null>(null);
 
 	#tracker: TrackerStream;
@@ -48,18 +47,21 @@ export class RadarStream extends LiveFeed<never> {
 		this.#tracker = tracker;
 	}
 
-	/** Start collecting (the page calls it; again is harmless). */
+	/** Start collecting (the layer switch calls it; again is harmless). */
 	start(): void {
 		this.started ??= this.#tracker.now();
+	}
+
+	/** Stop collecting and forget what was found: off costs nothing. */
+	stop(): void {
+		if (this.started === null) return;
+		this.started = null;
+		this.reset();
 	}
 
 	/** The server's clock, as the tracker keeps it. */
 	now(): number {
 		return this.#tracker.now();
-	}
-
-	select(id: string | null): void {
-		this.selected = id;
 	}
 
 	get(id: string | null): Radar | null {
@@ -72,7 +74,6 @@ export class RadarStream extends LiveFeed<never> {
 		this.radars = [];
 		this.candidates = [];
 		this.codes = [];
-		this.selected = null;
 		if (this.started !== null) this.started = this.#tracker.now();
 	}
 
@@ -101,7 +102,6 @@ export class RadarStream extends LiveFeed<never> {
 			this.candidates = this.#finder.candidates;
 			this.codes = this.#finder.codes;
 		}
-		if (this.selected && !this.get(this.selected)) this.selected = null;
 		return [];
 	}
 }

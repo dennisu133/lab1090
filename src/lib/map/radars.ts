@@ -1,12 +1,11 @@
 /**
- * The radars the finder confirmed (lib/radar/finder.ts), for the radar experiment's map
- * (/experimental/radars): a symbol at each, its uncertainty ellipse, and its beam sweeping
- * round.
+ * The radars the finder confirmed (lib/radar/finder.ts), for the tracker's experimental
+ * Radars layer: a symbol at each, its uncertainty ellipse, and its beam sweeping round.
  *
  * The ellipse is the jackknife's (resection.ts spread): how far the position moves when
- * each aircraft is left out, two standard errors. Far radars get long thin ones, pointing
- * along the line of sight from the aircraft: the bearings pin the radar down sideways, but
- * hardly how far away it is.
+ * each aircraft is left out, two standard errors, but at least MIN_ELLIPSE_KM either way
+ * (finder.ts shownSpread). Far radars get long thin ones, pointing along the line of sight
+ * from the aircraft: the bearings pin the radar down sideways, but hardly how far away it is.
  *
  * The beam is the fit's prediction, not something we receive: β(t) = 360° · (t − t₀) / P
  * from the fitted phase and period, on the server's clock (Radar.offset converts). It
@@ -15,11 +14,11 @@
  * few minutes. The selected radar's beam gets a fading tail, like the afterglow on an old
  * radar screen; the others a faint line.
  *
- * Pure functions: the layers are in routes/experimental/radars/RadarMap.svelte.
+ * Pure functions: the layers are in routes/TrackerMap.svelte.
  */
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 import { destination } from '#lib/geo.ts';
-import { BEAM_FRESH_MS, beamAt, type Radar } from '#lib/radar/finder.ts';
+import { BEAM_FRESH_MS, beamAt, shownSpread, type Radar } from '#lib/radar/finder.ts';
 
 /** The selected radar's tail: this many lines, this many degrees apart, fading. */
 const TAIL_LINES = 10;
@@ -33,16 +32,20 @@ const ELLIPSE_POINTS = 72;
 
 export interface RadarProperties {
 	id: string;
-	/** "SI 44 · 5.0 s" */
+	/** "SI 44 · 5.00 s" */
 	label: string;
 	selected: boolean;
 	/** Heard within BEAM_FRESH_MS: else drawn dimmer. */
 	heard: boolean;
 }
 
-/** "SI 44 · 5.0 s" */
+/**
+ * "SI 44 · 5.00 s". Two decimals: radars near each other often turn at nearly the same
+ * rate (SI 1 4.00 s and SI 28 3.96 s, 20–30 km apart near Bratislava), and with one
+ * decimal both read "4.0 s", as if they were one radar found twice.
+ */
 export function radarLabel(radar: Radar): string {
-	return `${radar.id} · ${(radar.period / 1000).toFixed(1)} s`;
+	return `${radar.id} · ${(radar.period / 1000).toFixed(2)} s`;
 }
 
 /** The symbols and the ellipses: when the radars or the selection change. */
@@ -82,7 +85,7 @@ export function radarFeatures(
 
 /** The uncertainty ellipse as a ring of [lon, lat]. */
 export function ellipse(radar: Radar): [number, number][] {
-	const { major, minor, bearing } = radar.spread;
+	const { major, minor, bearing } = shownSpread(radar);
 	return Array.from({ length: ELLIPSE_POINTS + 1 }, (_, i) => {
 		const a = (2 * Math.PI * i) / ELLIPSE_POINTS;
 		const along = destination(radar.position, bearing, major * Math.cos(a));

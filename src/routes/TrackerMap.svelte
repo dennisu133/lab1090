@@ -22,8 +22,23 @@
 	trail switch off. IDENT blinks the symbol. No pulsing or blinking for users who asked
 	their system for less motion.
 
-	Tap or click an aircraft to select it; tap the map elsewhere to deselect.
+	Coverage (lib/map/coverage.ts, switched on in MapLayers or by opening the receiver's panel):
+	an outline per altitude band out to the farthest position heard, and the radio horizon at
+	FL350. With the panel open, also the positions behind it as dots, and the sector picked
+	on its sky plot as a wedge.
+
+	The ground radars (lib/map/radars.ts, experimental, off unless switched on): a symbol at
+	each, its uncertainty ellipse, and its beam sweeping round as the fit predicts. With one
+	open, the aircraft that answered it stand out.
+
+	Tap or click an aircraft to select it, a radar or the receiver (the white dot) to open its
+	panel; tap the map elsewhere to close them.
 -->
+<script lang="ts" module>
+	/** What the side panel shows besides an aircraft (whose selection is the tracker's). */
+	export type Focus = { kind: 'receiver' } | { kind: 'radar'; id: string } | null;
+</script>
+
 <script lang="ts">
 	import * as maplibregl from 'maplibre-gl';
 	import type { GeoJSONSource, LngLatLike, MapMouseEvent } from 'maplibre-gl';
@@ -52,12 +67,24 @@
 		type Unit
 	} from '#lib/map/features.ts';
 	import { barbImage, iconImages } from '#lib/map/icons.ts';
+	import { SECTOR_DEG } from '#lib/coverage/coverage.ts';
+	import { radioHorizon } from '#lib/coverage/geometry.ts';
+	import {
+		HORIZON_FT,
+		horizonFeatures,
+		outlineFeatures,
+		pointFeatures,
+		sectorFeature
+	} from '#lib/map/coverage.ts';
+	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
 	import { BARB_BELOW, barbFeatures, type BarbProperties } from '#lib/map/winds.ts';
 	import { compass } from '#lib/geo.ts';
 	import { degrees } from '#lib/describe/weather.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 	import { mapStyle } from '#lib/map/style.ts';
+	import type { CoverageStream } from './coverage-stream.svelte.ts';
 	import type { Layers } from './MapLayers.svelte';
+	import type { RadarStream } from './radar-stream.svelte.ts';
 	import type { TrackerStream } from './tracker-stream.svelte.ts';
 	import type { WeatherStream } from './weather/weather-stream.svelte.ts';
 
@@ -70,9 +97,31 @@
 		layers: Layers;
 		/** The selected aircraft's route (adsbdb); null: none. */
 		route: DbRoute | null;
+		/** The antenna's coverage: outlines, horizon, and the panel's dots and wedge. */
+		coverage: CoverageStream;
+		/** The ground radars (experimental). */
+		radars: RadarStream;
+		/** The receiver's or a radar's panel is open. */
+		focus: Focus;
+		/** The sector picked on the receiver panel's sky plot; null: none. */
+		sector: number | null;
+		/** A radar or the receiver tapped; null: the map elsewhere (closes the panel). */
+		onfocus: (focus: Focus) => void;
 	}
 
-	let { stream, weather, receiver, unit, layers, route }: Props = $props();
+	let {
+		stream,
+		weather,
+		receiver,
+		unit,
+		layers,
+		route,
+		coverage,
+		radars,
+		focus,
+		sector,
+		onfocus
+	}: Props = $props();
 
 	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
 	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
@@ -80,6 +129,9 @@
 		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown'],
 		rings: ['rings', 'ring-labels'],
 		winds: ['winds'],
+		// Also shown while the receiver's panel is open (see the switches' effect).
+		coverage: ['coverage-horizon', 'coverage-horizon-label', 'coverage-fill', 'coverage-outline'],
+		radars: ['radar-ellipse-fill', 'radar-ellipses', 'radar-beams', 'radar-sites'],
 		// The base map's own layers (lib/map/style.ts). Borders, terrain and airports always stay.
 		roads: ['roads', 'motorways'],
 		places: ['places']
@@ -89,6 +141,10 @@
 	const LEVEL_BAND_FT = 2000;
 	/** Redraw the barbs at least this often, for the fading. */
 	const BARB_REFRESH_MS = 10_000;
+	/** Redraw the radar sites at least this often: one no longer heard dims. */
+	const SITES_MS = 10_000;
+	/** The horizon's amber (amber-300), as on the sky plot. */
+	const HORIZON_COLOUR = '#fcd34d';
 
 	/** The barb tapped last, and where on the map it is; its card shows its numbers. */
 	let picked = $state<{ barb: BarbProperties; lon: number; lat: number } | null>(null);
@@ -176,7 +232,14 @@
 				'alert-links',
 				'aircraft',
 				'receiver',
-				'winds'
+				'winds',
+				'coverage-outline',
+				'coverage-horizon',
+				'coverage-points',
+				'coverage-sector',
+				'radar-sites',
+				'radar-ellipses',
+				'radar-beams'
 			])
 				m.addSource(id, { type: 'geojson', data: empty });
 
@@ -198,6 +261,95 @@
 					'text-offset': [0, -0.2]
 				},
 				paint: { 'text-color': '#71717a', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			});
+			// Coverage: background, like the rings. The sector picked on the sky plot as a faint
+			// wedge, the horizon dashed amber, the outlines in their band's colour.
+			m.addLayer({
+				id: 'coverage-sector',
+				type: 'fill',
+				source: 'coverage-sector',
+				paint: { 'fill-color': '#f4f4f5', 'fill-opacity': 0.08 }
+			});
+			m.addLayer({
+				id: 'coverage-horizon',
+				type: 'line',
+				source: 'coverage-horizon',
+				filter: ['==', ['geometry-type'], 'LineString'],
+				paint: {
+					'line-color': HORIZON_COLOUR,
+					'line-opacity': 0.6,
+					'line-width': 1,
+					'line-dasharray': [3, 2]
+				}
+			});
+			m.addLayer({
+				id: 'coverage-horizon-label',
+				type: 'symbol',
+				source: 'coverage-horizon',
+				filter: ['==', ['geometry-type'], 'Point'],
+				layout: {
+					'text-field': ['get', 'label'],
+					'text-font': FONT,
+					'text-size': 10,
+					'text-anchor': 'bottom',
+					'text-offset': [0, -0.2]
+				},
+				paint: { 'text-color': HORIZON_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			});
+			m.addLayer({
+				id: 'coverage-fill',
+				type: 'fill',
+				source: 'coverage-outline',
+				paint: { 'fill-color': altitudeColour(), 'fill-opacity': 0.05 }
+			});
+			m.addLayer({
+				id: 'coverage-outline',
+				type: 'line',
+				source: 'coverage-outline',
+				layout: { 'line-join': 'round' },
+				paint: { 'line-color': altitudeColour(), 'line-width': 1, 'line-opacity': 0.6 }
+			});
+			m.addLayer({
+				id: 'coverage-points',
+				type: 'circle',
+				source: 'coverage-points',
+				paint: {
+					'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 9, 2.5],
+					'circle-color': altitudeColour(),
+					'circle-opacity': 0.5
+				}
+			});
+			// Radars: the ellipses and beams faint, under the aircraft and their trails.
+			m.addLayer({
+				id: 'radar-ellipse-fill',
+				type: 'fill',
+				source: 'radar-ellipses',
+				paint: {
+					'fill-color': '#e4e4e7', // zinc-200
+					'fill-opacity': ['case', ['get', 'selected'], 0.12, 0.05]
+				}
+			});
+			m.addLayer({
+				id: 'radar-ellipses',
+				type: 'line',
+				source: 'radar-ellipses',
+				paint: {
+					'line-color': '#d4d4d8', // zinc-300
+					'line-width': ['case', ['get', 'selected'], 1.5, 1],
+					'line-opacity': ['case', ['get', 'selected'], 0.8, 0.4],
+					'line-dasharray': [2, 2]
+				}
+			});
+			m.addLayer({
+				id: 'radar-beams',
+				type: 'line',
+				source: 'radar-beams',
+				layout: { 'line-cap': 'round' },
+				paint: {
+					'line-color': '#f4f4f5', // zinc-100
+					'line-width': ['case', ['get', 'selected'], 2, 1],
+					'line-opacity': ['*', ['get', 'opacity'], ['case', ['get', 'selected'], 0.55, 0.3]]
+				}
 			});
 			// The route: under everything the aircraft draw, faint, so it reads as background.
 			// Dash-dot, unlike the dashed range rings and the dotted predictions.
@@ -361,6 +513,19 @@
 					'circle-stroke-width': 1
 				}
 			});
+			// The receiver; ringed like a selected aircraft while its panel is open.
+			m.addLayer({
+				id: 'receiver-selected',
+				type: 'circle',
+				source: 'receiver',
+				layout: { visibility: 'none' },
+				paint: {
+					'circle-radius': 11,
+					'circle-color': 'rgba(244,244,245,0.08)',
+					'circle-stroke-color': '#f4f4f5',
+					'circle-stroke-width': 1.5
+				}
+			});
 			m.addLayer({
 				id: 'receiver',
 				type: 'circle',
@@ -370,6 +535,36 @@
 					'circle-color': '#f4f4f5',
 					'circle-stroke-color': HALO,
 					'circle-stroke-width': 2
+				}
+			});
+			// Radar sites: over the receiver, under the aircraft, whose labels go first. Radars
+			// near each other (SI 1 and SI 28 near Bratislava, 20–30 km apart) would hide each
+			// other's label at the bottom, so it may move to any side.
+			m.addLayer({
+				id: 'radar-sites',
+				type: 'symbol',
+				source: 'radar-sites',
+				layout: {
+					'icon-image': 'radar',
+					'icon-size': ['case', ['get', 'selected'], 0.6, 0.45],
+					'icon-allow-overlap': true,
+					'icon-ignore-placement': true,
+					'text-field': ['step', ['zoom'], '', 5, ['get', 'label']],
+					'text-font': FONT,
+					'text-size': 10,
+					'text-variable-anchor': ['top', 'bottom', 'right', 'left'],
+					'text-radial-offset': 1.1,
+					'text-optional': true
+				},
+				paint: {
+					'icon-color': '#e4e4e7', // zinc-200
+					'icon-halo-color': HALO,
+					'icon-halo-width': 2,
+					// Not heard for a while: dimmer (and no beam).
+					'icon-opacity': ['case', ['get', 'heard'], 1, 0.5],
+					'text-color': '#a1a1aa', // zinc-400
+					'text-halo-color': HALO,
+					'text-halo-width': 1.5
 				}
 			});
 			// ACAS advisories: the two aircraft joined by a line, with how far apart vertically.
@@ -478,6 +673,7 @@
 					'icon-color': altitudeColour(),
 					'icon-halo-color': HALO,
 					'icon-halo-width': 2,
+					// (Set again while a radar is open: see `answered`.)
 					'icon-opacity': ['case', ['get', 'dim'], 0.15, ['get', 'stale'], 0.45, 1],
 					// The badge alone (zoomed out) in the alert's colour; with the label, the
 					// format above colours the badge.
@@ -494,9 +690,32 @@
 					[e.point.x - 12, e.point.y - 12],
 					[e.point.x + 12, e.point.y + 12]
 				];
-				const hit = m.queryRenderedFeatures(box, { layers: ['aircraft'] })[0];
-				const barb =
-					!hit && layers.winds ? m.queryRenderedFeatures(box, { layers: ['winds'] })[0] : null;
+				// The aircraft, radar or receiver nearest the tap: an aircraft passing over the
+				// receiver mustn't make the dot impossible to hit, nor the other way round. Then a
+				// wind barb (they sit under the aircraft's trails).
+				const query = (id: string) => m.queryRenderedFeatures(box, { layers: [id] });
+				const away = (f: maplibregl.MapGeoJSONFeature) => {
+					if (f.geometry.type !== 'Point') return Infinity;
+					const at = m.project(f.geometry.coordinates as [number, number]);
+					return Math.hypot(at.x - e.point.x, at.y - e.point.y);
+				};
+				const nearest = [
+					...query('aircraft').map((f) => ({ f, kind: 'aircraft' as const })),
+					...(layers.radars ? query('radar-sites') : []).map((f) => ({
+						f,
+						kind: 'radar' as const
+					})),
+					...query('receiver').map((f) => ({ f, kind: 'receiver' as const }))
+				].sort((a, b) => away(a.f) - away(b.f))[0];
+				if (nearest) {
+					picked = null;
+					if (nearest.kind === 'aircraft') stream.select(nearest.f.properties.icao as string);
+					else if (nearest.kind === 'radar')
+						onfocus({ kind: 'radar', id: nearest.f.properties.id as string });
+					else onfocus({ kind: 'receiver' });
+					return;
+				}
+				const barb = layers.winds ? (query('winds')[0] ?? null) : null;
 				if (barb && barb.geometry.type === 'Point') {
 					const [lon, lat] = barb.geometry.coordinates;
 					picked = { barb: barb.properties as BarbProperties, lon, lat };
@@ -504,9 +723,10 @@
 					return;
 				}
 				picked = null;
-				stream.select(hit ? (hit.properties.icao as string) : null);
+				stream.select(null);
+				onfocus(null);
 			});
-			for (const id of ['aircraft', 'winds']) {
+			for (const id of ['aircraft', 'winds', 'receiver', 'radar-sites']) {
 				m.on('mouseenter', id, () => (m.getCanvas().style.cursor = 'pointer'));
 				m.on('mouseleave', id, () => (m.getCanvas().style.cursor = ''));
 			}
@@ -539,6 +759,89 @@
 			properties: {},
 			geometry: { type: 'Point', coordinates: [receiver.lon, receiver.lat] }
 		});
+	});
+
+	// Coverage: the outlines when an extreme moves (at most once a second), the horizon when
+	// the antenna's height comes in with the terrain. Only while shown.
+	let coverageShown = $derived(layers.coverage || focus?.kind === 'receiver');
+	$effect(() => {
+		if (!map || !receiver || !coverageShown) return;
+		source(map, 'coverage-outline').setData(outlineFeatures(coverage.sectors, receiver));
+		source(map, 'coverage-horizon').setData(
+			horizonFeatures(receiver, HORIZON_FT, coverage.terrain?.antennaKm ?? 0)
+		);
+	});
+	// The panel's extras: the positions behind the outlines, and the sector picked on its plot.
+	$effect(() => {
+		const open = focus?.kind === 'receiver';
+		if (!map || !receiver) return;
+		source(map, 'coverage-points').setData(open ? pointFeatures(coverage.points) : empty);
+		source(map, 'coverage-sector').setData(
+			open && sector !== null
+				? sectorFeature(receiver, sector * SECTOR_DEG, radioHorizon(HORIZON_FT))
+				: empty
+		);
+		map.setLayoutProperty('receiver-selected', 'visibility', open ? 'visible' : 'none');
+	});
+
+	// Radar sites and ellipses: when one is confirmed, refitted or dropped, the panel opens or
+	// closes, and every SITES_MS (a radar no longer heard dims).
+	let openRadar = $derived(focus?.kind === 'radar' ? focus.id : null);
+	let sitesClock = $state(0);
+	$effect(() => {
+		const timer = setInterval(() => (sitesClock = Date.now()), SITES_MS);
+		return () => clearInterval(timer);
+	});
+	$effect(() => {
+		void sitesClock;
+		const list = radars.radars;
+		const id = openRadar;
+		if (!map) return;
+		const { sites, ellipses } = radarFeatures(
+			list,
+			id,
+			untrack(() => stream.now())
+		);
+		source(map, 'radar-sites').setData(sites);
+		source(map, 'radar-ellipses').setData(ellipses);
+	});
+
+	// A radar opened from the panel's list, but off screen: bring it into view. Only when the
+	// panel changes, not with every refit (the map would keep pulling back to it).
+	$effect(() => {
+		const id = openRadar;
+		const m = map;
+		if (!m || !id) return;
+		untrack(() => {
+			const radar = radars.get(id);
+			if (radar && !m.getBounds().contains(toLngLat(radar.position)))
+				m.easeTo({ center: toLngLat(radar.position) });
+		});
+	});
+
+	// With a radar open, the aircraft that answered it stand out.
+	let answered = $derived(
+		radars
+			.get(openRadar)
+			?.aircraft.filter((a) => a.explained > 0)
+			.map((a) => a.icao) ?? null
+	);
+	$effect(() => {
+		const icaos = answered;
+		if (!map) return;
+		const normal: maplibregl.ExpressionSpecification = [
+			'case',
+			['get', 'dim'],
+			0.15,
+			['get', 'stale'],
+			0.45,
+			1
+		];
+		map.setPaintProperty(
+			'aircraft',
+			'icon-opacity',
+			icaos ? ['case', ['in', ['get', 'icao'], ['literal', icaos]], normal, 0.25] : normal
+		);
 	});
 
 	// The selected aircraft's route: when it's looked up or the selection changes.
@@ -633,6 +936,9 @@
 			source(m, 'prediction').setData(prediction.lines);
 			source(m, 'prediction-minutes').setData(prediction.minutes);
 			source(m, 'uncertainty').setData(uncertaintyFeatures(list, now));
+			// The beams sweep: none for those who asked for less motion.
+			const sweep = layers.radars && !reducedMotion.current;
+			source(m, 'radar-beams').setData(sweep ? beamFeatures(radars.radars, openRadar, now) : empty);
 		};
 		frame = requestAnimationFrame(draw);
 		return () => cancelAnimationFrame(frame);
@@ -642,9 +948,10 @@
 	$effect(() => {
 		const m = map;
 		if (!m) return;
-		for (const [key, ids] of Object.entries(LAYER_IDS))
-			for (const id of ids)
-				m.setLayoutProperty(id, 'visibility', layers[key as keyof Layers] ? 'visible' : 'none');
+		for (const [key, ids] of Object.entries(LAYER_IDS)) {
+			const on = key === 'coverage' ? coverageShown : layers[key as keyof Layers];
+			for (const id of ids) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+		}
 	});
 
 	// The selection: a ring around the symbol, its trail brighter and wider. With the trails

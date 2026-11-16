@@ -148,6 +148,14 @@ reason written down here.
         signal gives out; blocked ones here at 12–18°). Collects from the start on every page
         (the tracker's trails, so a new tab starts with the server's 10 minutes, but only for
         aircraft still in view). The hour through the tracker and coverage: ~5 s CPU.
+  - [x] **On the tracker** (the experimental page removed; it's in git as the tag
+        `experiments-2026-11`): a Coverage layer switch (off by default) for the band outlines
+        and the FL350 horizon, and a panel behind the receiver's dot with the sky plot and the
+        numbers; while it's open the outlines show, with the positions as dots and the picked
+        sector's wedge. Not experimental: it only reports what was heard, so it can't invent
+        anything. The outlines are faintly filled: as bare altitude-coloured lines they looked
+        like more trails. A tap picks the aircraft, radar or receiver nearest to it, so an
+        aircraft overhead doesn't hide the dot.
 - [x] **Locating the radars**: a rotating secondary radar interrogates an aircraft when its beam
       points at it. Reply times (12 MHz Beast timestamps) of aircraft whose positions are known
       → rotation period and phase → the radar's position. Catch: Mode S lockout makes DF11
@@ -217,13 +225,35 @@ reason written down here.
         (no known site) dropped after 16 min. SI 44, the best in the capture, never showed: its
         replies all but stopped (4–46 per 10 min against 895 in the capture's 10). CPU: ~44 s
         an hour for the finder at this traffic, more than the capture suggested.
-  - [ ] Back on the tracker map (a layer switch, off by default): the hour says it holds.
+  - [x] Live check (16 Nov 2026, a 12-minute tab and a 20-minute recording run through the
+        finder): no phantoms. Nine confirmed: SI 17 (7–13 km from Sączów), SI 26 (an ellipse of
+        0–2 km; the hour put it 4 km from a Bundeswehr tower), SI 33 (5–13 km from
+        Feichtberg), SI 38 (16–18 km from the Luftwaffe radar at Brockzetel, ~450 km away),
+        SI 54 (19 km from a mast near Poznań), SI 56 (35 km from Gdańsk's approach radar,
+        1.4× its ellipse), SI 19 (10 s, nothing mapped within 50 km: unverified), and SI 1
+        with SI 28 near Bratislava, 20–30 km apart. Those two looked like one radar found
+        twice: both labels read "4.0 s" and the map hid one of them. They aren't: 4.0016 s
+        against 3.9574 s, a full turn apart after 10 minutes, and OpenStreetMap has four radar
+        sites within ~20 km there (Veľký Javorník, Bratislava airport, a military site east of
+        it, one south of the city). Which code is which isn't settled. Positions wander 8–25 km
+        between fits there.
+  - [x] **Back on the tracker map** as an experimental layer (off by default; switching it
+        on starts the search, switching it off stops it and forgets). Tap a radar for the
+        panel with every step, then all radars and candidates and the codes heard. Labels with
+        two decimals (3.96 s, 4.00 s) and free to move to any side of the symbol. The ellipse
+        is drawn at least 15 km either way (`MIN_ELLIPSE_KM`): the jackknife can't see errors
+        all bursts share, and tight ellipses still landed 5–14 km from the mapped sites.
+        With a radar open, the aircraft that answered it stand out.
   - [x] Check on a longer recording: the periods stay steady beyond the 10-minute window
         (SI 17 4.878 s, SI 28 3.958 s, SI 33 3.998 s, as three days earlier). A cluster
         separates with more aircraft: II 1 became two radars, 4.948 s to the south and
         5.000 s to the north-west. SI 60's didn't.
   - [ ] Maybe later: roll-call replies (DF4/5/20/21, most of the traffic) assigned to a
         radar by its predicted beam, for more bursts per turn.
+        After the release:
+
+- [ ] Radars: a longer live soak (hours, a day with quiet nights) before dropping
+      "experimental"; settle SI 1/SI 28 near Bratislava; SI 19 has no mapped site.
 - [ ] **GNSS interference**: where aircraft lose position integrity. With a single receiver
       and data kept per tab, events and dots rather than a heat map. Compare with gpsjam.org,
       which builds its daily map from the same ADS-B fields.
