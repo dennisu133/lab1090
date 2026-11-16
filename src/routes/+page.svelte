@@ -193,7 +193,7 @@
 		<div
 			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
-			<MapLayers bind:layers {radars} />
+			<MapLayers bind:layers />
 			<AltitudeLegend />
 		</div>
 	</div>

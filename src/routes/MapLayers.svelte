@@ -6,8 +6,8 @@
 	always stay: they're what you find your way by). Below another, the experiments: the
 	ground radars. All on by default but coverage and the experiments. With the trails off,
 	the selected aircraft still has one. Labels whose layer needs explaining are InfoTips
-	(tappable: phones never show `title`); Trail, Roads and Place names are plain. The radars'
-	row says how far the search has got. The rings' unit is set above the aircraft list.
+	(tappable: phones never show `title`); Trail, Roads and Place names are plain. The rings'
+	unit is set above the aircraft list.
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
@@ -42,15 +42,12 @@
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
 	import { CONFIRM_MS, MIN_ELLIPSE_KM } from '#lib/radar/finder.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
-	import type { RadarStream } from './radar-stream.svelte';
 
 	interface Props {
 		layers: Layers;
-		/** The radar search: how far it has got, next to its switch. */
-		radars: RadarStream;
 	}
 
-	let { layers = $bindable(), radars }: Props = $props();
+	let { layers = $bindable() }: Props = $props();
 
 	/** Open or folded: null until the button is used (then it's by screen width, see above). */
 	const OPEN_KEY = 'tracker.layersOpen';
@@ -333,17 +330,10 @@
 					line: where the beam points now.
 				</p>
 				<p>
-					A radar shows once every fit has found it for {CONFIRM_MS / 60_000} minutes; the number next
-					to the switch adds the candidates still being checked (?). It costs about a minute of CPU an
-					hour when the sky is busy; switched off, it stops and forgets.
+					A radar shows once every fit has found it for {CONFIRM_MS / 60_000} minutes. It costs about
+					a minute of CPU an hour when the sky is busy; switched off, it stops and forgets.
 				</p>
 			</InfoTip>
-			{#if radars.started !== null}
-				<span class="ml-auto pl-2 text-zinc-500 tabular-nums">
-					{radars.radars.length}{#if radars.candidates.length}&thinsp;+&thinsp;{radars.candidates
-							.length}?{/if}
-				</span>
-			{/if}
 		</div>
 	</div>
 	<button
