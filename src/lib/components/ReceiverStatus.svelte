@@ -1,64 +1,80 @@
 <!--
-	The two links between the antenna and this page, in the navigation bar: browser ↔ server
-	(the event stream) and server ↔ Pi (the Beast connection). The page's own stream reports
-	both to `receiverLink` (see receiver-link.svelte.ts). On phones the bar has room for a
-	word only ("Live"); the full sentence then opens the explanation.
+	The receiver's state in the navigation bar, one block: "● Live: 57.3 msg/s" over the total
+	since the server started. The two links between the antenna and this page, browser ↔
+	server (the event stream) and server ↔ Pi (the Beast connection), are reported to
+	`receiverLink` by the page's stream (receiver-link.svelte.ts); the counts come from the
+	server's running count of Mode S frames (every frame that passed readsb's parity check),
+	which ReceiverStats turns into a rate over the last 10 s.
+
+	While a link is down the numbers are hidden (they'd be stale or zero): one line says which
+	link, its tooltip the reason.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { receiverLink as link } from '#lib/receiver-link.svelte.ts';
+	import type { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
 
-	let source = $derived(link.source ?? 'the receiver');
+	let { stats }: { stats: ReceiverStats } = $props();
 
 	let state = $derived.by(() => {
 		const status = link.status;
-		if (link.online === false)
-			return { dot: 'bg-zinc-500', label: 'Server stream offline, retrying…', short: 'Offline' };
+		if (link.online === false) return { dot: 'bg-zinc-500', label: 'Server offline' };
 		if (link.online && status?.state === 'connected')
-			return {
-				dot: 'animate-pulse bg-emerald-400',
-				label: `Receiving from ${source}`,
-				short: 'Live'
-			};
+			return { dot: 'animate-pulse bg-emerald-400', label: 'Live' };
 		if (link.online && status?.state === 'waiting')
-			return { dot: 'bg-amber-400', label: 'Receiver unreachable', short: 'Unreachable' };
-		return { dot: 'bg-amber-400', label: `Connecting to ${source}…`, short: 'Connecting…' };
+			return { dot: 'bg-amber-400', label: 'Receiver unreachable', status };
+		return { dot: 'bg-amber-400', label: 'Connecting…' };
 	});
+
+	const clock = new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false
+	});
+	const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+
+	/** "14:34", or "15 Nov 14:34" when the server started on an earlier day. */
+	function started(since: number) {
+		const sameDay = new Date(since).toDateString() === new Date().toDateString();
+		return sameDay ? clock.format(since) : `${day.format(since)} ${clock.format(since)}`;
+	}
 </script>
 
-<div class="flex items-center gap-2 text-xs text-zinc-400 sm:text-sm">
-	<span class={['size-2.5 shrink-0 rounded-full', state.dot]}></span>
-	<span class="sm:hidden">
-		<InfoTip label={state.short} align="right">
-			<p class="text-zinc-100">{state.label}.</p>
-			{@render explanation()}
-		</InfoTip>
-	</span>
-	<span class="hidden sm:inline">
-		<InfoTip label={state.label} align="right">{@render explanation()}</InfoTip>
-	</span>
-</div>
-
-{#snippet explanation()}
-	<p>
-		Two links bring the aircraft to this page. The Raspberry Pi with the antenna runs
-		<strong>readsb</strong>, which turns the radio signal into frames, checks their parity and
-		streams them raw over TCP in the <strong>Beast</strong> format (port 30005). This app's server holds
-		the one connection to it.
-	</p>
-	<p>
-		The server only checks each frame's CRC and address, counts them and passes them on to your
-		browser four times a second (a Server-Sent Events stream). Everything you see decoded is decoded
-		here in the browser, from the raw bits.
-	</p>
-	<p>
-		<span class="text-emerald-400">●</span> both links up,
-		<span class="text-amber-400">●</span> the server can't reach the Pi (it retries on its own),
-		<span class="text-zinc-500">●</span> the browser lost the server (it retries too).
-	</p>
-	{#if link.online && link.status?.state === 'waiting'}
-		<p class="text-zinc-400">
-			Last attempt: {link.status.reason}. Next try in {(link.status.retryInMs / 1000).toFixed(0)} s.
-		</p>
+<!-- Two 16 px lines while live: the logo's height. Right-aligned, against the bar's end. -->
+<div class="flex flex-col items-end text-xs/4 whitespace-nowrap text-zinc-400 tabular-nums">
+	<div class="grid justify-items-end">
+		{#if state.label === 'Live'}
+			<!-- Room for "999.9" kept free, so the rate can grow a digit (99 → 100 msg/s) without
+			     shifting the rest of the bar: the dot and "Live" move left inside it. -->
+			<span class="invisible col-start-1 row-start-1 flex items-center gap-2" aria-hidden="true">
+				<span class="size-2.5"></span>Live: 999.9 msg/s
+			</span>
+		{/if}
+		<div class="col-start-1 row-start-1 flex items-center gap-2">
+			<span class={['size-2.5 shrink-0 rounded-full', state.dot]}></span>
+			{#if state.label === 'Live'}
+				<span class="text-zinc-300">Live: {stats.rates.total.toFixed(1)} msg/s</span>
+			{:else if state.label === 'Server offline'}
+				<InfoTip label={state.label} align="right">
+					<p>This page lost its connection to the server. The browser keeps retrying.</p>
+				</InfoTip>
+			{:else if state.status}
+				<InfoTip label={state.label} align="right">
+					<p>
+						The server can't reach the receiver at {link.source ?? 'its address'}: {state.status
+							.reason}. Next try in {(state.status.retryInMs / 1000).toFixed(0)} s.
+					</p>
+				</InfoTip>
+			{:else}
+				<span>{state.label}</span>
+			{/if}
+		</div>
+	</div>
+	{#if state.label === 'Live'}
+		<span class="text-zinc-500">
+			{stats.counts && stats.since !== null
+				? `${stats.counts.total.toLocaleString()} since ${started(stats.since)}`
+				: '–'}
+		</span>
 	{/if}
-{/snippet}
+</div>

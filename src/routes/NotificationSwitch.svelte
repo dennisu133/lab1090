@@ -12,18 +12,17 @@
 	let usable = $derived(
 		notifications.permission === 'default' || notifications.permission === 'granted'
 	);
+	// The switch shows on/off; words only for when it can't be used.
 	let label = $derived(
-		notifications.on
-			? 'Notifications on'
-			: notifications.permission === 'denied'
-				? 'Notifications blocked'
-				: usable
-					? 'Notifications off'
-					: 'Notifications unavailable'
+		notifications.permission === 'denied'
+			? 'Notifications blocked'
+			: usable
+				? 'Notifications'
+				: 'Notifications unavailable'
 	);
 </script>
 
-<div class="hidden items-center gap-2 text-sm text-zinc-400 md:flex">
+<div class="hidden items-center gap-2 text-xs text-zinc-400 md:flex">
 	<button
 		type="button"
 		role="switch"
@@ -45,32 +44,19 @@
 	</button>
 	<InfoTip {label} align="right">
 		<p>
-			Alerts as pop-ups from your operating system, for when this tab is in the background or on
-			another screen: emergencies (squawk 7500, 7600, 7700 and the ADS-B emergency states), ACAS
-			resolution advisories, and flights asking for priority (medical, minimum fuel). The same as
-			the banner at the top of the page, one per alert as it starts. Nothing pops up while you're
-			looking at this window: the banner is enough then.
+			Emergencies (squawk 7500, 7600, 7700), ACAS resolution advisories and priority requests
+			(medical, minimum fuel). Only while this tab is open.
 		</p>
 		{#if notifications.permission === 'denied'}
 			<p class="text-amber-300">
-				Your browser blocks notifications from this site. It won't ask again on its own, and this
-				page can't either; to allow them, change it in the site settings (the icon left of the
-				address).
+				Blocked by your browser. Allow them in the site settings (the icon left of the address).
 			</p>
 		{:else if notifications.permission === 'insecure'}
 			<p class="text-amber-300">
-				Browsers only allow notifications on secure pages: HTTPS, or this app opened as
-				<code>localhost</code>. This page came over plain HTTP from another machine, so it can't use
-				them; the banner still works.
+				Browsers only allow notifications over HTTPS or on <code>localhost</code>.
 			</p>
 		{:else if notifications.permission === 'unsupported'}
 			<p class="text-amber-300">This browser has no notifications for web pages.</p>
-		{:else if notifications.permission === 'default'}
-			<p>The first time you switch it on, the browser asks whether to allow them.</p>
 		{/if}
-		<p class="text-zinc-400">
-			Only while this tab is open: there's no server sending them, and no background worker. Desktop
-			browsers only; on phones, a tab in the background stops receiving anyway.
-		</p>
 	</InfoTip>
 </div>

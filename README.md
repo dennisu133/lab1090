@@ -126,6 +126,10 @@ The Pi is a deliberately "dumb" relay: readsb demodulates, drops frames that fai
 and streams them raw (Beast format, TCP port 30005). Nothing is decoded there. Setup:
 [pi/README.md](pi/README.md).
 
+The app's server holds the one connection to the Pi for all browser tabs. It only checks
+each frame's CRC and address, counts the frames and passes them on to the browser four
+times a second (Server-Sent Events). All decoding happens in the browser.
+
 Any readsb or dump1090 that serves Beast output on port 30005 works, so a Pi that already
 feeds a flight tracking network can be used as is.
 

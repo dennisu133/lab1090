@@ -7,7 +7,6 @@
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import AlertBanner from './AlertBanner.svelte';
-	import MessageCounts from './MessageCounts.svelte';
 	import NotificationSwitch from './NotificationSwitch.svelte';
 	import { setStreams, Streams } from './streams';
 	import type { LayoutProps } from './$types';
@@ -91,8 +90,7 @@
 		</div>
 		<div class="ml-auto flex items-center gap-4 sm:gap-6">
 			<NotificationSwitch notifications={streams.alerts.notifications} />
-			<MessageCounts stats={streams.stats} />
-			<ReceiverStatus />
+			<ReceiverStatus stats={streams.stats} />
 		</div>
 		<button
 			type="button"
