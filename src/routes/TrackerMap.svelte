@@ -31,12 +31,21 @@
 	each, its uncertainty ellipse, and its beam sweeping round as the fit predicts. With one
 	open, the aircraft that answered it stand out.
 
-	Tap or click an aircraft to select it, a radar or the receiver (the white dot) to open its
-	panel; tap the map elsewhere to close them.
+	Tap or click an aircraft to select it, a radar, the receiver (the white dot) or an airport's
+	label to open its panel; tap the map elsewhere to close them.
 -->
 <script lang="ts" module>
-	/** What the side panel shows besides an aircraft (whose selection is the tracker's). */
-	export type Focus = { kind: 'receiver' } | { kind: 'radar'; id: string } | null;
+	import type { Airport } from '#lib/map/airports.ts';
+
+	/**
+	 * What the side panel shows besides an aircraft (whose selection is the tracker's). An
+	 * airport comes whole: it's the tile's data, with no id to look it up by again.
+	 */
+	export type Focus =
+		| { kind: 'receiver' }
+		| { kind: 'radar'; id: string }
+		| { kind: 'airport'; airport: Airport }
+		| null;
 </script>
 
 <script lang="ts">
@@ -51,6 +60,7 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { DbRoute } from '#lib/aircraft-db.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
+	import { airportFrom } from '#lib/map/airports.ts';
 	import { altitudeColour } from '#lib/map/altitude.ts';
 	import { activeAlerts } from '#lib/tracker/alerts.ts';
 	import {
@@ -233,6 +243,7 @@
 				'alert-links',
 				'aircraft',
 				'receiver',
+				'airport-selected',
 				'winds',
 				'coverage-outline',
 				'coverage-horizon',
@@ -514,6 +525,19 @@
 					'circle-stroke-width': 1
 				}
 			});
+			// The airport whose panel is open: a ring round its label (centred on the point;
+			// 22 px clears a four-letter code).
+			m.addLayer({
+				id: 'airport-selected',
+				type: 'circle',
+				source: 'airport-selected',
+				paint: {
+					'circle-radius': 22,
+					'circle-color': 'rgba(244,244,245,0.05)',
+					'circle-stroke-color': '#f4f4f5',
+					'circle-stroke-width': 1.5
+				}
+			});
 			// The receiver; ringed like a selected aircraft while its panel is open.
 			m.addLayer({
 				id: 'receiver-selected',
@@ -693,7 +717,7 @@
 				];
 				// The aircraft, radar or receiver nearest the tap: an aircraft passing over the
 				// receiver mustn't make the dot impossible to hit, nor the other way round. Then a
-				// wind barb (they sit under the aircraft's trails).
+				// wind barb (they sit under the aircraft's trails), then an airport's label.
 				const query = (id: string) => m.queryRenderedFeatures(box, { layers: [id] });
 				const away = (f: maplibregl.MapGeoJSONFeature) => {
 					if (f.geometry.type !== 'Point') return Infinity;
@@ -723,11 +747,24 @@
 					placeCard();
 					return;
 				}
+				const label = query('airports')[0];
+				const airport =
+					label?.geometry.type === 'Point'
+						? airportFrom(label.properties, {
+								lon: label.geometry.coordinates[0],
+								lat: label.geometry.coordinates[1]
+							})
+						: null;
+				if (airport) {
+					picked = null;
+					onfocus({ kind: 'airport', airport });
+					return;
+				}
 				picked = null;
 				stream.select(null);
 				onfocus(null);
 			});
-			for (const id of ['aircraft', 'winds', 'receiver', 'radar-sites']) {
+			for (const id of ['aircraft', 'winds', 'receiver', 'radar-sites', 'airports']) {
 				m.on('mouseenter', id, () => (m.getCanvas().style.cursor = 'pointer'));
 				m.on('mouseleave', id, () => (m.getCanvas().style.cursor = ''));
 			}
@@ -783,6 +820,21 @@
 				: empty
 		);
 		map.setLayoutProperty('receiver-selected', 'visibility', open ? 'visible' : 'none');
+	});
+
+	// The open airport's ring.
+	$effect(() => {
+		const airport = focus?.kind === 'airport' ? focus.airport : null;
+		if (!map) return;
+		source(map, 'airport-selected').setData(
+			airport
+				? {
+						type: 'Feature',
+						properties: {},
+						geometry: { type: 'Point', coordinates: [airport.lon, airport.lat] }
+					}
+				: empty
+		);
 	});
 
 	// Radar sites and ellipses: when one is confirmed, refitted or dropped, the panel opens or

@@ -5,7 +5,7 @@
 	below it, side by side from `md` on.
 
 	The panel shows the list, or a selected aircraft, or what was tapped on the map besides:
-	the receiver (its coverage) or a ground radar (experimental). One at a time.
+	the receiver (its coverage), a ground radar (experimental) or an airport. One at a time.
 -->
 <script lang="ts" module>
 	import type { Unit } from '#lib/map/features.ts';
@@ -32,6 +32,7 @@
 	import { layerAt, layers as profileLayers } from '#lib/weather/profile.ts';
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
+	import AirportPanel from './AirportPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
 	import CoveragePanel from './CoveragePanel.svelte';
 	import MapLayers, { type Layers } from './MapLayers.svelte';
@@ -225,6 +226,13 @@
 				{unit}
 				selected={sector}
 				onselect={(i) => (sector = i)}
+				onclose={() => openFocus(null)}
+			/>
+		{:else if focus?.kind === 'airport'}
+			<AirportPanel
+				airport={focus.airport}
+				receiver={data.reference}
+				{unit}
 				onclose={() => openFocus(null)}
 			/>
 		{:else if radar}
