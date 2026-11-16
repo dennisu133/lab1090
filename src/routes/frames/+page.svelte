@@ -1,23 +1,18 @@
 <script lang="ts">
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
-	import type { LatLon } from '#lib/modes/cpr.ts';
-	import { resolve } from '$app/paths';
 	import { DF_NAMES, TYPE_CODE_GROUPS, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
 	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
-	import { LIVE_FRAMES, type FeedFrame } from './frame-stream.svelte';
+	import type { FeedFrame } from './frame-stream.svelte';
 	import { VERDICTS, addressTitle, interrogatorLabel } from './verdicts';
 
 	const FEED_ROWS = 200;
-
-	let { data } = $props();
 
 	const { frames: stream, stats } = getStreams();
 
@@ -175,11 +170,6 @@
 		return `${dbfs.toFixed(1)} dBFS: amplitude ${amplitude.toFixed(1)} %, power ${power.toFixed(2)} % of full scale`;
 	}
 
-	/** 51.8° N, 14.3° E */
-	function latLonText({ lat, lon }: LatLon) {
-		return `${Math.abs(lat)}° ${lat < 0 ? 'S' : 'N'}, ${Math.abs(lon)}° ${lon < 0 ? 'W' : 'E'}`;
-	}
-
 	function toggle<K extends keyof typeof filter>(key: K, value: (typeof filter)[K]) {
 		filter[key] = filter[key] === value ? null : value;
 	}
@@ -188,62 +178,6 @@
 <PageTitle page="Raw frames" />
 
 <div class="space-y-6">
-	<!-- Status bar -->
-	<header
-		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
-	>
-		<div class="text-zinc-400">
-			{#if data.reference}
-				<InfoTip label="Receiver position set">
-					<p>
-						Positions are decoded from single messages, using the receiver's position
-						<span class="text-zinc-100 tabular-nums">{latLonText(data.reference)}</span> as the reference
-						point that picks the right CPR zone (local decoding).
-					</p>
-					<p>
-						When the same aircraft also sent a message from its other grid within 10 s, the even/odd
-						pair is decoded too (global decoding, no reference needed). If both agree, the position
-						is confirmed: <span class="text-zinc-300">✓ pair</span>. Until then it's
-						<span class="text-zinc-300">unconfirmed</span>; if they disagree, the pair wins and the
-						row says how far off the reference decode was.
-					</p>
-				</InfoTip>
-			{:else}
-				<InfoTip label="No receiver position">
-					<p>
-						Positions are only decoded from even/odd pairs (global decoding), so each aircraft's
-						first position message stays undecoded.
-					</p>
-					<p>
-						Set <code>RECEIVER_POSITION="lat,lon"</code> in <code>.env</code> to decode single
-						messages too (see <code>.env.example</code>).
-					</p>
-				</InfoTip>
-			{/if}
-		</div>
-		<div class="text-zinc-400">
-			<InfoTip label="Filters search stored frames" wide align="right">
-				<p>
-					The live list holds the last {LIVE_FRAMES.toLocaleString()} frames: at 50 msg/s, just 20 seconds.
-					So clicking a row in the tables above also asks the server, which keeps the latest
-					<strong>{data.perKind} frames of every kind</strong>: per downlink format, per type code,
-					and per parity verdict.
-				</p>
-				<p>
-					Each kind only turns over as fast as it arrives. The latest {data.perKind} TC 11 positions only
-					reach back a minute or so, but a rare TC 23 test message or an unknown address stays findable
-					for hours.
-				</p>
-				<p class="text-zinc-400">
-					Limits: stored frames are lost when the server restarts (so are the counts). Combined
-					filters search one kind's frames and narrow them down, so they can miss some: DF 20 +
-					unknown only looks among the latest {data.perKind} unknown ones. Stored positions show
-					<span class="text-zinc-300">✓ pair</span> only if the other half of the pair was stored too.
-				</p>
-			</InfoTip>
-		</div>
-	</header>
-
 	<!-- Counts -->
 	<!-- Side by side only from xl: at 1024 px two columns leave too little room for the names. -->
 	<div class="grid gap-6 xl:grid-cols-2">
@@ -263,27 +197,9 @@
 		>
 			{#snippet info()}
 				<p>
-					The type code is the first 5 bits of an ADS-B message's payload and says what it carries.
-					All 32 are listed, grouped by message type: click a group's number (▸ 9–18) to see its
-					codes one by one. Greyed-out rows haven't been received yet.
-				</p>
-				<p>
-					Within a group the layout is the same, and the code adds a detail. For identification (TC
-					1–4) it's which set of emitter categories (D, C, B, A) the aircraft's category is from.
-					For positions (surface 5–8, airborne 9–18 with barometric altitude, 20–22 with GNSS
-					height) it's how much the aircraft vouches for the position: the <strong
-						>containment radius Rc</strong
-					>. The avionics guarantee, with about a 1 in 10 million risk of being wrong, that the true
-					position is inside that circle.
-				</p>
-				<p>
-					That's <em>integrity</em>, not accuracy: a TC 11 aircraft is usually within a few metres.
-					Its GPS just won't vouch for more than 185 m. An aircraft keeps its type code, since it
-					depends on its navigation equipment.
-				</p>
-				<p class="text-zinc-400">
-					"or": a bit in the aircraft's operational status message (TC 31) decides. Click a row to
-					filter the feed, a group or a single code.
+					The first 5 bits of the payload: what the message carries. In the position groups the code
+					also gives the <strong>containment radius Rc</strong>: the circle the aircraft vouches for
+					(integrity), not its accuracy.
 				</p>
 			{/snippet}
 		</CountTable>
@@ -299,25 +215,14 @@
 		>
 			{#snippet info()}
 				<p>
-					Every Mode S message ends in 24 bits of <strong>parity</strong>: a CRC computed over the
-					rest of the message. The receiver recomputes it; if a bit got flipped on the way, it no
-					longer matches.
-				</p>
-				<p>
-					<span class={VERDICTS.valid.color}>DF11/17/18</span> send the address in the clear, so the CRC
-					can check the whole message.
-				</p>
-				<p>
-					All other formats save 24 bits by XORing the address into the parity. Recomputing the CRC
-					gives back the address, but a corrupted message would simply give a <em>different</em>
-					address. So it only counts if that aircraft was heard in a checked message within the last 60
-					s: <span class={VERDICTS.known.color}>known</span>, or else
-					<span class={VERDICTS.unknown.color}>unknown</span>.
+					The last 24 bits are a CRC. <span class={VERDICTS.valid.color}>DF11/17/18</span> send the
+					address in the clear, so the CRC checks the whole message. The others XOR the address into
+					the CRC: you get an address back, trusted only if that aircraft was heard in a checked
+					message within 60 s (<span class={VERDICTS.known.color}>known</span>, else
+					<span class={VERDICTS.unknown.color}>unknown</span>).
 				</p>
 				<p class="text-zinc-400">
-					readsb on the Pi already fixes single-bit errors and drops what fails these checks, so
-					expect (almost) only green and blue here. Unknowns show up right after a restart, before
-					an aircraft's next DF11/17. Click a row to filter the feed.
+					readsb drops corrupted frames on the Pi, so that row stays at 0.
 				</p>
 			{/snippet}
 		</CountTable>
@@ -348,59 +253,18 @@
 
 		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
 		     so new frames never shift the columns; Content gets the rest and wraps. -->
-		<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
-		     off the header tooltips when the table is shorter than they are. -->
+		<!-- Scrolls only below lg: from 1024 px the table fits. -->
 		<div class="overflow-x-auto lg:overflow-visible">
 			<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<thead class="text-left text-xs text-zinc-500">
 					<tr>
 						<th class="w-28 py-1 font-normal">Received</th>
-						<th class="w-32 py-1 text-right font-normal whitespace-nowrap">
-							<InfoTip label="Signal (dBFS)">
-								<p>
-									How loud the message arrived, in <strong>dBFS</strong>: decibels relative to the
-									loudest signal the dongle can measure (full scale = 0 dBFS).
-								</p>
-								<p>
-									Every −6 dB halves the amplitude, every −10 dB is a tenth of the power. So
-									<strong>−20 dBFS</strong> is a tenth of the full-scale amplitude, a hundredth of its
-									power.
-								</p>
-								<p>
-									Usable range here is about −40 (drowning in noise) to −3 dBFS (pulses at full
-									scale). Louder usually means closer, but only roughly: transmitter power and
-									antenna orientation vary.
-								</p>
-								<p class="text-zinc-400">
-									Relative to your receiver and its current gain, not an absolute power. Hover a
-									value for its exact amplitude and power.
-								</p>
-							</InfoTip>
-						</th>
+						<th class="w-32 py-1 text-right font-normal whitespace-nowrap"> Signal (dBFS) </th>
 						<th class="w-10 py-1 font-normal">DF</th>
 						<th class="w-10 py-1 font-normal">TC</th>
 						<th class="w-20 py-1 font-normal">ICAO</th>
 						<th class="w-20 py-1 font-normal">Parity</th>
-						<th class="py-1 font-normal">
-							<InfoTip label="Content">
-								<p>
-									Everything decoded from the message. <span class="text-zinc-100">Bright</span>:
-									the headline values. <span class="text-xs text-zinc-500">Dimmed</span>: details.
-									<span class="text-orange-400">Orange</span>: worth noticing (alerts, emergencies,
-									missing data).
-								</p>
-								<p>
-									Labels are the field names from the specifications (FS, SL, RI, NACp, …), so you
-									can look them up. Hover any value for what it means.
-								</p>
-								<p class="text-zinc-400">
-									DF20/21 also carry a Comm-B register (MB): <a
-										href={resolve('/comm-b')}
-										class="text-sky-400 underline">/comm-b</a
-									> works out which one, and decodes it.
-								</p>
-							</InfoTip>
-						</th>
+						<th class="py-1 font-normal"> Content </th>
 						<th class="w-66 py-1 font-normal">Message</th>
 					</tr>
 				</thead>

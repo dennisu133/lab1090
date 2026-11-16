@@ -59,11 +59,9 @@
 				label="Signal strength"
 				wide
 			>
-				<h3 class="font-semibold text-zinc-100">Reading dBFS</h3>
 				<p>
-					<strong>dBFS</strong> means decibels relative to <em>full scale</em>: how loud a message
-					was compared to the loudest signal the dongle can measure. So values are always 0 or
-					negative. Decibels are logarithmic: every −10 dB is a tenth of the power.
+					Decibels below <em>full scale</em>, the loudest signal the dongle can measure, so always 0
+					or negative. −6 dB is half the amplitude, −10 dB a tenth of the power.
 				</p>
 				<table class="w-full text-xs tabular-nums">
 					<thead class="text-left text-zinc-500">
@@ -87,21 +85,11 @@
 					</tbody>
 				</table>
 				<p>
-					<strong>Why −3 dBFS is the ceiling:</strong> every Mode S bit is a pulse in one half of a
-					microsecond and silence in the other. readsb averages the power over the whole message,
-					gaps included, so even pulses at full scale average out at half power. Messages at or
-					above it are
-					<span class="text-rose-400">red</span> in the chart: readsb counts them as "strong signals",
-					and its auto-gain turns the gain down when there are many.
-				</p>
-				<p>
-					<strong>It's relative to your receiver</strong>, not an absolute power: turning the gain
-					up makes everything louder. Good for comparing messages, not for comparing receivers.
-				</p>
-				<p>
-					<strong>As a distance hint:</strong> twice as far is about −6 dB, ten times as far −20 dB. Only
-					roughly, though: transponders differ in power (125–500 W) and a banking aircraft can turn its
-					antenna away from you.
+					readsb averages the power over the whole message, pulses and the gaps between them, so
+					even pulses at full scale come out at half power: −3 dBFS is the ceiling. Messages there
+					are
+					<span class="text-rose-400">red</span>: readsb counts them as strong, and its auto-gain
+					turns the gain down when there are many.
 				</p>
 			</InfoTip>
 		</div>
