@@ -40,6 +40,14 @@
 	let heights = $state<HeightReference>('ellipsoid');
 	/** The layer picked in the table for the worked example. */
 	let picked = $state<number | null>(null);
+	let columnCard = $state<HTMLElement>();
+
+	/** Pick a layer in the table (at the bottom) and bring its worked example into view. */
+	function pick(level: number) {
+		picked = level;
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		columnCard?.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' });
+	}
 
 	/** Whether the profile uses the heading-corrected winds (HeadingCard). */
 	let correctHeadings = $state(true);
@@ -97,14 +105,23 @@
 	<div class="flex flex-wrap items-baseline gap-x-1 text-sm text-zinc-400">
 		<InfoTip label="Collected" wide>
 			<p>
-				All decoding happens here in the browser, so collecting starts when you open the app (on any
-				page) and keeps going while you switch pages; reloading starts over. Samples older than {WINDOW_MS /
-					60_000} minutes are dropped: the weather changes, and aircraft move on.
+				Nobody sends us the weather, but radars read every aircraft's speeds and heading for air
+				traffic control, in registers <strong>5,0</strong> and <strong>6,0</strong>: enough to work
+				out the wind and the temperature where it flies. ADS-B adds the gap between GNSS height and
+				pressure altitude (how warm the air column below is) and the pilots' altimeter settings. The
+				Dutch weather service (KNMI) feeds such observations into its forecasts.
 			</p>
 			<p>
-				A profile needs aircraft at many levels. Cruising aircraft fill FL300–FL410 within minutes;
-				the levels below fill as aircraft climb out and descend into the airports in range, like a
-				weather balloon on its way up.
+				Collected here in the browser from the moment the app opened, on any page; reloading starts
+				over. Samples older than {WINDOW_MS / 60_000} minutes are dropped. Cruising aircraft fill FL300–FL410
+				within minutes; the levels below fill as aircraft climb out and descend, like a weather balloon
+				on its way up.
+			</p>
+			<p class="text-zinc-400">
+				Sources: S. de Haan, "High-resolution wind and temperature observations from aircraft
+				tracked by Mode-S air traffic control radar", J. Geophys. Res. (2011). J. Sun et al.,
+				"Weather field reconstruction using aircraft surveillance data and a novel meteo-particle
+				model", PLOS ONE (2018).
 			</p>
 		</InfoTip>
 		<span>
@@ -184,7 +201,7 @@
 			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-400" label="Sea-level pressure">
 				<p>
 					QNH: the pressure the pilots near the ground set on their altimeters. More on it below,
-					next to the column calculation.
+					under the column calculation.
 				</p>
 			</InfoTip>
 			<p class="mt-2 text-2xl">{hpa(pressure.hPa)}</p>
@@ -238,28 +255,21 @@
 			<div class="mt-2 text-xs text-zinc-400">
 				<InfoTip label="Contrails" class="font-semibold" wide above>
 					<p>
-						A contrail is a cloud made by the engines. Burning kerosene makes water vapour and heat;
-						behind the engine the hot, wet exhaust mixes with the cold air and cools. If the mixture
-						passes the point where water condenses, droplets form and freeze at once (the
-						Schmidt–Appleman criterion; Schumann 1996).
+						A contrail forms when the engines' hot, wet exhaust cools in the cold air until water
+						condenses (the Schmidt–Appleman criterion; Schumann 1996). How cold the air must be
+						depends on the pressure and the humidity: the band's right edge is the limit for
+						saturated air, the left edge for perfectly dry air, about 10 K colder.
 					</p>
 					<p>
-						How cold the air must be depends on the pressure and on how humid the air already is.
-						The band's right edge is the limit for saturated air (100 % relative humidity over
-						water), the left edge for perfectly dry air, about 10 K colder. Humidity at cruise level
-						is almost never known here (register 4,4 is rarely sent), so in between the answer is
-						the humidity the air would need. If you see trails, the air is at least that humid.
-					</p>
-					<p>
-						Temperatures are a couple of kelvin off (against weather balloons, aircraft read 2 K too
-						cold on average), and near the edges 1 K changes the humidity needed by 20 points. So a
-						layer only counts as "any air" or "too warm" if it still holds {TEMPERATURE_MARGIN}
-						K either way. Only layers with enough samples from enough aircraft are listed.
+						Humidity at cruise level is almost never in the data, so in between the answer is the
+						humidity the air would need. Near the edges 1 K changes it by 20 points, and aircraft
+						read about 2 K cold, so a layer only counts as "any air" or "too warm" with {TEMPERATURE_MARGIN}
+						K to spare.
 					</p>
 					<p class="text-zinc-400">
-						Engines: {ETA * 100} % of the fuel's energy goes into thrust. Modern ones reach about {ETA_MODERN *
-							100} %, with a cooler exhaust: contrails in air about 1.6 K warmer. Whether contrails last
-						(ice-supersaturated air) can't be told from the data at all.
+						For engines that turn {ETA * 100} % of the fuel's energy into thrust; modern ones ({ETA_MODERN *
+							100} %) make contrails in air about 1.6 K warmer. Per aircraft has the calculation step
+						by step.
 					</p>
 				</InfoTip>
 				<p class="mt-0.5">
@@ -315,6 +325,34 @@
 		</div>
 	</section>
 
+	<!-- Two columns, each card at its own height: pressure and the column on the left, the
+	     other ways to the wind on the right. -->
+	<section class="grid items-start gap-4 xl:grid-cols-2">
+		<div class="space-y-4">
+			<div bind:this={columnCard} class="scroll-mt-4">
+				{#if example}
+					<ColumnCalculation
+						layer={example.layer}
+						column={example.column}
+						qnh={pressure}
+						bind:heights
+					/>
+				{:else}
+					<p class="rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
+						Waiting for GNSS − baro (ADS-B velocity messages, TC 19)…
+					</p>
+				{/if}
+			</div>
+			<QnhCard qnh={pressure} now={stream.now} />
+		</div>
+		<div class="space-y-4">
+			<GeostrophicCard {geo} measured={measuredThere} />
+			<HeadingCard {checks} {callsigns} bind:correct={correctHeadings} />
+			<TurnCard turns={sky.turns} {callsigns} />
+		</div>
+	</section>
+
+	<!-- Last: it grows with every level heard. Picking a layer shows its column above. -->
 	<section>
 		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Layers</h2>
 		<LayerTable
@@ -323,29 +361,7 @@
 			tropopause={top}
 			{strongest}
 			selected={example?.layer.level ?? null}
-			onselect={(level) => (picked = level)}
+			onselect={pick}
 		/>
-	</section>
-
-	<section class="grid gap-4 xl:grid-cols-2">
-		{#if example}
-			<ColumnCalculation
-				layer={example.layer}
-				column={example.column}
-				qnh={pressure}
-				bind:heights
-			/>
-		{:else}
-			<p class="rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
-				Waiting for GNSS − baro (ADS-B velocity messages, TC 19)…
-			</p>
-		{/if}
-		<QnhCard qnh={pressure} now={stream.now} />
-	</section>
-
-	<section class="grid gap-4 xl:grid-cols-2">
-		<GeostrophicCard {geo} measured={measuredThere} />
-		<HeadingCard {checks} {callsigns} bind:correct={correctHeadings} />
-		<TurnCard turns={sky.turns} {callsigns} />
 	</section>
 </div>

@@ -44,10 +44,9 @@
 		<InfoTip heading="h3" class="font-semibold" label="Heading checks" wide>
 			<p>
 				A wind is ground vector − air vector, and the air vector points along the aircraft's
-				<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. If the
-				heading is a few degrees off, the wind gets a crosswind that isn't there: 8 kt per degree at
-				450 kt. Why one would be off: an outdated magnetic variation table, a compass system out of
-				calibration.
+				<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. A
+				heading a few degrees off (an outdated magnetic variation table, a compass out of
+				calibration) adds a crosswind that isn't there: 8 kt per degree at 450 kt.
 			</p>
 			<p>
 				So each aircraft's wind is compared with the other aircraft's within {MAX_LEVEL_FT.toLocaleString()}
@@ -56,9 +55,8 @@
 				counts once, and needs {MIN_OTHERS} or more of them: one against one, who'd be wrong?
 			</p>
 			<p class="text-zinc-400">
-				Only corrections of {MIN_CORRECTION}° or more are applied. Against weather balloons, this
-				agreed within 2.2° for every aircraft; smaller differences are the others' own errors and
-				the wind changing from place to place. It also can't see an error every aircraft shares.
+				Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons this
+				agreed within 2.2° for every aircraft. It can't see an error every aircraft shares.
 			</p>
 		</InfoTip>
 		<span class="text-sm text-zinc-500">

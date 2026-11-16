@@ -202,11 +202,6 @@
 					the temperature with a probe outside, worked out Mach from the pitot and static pressures,
 					and TAS = Mach × speed of sound. 5,0 and 6,0 hand us both results; we undo the last step.
 				</p>
-				<p class="text-zinc-400">
-					This is the <em>static</em> air temperature, of the air around the aircraft. The probe itself
-					reads warmer (the total air temperature), because the air heats up as it's stopped in front
-					of it.
-				</p>
 			</InfoTip>
 			{#if o.temperature}
 				<span class={['text-lg', o.temperatureProblem ? 'text-zinc-500' : 'text-zinc-100']}>

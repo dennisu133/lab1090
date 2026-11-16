@@ -84,21 +84,15 @@
 			<InfoTip label="Which?" wide>
 				<p>
 					GPS measures from the <strong>WGS84 ellipsoid</strong>, a smooth model of the Earth's
-					shape. <strong>Sea level</strong> (the geoid) bulges above or sags below it where gravity is
-					stronger or weaker: around Berlin it's about 40 m (130 ft) above the ellipsoid.
+					shape. <strong>Sea level</strong> (the geoid, EGM96) bulges above or sags below it where gravity
+					is stronger or weaker: around Berlin it's about 40 m (130 ft) above the ellipsoid.
 				</p>
 				<p>
-					DO-260B says ADS-B's GNSS height is above the ellipsoid, and dump1090-fa documents its
-					alt_geom the same way, and the capture's aircraft agree with weather balloons only that
-					way (within 1 ft on average, against 137 ft too high as sea level). Some avionics may
-					still send heights above sea level. Switch to see what it changes: about {Math.round(
+					DO-260B says ADS-B's GNSS height is above the ellipsoid, and the capture's aircraft agree
+					with weather balloons only that way (within 1 ft on average, against 137 ft too high as
+					sea level). Some avionics may still send heights above sea level. Switching changes about {Math.round(
 						col.geoid / FT
-					)} ft here, worth
-					{(col.geoid / FT / c.feetPerKelvin).toFixed(1)} K.
-				</p>
-				<p class="text-zinc-400">
-					The geoid comes from EGM96 (US National Geospatial-Intelligence Agency) on a 2° grid,
-					looked up at each aircraft's ADS-B position (the receiver's for aircraft without one).
+					)} ft here, worth {(col.geoid / FT / c.feetPerKelvin).toFixed(1)} K.
 				</p>
 			</InfoTip>
 			{#if heights === 'ellipsoid'}

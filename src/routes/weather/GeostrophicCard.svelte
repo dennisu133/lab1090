@@ -108,9 +108,7 @@
 			<p>
 				An aircraft in level flight holds its pressure altitude, so it follows a surface of constant
 				pressure. Those surfaces aren't flat: they sag over cold air and low pressure. So along the
-				way its GNSS height rises and falls while its pressure altitude stays put. Navigators called
-				the difference the <strong>D-value</strong>; in the 1940s they flew by how it changed
-				("pressure pattern flying").
+				way its GNSS height rises and falls while its pressure altitude stays put.
 			</p>
 			<p>
 				On the rotating Earth, air doesn't flow down such a slope. The pressure force pushes it
@@ -120,12 +118,11 @@
 				follows the isobars on a weather map.
 			</p>
 			<p class="text-zinc-400">
-				Each aircraft at each level gets its own offset, so its altimeter's own error (often ±50 ft)
-				drops out: only the change along its flight counts. Needs {MIN_GEOSTROPHIC_AIRCRAFT} aircraft
-				that each flew {MIN_SEGMENT_KM} km level, on tracks that spread at least {MIN_SPREAD_KM} km across.
-				It's a balance, not a measurement: where the air curves around a low the real wind is slower,
-				around a high faster. Checked against weather balloons: within 2° of their direction, 30 % faster
-				(src/lib/weather/sounding.test.ts).
+				Each aircraft at each level gets its own offset, so its altimeter's own error drops out.
+				Needs
+				{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, on tracks at least
+				{MIN_SPREAD_KM} km apart. A balance, not a measurement: around a low the real wind is slower,
+				around a high faster. Against weather balloons: within 2° of their direction, 30 % faster.
 			</p>
 		</InfoTip>
 		{#if geo.found}

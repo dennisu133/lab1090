@@ -14,6 +14,7 @@
 		windFields,
 		windText
 	} from '#lib/describe/weather.ts';
+	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import { AIRCRAFT_TTL_MS, AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
 
 	interface Props {
@@ -39,18 +40,17 @@
 		>
 			<p>
 				Every aircraft a radar read both 5,0 and 6,0 from in the last {AIRCRAFT_TTL_MS / 1000} s, with
-				a verified address. Each new reply of one register is paired with the latest of the other: one
-				<strong>observation</strong>. Sorted by address, so rows stay put.
+				a verified address and nothing ADS-B contradicts. Each new reply of one register is paired with
+				the latest of the other: one <strong>observation</strong>. Its wind is
+				<strong>trusted</strong>
+				if the two are at most {MAX_SKEW_MS / 1000} s apart and the aircraft banks at most {MAX_ROLL}°:
+				in a turn every degree of heading is 8 kt of made-up crosswind. The temperature only needs
+				the first.
 			</p>
 			<p>
 				<strong>Wind</strong> and <strong>Temperature</strong> are the latest trusted values,
-				<strong>{minute} s average</strong> the mean of all trusted ones in the last minute (the wind
-				as vectors, so 350° and 010° average to 000°, not 180°). An aircraft holds its level for minutes,
-				so the average is the more reliable number: it smooths out the rounding steps.
-			</p>
-			<p class="text-zinc-400">
-				Click a row to work through its latest observation below. Hover any value for the
-				calculation.
+				<strong>{minute} s average</strong> the mean over the last minute (wind as vectors: 350° and 010°
+				average to 000°), which smooths out the rounding steps.
 			</p>
 		</InfoTip>
 	</div>
@@ -96,15 +96,9 @@
 					<th class="w-16 py-1 font-normal">
 						<InfoTip label="ISA">
 							<p>
-								How much warmer (+) or colder (−) than the standard atmosphere, in °C, averaged over
-								the last {minute} s. The standard atmosphere has 15 °C at sea level, 1.98 °C less per
-								1,000 ft, and −56.5 °C from 36,089 ft up.
-							</p>
-							<p>
-								For an aircraft that climbs or descends this is the better average: in a minute at
-								2,000 ft/min the temperature drops by 4 °C from the height alone, the deviation
-								hardly changes. It also makes aircraft at different levels comparable: if they all
-								show about the same, they're in the same air mass.
+								How much warmer (+) or colder (−) than the standard atmosphere, averaged over the
+								last {minute} s. Unlike the temperature it hardly changes when an aircraft climbs, so
+								aircraft at different levels compare: about the same means the same air mass.
 							</p>
 						</InfoTip>
 					</th>
