@@ -199,6 +199,9 @@
 
 	maplibregl.setWorkerUrl(workerUrl);
 
+	/** How long the credits stay open on a narrow map: OSMF's guidelines allow five seconds. */
+	const CREDITS_MS = 5000;
+
 	function create(container: HTMLDivElement) {
 		const center = untrack(() => receiver);
 		const m = new maplibregl.Map({
@@ -217,6 +220,7 @@
 			fadeDuration: 0
 		});
 		m.touchZoomRotate.disableRotation();
+		let creditsTimer: ReturnType<typeof setTimeout> | undefined;
 
 		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
 		m.on('styleimagemissing', (e) => {
@@ -769,18 +773,28 @@
 				m.on('mouseleave', id, () => (m.getCanvas().style.cursor = ''));
 			}
 
-			// The credits open expanded; on a narrow map they'd cover the legend. Collapsed,
-			// they're one tap on the ⓘ away.
+			// The credits open expanded. On a narrow map they cover the legend and the layers, so
+			// there they fold to the ⓘ on the first tap or zoom (MapLibre itself only on a drag),
+			// or after CREDITS_MS. Never before they've been seen: OSMF's attribution guidelines
+			// want them visible without a tap at first, and allow folding them on map interaction
+			// or after five seconds. Opened again with the ⓘ, the next tap or zoom folds them.
 			if (container.clientWidth < 800) {
 				const credits = container.querySelector('.maplibregl-ctrl-attrib');
-				credits?.classList.remove('maplibregl-compact-show');
-				credits?.removeAttribute('open');
+				const fold = () => {
+					credits?.classList.remove('maplibregl-compact-show');
+					credits?.removeAttribute('open');
+				};
+				m.on('click', fold);
+				// Only the user's zooms (they carry the input event), not the fit to the first aircraft.
+				m.on('zoomstart', (e) => e.originalEvent && fold());
+				creditsTimer = setTimeout(fold, CREDITS_MS);
 			}
 
 			map = m;
 		});
 
 		return () => {
+			clearTimeout(creditsTimer);
 			map = null;
 			m.remove();
 		};
