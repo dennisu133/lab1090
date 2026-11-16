@@ -62,6 +62,7 @@
 		ringFeatures,
 		routeFeatures,
 		shownPosition,
+		STALE_OPACITY,
 		trailFeatures,
 		uncertaintyFeatures,
 		type Unit
@@ -674,13 +675,13 @@
 					'icon-halo-color': HALO,
 					'icon-halo-width': 2,
 					// (Set again while a radar is open: see `answered`.)
-					'icon-opacity': ['case', ['get', 'dim'], 0.15, ['get', 'stale'], 0.45, 1],
+					'icon-opacity': ['case', ['get', 'dim'], 0.15, ['get', 'stale'], STALE_OPACITY, 1],
 					// The badge alone (zoomed out) in the alert's colour; with the label, the
 					// format above colours the badge.
 					'text-color': ['step', ['zoom'], LABEL_COLOUR, 7, '#d4d4d8'],
 					'text-halo-color': HALO,
 					'text-halo-width': 1.5,
-					'text-opacity': ['case', ['get', 'stale'], 0.45, 1]
+					'text-opacity': ['case', ['get', 'stale'], STALE_OPACITY, 1]
 				}
 			});
 
@@ -834,7 +835,7 @@
 			['get', 'dim'],
 			0.15,
 			['get', 'stale'],
-			0.45,
+			STALE_OPACITY,
 			1
 		];
 		map.setPaintProperty(

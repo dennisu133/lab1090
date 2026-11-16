@@ -34,6 +34,8 @@ import { iconFor } from './icons';
 export const SHOW_MS = 30_000;
 /** Drawn faded from this age on: "it was here a while ago". */
 export const STALE_MS = 10_000;
+/** How faded: the aircraft's icon and label (TrackerMap), and the legend's sample. */
+export const STALE_OPACITY = 0.45;
 /** Moved along for at most this long; then it waits where the guess ended. */
 export const EXTRAPOLATE_MS = 15_000;
 /** How far ahead the dotted line goes, s: for every aircraft, and for the selected one. */
