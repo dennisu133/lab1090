@@ -1,0 +1,270 @@
+<!--
+	The coverage experiment's side panel: what it shows, the sky plot, the numbers of the
+	sector picked on it, a summary (the farthest position against its horizon, the open arcs),
+	and the terrain's part.
+-->
+<script lang="ts">
+	import InfoTip from '#lib/components/InfoTip.svelte';
+	import { ago, distanceText } from '#lib/describe/aircraft.ts';
+	import {
+		BANDS,
+		OPEN_DEG,
+		SECTOR_DEG,
+		summarize,
+		type CoveragePoint
+	} from '#lib/coverage/coverage.ts';
+	import { radioHorizon } from '#lib/coverage/geometry.ts';
+	import { ANTENNA_ABOVE_GROUND_M, MAX_KM, SKYLINE_STEP_DEG } from '#lib/coverage/terrain.ts';
+	import { compass } from '#lib/geo.ts';
+	import { altitudeCss } from '#lib/map/altitude.ts';
+	import { HORIZON_FT } from '#lib/map/coverage.ts';
+	import type { Unit } from '#lib/map/features.ts';
+	import type { CoverageStream } from './coverage-stream.svelte';
+	import SkyPlot from './SkyPlot.svelte';
+
+	interface Props {
+		stream: CoverageStream;
+		unit: Unit;
+		selected: number | null;
+		onselect: (index: number | null) => void;
+	}
+
+	let { stream, unit, selected, onselect }: Props = $props();
+
+	const km = (x: number) => distanceText(x, unit);
+	const deg = (x: number) => `${x.toFixed(1)}°`;
+	const fl = (ft: number) => `FL${Math.round(ft / 100)}`;
+	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
+	const antennaKm = $derived(stream.terrain?.antennaKm ?? 0);
+	const horizon = (ft: number) => radioHorizon(ft, antennaKm);
+
+	let summary = $derived(summarize(stream.sectors, horizon));
+	let sector = $derived(selected === null ? null : (stream.sectors[selected] ?? null));
+	/** How high the land rises in a range of bearings, degrees (null: not loaded). */
+	const terrainOver = (from: number, width: number) => {
+		const sky = stream.terrain?.skyline;
+		if (!sky) return null;
+		let top = -90;
+		for (let b = from; b < from + width; b += SKYLINE_STEP_DEG)
+			top = Math.max(top, sky[Math.floor((b % 360) / SKYLINE_STEP_DEG)]);
+		return top;
+	};
+	let terrainTop = $derived(terrainOver(0, 360));
+	let collecting = $derived(
+		stream.first !== null && stream.last !== null ? stream.last - stream.first : 0
+	);
+</script>
+
+{#snippet who(p: CoveragePoint)}
+	<span class="font-mono">{p.icao}</span>
+	<span style:color={altitudeCss(p.altitude)}>{fl(p.altitude)}</span>
+	· {km(p.distance)}
+{/snippet}
+
+<header class="px-4 py-3">
+	<h2 class="text-xl font-semibold">
+		Coverage <span class="text-sm text-amber-300">experimental</span>
+	</h2>
+	<p class="text-sm text-zinc-400">
+		{#if stream.positions}
+			{ago(collecting).replace(' ago', '')} of traffic · {stream.positions.toLocaleString('en')} positions
+			·
+			{summary.heard} of {360 / SECTOR_DEG} directions heard
+		{:else}
+			Waiting for positions…
+		{/if}
+	</p>
+</header>
+
+<div class="space-y-3 px-4 pb-3 text-sm text-zinc-300">
+	<p>
+		Where this antenna hears aircraft. Distance alone mixes up two things: how high the aircraft
+		flies and what stands in the way. So the plot shows each position by its <em>elevation angle</em
+		>: how far above the horizon it stood, seen from the antenna. A wall or a hill hides everything
+		below its own angle, near or far. Over open, flat land the lowest aircraft heard sit just above
+		the horizon.
+	</p>
+	<p class="text-zinc-400">
+		It fills as aircraft fly by: a direction stays empty until one has flown there, so empty can
+		mean blocked or just no traffic yet. An hour of busy traffic tells them apart. Kept in this tab
+		only: an antenna moved since an earlier session would make old coverage wrong.
+	</p>
+</div>
+
+<section class="border-t border-zinc-800 px-4 py-3 text-sm">
+	<InfoTip
+		heading="h3"
+		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
+		label="The antenna's sky"
+		wide
+	>
+		<p>
+			Seen from below: north up, east right, like the map. The edge is the horizon (0°), the middle
+			straight overhead (90°). The rings are at 5, 15, 30 and 60°: the scale stretches the low
+			angles, where coverage is decided.
+		</p>
+		<p>
+			Elevation = atan((h − h<sub>antenna</sub> − d²/2R′) / d), with h the aircraft's altitude, d its
+			distance along the ground and R′ the Earth's radius × 4/3: radio bends slightly round the Earth,
+			as if it were that much flatter. The altitude is barometric, not a true height: a few hundred feet
+			off, under 0.1° beyond 50 km.
+		</p>
+		<p>
+			Light: the sky aircraft were heard in, per {SECTOR_DEG}° sector from overhead down to the
+			lowest one. Dashed amber: the terrain's own skyline (bare ground from elevation tiles, no
+			buildings). Dots: positions, one per aircraft per 10 s, coloured by altitude like the tracker.
+		</p>
+	</InfoTip>
+	<SkyPlot
+		sectors={stream.sectors}
+		points={stream.points}
+		terrain={stream.terrain?.skyline ?? null}
+		{selected}
+		{onselect}
+	/>
+
+	{#if sector}
+		{@const terrain = terrainOver(sector.from, SECTOR_DEG)}
+		<div class="mt-3 rounded border border-zinc-800 p-3">
+			<div class="flex items-baseline justify-between">
+				<h4 class="font-semibold text-zinc-100">
+					{sector.from}–{sector.from + SECTOR_DEG}° ({compass(sector.from + SECTOR_DEG / 2)})
+				</h4>
+				<button
+					type="button"
+					class="text-zinc-500 hover:text-zinc-200"
+					aria-label="Close the sector"
+					onclick={() => onselect(null)}>✕</button
+				>
+			</div>
+			{#if sector.lowest}
+				<dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 tabular-nums">
+					<dt>
+						<InfoTip label="Heard down to">
+							<p>
+								The lowest elevation angle of any position in this sector, and that aircraft's
+								altitude and distance. Below this angle nothing was heard here.
+							</p>
+						</InfoTip>
+					</dt>
+					<dd>{deg(sector.lowest.elevation)} · {@render who(sector.lowest)}</dd>
+					{#if terrain !== null}
+						<dt>
+							<InfoTip label="Terrain up to">
+								<p>
+									How high the bare land rises in this sector, as seen from the antenna (out to {MAX_KM}
+									km). Heard down to well above this: something near the antenna is in the way, not the
+									land.
+								</p>
+							</InfoTip>
+						</dt>
+						<dd>{deg(terrain)}</dd>
+					{/if}
+					<dt>
+						<InfoTip label="Traffic">
+							<p>Positions in this sector, and how many aircraft they came from.</p>
+						</InfoTip>
+					</dt>
+					<dd>{sector.positions.toLocaleString('en')} from {sector.aircraft} aircraft</dd>
+				</dl>
+				<h5 class="mt-3 mb-1 text-xs text-zinc-500 uppercase">
+					<InfoTip label="Farthest per altitude band">
+						<p>
+							The farthest position in each band, and that distance as a share of the radio horizon
+							for its altitude: how far a line of sight reaches over a smooth Earth. Far short of it
+							with nothing in the way: the signal gives out first.
+						</p>
+					</InfoTip>
+				</h5>
+				<ul class="space-y-0.5 tabular-nums">
+					{#each BANDS as band, i (band.name)}
+						{@const p = sector.farthest[i]}
+						<li class="flex justify-between gap-3">
+							<span class="text-zinc-400">{band.name}</span>
+							{#if p}
+								<span>{@render who(p)} ({pct(p.distance / horizon(p.altitude))})</span>
+							{:else}
+								<span class="text-zinc-600">–</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="mt-2 text-zinc-400">
+					Nothing heard here yet: blocked, or no aircraft have flown this way.
+					{#if terrain !== null}The land rises to {deg(terrain)} here.{/if}
+				</p>
+			{/if}
+		</div>
+	{:else}
+		<p class="mt-2 text-zinc-500">Tap a direction for its numbers.</p>
+	{/if}
+</section>
+
+<section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
+	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">So far</h3>
+	<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 tabular-nums">
+		<dt>
+			<InfoTip label="Farthest">
+				<p>
+					The farthest position of all, and that distance as a share of the radio horizon at its
+					altitude: √(2R′h) for each end, with R′ the 4/3 Earth (FL350 from sea level: {km(
+						radioHorizon(HORIZON_FT)
+					)}). The amber circle on the map is the horizon at FL350.
+				</p>
+				<p>
+					Well short of it in a direction that's open down to a few degrees: the signal gives out
+					before the Earth's curve does. A better antenna, a filter or an amplifier would help
+					there; a higher one wouldn't.
+				</p>
+			</InfoTip>
+		</dt>
+		<dd>
+			{#if summary.farthest}
+				{@const p = summary.farthest.point}
+				{@render who(p)}
+				{compass(p.bearing)} ({pct(summary.farthest.ofHorizon)} of its horizon)
+			{:else}
+				–
+			{/if}
+		</dd>
+		<dt>
+			<InfoTip label="Open">
+				<p>
+					The directions where aircraft were heard within {OPEN_DEG}° of the horizon: nothing much
+					in the way there. Neighbouring {SECTOR_DEG}° sectors run together, widest first.
+				</p>
+			</InfoTip>
+		</dt>
+		<dd>
+			{#if summary.open.length}
+				{summary.open
+					.slice(0, 3)
+					.map((a) => `${a.from}–${(a.from + a.width) % 360}°`)
+					.join(', ')}
+			{:else}
+				none yet
+			{/if}
+		</dd>
+		<dt>
+			<InfoTip label="Terrain">
+				<p>
+					The bare land around the antenna, from the Terrain Tiles on AWS (mostly SRTM), traced out
+					to {MAX_KM} km in every direction: the dashed amber line on the plot. The antenna is taken to
+					stand {ANTENNA_ABOVE_GROUND_M} m above the ground there, a guess; it changes the angles by hundredths
+					of a degree for aircraft more than a few km away.
+				</p>
+			</InfoTip>
+		</dt>
+		<dd>
+			{#if stream.terrainState === 'ready' && terrainTop !== null}
+				rises to {deg(terrainTop)} at most{#if stream.terrain?.ground !== null}; ground
+					{Math.round(stream.terrain!.ground!)} m{/if}
+			{:else if stream.terrainState === 'failed'}
+				couldn't load the elevation tiles
+			{:else}
+				loading…
+			{/if}
+		</dd>
+	</dl>
+</section>

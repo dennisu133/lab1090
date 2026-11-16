@@ -89,8 +89,16 @@ Pages:
     10-minute capture it places four radars 180–470 km away within 0–11 km of the sites
     mapped on OpenStreetMap. Live, it also piled up radars that weren't there, so a radar
     is only shown once its position is pinned down (an ellipse at most 50 km long) and
-    every fit has found it again for 2 minutes. Starts when the page is first opened:
-    `src/lib/radar/`.
+    every fit has found it again for 2 minutes. On an hour's recording it confirmed nine,
+    each near a mapped radar site. Starts when the page is first opened: `src/lib/radar/`.
+  - **Coverage**: where this antenna hears aircraft. Each position is placed by its
+    elevation angle, how far above the horizon it stood as seen from the antenna, since a
+    wall or a hill hides everything below its own angle, near or far. A sky plot shows the
+    lowest angle heard in each direction against the terrain's own skyline (traced over the
+    same elevation tiles as the hillshading); the map shows, per altitude band, the farthest
+    position heard in each direction against the radio horizon. Where the measured skyline
+    stands well above the terrain's, something near the antenna is in the way. Collects from
+    the start, like the other pages: `src/lib/coverage/`.
 
 ## Hardware
 
@@ -179,7 +187,8 @@ RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
 ```
 
 The tests run against a 10-minute recording from the receiver
-([fixtures/](fixtures/README.md)) and reference values from pyModeS, which are committed:
+([fixtures/](fixtures/README.md); there's an hour too, for the experiments, and to replay)
+and reference values from pyModeS, which are committed:
 Python is only needed to regenerate them ([tools/](tools/README.md)).
 
 ## Deployment

@@ -6,6 +6,7 @@ import { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
 import { StreamConnection } from '#lib/stream-connection.ts';
 import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
+import { CoverageStream } from './experimental/coverage/coverage-stream.svelte';
 import { RadarStream } from './experimental/radars/radar-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
 import { TrackerStream } from './tracker-stream.svelte';
@@ -30,6 +31,8 @@ export class Streams {
 	readonly alerts: AlertCenter;
 	/** The radar experiment (/experimental/radars): idle until that page is first opened. */
 	readonly radars: RadarStream;
+	/** The coverage experiment (/experimental/coverage): collects from the start, it's cheap. */
+	readonly coverage: CoverageStream;
 	#connection: StreamConnection;
 
 	/** `reference`: the receiver's position (RECEIVER_POSITION), if set. */
@@ -40,11 +43,13 @@ export class Streams {
 		this.weather = new WeatherStream(reference);
 		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
 		this.radars = new RadarStream(this.tracker);
+		this.coverage = new CoverageStream(this.tracker, reference);
 		this.#connection = new StreamConnection('/api/stream', [
 			this.stats,
 			this.tracker,
 			this.alerts, // after the tracker: reads what it made of the update
 			this.radars, // the same
+			this.coverage, // the same: reads the trails
 			this.frames,
 			this.commB,
 			this.weather

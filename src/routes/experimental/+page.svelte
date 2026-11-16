@@ -8,13 +8,11 @@
 	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
 
-	const radars = getStreams().radars;
+	const streams = getStreams();
+	const radars = streams.radars;
+	const coverage = streams.coverage;
 
 	const planned = [
-		{
-			name: 'Coverage',
-			text: 'How far this antenna hears in each direction and at each altitude, against the radio horizon; where terrain hides aircraft.'
-		},
 		{
 			name: 'GNSS interference',
 			text: 'Where aircraft lose their position integrity (NACp/NIC dropping to 0), as gpsjam.org maps from the same ADS-B fields.'
@@ -47,8 +45,9 @@
 			points at the aircraft.
 		</p>
 		<p class="mt-2 text-sm text-zinc-500">
-			Recording: four radars within 0–11 km of the mapped sites. Live: it piled up radars that were
-			nowhere, now held back by stricter checks.
+			Recordings: four radars within 0–11 km of the mapped sites in 10 minutes; nine in an hour,
+			each near a mapped radar site, none that wasn't there. A live run before the stricter checks
+			piled up radars that were nowhere.
 			{#if radars.started !== null}
 				<span class="text-zinc-400"
 					>Running in this tab: {radars.radars.length}
@@ -57,6 +56,24 @@
 			{:else}
 				<span class="text-zinc-400">Starts listening when you open it.</span>
 			{/if}
+		</p>
+	</a>
+	<a
+		href={resolve('/experimental/coverage')}
+		class="block rounded-lg border border-zinc-800 p-4 hover:border-zinc-600 hover:bg-zinc-900"
+	>
+		<h2 class="font-semibold text-zinc-100">Coverage</h2>
+		<p class="mt-1 text-sm text-zinc-300">
+			Where this antenna hears aircraft: in each direction, how low above the horizon and how far
+			out, against the radio horizon and the terrain's own skyline. Shows what the antenna's
+			surroundings hide.
+		</p>
+		<p class="mt-2 text-sm text-zinc-500">
+			An hour's recording: open from south to north through west down to 1–4°, out to 266 km; to the
+			east nothing below 12–18°, although aircraft fly there: the building behind the antenna.
+			<span class="text-zinc-400"
+				>Collecting in this tab: {coverage.positions.toLocaleString('en')} positions so far.</span
+			>
 		</p>
 	</a>
 	{#each planned as p (p.name)}

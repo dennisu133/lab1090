@@ -109,7 +109,7 @@ Visual only, no sound.
 Each one starts as a check on the capture. If it doesn't work there, it gets dropped and the
 reason written down here.
 
-- [ ] **Coverage**: furthest reception per bearing and altitude band, against the radio horizon
+- [x] **Coverage**: furthest reception per bearing and altitude band, against the radio horizon
       d ≈ 4.12 (√h_antenna + √h_aircraft) km (4/3-Earth refraction). Needs no antenna height:
       the aircraft term dominates (FL350 gives ~425 km, a 10 m antenna adds ~13 km), and the
       ground elevation at the receiver comes from the terrain tiles already loaded. Terrain
@@ -121,6 +121,33 @@ reason written down here.
       Earth's curvature; the farthest aircraft gave only 1–2 positions each; nothing at all
       between 50° and 170°, a shadow or just no traffic. Needs ~1 h of busy-time recording to
       tell; where tracks end (in cruise, flying away) could separate the two.
+  - [x] The distance mixes up two things: how high an aircraft flies and what's in the way.
+        The **elevation angle** (how far above the horizon it stood, seen from the antenna:
+        atan((h − h_antenna − d²/2R′) / d)) separates them, since a wall hides everything
+        below its own angle, near or far. On the capture: towards the west aircraft were heard
+        down to 2–3°, towards the north-east nothing below 14–20° (FL380 first heard 29 km
+        away).
+  - [x] An hour of busy traffic (`fixtures/capture-1h.beast`, 84 aircraft with positions):
+        **a shadow, not empty sky**. 170–350° is open down to 1.3–4.1°; the farthest is 266 km
+        at 214°, FL350, 62 % of its horizon. To the south-east (120–150°) aircraft flying
+        _towards_ the receiver at FL360–380 were first heard 33–60 km out (12–18° up), and
+        45–105° only above 15–18°; the north is half open (6–8°). Even where heard, the
+        blocked side gets ~0.4 of the 2 position messages a second through, the open side
+        ~1.5 (diffraction and reflections, not a clear path). The terrain rises 0.2° at most
+        in any direction: everything above that is the building. In open directions tracks
+        end at the weakest level decoded at that gain, while flying away: the signal limits
+        them there, not the horizon. One reflection or gap: a single aircraft at 105–110°,
+        heard at 121 km (4.4°) for 10 s.
+  - [x] Built (`src/lib/coverage/`, `/experimental/coverage`): a sky plot (direction around,
+        elevation from the horizon at the edge to overhead in the middle, on a square-root
+        scale so the low angles get room) with the lowest position heard per 5° sector, the
+        terrain's own skyline from the elevation tiles (zoom 11 out to 10 km, 8 beyond, to
+        150 km) and the positions as dots; a map with an outline per altitude band out to the
+        farthest position heard there and the FL350 radio horizon; a sector's numbers on tap.
+        "Open" = heard within 6° of the horizon (open directions bottom out at 1–5° where the
+        signal gives out; blocked ones here at 12–18°). Collects from the start on every page
+        (the tracker's trails, so a new tab starts with the server's 10 minutes, but only for
+        aircraft still in view). The hour through the tracker and coverage: ~5 s CPU.
 - [x] **Locating the radars**: a rotating secondary radar interrogates an aircraft when its beam
       points at it. Reply times (12 MHz Beast timestamps) of aircraft whose positions are known
       → rotation period and phase → the radar's position. Catch: Mode S lockout makes DF11
@@ -178,10 +205,23 @@ reason written down here.
       a ghost "SI 44 b" at SI 44's site; after it, only short-lived candidates.
     - Starts when the page is first opened (~2–4 s CPU per 10 min, more than all other
       views together), then runs on every page until the tab closes.
-  - [ ] An hour of live traffic on the new page: are the phantoms gone, and do the real
-        radars survive? If yes, back on the tracker map (a layer switch, off by default).
-  - [ ] Check on a longer recording: whether a period stays steady beyond 10 minutes (the
-        window), and whether the clusters separate with more aircraft.
+  - [x] An hour of busy traffic (`fixtures/capture-1h.beast`, run through the finder as the
+        page does): **no phantoms**. Nine radars confirmed, all with a mapped radar site
+        nearby (OpenStreetMap): SI 33 10 km, SI 17 14 km, SI 28 28 km from the sites above;
+        new ones: SI 26 4 km from a Bundeswehr radar tower (±6 km), II 1 11 km from a radar
+        tower in Czechia, II 14 23 km from one near Pardubice, II 1 b 22 km from DFS's
+        Schmooksberg radar, SI 12 34 km from HungaroControl's Kőris-hegy radar (593 km away,
+        at the grid's edge), SI 54 26–32 km from two near Poznań (1.2–1.5× its ellipse, the
+        weakest). SI 52, where the dev run piled up eight phantoms, came and went as a
+        candidate and was never confirmed. Confirmed radars stayed to the end; only SI 60
+        (no known site) dropped after 16 min. SI 44, the best in the capture, never showed: its
+        replies all but stopped (4–46 per 10 min against 895 in the capture's 10). CPU: ~44 s
+        an hour for the finder at this traffic, more than the capture suggested.
+  - [ ] Back on the tracker map (a layer switch, off by default): the hour says it holds.
+  - [x] Check on a longer recording: the periods stay steady beyond the 10-minute window
+        (SI 17 4.878 s, SI 28 3.958 s, SI 33 3.998 s, as three days earlier). A cluster
+        separates with more aircraft: II 1 became two radars, 4.948 s to the south and
+        5.000 s to the north-west. SI 60's didn't.
   - [ ] Maybe later: roll-call replies (DF4/5/20/21, most of the traffic) assigned to a
         radar by its predicted beam, for more bursts per turn.
 - [ ] **GNSS interference**: where aircraft lose position integrity. With a single receiver

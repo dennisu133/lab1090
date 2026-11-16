@@ -41,7 +41,7 @@
 	 * The map pages (the tracker, the radar experiment) fill the window below the navigation:
 	 * a map, no margins, no page scrolling.
 	 */
-	const FULL_SCREEN = ['/', '/experimental/radars'];
+	const FULL_SCREEN = ['/', '/experimental/radars', '/experimental/coverage'];
 	const fullScreen = $derived(FULL_SCREEN.includes(page.route.id ?? ''));
 
 	/**
