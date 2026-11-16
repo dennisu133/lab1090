@@ -77,119 +77,46 @@
 <PageTitle page="Comm-B registers" />
 
 <div class="space-y-6">
-	<header
-		class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-zinc-900 px-4 py-3 text-sm"
-	>
-		<div class="text-zinc-400">
-			<InfoTip label="What is a register?" wide>
+	<!-- Registers -->
+	<section>
+		<div class="mb-2 flex">
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Registers"
+				wide
+			>
 				<p>
-					A Mode S transponder holds up to 256 <strong>registers</strong> of 56 bits each, numbered
-					by their <strong>BDS</strong> code (Comm-B Data Selector), written as two hex digits:
-					<code>4,0</code> is register 0x40. The aircraft's computers keep them up to date: callsign,
-					selected altitude, speeds, heading, position.
+					A Mode S transponder holds up to 256 <strong>registers</strong> of 56 bits, numbered by
+					their <strong>BDS</strong> code: <code>4,0</code> is register 0x40.
+					<strong>Broadcast:</strong> ADS-B (DF17) sends a few on its own; the type code says which.
+					<strong>Interrogated:</strong> a radar asks for one, and the reply (DF20/21) carries it without
+					saying which. We only hear the replies, so the register has to be inferred:
 				</p>
-				<p>
-					<strong>Broadcast:</strong> ADS-B (DF17) is the aircraft sending a few registers on its own,
-					twice a second, to everyone. The type code says which: TC 19 is register 0,9.
-				</p>
-				<p>
-					<strong>Interrogated:</strong> a radar asks one aircraft for one register, and the reply (DF20/21)
-					carries its 56 bits in the MB field. The radar knows which register it asked for; the reply
-					doesn't say, so a receiver that only listens has to work it out.
-				</p>
-				<p class="text-zinc-400">
-					Not to be confused with a "Comm-B broadcast" (DR 4/5 on /frames): that's the aircraft
-					telling every radar it has a new message waiting. It's still read out by interrogation.
-				</p>
-			</InfoTip>
-		</div>
-		<div class="text-zinc-400">
-			<InfoTip label="How the register is inferred" wide>
-				<ol class="list-decimal space-y-2 pl-5">
+				<ol class="list-decimal space-y-1 pl-5">
 					<li>
-						<strong>By pattern.</strong> 1,0, 2,0 and 3,0 start with their own number (0x10, 0x20, 0x30);
-						1,7 always ends in 32 zero bits. If one fits, that's it.
+						<strong>By pattern:</strong> 1,0, 2,0 and 3,0 start with their own number, 1,7 ends in 32
+						zero bits.
 					</li>
 					<li>
-						<strong>By elimination.</strong> Most registers put a status bit before each value: 0 means
-						"no data", so the value bits must then be zero. Reserved bits must be zero, and values must
-						be possible (no 900 kt airliners). Often only one register survives.
+						<strong>By elimination:</strong> status bits, reserved bits and impossible values rule registers
+						out.
 					</li>
 					<li>
-						<strong>By ADS-B.</strong> If several survive (5,0 and 6,0 often do), each reading is compared
-						with what the same aircraft broadcast: ground speed, track, heading, airspeed. The one that
-						agrees wins.
+						<strong>By ADS-B:</strong> if several remain, the one that agrees with what the aircraft broadcast
+						wins.
 					</li>
 				</ol>
 				<p>
-					Some registers have no structure to speak of: 5,1/5,2 (position reports) and ADS-B
-					registers a radar reads via Comm-B (0,5, 0,6, 0,8, 0,9, 6,1, 6,2, 6,5). They only count if
-					ADS-B confirms them: same position, same altitude, or simply the same 56 bits.
-				</p>
-				<p>
-					A few registers are hardly ever asked for: 4,4 and 4,5 (weather reports), 5,3 (speeds
-					through the air) and 2,1 (the registration, e.g. D-AIZA). With enough random bits, one of
-					them fits now and then by chance, so they are a last resort: only considered when no other
-					register fits, and never if ADS-B disagrees.
-				</p>
-				<p>
-					2,1 needs a second opinion too, from the address: ICAO gives each country a block of
-					addresses, so 3C6586 is German, and a German registration starts with D. Seven random
-					letters rarely start with the right one.
-				</p>
-				<p>
-					The checks for 1,0–6,0, 4,4 and 4,5 are pyModeS's (and tested against it); 5,3 and 2,1
-					follow ICAO Doc 9871. 5,1 and 5,2 aren't in any public spec; their layout was worked out
-					from this receiver's own data.
-				</p>
-				<p class="text-zinc-400">
-					Hover a register in the feed for its reasoning: what fitted, and why everything else was
-					ruled out.
+					Which ones radars read is set by EU regulation 1207/2011:
+					<strong>Elementary Surveillance</strong> 1,0, 1,7 and 2,0 for every IFR flight (3,0 during
+					an ACAS advisory);
+					<strong>Enhanced Surveillance</strong> adds 4,0, 5,0 and 6,0 for aircraft over 5,700 kg or faster
+					than 250 kt. Rarely asked ones (4,4, 4,5, 5,3, 2,1) are a last resort: random bits fit them
+					by chance now and then.
 				</p>
 			</InfoTip>
 		</div>
-		<div class="text-zinc-400">
-			<InfoTip label="Which registers radars read" wide align="right">
-				<p>
-					Not just any: European rules (EU regulation 1207/2011) say which registers the radars
-					read, and which aircraft must provide them.
-				</p>
-				<p>
-					<strong>Elementary Surveillance (ELS)</strong>, for every flight under instrument rules:
-					1,0 and 1,7 (what the transponder can do), 2,0 (callsign), and 3,0 when ACAS issues a
-					resolution advisory.
-				</p>
-				<p>
-					<strong>Enhanced Surveillance (EHS)</strong>, for aircraft over 5,700 kg or faster than
-					250 kt, adds the "downlinked aircraft parameters": 4,0 (selected altitude), 5,0 (track,
-					speeds, roll) and 6,0 (heading, airspeed, Mach, vertical rate). That's why these three
-					dominate the table above. The Aircraft table shows them per aircraft.
-				</p>
-				<p>
-					<strong>How a radar asks:</strong> its interrogation, on 1030 MHz, names the register in its
-					RR field (and a subfield for the second digit). The aircraft answers on 1090 MHz. This receiver
-					only listens on 1090 MHz: it hears every answer but none of the questions, hence the inference.
-				</p>
-				<p>
-					That's <strong>ground-initiated Comm-B</strong> (GICB), and all you see here. An aircraft can
-					also start a conversation: it sets DR in its replies (see /frames) to say it has a message,
-					for example a new resolution advisory, and the radar then reads it out the same way (air-initiated
-					Comm-B).
-				</p>
-				<p class="text-zinc-400">
-					The rest: some radars also read the ADS-B registers (0,5, 0,9, …), probably to check them
-					against their own measurement. 5,1/5,2 aren't in any public spec. The weather registers
-					(4,4, 4,5) are only asked for by a few radars that feed weather services.
-				</p>
-			</InfoTip>
-		</div>
-	</header>
-
-	<!-- Registers -->
-	<section>
-		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">
-			Registers since the app opened
-		</h2>
 		<!-- Fixed layout: only Register takes the remaining width, so changing counts never move
 		     the columns. Widths go on <col>: the header's colspan cells can't carry them. -->
 		<div class="overflow-x-auto lg:overflow-visible">
@@ -280,7 +207,7 @@
 		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
 		     so new readings never shift the columns; Content gets the rest and wraps. -->
 		<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
-		     off the header tooltips when the table is shorter than they are. -->
+		     off the header tooltips. -->
 		<div class="overflow-x-auto lg:overflow-visible">
 			<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<thead class="text-left text-xs text-zinc-500">
@@ -292,19 +219,9 @@
 						<th class="w-36 py-1 font-normal">
 							<InfoTip label="MB">
 								<p>
-									The 56 register bits as hex: the <strong>MB</strong> field of a DF20/21 reply. For
-									broadcasts it's the <strong>ME</strong> field of DF17: the same register, sent unasked.
-								</p>
-								<p>
-									Hover for the bits in binary, numbered like the spec tables (bit 1 first), to
-									check the reasoning in the BDS column yourself.
-								</p>
-								<p>
-									<span class="font-semibold text-zinc-100">Highlighted</span>: what gave a register
-									away by pattern. 1,0, 2,0 and 3,0 start with their own number (<span
-										class="font-mono">10</span
-									>, <span class="font-mono">20</span>, <span class="font-mono">30</span>); 1,7 ends
-									in 32 zero bits (<span class="font-mono">00000000</span>).
+									The 56 register bits: MB of DF20/21, ME of DF17.
+									<span class="font-semibold text-zinc-100">Highlighted</span>: what gave the
+									register away by pattern. Hover for the bits in binary.
 								</p>
 							</InfoTip>
 						</th>
@@ -312,22 +229,11 @@
 						<th class="w-56 py-1 font-normal xl:w-72">
 							<InfoTip label="vs ADS-B" align="right">
 								<p>
-									The Comm-B reading next to what the same aircraft broadcast via ADS-B (at most 30
-									s earlier): <span class="text-zinc-300">✓</span> agrees within the allowed
-									difference,
-									<span class="text-orange-400">✗</span> doesn't. Hover for both values.
-								</p>
-								<p>
-									Some differences are expected. Heading (6,0) is where the nose points, relative to
-									magnetic north; ADS-B gives the track over the ground, relative to true north.
-									Wind and the magnetic declination both add up, so up to 30° is allowed.
-								</p>
-								<p>
-									Mach is checked against the reply itself: indicated airspeed and pressure altitude
-									fix the Mach number, whatever the temperature.
-								</p>
-								<p class="text-zinc-400">
-									Replies whose address can't be verified (unknown on /frames) are not compared.
+									The reading against what the same aircraft broadcast (≤ 30 s earlier):
+									<span class="text-zinc-300">✓</span> agrees,
+									<span class="text-orange-400">✗</span>
+									doesn't. Heading (magnetic, the nose) may differ from track (true, over the ground)
+									by up to 30°. Mach is checked against the reply's own airspeed and altitude.
 								</p>
 							</InfoTip>
 						</th>

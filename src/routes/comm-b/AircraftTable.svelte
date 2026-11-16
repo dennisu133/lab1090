@@ -75,17 +75,9 @@
 			wide
 		>
 			<p>
-				Every aircraft whose Comm-B replies we can verify (a <strong>known</strong> address on
-				/frames), heard in the last {AIRCRAFT_TTL_MS / 1000} s. Sorted by address, so rows stay put.
-			</p>
-			<p>
-				The middle columns are the three <strong>Enhanced Surveillance</strong> registers: the
-				latest reading of each. Together they tell a controller what the aircraft is <em>about</em>
-				to do, which the radar's own track only shows later. A reading older than {STALE_MS / 1000} s
-				is dimmed: no radar has asked for it since.
-			</p>
-			<p class="text-zinc-400">
-				Click a row to show only that aircraft's readings below. Hover any value for what it means.
+				Aircraft whose Comm-B replies can be verified, heard in the last {AIRCRAFT_TTL_MS / 1000} s. The
+				middle columns are the latest <strong>Enhanced Surveillance</strong> readings, dimmed after {STALE_MS /
+					1000} s without a new one.
 			</p>
 		</InfoTip>
 	</div>
@@ -114,59 +106,34 @@
 					<th class="py-1 font-normal">
 						<InfoTip label="4,0 Intention">
 							<p>
-								<strong>Selected vertical intention</strong>: the altitude the crew dialled in on
-								the autopilot panel (MCP/FCU), the one the flight management computer (FMS) plans,
-								the altimeter setting and the autopilot modes.
-							</p>
-							<p>
-								Why controllers want it: if the crew set a different level than they were cleared
-								to, it shows up here before the aircraft gets there. Catching these "level busts"
-								early is one of the main reasons Europe made Enhanced Surveillance mandatory.
+								The altitude set on the autopilot panel (MCP/FCU) or planned by the FMS, the
+								altimeter setting and the autopilot modes. Shows a level bust before it happens.
 							</p>
 						</InfoTip>
 					</th>
 					<th class="py-1 font-normal">
 						<InfoTip label="5,0 Track and turn">
 							<p>
-								<strong>Track and turn report</strong>: the path over the ground (track, ground
-								speed), the speed through the air (true airspeed), and how the aircraft is turning:
-								the bank (roll) angle and how fast the track changes.
-							</p>
-							<p>
-								A radar needs several sweeps to notice a turn in its track. The roll angle shows it
-								the moment the pilot banks.
+								Track, ground speed, true airspeed, roll angle and track rate. A turn shows the
+								moment the pilot banks, sweeps before the radar's own track does.
 							</p>
 						</InfoTip>
 					</th>
 					<th class="py-1 font-normal">
 						<InfoTip label="6,0 Heading and speed" align="right">
 							<p>
-								<strong>Heading and speed report</strong>: where the nose points (magnetic heading),
-								the indicated airspeed the pilots fly by, the Mach number, and the vertical rate.
-							</p>
-							<p>
-								Heading is not track: the wind pushes the aircraft sideways, so the nose points a
-								few degrees off the path over the ground. Controllers give headings ("turn left
-								heading 270"), so this is the value they check.
+								Magnetic heading (where the nose points, not the track: the wind pushes it
+								sideways), indicated airspeed, Mach and vertical rate.
 							</p>
 						</InfoTip>
 					</th>
 					<th class="w-52 py-1 font-normal xl:w-80">
 						<InfoTip label="Registers" align="right">
 							<p>
-								Every register a radar read from this aircraft, plus the ones it says it has.
-								Register
-								<strong>1,7</strong> (the GICB capability report) is the transponder's own list: one bit
-								per register a radar can read.
-							</p>
-							<p>
-								<span class={STATUS.read.color}>Bright</span>: read.
-								<span class={STATUS['not read'].color}>Dark</span>: in 1,7's list, not read here.
-								<span class={STATUS['not listed'].color}>Orange</span>: read, but not in 1,7's list.
-							</p>
-							<p class="text-zinc-400">
-								1,7 has no bit for 1,0, 1,7 and 3,0, so those are never orange. Until a radar reads
-								1,7, only the read registers are shown.
+								What radars read, against <strong>1,7</strong>, the transponder's own list of what
+								it has. <span class={STATUS.read.color}>Bright</span>: read.
+								<span class={STATUS['not read'].color}>Dark</span>: listed, not read.
+								<span class={STATUS['not listed'].color}>Orange</span>: read, not listed.
 							</p>
 						</InfoTip>
 					</th>
