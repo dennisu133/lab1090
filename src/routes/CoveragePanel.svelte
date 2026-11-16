@@ -85,39 +85,18 @@
 	>
 </header>
 
-<div class="space-y-3 px-4 pb-3 text-sm text-zinc-300">
-	<p>
-		Where this antenna hears aircraft. Distance alone mixes up two things: how high the aircraft
-		flies and what stands in the way. So the plot shows each position by its <em>elevation angle</em
-		>: how far above the horizon it stood, seen from the antenna. A wall or a hill hides everything
-		below its own angle, near or far. Over open, flat land the lowest aircraft heard sit just above
-		the horizon.
-	</p>
-	<p class="text-zinc-400">
-		Collected here in the browser since the page opened. It fills as aircraft fly by: a direction
-		stays empty until one has flown there, so empty can mean blocked or just no traffic yet. An hour
-		of busy traffic tells them apart. Kept in this tab only: an antenna moved since an earlier
-		session would make old coverage wrong.
-	</p>
-</div>
+<p class="px-4 pb-3 text-sm text-zinc-300">
+	Where this antenna hears aircraft. Distance mixes up how high they fly with what's in the way, so
+	the plot uses the <em>elevation angle</em>: how far above the horizon each one stood, seen from
+	the antenna. A wall or a hill hides everything below its own angle, near or far.
+</p>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="On the map"
-	>
-		<p>
-			Shown while this panel is open, and always with Coverage switched on under Layers. Each
-			outline joins, per {SECTOR_DEG}° direction, the farthest position heard in its band, drawn on
-			the direction's middle bearing: a clean star rather than a scribble. A direction with nothing
-			in the band pulls the line back to the receiver.
-		</p>
-	</InfoTip>
+	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">On the map</h3>
 	<ul class="space-y-1">
 		<li>
-			<span class="font-medium text-zinc-100">Outlines</span>: how far it hears, one per altitude
-			band:
+			<span class="font-medium text-zinc-100">Outlines</span>: the farthest position per {SECTOR_DEG}°
+			direction, one per altitude band:
 			{#each BANDS as band, i (band.name)}<span
 					class="whitespace-nowrap"
 					style:color={altitudeCss(BAND_COLOUR_FT[i])}>{band.name}</span
@@ -150,9 +129,8 @@
 			off, under 0.1° beyond 50 km.
 		</p>
 		<p>
-			Light: the sky aircraft were heard in, per {SECTOR_DEG}° sector from overhead down to the
-			lowest one. Dashed amber: the terrain's own skyline (bare ground from elevation tiles, no
-			buildings). Dots: positions, one per aircraft per 10 s, coloured by altitude like the tracker.
+			Light: where aircraft were heard, down to the lowest per sector. Dashed amber: the bare land's
+			skyline, no buildings. Dots: positions, coloured by altitude.
 		</p>
 	</InfoTip>
 	<SkyPlot
@@ -200,19 +178,13 @@
 						</dt>
 						<dd>{deg(terrain)}</dd>
 					{/if}
-					<dt>
-						<InfoTip label="Traffic">
-							<p>Positions in this sector, and how many aircraft they came from.</p>
-						</InfoTip>
-					</dt>
+					<dt>Traffic</dt>
 					<dd>{sector.positions.toLocaleString('en')} from {sector.aircraft} aircraft</dd>
 				</dl>
 				<h5 class="mt-3 mb-1 text-xs text-zinc-500 uppercase">
 					<InfoTip label="Farthest per altitude band">
 						<p>
-							The farthest position in each band, and that distance as a share of the radio horizon
-							for its altitude: how far a line of sight reaches over a smooth Earth. Far short of it
-							with nothing in the way: the signal gives out first.
+							The farthest position in each band, as a share of the radio horizon at its altitude.
 						</p>
 					</InfoTip>
 				</h5>

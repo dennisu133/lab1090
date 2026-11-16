@@ -7,7 +7,6 @@
 	message is open, the list holds still (like /frames when scrolled into), so it can be read.
 -->
 <script lang="ts">
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import type { Message } from './tracker-stream.svelte.ts';
 
 	let { messages }: { messages: Message[] } = $props();
@@ -31,14 +30,7 @@
 </script>
 
 <section class="border-t border-zinc-800 px-4 py-3">
-	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-		<InfoTip label="Live messages">
-			<p>
-				The latest {messages.length} messages from this aircraft, newest first: ADS-B broadcasts (DF17),
-				all-call replies (DF11), and replies to radars (DF0/4/5/16/20/21) whose address could be verified.
-			</p>
-		</InfoTip>
-	</h3>
+	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">Live messages</h3>
 	{#if frozen}
 		<p class="mb-2 text-xs text-amber-300">
 			Paused while a message is open{waiting ? ` · ${waiting} new` : ''}
