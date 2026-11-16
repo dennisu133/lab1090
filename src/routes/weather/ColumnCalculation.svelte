@@ -34,7 +34,7 @@
 	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
 		<InfoTip
 			heading="h3"
-			class="font-semibold"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
 			label="The column below {flightLevel(layer.level)}"
 			wide
 		>

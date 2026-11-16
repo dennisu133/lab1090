@@ -36,9 +36,15 @@
 	const y = (north: number) => C - north * scale;
 </script>
 
+<!-- Until the first turn there's nothing to plot: the card is just its title line. -->
 <div class="rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip heading="h3" class="font-semibold" label="Winds from turns" wide>
+	<div class={[latest && 'mb-3', 'flex flex-wrap items-baseline gap-x-3 gap-y-1']}>
+		<InfoTip
+			heading="h3"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+			label="Winds from turns"
+			wide
+		>
 			<p>
 				An aircraft turning at a steady airspeed sweeps its air vector (TAS along the heading)
 				around a circle. Its ground vector, which ADS-B broadcasts twice a second, is that plus the
@@ -62,31 +68,31 @@
 		</span>
 	</div>
 
-	<div class="grid gap-4 sm:grid-cols-[minmax(0,240px)_1fr]">
-		<svg
-			viewBox="0 0 {SIZE} {SIZE}"
-			class="h-auto w-full rounded bg-zinc-950"
-			role="img"
-			aria-label="The latest turn's ground vectors from one point, with the fitted circle and the wind at its centre"
-		>
-			<defs>
-				<marker
-					id="turn-arrow"
-					viewBox="0 0 6 6"
-					refX="5"
-					refY="3"
-					markerWidth="5"
-					markerHeight="5"
-					orient="auto"
-				>
-					<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
-				</marker>
-			</defs>
-			<line x1={C} y1="0" x2={C} y2={SIZE} class="stroke-zinc-800" />
-			<line x1="0" y1={C} x2={SIZE} y2={C} class="stroke-zinc-800" />
-			<text x={C + 3} y="10" class="fill-zinc-600 text-[9px]">north, kt</text>
-			{#if latest}
-				{@const w = latest.wind.vector}
+	{#if latest}
+		{@const w = latest.wind.vector}
+		<div class="grid gap-4 sm:grid-cols-[minmax(0,240px)_1fr]">
+			<svg
+				viewBox="0 0 {SIZE} {SIZE}"
+				class="h-auto w-full rounded bg-zinc-950"
+				role="img"
+				aria-label="The latest turn's ground vectors from one point, with the fitted circle and the wind at its centre"
+			>
+				<defs>
+					<marker
+						id="turn-arrow"
+						viewBox="0 0 6 6"
+						refX="5"
+						refY="3"
+						markerWidth="5"
+						markerHeight="5"
+						orient="auto"
+					>
+						<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
+					</marker>
+				</defs>
+				<line x1={C} y1="0" x2={C} y2={SIZE} class="stroke-zinc-800" />
+				<line x1="0" y1={C} x2={SIZE} y2={C} class="stroke-zinc-800" />
+				<text x={C + 3} y="10" class="fill-zinc-600 text-[9px]">north, kt</text>
 				<circle
 					cx={x(w.east)}
 					cy={y(w.north)}
@@ -107,15 +113,9 @@
 					marker-end="url(#turn-arrow)"
 				/>
 				<circle cx={C} cy={C} r="2.5" class="fill-zinc-300" />
-			{:else}
-				<text x={C} y={C + 24} text-anchor="middle" class="fill-zinc-500 text-[11px]">
-					waiting for a turn
-				</text>
-			{/if}
-		</svg>
+			</svg>
 
-		<div class="space-y-2 text-sm">
-			{#if latest}
+			<div class="space-y-2 text-sm">
 				<p>
 					<span class="font-mono text-amber-300">{latest.icao}</span>
 					<span class="text-zinc-500">{callsigns.get(latest.icao) ?? ''}</span>
@@ -133,26 +133,27 @@
 					{latest.points.length} ground vectors, {latest.residual.toFixed(1)} kt rms off the fitted curve
 					(ADS-B sends whole knots).
 				</p>
-			{/if}
-			{#if turns.length > 1}
-				<table class="w-full table-fixed text-xs tabular-nums">
-					<tbody>
-						{#each turns.slice(-6, -1).reverse() as t (t.end + t.icao)}
-							<tr class="h-6 border-t border-zinc-800">
-								<td class="w-16 font-mono text-amber-300">{t.icao}</td>
-								<td class="w-16 text-zinc-400">{flightLevel(Math.round(t.altitude / 100) * 100)}</td
-								>
-								<td class="font-mono text-emerald-300">{windText(t.wind)}</td>
-								<td class="w-12 text-zinc-500">{Math.abs(t.arc).toFixed(0)}°</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
-			<p class="text-xs text-zinc-500">
-				Winds from turns join the layers like any other, and the heading checks use them as a
-				reference: they can't share a compass error.
-			</p>
+				{#if turns.length > 1}
+					<table class="w-full table-fixed text-xs tabular-nums">
+						<tbody>
+							{#each turns.slice(-6, -1).reverse() as t (t.end + t.icao)}
+								<tr class="h-6 border-t border-zinc-800">
+									<td class="w-16 font-mono text-amber-300">{t.icao}</td>
+									<td class="w-16 text-zinc-400"
+										>{flightLevel(Math.round(t.altitude / 100) * 100)}</td
+									>
+									<td class="font-mono text-emerald-300">{windText(t.wind)}</td>
+									<td class="w-12 text-zinc-500">{Math.abs(t.arc).toFixed(0)}°</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+				<p class="text-xs text-zinc-500">
+					Winds from turns join the layers like any other, and the heading checks use them as a
+					reference: they can't share a compass error.
+				</p>
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>

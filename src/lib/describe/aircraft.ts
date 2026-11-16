@@ -37,12 +37,16 @@ export type PanelField = Omit<Field, 'title'> & {
 	label: string;
 	/** The explanation; none for values that explain themselves (Route, Messages, …). */
 	title?: string;
+	/** A few plain words after the value, dimmed: what a code stands for ("1000 · conspicuity code"). */
+	note?: string;
 	/** Every possible value, the one sent marked: a table under the explanation. */
 	choices?: { key: string; text: string; current: boolean }[];
 };
 
 export interface Section {
 	title: string;
+	/** Where the values come from when we didn't decode them ourselves: "adsbdb". */
+	source?: string;
 	fields: PanelField[];
 	/** An alert's section: its colour. */
 	tier?: Tier;
@@ -261,9 +265,11 @@ export function aircraftSections(
 		const special = SPECIAL_SQUAWKS[a.squawk.value];
 		identity.push({
 			label: 'Squawk',
-			value: special ? `${a.squawk.value} · ${special.meaning}` : a.squawk.value,
+			value: a.squawk.value,
+			note: special?.meaning,
 			title:
 				'The Mode A code ATC assigns, four octal digits (0–7), so the radar can tell flights apart. A few have a fixed meaning: 7500 hijack, 7600 radio failure, 7700 emergency.' +
+				(special?.detail ? ` ${a.squawk.value}: ${special.detail}.` : '') +
 				source(a.squawk, now),
 			tone: special?.emergency ? 'alert' : 'main',
 			mono: true
@@ -273,7 +279,10 @@ export function aircraftSections(
 	add('Identity', identity);
 	const route = trip && routeSection(a, trip, judged, unit);
 	if (route) sections.push(route);
-	if (db) add('Airframe (adsbdb)', airframeFields(a, db));
+	if (db) {
+		const fields = airframeFields(a, db);
+		if (fields.length) sections.push({ title: 'Airframe', source: 'adsbdb', fields });
+	}
 
 	// --- position ------------------------------------------------------------------------
 	const position: Section['fields'] = [];

@@ -1,5 +1,5 @@
 /**
- * The tracker panel's "Route (adsbdb)" section: where the flight goes, who flies it, what
+ * The tracker panel's "Route · adsbdb" section: where the flight goes, who flies it, what
  * it's called on the radio, and whether the route fits what the aircraft does
  * (lib/tracker/route.ts). Everything here comes from a database, looked up by the callsign
  * (lib/aircraft-db.ts), not from the radio: the section's title says so, and the Check
@@ -218,5 +218,5 @@ export function routeSection(
 		fields.push(checkField(c, unit));
 	}
 	if (flight.airline) fields.push(...airlineFields(callsign, flight.airline));
-	return { title: r ? 'Route (adsbdb)' : 'Airline (adsbdb)', fields };
+	return { title: r ? 'Route' : 'Airline', source: 'adsbdb', fields };
 }

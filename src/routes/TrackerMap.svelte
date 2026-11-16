@@ -49,6 +49,7 @@
 </script>
 
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import * as maplibregl from 'maplibre-gl';
 	import type { GeoJSONSource, LngLatLike, MapMouseEvent } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -1092,8 +1093,8 @@
 				<button
 					type="button"
 					onclick={() => (picked = null)}
-					class="-mt-0.5 -mr-1 rounded px-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-					aria-label="Close">✕</button
+					class="-mt-1 -mr-1.5 grid size-7 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					aria-label="Close"><CloseIcon /></button
 				>
 			</div>
 			<p class="mt-1">

@@ -1,7 +1,7 @@
 /**
  * The airport panel's text (routes/AirportPanel.svelte): the codes, the elevation and where
  * it lies from the receiver. Map data (lib/map/airports.ts), not decoded, so the section says
- * where it's from, like "Airframe (adsbdb)".
+ * where it's from (`source`), like the airframe's "adsbdb".
  */
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import type { Airport } from '#lib/map/airports.ts';
@@ -48,5 +48,5 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 		value: `${distanceText(distanceKm(receiver, a), unit)} ${compass(b)} (${deg(b)})`,
 		tone: 'main'
 	});
-	return [{ title: 'Airport (OpenStreetMap)', fields }];
+	return [{ title: 'Airport', source: 'OpenStreetMap', fields }];
 }

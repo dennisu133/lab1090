@@ -134,7 +134,12 @@
 	<!-- Summary. Fixed heights: nothing below jumps as the values change. -->
 	<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-400" label="Tropopause" wide>
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Tropopause"
+				wide
+			>
 				<p>
 					The top of the weather. Below it (the troposphere) the air is warmed from the ground and
 					cools with height, about 6.5 K per km; above it (the stratosphere) the temperature stops
@@ -167,7 +172,12 @@
 		</div>
 
 		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-400" label="Strongest wind" wide>
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Strongest wind"
+				wide
+			>
 				<p>
 					The layer with the fastest mean wind. A <strong>jet stream</strong> is a narrow band of
 					fast wind, at least 30 m/s ({Math.round(JET_KT)} kt) by the WMO's definition, usually just below
@@ -198,7 +208,11 @@
 		</div>
 
 		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-400" label="Sea-level pressure">
+			<InfoTip
+				heading="h2"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Sea-level pressure"
+			>
 				<p>
 					QNH: the pressure the pilots near the ground set on their altimeters. More on it below,
 					under the column calculation.
@@ -215,7 +229,7 @@
 		<div class="h-36 rounded-lg bg-zinc-900 p-4">
 			<InfoTip
 				heading="h2"
-				class="text-sm font-semibold text-zinc-400"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
 				label="Air column"
 				align="right"
 			>
@@ -241,7 +255,11 @@
 	<!-- The three profiles share the altitude axis. -->
 	<section class="grid gap-4 lg:grid-cols-3">
 		<div class="rounded-lg bg-zinc-900 p-4">
-			<InfoTip heading="h2" class="mb-2 text-sm font-semibold text-zinc-400" label="Temperature">
+			<InfoTip
+				heading="h2"
+				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Temperature"
+			>
 				<p>
 					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
 					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
@@ -289,7 +307,11 @@
 			</div>
 		</div>
 		<div class="rounded-lg bg-zinc-900 p-4">
-			<InfoTip heading="h2" class="mb-2 text-sm font-semibold text-zinc-400" label="Wind">
+			<InfoTip
+				heading="h2"
+				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Wind"
+			>
 				<p>
 					Each layer's mean wind speed, with an arrow pointing where the air goes (up is north: an
 					arrow to the right is a westerly). The dashed line is jet stream strength. Hollow: fewer
@@ -301,7 +323,7 @@
 		<div class="rounded-lg bg-zinc-900 p-4">
 			<InfoTip
 				heading="h2"
-				class="mb-2 text-sm font-semibold text-zinc-400"
+				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
 				label="Height − pressure altitude"
 				align="right"
 			>

@@ -41,7 +41,12 @@
 
 <div class="rounded-lg bg-zinc-900 p-4">
 	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip heading="h3" class="font-semibold" label="Heading checks" wide>
+		<InfoTip
+			heading="h3"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+			label="Heading checks"
+			wide
+		>
 			<p>
 				A wind is ground vector − air vector, and the air vector points along the aircraft's
 				<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. A

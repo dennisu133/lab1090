@@ -59,7 +59,7 @@
 			child ? 'border-zinc-800/50' : 'border-zinc-800',
 			selected === row.key ? 'bg-sky-950/60' : child && 'bg-zinc-900/50',
 			onselect && 'cursor-pointer hover:bg-zinc-800/60',
-			row.count === 0 && 'text-zinc-500'
+			row.count === 0 && 'text-zinc-400'
 		]}
 		onclick={() => onselect?.(row.key)}
 	>

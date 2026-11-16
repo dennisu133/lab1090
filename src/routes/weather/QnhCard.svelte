@@ -17,7 +17,12 @@
 
 <div class="rounded-lg bg-zinc-900 p-4">
 	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip heading="h3" class="font-semibold" label="Sea-level pressure (QNH)" wide>
+		<InfoTip
+			heading="h3"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+			label="Sea-level pressure (QNH)"
+			wide
+		>
 			<p>
 				Below the <strong>transition altitude</strong> (5,000 ft over most of Germany) pilots set
 				their altimeters to the <strong>QNH</strong>, the airfield's pressure reduced to sea level,

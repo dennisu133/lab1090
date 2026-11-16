@@ -130,7 +130,7 @@
 			>
 		{/each}
 	{/snippet}
-	<AlertBanner />
+	<AlertBanner floating={fullScreen} />
 	{#if WIDE_ONLY.some(within)}
 		<p
 			class="border-b border-amber-900/50 bg-amber-950/40 px-6 py-2 text-sm text-amber-200 lg:hidden"

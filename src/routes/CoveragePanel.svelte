@@ -5,6 +5,7 @@
 	and how to read the outlines on the map, which show while it's open.
 -->
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, distanceText } from '#lib/describe/aircraft.ts';
 	import {
@@ -80,8 +81,8 @@
 	<button
 		type="button"
 		onclick={onclose}
-		class="rounded px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft">✕</button
+		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+		aria-label="Close and show all aircraft"><CloseIcon /></button
 	>
 </header>
 
@@ -150,9 +151,9 @@
 				</h4>
 				<button
 					type="button"
-					class="text-zinc-500 hover:text-zinc-200"
+					class="-my-1 -mr-1.5 grid size-7 shrink-0 place-items-center self-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
 					aria-label="Close the sector"
-					onclick={() => onselect(null)}>✕</button
+					onclick={() => onselect(null)}><CloseIcon /></button
 				>
 			</div>
 			{#if sector.lowest}

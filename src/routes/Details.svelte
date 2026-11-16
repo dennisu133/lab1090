@@ -3,6 +3,11 @@
 	InfoTip: tappable on phones, where `title` tooltips never show. A blank line in it starts a
 	new paragraph; `choices` (e.g. every emitter category) follow as a table, the one sent
 	highlighted. Labels of self-explanatory values (Route, Messages) are plain text.
+
+	The label column has one width in every section, so the values line up down the whole
+	panel (sized to its content, "Selected altitude" pushed one section's values to the right).
+	A section's source (adsbdb, OpenStreetMap) follows its title in its own spelling, not in
+	the title's capitals.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
@@ -25,8 +30,12 @@
 			]}
 		>
 			{section.title}
+			{#if section.source}
+				<span class="font-normal tracking-normal text-zinc-500 normal-case">· {section.source}</span
+				>
+			{/if}
 		</h3>
-		<dl class="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-1.5 text-sm">
+		<dl class="grid grid-cols-[8.75rem_1fr] gap-x-3 gap-y-1.5 text-sm">
 			{#each section.fields as field (field.label)}
 				<dt class="text-zinc-400">
 					{#if field.title || field.choices}
@@ -55,13 +64,18 @@
 						field.tone === 'main' && 'text-zinc-100',
 						field.tone === 'minor' && 'text-zinc-400',
 						field.tone === 'alert' && 'text-orange-400',
-						field.mono && 'font-mono'
+						!field.note && field.mono && 'font-mono'
 					]}
 				>
 					{#if field.flag?.country}
 						<span class="mr-1"><Flag {...field.flag} /></span>
 					{/if}
-					{field.value}
+					{#if field.note}
+						<span class={{ 'font-mono': field.mono }}>{field.value}</span>
+						<span class="text-zinc-400">· {field.note}</span>
+					{:else}
+						{field.value}
+					{/if}
 				</dd>
 			{/each}
 		</dl>

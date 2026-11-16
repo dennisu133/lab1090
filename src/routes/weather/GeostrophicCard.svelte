@@ -98,9 +98,15 @@
 	});
 </script>
 
+<!-- Without a level flight there's nothing to plot: the card is its title and what it needs. -->
 <div class="rounded-lg bg-zinc-900 p-4">
 	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip heading="h3" class="font-semibold" label="Geostrophic wind" wide>
+		<InfoTip
+			heading="h3"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+			label="Geostrophic wind"
+			wide
+		>
 			<p>
 				The wind that the <strong>slope of the pressure surfaces</strong> calls for, measured with GNSS
 				− baro alone: no heading, no airspeed, no radar questions.
@@ -131,96 +137,100 @@
 		{/if}
 	</div>
 
-	<div class="grid gap-4 sm:grid-cols-[minmax(0,300px)_1fr]">
-		<svg
-			viewBox="0 0 {SIZE} {SIZE}"
-			class="h-auto w-full rounded bg-zinc-950"
-			role="img"
-			aria-label="Level flights around the receiver, coloured by the height of their pressure level, with the fitted height contours"
-		>
-			<defs>
-				<clipPath id="geo-clip"><rect width={SIZE} height={SIZE} /></clipPath>
-				<marker
-					id="geo-arrow"
-					viewBox="0 0 6 6"
-					refX="5"
-					refY="3"
-					markerWidth="5"
-					markerHeight="5"
-					orient="auto"
-				>
-					<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
-				</marker>
-			</defs>
-			{#each [radius / 2, radius] as r (r)}
-				<circle cx={C} cy={C} r={r * scale} class="fill-none stroke-zinc-800" />
-				<text x={C + 3} y={C - r * scale + 11} class="fill-zinc-600 text-[9px]">{r} km</text>
-			{/each}
-			<text x={C} y="10" text-anchor="middle" class="fill-zinc-500 text-[9px]">N</text>
+	{#if points.length === 0 && !geo.found}
+		<p class="text-sm text-zinc-400">{geo.reason}</p>
+	{:else}
+		<div class="grid gap-4 sm:grid-cols-[minmax(0,300px)_1fr]">
+			<svg
+				viewBox="0 0 {SIZE} {SIZE}"
+				class="h-auto w-full rounded bg-zinc-950"
+				role="img"
+				aria-label="Level flights around the receiver, coloured by the height of their pressure level, with the fitted height contours"
+			>
+				<defs>
+					<clipPath id="geo-clip"><rect width={SIZE} height={SIZE} /></clipPath>
+					<marker
+						id="geo-arrow"
+						viewBox="0 0 6 6"
+						refX="5"
+						refY="3"
+						markerWidth="5"
+						markerHeight="5"
+						orient="auto"
+					>
+						<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
+					</marker>
+				</defs>
+				{#each [radius / 2, radius] as r (r)}
+					<circle cx={C} cy={C} r={r * scale} class="fill-none stroke-zinc-800" />
+					<text x={C + 3} y={C - r * scale + 11} class="fill-zinc-600 text-[9px]">{r} km</text>
+				{/each}
+				<text x={C} y="10" text-anchor="middle" class="fill-zinc-500 text-[9px]">N</text>
 
-			{#if contours}
-				<g clip-path="url(#geo-clip)">
-					{#each contours.lines as l (l.k)}
-						<line
-							x1={l.a.x}
-							y1={l.a.y}
-							x2={l.b.x}
-							y2={l.b.y}
-							class={l.k === 0 ? 'stroke-zinc-500' : 'stroke-zinc-700'}
-							stroke-dasharray="3 3"
-						/>
-					{/each}
-				</g>
-			{/if}
-
-			{#each points as p, i (i)}
-				<circle cx={p.x} cy={p.y} r="2.2" class={tone(p.d)} />
-			{/each}
-			<circle cx={C} cy={C} r="3" class="fill-amber-300" />
-
-			{#if arrow}
-				<line {...arrow} class="stroke-emerald-300" stroke-width="2" marker-end="url(#geo-arrow)" />
-			{/if}
-			{#if points.length === 0}
-				<text x={C} y={C + 20} text-anchor="middle" class="fill-zinc-500 text-[11px]">
-					no level flights yet
-				</text>
-			{/if}
-		</svg>
-
-		<div class="space-y-2 text-sm">
-			{#if geo.found}
-				<p>
-					The pressure surfaces rise towards {degrees(contours?.uphill ?? 0)}, by
-					{speedOf(geo.slope).toFixed(0)} ft per 100 km
-					{#if contours}(contours every {contours.step} ft){/if}.
-				</p>
-				<p class="text-zinc-400">
-					At {geo.latitude.toFixed(1)}° f = {(geo.coriolis * 1e4).toFixed(3)} × 10⁻⁴ /s, so the wind along
-					the contours is {Math.round(geo.wind.speed)} kt.
-				</p>
-				<p class="text-zinc-400">
-					{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {flightLevel(
-						geo.levels[0]
-					)}–{flightLevel(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS − baro
-					comes in 25 ft steps); leaving out any one aircraft moves the wind by up to {Math.round(
-						geo.uncertainty
-					)} kt.
-				</p>
-				{#if measured}
-					<p>
-						Measured by the aircraft (5,0/6,0) over the same levels:
-						<span class="font-mono text-emerald-300">{windText(measured)}</span>.
-					</p>
+				{#if contours}
+					<g clip-path="url(#geo-clip)">
+						{#each contours.lines as l (l.k)}
+							<line
+								x1={l.a.x}
+								y1={l.a.y}
+								x2={l.b.x}
+								y2={l.b.y}
+								class={l.k === 0 ? 'stroke-zinc-500' : 'stroke-zinc-700'}
+								stroke-dasharray="3 3"
+							/>
+						{/each}
+					</g>
 				{/if}
-			{:else}
-				<p class="text-zinc-500">{geo.reason}</p>
-			{/if}
-			<p class="text-xs text-zinc-500">
-				Dots: each flight's pressure level against its own average,
-				<span class="text-sky-300">lower</span> to <span class="text-rose-300">higher</span>
-				(±20 and ±60 ft). Amber: the receiver.
-			</p>
+
+				{#each points as p, i (i)}
+					<circle cx={p.x} cy={p.y} r="2.2" class={tone(p.d)} />
+				{/each}
+				<circle cx={C} cy={C} r="3" class="fill-amber-300" />
+
+				{#if arrow}
+					<line
+						{...arrow}
+						class="stroke-emerald-300"
+						stroke-width="2"
+						marker-end="url(#geo-arrow)"
+					/>
+				{/if}
+			</svg>
+
+			<div class="space-y-2 text-sm">
+				{#if geo.found}
+					<p>
+						The pressure surfaces rise towards {degrees(contours?.uphill ?? 0)}, by
+						{speedOf(geo.slope).toFixed(0)} ft per 100 km
+						{#if contours}(contours every {contours.step} ft){/if}.
+					</p>
+					<p class="text-zinc-400">
+						At {geo.latitude.toFixed(1)}° f = {(geo.coriolis * 1e4).toFixed(3)} × 10⁻⁴ /s, so the wind
+						along the contours is {Math.round(geo.wind.speed)} kt.
+					</p>
+					<p class="text-zinc-400">
+						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {flightLevel(
+							geo.levels[0]
+						)}–{flightLevel(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS −
+						baro comes in 25 ft steps); leaving out any one aircraft moves the wind by up to {Math.round(
+							geo.uncertainty
+						)} kt.
+					</p>
+					{#if measured}
+						<p>
+							Measured by the aircraft (5,0/6,0) over the same levels:
+							<span class="font-mono text-emerald-300">{windText(measured)}</span>.
+						</p>
+					{/if}
+				{:else}
+					<p class="text-zinc-500">{geo.reason}</p>
+				{/if}
+				<p class="text-xs text-zinc-500">
+					Dots: each flight's pressure level against its own average,
+					<span class="text-sky-300">lower</span> to <span class="text-rose-300">higher</span>
+					(±20 and ±60 ft). Amber: the receiver.
+				</p>
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>

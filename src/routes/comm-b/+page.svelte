@@ -149,9 +149,9 @@
 							<td class="py-0.5 font-mono">{row.key in SPECIAL ? '' : row.key}</td>
 							<td class={['py-0.5', row.key in SPECIAL && 'text-zinc-400']}>{row.name}</td>
 							<td class="py-0.5 text-right">{n(row.count.broadcast)}</td>
-							<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.broadcast)}</td>
+							<td class="py-0.5 text-right text-xs text-zinc-400">{rate(row.rate.broadcast)}</td>
 							<td class="py-0.5 text-right">{n(row.count.interrogated)}</td>
-							<td class="py-0.5 text-right text-xs text-zinc-500">{rate(row.rate.interrogated)}</td>
+							<td class="py-0.5 text-right text-xs text-zinc-400">{rate(row.rate.interrogated)}</td>
 						</tr>
 					{:else}
 						<tr><td colspan="6" class="py-4 text-zinc-500">Waiting for frames…</td></tr>

@@ -47,7 +47,7 @@ export function squawkField(code: string): Field {
 	return {
 		label: 'sqk',
 		value: code,
-		title: `Squawk (Mode A code) ${code}${special ? `: ${special.meaning}` : ', assigned by ATC'}`,
+		title: `Squawk (Mode A code) ${code}${special ? `: ${special.meaning}${special.detail ? ` (${special.detail})` : ''}` : ', assigned by ATC'}`,
 		tone: special?.emergency ? 'alert' : 'main',
 		mono: true
 	};

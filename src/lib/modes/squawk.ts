@@ -28,16 +28,27 @@ export function replySquawk(data: Uint8Array): string {
 	return squawk(((data[2] & 0x1f) << 8) | data[3]);
 }
 
-/** Codes with a fixed meaning (worldwide, plus the common European ones). */
-export const SPECIAL_SQUAWKS: Record<string, { meaning: string; emergency: boolean }> = {
+/**
+ * Codes with a fixed meaning (worldwide, plus the common European ones). `detail`: what
+ * follows from it, for an explanation; `meaning` alone must fit next to the code.
+ */
+export const SPECIAL_SQUAWKS: Record<
+	string,
+	{ meaning: string; detail?: string; emergency: boolean }
+> = {
 	'7500': { meaning: 'Unlawful interference (hijack)', emergency: true },
 	'7600': { meaning: 'Radio failure', emergency: true },
 	'7700': { meaning: 'Emergency', emergency: true },
 	'1000': {
-		meaning: 'Mode S conspicuity code: ATC identifies the flight by its callsign instead',
+		meaning: 'Mode S conspicuity code',
+		detail: 'ATC identifies the flight by its callsign instead of a code of its own',
 		emergency: false
 	},
-	'2000': { meaning: 'Entering controlled airspace without an assigned code', emergency: false },
+	'2000': {
+		meaning: 'No code assigned yet',
+		detail: 'set when entering controlled airspace without an assigned code',
+		emergency: false
+	},
 	'7000': { meaning: 'VFR, not talking to ATC (Europe)', emergency: false },
 	'1200': { meaning: 'VFR (North America)', emergency: false }
 };

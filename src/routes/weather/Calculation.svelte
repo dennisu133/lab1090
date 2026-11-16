@@ -56,7 +56,11 @@
 		<!-- One line, whatever happens: the reason a value isn't used goes here and is cut off
 		     if it doesn't fit (the whole text is in its title), so nothing below moves. -->
 		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-			<InfoTip heading="h3" class="font-semibold" label="Wind">
+			<InfoTip
+				heading="h3"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Wind"
+			>
 				<p>
 					The aircraft moves through the air (<span class="text-sky-300">air vector</span>: true
 					airspeed, in the direction the nose points), and the air moves over the ground (the
@@ -190,7 +194,11 @@
 	<!-- Temperature -->
 	<div class="h-86 rounded-lg bg-zinc-900 p-4">
 		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-			<InfoTip heading="h3" class="font-semibold" label="Temperature">
+			<InfoTip
+				heading="h3"
+				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				label="Temperature"
+			>
 				<p>
 					Mach is the true airspeed divided by the <strong>speed of sound</strong>, and the speed of
 					sound depends on one thing only: the air's temperature. (Sound is carried by the moving

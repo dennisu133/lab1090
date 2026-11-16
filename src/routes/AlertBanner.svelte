@@ -3,15 +3,20 @@
 	emergency, amber for a caution. One at a time: the others are on the map and in the list,
 	and system notifications (if switched on) announce each one as it starts. Clicking it opens
 	the aircraft on the tracker, where its panel explains what the alert means and what happens
-	next. ✕ hides it until that alert is over; the map keeps showing it.
+	next. The cross hides it until that alert is over; the map keeps showing it.
 
-	It sits just below the navigation bar and stays at the top of the window when you scroll
-	(sticky in a zero-height row, so it takes no room from the page).
+	It sits just below the navigation bar and stays at the top of the window when you scroll.
+	Over the map it floats (`floating`: sticky in a zero-height row, so it takes no room from
+	the map). On the data pages it gets a row of its own instead: floating there, it covered
+	section titles and whatever scrolled under it.
 -->
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import Notice from '#lib/components/Notice.svelte';
 	import { headline, nameOf } from '#lib/describe/alert.ts';
 	import { getStreams } from './streams';
+
+	let { floating }: { floating: boolean } = $props();
 
 	const streams = getStreams();
 	let alert = $derived(streams.alerts.top);
@@ -19,8 +24,13 @@
 </script>
 
 {#if alert}
-	<div class="sticky top-0 z-30 flex h-0 justify-center">
-		<div class="mt-3">
+	<div
+		class={[
+			'sticky top-0 z-30 flex justify-center',
+			floating ? 'h-0' : 'border-b border-zinc-800 bg-zinc-950 px-4 pb-2'
+		]}
+	>
+		<div class={floating ? 'mt-3' : 'mt-2'}>
 			<Notice tone={alert.tier}>
 				<button
 					type="button"
@@ -39,13 +49,13 @@
 				<button
 					type="button"
 					class={[
-						'shrink-0 px-3',
+						'grid shrink-0 place-items-center pr-3 pl-2.5',
 						alert.tier === 'emergency'
 							? 'text-red-300 hover:bg-red-900'
 							: 'text-amber-300 hover:bg-amber-900'
 					]}
 					aria-label="Hide this alert until it's over"
-					onclick={() => streams.alerts.dismiss(alert)}>✕</button
+					onclick={() => streams.alerts.dismiss(alert)}><CloseIcon /></button
 				>
 			</Notice>
 		</div>

@@ -71,7 +71,7 @@
 		</div>
 	</div>
 	{#if state.label === 'Live'}
-		<span class="text-zinc-500">
+		<span>
 			{stats.counts && stats.since !== null
 				? `${stats.counts.total.toLocaleString()} since ${started(stats.since)}`
 				: '–'}

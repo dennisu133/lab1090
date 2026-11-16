@@ -6,6 +6,8 @@
 	The explanation is a key: one dot per colour as the map draws it, from the ground up the
 	ramp's ticks (in ft, as flight levels like the list, and in km for scale), then the two
 	states that aren't heights (no altitude, faded).
+
+	On phones the title sits beside the bar, not above it: one line less of the short map.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -26,8 +28,10 @@
 	const top = ALTITUDE_STOPS.at(-1)![0];
 </script>
 
-<div class="rounded-md bg-zinc-950/80 px-3 py-2 text-xs text-zinc-400 backdrop-blur">
-	<div class="mb-1">
+<div
+	class="flex items-center gap-2.5 rounded-md bg-zinc-950/80 px-3 py-1.5 text-xs text-zinc-400 backdrop-blur sm:block sm:py-2"
+>
+	<div class="sm:mb-1">
 		<InfoTip label="Altitude" above>
 			<p>
 				Aircraft and trails are coloured by barometric altitude: warm near the ground (taking off,
@@ -58,7 +62,7 @@
 			</p>
 		</InfoTip>
 	</div>
-	<div class="w-28 sm:w-40">
+	<div class="w-32 sm:w-40">
 		<div class="h-2 rounded-full" style:background-image={altitudeGradient()}></div>
 		<div class="mt-0.5 flex justify-between tabular-nums">
 			<span>0</span>

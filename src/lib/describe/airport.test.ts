@@ -40,8 +40,7 @@ describe('airport panel', () => {
 	});
 
 	test('one section, named after its source: map data, not decoded', () => {
-		expect(airportSections(NORTH, RECEIVER, 'NM').map((s) => s.title)).toEqual([
-			'Airport (OpenStreetMap)'
-		]);
+		expect(airportSections(NORTH, RECEIVER, 'NM').map((s) => s.title)).toEqual(['Airport']);
+		expect(airportSections(NORTH, RECEIVER, 'NM')[0].source).toBe('OpenStreetMap');
 	});
 });

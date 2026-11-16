@@ -47,7 +47,11 @@
 
 <div class="h-86 rounded-lg bg-zinc-900 p-4">
 	<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-		<InfoTip heading="h3" class="font-semibold" label="Contrail">
+		<InfoTip
+			heading="h3"
+			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+			label="Contrail"
+		>
 			<p>
 				A contrail is a cloud the engines make. Burning kerosene gives water vapour and heat; behind
 				the engine the hot, wet exhaust mixes with the cold air around it. On the way from one to

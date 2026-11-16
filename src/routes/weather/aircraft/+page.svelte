@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -156,10 +157,10 @@
 			</div>
 			{#if selected !== null}
 				<button
-					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
+					class="flex items-center gap-1.5 rounded bg-sky-900 py-1 pr-2 pl-3 text-sm hover:bg-sky-800"
 					onclick={() => (selected = null)}
 				>
-					{selected} only ✕
+					{selected} only <CloseIcon class="size-3.5" />
 				</button>
 			{/if}
 		</div>

@@ -11,7 +11,9 @@
 	room: left sticking out, it would make the whole page scroll sideways.
 
 	For a section title, pass `heading="h2"`: only the label goes inside the heading, the
-	tooltip sits next to it (a heading may only contain text, not paragraphs or tables).
+	tooltip sits next to it (a heading may only contain text, not paragraphs or tables). A
+	heading is marked by the ⓘ alone: it already stands out, the dotted line under it too was
+	one marker too many.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -102,7 +104,10 @@
 		<button
 			type="button"
 			aria-describedby={id}
-			class="cursor-help [text-transform:inherit] underline decoration-zinc-600 decoration-dotted underline-offset-4 group-hover:text-zinc-200"
+			class={[
+				'cursor-help [text-transform:inherit] group-hover:text-zinc-200',
+				!heading && 'underline decoration-zinc-600 decoration-dotted underline-offset-4'
+			]}
 		>
 			{label}<span aria-hidden="true" class="ml-1 text-zinc-500">ⓘ</span>
 		</button>

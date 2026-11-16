@@ -5,6 +5,7 @@
 	codes heard are listed at the end.
 -->
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, distanceText } from '#lib/describe/aircraft.ts';
 	import { n } from '#lib/describe/field.ts';
@@ -126,8 +127,8 @@
 	<button
 		type="button"
 		onclick={onclose}
-		class="rounded px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft">✕</button
+		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+		aria-label="Close and show all aircraft"><CloseIcon /></button
 	>
 </header>
 

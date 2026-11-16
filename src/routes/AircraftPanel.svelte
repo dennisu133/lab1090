@@ -5,6 +5,7 @@
 	flight (route, airline: looked up by the page, which draws the route on the map too).
 -->
 <script lang="ts">
+	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import { lookupAircraft, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
 	import { aircraftSections } from '#lib/describe/aircraft.ts';
 	import { routeText } from '#lib/describe/route.ts';
@@ -89,8 +90,8 @@
 	<button
 		type="button"
 		onclick={onclose}
-		class="rounded px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft">✕</button
+		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+		aria-label="Close and show all aircraft"><CloseIcon /></button
 	>
 </header>
 {#if db?.photo}
