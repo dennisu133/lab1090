@@ -19,8 +19,8 @@ export const variables = defineEnvVars({
 	RECEIVER_POSITION: {
 		description:
 			'Where the antenna is, as "latitude,longitude" (decimal degrees), e.g. "51.5,-0.1". ' +
-			'The reference point for decoding single ADS-B positions (local CPR decoding: within ' +
-			'~150 NM is enough), the origin of distances and the receiver marker on the map. Optional.',
+			'Required, and as exact as you can (~100 m): the reference for decoding positions, ' +
+			"the tracker's range check, distances, the map and the coverage.",
 		schema: parseLatLon
 	}
 });

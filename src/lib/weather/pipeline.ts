@@ -58,14 +58,14 @@ export class WeatherPipeline {
 	/** Replies that were 5,0 or 6,0 but contradicted ADS-B, and weren't used. */
 	contradicted = 0;
 
-	#reference: () => LatLon | null;
+	#reference: () => LatLon;
 	#memory = new AdsbMemory();
 	#altitudes = new Map<string, { feet: number; from: string; rx: number }>();
 	/** From ADS-B or register 2,0; kept as long as the aircraft is (AIRCRAFT_TTL_MS). */
 	#callsigns = new Map<string, { callsign: string; rx: number }>();
 
 	/** `reference`: the receiver's position, for aircraft without an ADS-B position. */
-	constructor(reference: () => LatLon | null) {
+	constructor(reference: () => LatLon) {
 		this.#reference = reference;
 	}
 
@@ -196,7 +196,6 @@ export class WeatherPipeline {
 	#position(icao: string, now: number): Inputs['position'] {
 		const p = this.#memory.get(icao)?.position;
 		if (p && now - p.t <= POSITION_MAX_AGE_MS) return { ...p.value, from: 'ADS-B' };
-		const reference = this.#reference();
-		return reference ? { ...reference, from: 'receiver' } : null;
+		return { ...this.#reference(), from: 'receiver' };
 	}
 }

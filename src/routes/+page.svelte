@@ -187,7 +187,7 @@
 		<div
 			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
-			<MapLayers bind:layers bind:unit receiver={!!data.reference} {radars} />
+			<MapLayers bind:layers bind:unit {radars} />
 			<AltitudeLegend />
 		</div>
 	</div>
@@ -211,7 +211,7 @@
 					onclose={() => stream.select(null)}
 				/>
 			{/key}
-		{:else if focus?.kind === 'receiver' && data.reference}
+		{:else if focus?.kind === 'receiver'}
 			<CoveragePanel
 				stream={coverage}
 				{unit}

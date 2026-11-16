@@ -37,7 +37,7 @@
 		 */
 		weather: { aircraft: WeatherAircraft; check: HeadingCheck | null; layer: Layer | null } | null;
 		now: number;
-		receiver: LatLon | null;
+		receiver: LatLon;
 		unit: Unit;
 		onclose: () => void;
 	}

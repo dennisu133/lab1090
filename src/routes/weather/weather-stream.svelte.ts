@@ -48,17 +48,17 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 	/** When the first frame arrived (server clock): how long we've been collecting. */
 	since = $state<number | null>(null);
 
-	#reference: () => LatLon | null;
+	#reference: () => LatLon;
 	#pipeline: WeatherPipeline;
 
-	constructor(reference: () => LatLon | null) {
+	constructor(reference: () => LatLon) {
 		super(MAX_ROWS);
 		this.#reference = reference;
 		this.#pipeline = new WeatherPipeline(reference);
 	}
 
 	/** The receiver's position, for maps around it. */
-	get reference(): LatLon | null {
+	get reference(): LatLon {
 		return this.#reference();
 	}
 

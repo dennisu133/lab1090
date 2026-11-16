@@ -89,8 +89,8 @@ export interface Inputs {
 	headingAndSpeed: Reading<HeadingAndSpeed>;
 	/** Pressure altitude, ft, and where it was heard. */
 	altitude: { feet: number; from: string } | null;
-	/** Where the declination is looked up: the aircraft's own ADS-B position if known. */
-	position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' } | null;
+	/** Where the declination is looked up: the aircraft's own ADS-B position, else the receiver's. */
+	position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' };
 }
 
 export interface WindResult {
@@ -170,7 +170,6 @@ export function observe(icao: string, inputs: Inputs): Observation {
 		['6,0 heading', heading]
 	]);
 	if (windMissing.length > 0) windProblem = `no ${windMissing.join(', ')}`;
-	else if (!inputs.position) windProblem = 'no position to look up the magnetic declination';
 	else {
 		const decl = declination(
 			inputs.position.lat,

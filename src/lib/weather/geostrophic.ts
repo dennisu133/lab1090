@@ -190,22 +190,15 @@ export function balancingWind(slope: Vector, f: number): Vector {
 	};
 }
 
-/**
- * `origin`: where the map's km count from, the receiver; without one, the middle of the
- * samples. It doesn't change the fit.
- */
+/** `origin`: where the map's km count from, the receiver. It doesn't change the fit. */
 export function geostrophicWind(
 	columns: ColumnSample[],
-	origin: LatLon | null,
+	origin: LatLon,
 	heights: HeightReference
 ): Geostrophic {
 	const positioned = columns.filter((c) => c.position.from === 'ADS-B');
 	if (positioned.length === 0)
 		return { found: false, reason: 'No GNSS − baro with an ADS-B position yet.', segments: [] };
-	origin ??= {
-		lat: positioned.reduce((s, c) => s + c.position.lat, 0) / positioned.length,
-		lon: positioned.reduce((s, c) => s + c.position.lon, 0) / positioned.length
-	};
 	const segs = segments(positioned, origin, heights);
 	const aircraft = [...new Set(segs.map((s) => s.icao))];
 	if (aircraft.length < MIN_GEOSTROPHIC_AIRCRAFT)

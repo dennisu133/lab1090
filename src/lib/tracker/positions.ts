@@ -29,8 +29,8 @@
  * same track: a landing aircraft switches from airborne to surface messages, and its last
  * airborne position is a fine reference for the first surface one. Their grids differ
  * (zones a quarter the size, see cpr.ts), so they're paired separately, and a surface pair
- * needs a reference too, but only to pick the right quarter of the world: the aircraft's
- * own last position if it has one, else the receiver's.
+ * needs a reference too, but only to pick the right quarter of the world: the receiver's
+ * position (anything it hears is within 500 km, well inside the right quarter).
  *
  * The idea is readsb's (track.c: speed_check and the position reliability counters); the
  * numbers here are our own, chosen to be simple to explain.
@@ -118,9 +118,8 @@ export function speedProblem(
 	} would allow`;
 }
 
-/** Why the receiver can't have heard an aircraft at `p` (null if it can, or if we don't know where it is). */
-export function rangeProblem(p: LatLon, receiver: LatLon | null): string | null {
-	if (!receiver) return null;
+/** Why the receiver can't have heard an aircraft at `p` (null if it can). */
+export function rangeProblem(p: LatLon, receiver: LatLon): string | null {
 	const km = distanceKm(receiver, p);
 	return km > MAX_RANGE_KM
 		? `${Math.round(km)} km from the receiver: beyond the radio horizon (${MAX_RANGE_KM} km)`
@@ -138,9 +137,9 @@ export class Positions {
 	#pairs = new CprPairs(PAIR_MS);
 	#surfacePairs = new CprPairs(SURFACE_PAIR_MS);
 	#state = new Map<string, State>();
-	#receiver: () => LatLon | null;
+	#receiver: () => LatLon;
 
-	constructor(receiver: () => LatLon | null) {
+	constructor(receiver: () => LatLon) {
 		this.#receiver = receiver;
 	}
 
@@ -162,11 +161,9 @@ export class Positions {
 			this.#state.set(icao, s);
 		}
 		const receiver = this.#receiver();
-		// Even an old position of the aircraft is in the right quarter of the world.
-		const quarter = s.position ?? receiver;
 		const global = surface
 			? this.#surfacePairs.add(icao, cpr, t, (even, odd, newer) =>
-					quarter ? decodeSurfaceGlobal(even, odd, newer, quarter) : null
+					decodeSurfaceGlobal(even, odd, newer, receiver)
 				)
 			: this.#pairs.add(icao, cpr, t);
 		const pair: Located | null = global && { ...global, t, from: 'pair', surface };

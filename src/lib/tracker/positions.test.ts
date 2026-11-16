@@ -68,7 +68,7 @@ describe('speed and range checks', () => {
 		expect(speedProblem(from, east(2.1, 0), 450)).not.toBeNull();
 	});
 
-	test('range: up to 500 km from the receiver, unchecked without a receiver position', () => {
+	test('range: up to 500 km from the receiver', () => {
 		const near = { lat: receiver.lat + 4.4, lon: receiver.lon }; // 489 km north
 		const far = { lat: receiver.lat + 4.6, lon: receiver.lon }; // 511 km
 		expect(distanceKm(receiver, near)).toBeLessThan(MAX_RANGE_KM);
@@ -76,7 +76,6 @@ describe('speed and range checks', () => {
 		expect(rangeProblem(far, receiver)).toBe(
 			'511 km from the receiver: beyond the radio horizon (500 km)'
 		);
-		expect(rangeProblem(far, null)).toBeNull();
 	});
 });
 
@@ -194,12 +193,6 @@ describe('surface positions', () => {
 		);
 	});
 
-	test('no receiver position and no earlier position of its own: no way to pick the quarter', () => {
-		const positions = new Positions(() => null);
-		const outcomes = fly(positions, 0, 3, taxi, { surface: true });
-		expect(outcomes.map((o) => o.kind)).toEqual(['waiting', 'waiting', 'waiting']);
-	});
-
 	test('standing still, one message every 12 s (DO-260B: every 5 s, some missed): still pairs', () => {
 		const positions = new Positions(() => receiver);
 		const outcomes = fly(positions, 0, 3, () => gate, { surface: true, every: 12_000 });
@@ -207,7 +200,7 @@ describe('surface positions', () => {
 	});
 
 	test('landing: airborne, then surface, one track', () => {
-		const positions = new Positions(() => null); // its own position is reference enough
+		const positions = new Positions(() => receiver);
 		const runway = { lat: 52.1, lon: 14.2 };
 		const approach = (t: number) => along(runway, 250, 140, t - 4000); // touches down at 4 s
 		fly(positions, 0, 8, approach);

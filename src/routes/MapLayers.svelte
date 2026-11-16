@@ -49,13 +49,11 @@
 		layers: Layers;
 		/** Distances: the rings' labels, the list and the panel. */
 		unit: Unit;
-		/** Is the receiver's position known? Without it there are no rings or coverage. */
-		receiver: boolean;
 		/** The radar search: how far it has got, next to its switch. */
 		radars: RadarStream;
 	}
 
-	let { layers = $bindable(), unit = $bindable(), receiver, radars }: Props = $props();
+	let { layers = $bindable(), unit = $bindable(), radars }: Props = $props();
 
 	/** Open or folded: null until the button is used (then it's by screen width, see above). */
 	const OPEN_KEY = 'tracker.layersOpen';
@@ -83,11 +81,10 @@
 		]}
 	>
 		<div class="flex items-center gap-2">
-			<label class={['flex items-center gap-2 py-0.5', receiver ? 'cursor-pointer' : 'opacity-50']}>
+			<label class="flex cursor-pointer items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.rings}
-					disabled={!receiver}
 					class="size-3.5 accent-zinc-300"
 					aria-label="Show the range rings"
 				/>
@@ -114,12 +111,6 @@
 					NM / km, next to this label: the unit of the rings and of the distances in the list and
 					the panel. Altitudes stay in feet, aviation's unit almost everywhere.
 				</p>
-				{#if !receiver}
-					<p>
-						No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
-						<code>.env</code> to draw them.
-					</p>
-				{/if}
 			</InfoTip>
 			<div class="ml-auto flex" role="group" aria-label="Distance unit">
 				{#each ['NM', 'km'] as const as u (u)}
@@ -279,11 +270,10 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class={['flex items-center gap-2 py-0.5', receiver ? 'cursor-pointer' : 'opacity-50']}>
+			<label class="flex cursor-pointer items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.coverage}
-					disabled={!receiver}
 					class="size-3.5 accent-zinc-300"
 					aria-label="Show the coverage"
 				/>
@@ -318,12 +308,6 @@
 					off: a direction stays empty until an aircraft has flown there. A reload starts with the
 					server's last 10 minutes.
 				</p>
-				{#if !receiver}
-					<p>
-						No receiver position set: set <code>RECEIVER_POSITION="lat,lon"</code> in
-						<code>.env</code>: coverage is measured from there.
-					</p>
-				{/if}
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2 border-t border-zinc-800 pt-1.5">

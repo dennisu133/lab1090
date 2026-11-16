@@ -92,7 +92,7 @@
 		stream: TrackerStream;
 		/** The winds the aircraft measured: the barbs. */
 		weather: WeatherStream;
-		receiver: LatLon | null;
+		receiver: LatLon;
 		unit: Unit;
 		layers: Layers;
 		/** The selected aircraft's route (adsbdb); null: none. */
@@ -193,8 +193,8 @@
 		const m = new maplibregl.Map({
 			container,
 			style: mapStyle(),
-			center: center ? toLngLat(center) : [10.5, 51.2], // else: the middle of Germany
-			zoom: center ? 7 : 5,
+			center: toLngLat(center),
+			zoom: 7,
 			attributionControl: { compact: true },
 			// Rotating the map would make "north up" and the tracks confusing; pinch-zoom stays.
 			dragRotate: false,
@@ -750,7 +750,7 @@
 
 	// The receiver and the range rings: when the unit changes.
 	$effect(() => {
-		if (!map || !receiver) return;
+		if (!map) return;
 		const { rings, labels } = ringFeatures(receiver, unit);
 		source(map, 'rings').setData(rings);
 		source(map, 'ring-labels').setData(labels);
@@ -765,7 +765,7 @@
 	// the antenna's height comes in with the terrain. Only while shown.
 	let coverageShown = $derived(layers.coverage || focus?.kind === 'receiver');
 	$effect(() => {
-		if (!map || !receiver || !coverageShown) return;
+		if (!map || !coverageShown) return;
 		source(map, 'coverage-outline').setData(outlineFeatures(coverage.sectors, receiver));
 		source(map, 'coverage-horizon').setData(
 			horizonFeatures(receiver, HORIZON_FT, coverage.terrain?.antennaKm ?? 0)
@@ -774,7 +774,7 @@
 	// The panel's extras: the positions behind the outlines, and the sector picked on its plot.
 	$effect(() => {
 		const open = focus?.kind === 'receiver';
-		if (!map || !receiver) return;
+		if (!map) return;
 		source(map, 'coverage-points').setData(open ? pointFeatures(coverage.points) : empty);
 		source(map, 'coverage-sector').setData(
 			open && sector !== null
@@ -995,7 +995,7 @@
 		if (points.length === 0) return;
 		fitted = true;
 		const bounds = new maplibregl.LngLatBounds();
-		for (const p of [...points, ...(receiver ? [receiver] : [])]) bounds.extend(toLngLat(p));
+		for (const p of [...points, receiver]) bounds.extend(toLngLat(p));
 		m.fitBounds(bounds, { padding: 60, maxZoom: 8, duration: 0 });
 	});
 </script>

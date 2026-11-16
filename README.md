@@ -146,29 +146,31 @@ bun run dev            # http://localhost:5173
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Everything is optional:
+Copy `.env.example` to `.env`. Only the receiver position is required:
 
-| Variable            | Default | What it is                                           |
-| ------------------- | ------- | ---------------------------------------------------- |
-| `RECEIVER_HOST`     | `pi`    | Host running readsb with Beast output                |
-| `RECEIVER_PORT`     | `30005` | readsb Beast output port                             |
-| `RECEIVER_POSITION` | –       | Where the antenna is, `"latitude,longitude"` (below) |
+| Variable            | Default  | What it is                                           |
+| ------------------- | -------- | ---------------------------------------------------- |
+| `RECEIVER_HOST`     | `pi`     | Host running readsb with Beast output                |
+| `RECEIVER_PORT`     | `30005`  | readsb Beast output port                             |
+| `RECEIVER_POSITION` | required | Where the antenna is, `"latitude,longitude"` (below) |
 
 ### Receiver position
 
-`RECEIVER_POSITION` is where the antenna is. It's used for:
+`RECEIVER_POSITION` is where the antenna is. The server won't start without it. It's used for:
 
-- **Decoding single ADS-B positions** (local CPR decoding): it's the reference point that
-  picks which CPR zone the aircraft is in. Without it, positions are only decoded from
-  even/odd message pairs. For this it only has to be within about 150 NM of airborne
-  aircraft (45 NM for aircraft on the ground).
-- **Distances and directions** in /frames ("67 km SW"), and the receiver on the map.
+- **Decoding positions**: the reference point that picks which CPR zone an aircraft is in,
+  so a single ADS-B message is enough (local CPR decoding). Aircraft on the ground need it
+  even for message pairs: a pair leaves four possible positions, 90° apart.
+- **The tracker's range check**: positions beyond the radio horizon are thrown out.
+- **Distances and directions**, the receiver and its range rings on the map.
+- **Coverage**: how low above the horizon the antenna hears in each direction. Elevation
+  angles of a few degrees are where a position off by a few km shows, so be exact here
+  (~100 m).
 - **/weather**, for aircraft that don't broadcast an ADS-B position: it looks up the magnetic
   declination (and the geoid) there.
 
-Decoding works with a rounded value, but distances and the map are only as exact as it is.
-The pages show it (/frames in its status bar), so round it before sharing screenshots or
-running the app where others can see it.
+The page data carries it to every browser, and the map shows it, so mind that before
+sharing screenshots or running the app where others can see it.
 
 ## Development
 

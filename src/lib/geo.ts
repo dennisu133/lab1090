@@ -54,9 +54,11 @@ export function compass(degrees: number): string {
 	return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(degrees / 45) % 8];
 }
 
-/** "lat,lon" in decimal degrees, e.g. "51.5,-0.1". null if empty; throws if malformed. */
-export function parseLatLon(value: string | undefined): LatLon | null {
-	if (!value?.trim()) return null;
+/** "lat,lon" in decimal degrees, e.g. "51.5,-0.1". Throws if missing or malformed. */
+export function parseLatLon(value: string | undefined): LatLon {
+	if (!value?.trim()) {
+		throw new Error('required: the antenna\'s position as "latitude,longitude", e.g. "51.5,-0.1"');
+	}
 	const parts = value.split(',').map((p) => Number(p.trim()));
 	const [lat, lon] = parts;
 	if (parts.length !== 2 || !Number.isFinite(lat) || !Number.isFinite(lon)) {

@@ -175,7 +175,7 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 export function aircraftSections(
 	a: TrackedAircraft,
 	now: number,
-	receiver: LatLon | null,
+	receiver: LatLon,
 	unit: Unit,
 	/** What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet). */
 	db: DbAircraft | null = null,
@@ -286,16 +286,14 @@ export function aircraftSections(
 			tone: 'main',
 			mono: true
 		});
-		if (receiver) {
-			const km = distanceKm(receiver, p);
-			const b = bearing(receiver, p);
-			position.push({
-				label: 'From receiver',
-				value: `${distanceText(km, unit)} ${compass(b)} (${deg(b)})`,
-				title: `Distance along the great circle from the antenna, and the direction you'd look in (degrees from true north). ${n(km)} km = ${n(km / KM_PER_NM)} NM: a nautical mile is one minute of latitude, 1,852 m.`,
-				tone: 'main'
-			});
-		}
+		const km = distanceKm(receiver, p);
+		const b = bearing(receiver, p);
+		position.push({
+			label: 'From receiver',
+			value: `${distanceText(km, unit)} ${compass(b)} (${deg(b)})`,
+			title: `Distance along the great circle from the antenna, and the direction you'd look in (degrees from true north). ${n(km)} km = ${n(km / KM_PER_NM)} NM: a nautical mile is one minute of latitude, 1,852 m.`,
+			tone: 'main'
+		});
 		position.push(...uncertaintyFields(a, now));
 		if (!a.confirmed)
 			position.push({

@@ -275,8 +275,8 @@ export class Tracker {
 	/** Positions that failed the checks: the tests read them, the page may show them later. */
 	readonly rejections: { icao: string; outcome: Outcome }[] = [];
 
-	/** `receiver`: the antenna's position, for the range check (null: no range check). */
-	constructor(receiver: () => LatLon | null) {
+	/** `receiver`: the antenna's position, for the range check and surface pairs. */
+	constructor(receiver: () => LatLon) {
 		this.#positions = new Positions(receiver);
 	}
 

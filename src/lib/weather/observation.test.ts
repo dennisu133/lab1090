@@ -150,11 +150,4 @@ describe('when not to trust it', () => {
 			'Mach 0.000 is too small'
 		);
 	});
-
-	test('no position: no declination, no wind', () => {
-		const o = observe('x', inputs({}, {}, 2, { position: null }));
-		expect(o.wind).toBeNull();
-		expect(o.windProblem).toBe('no position to look up the magnetic declination');
-		expect(o.temperatureProblem).toBeNull();
-	});
 });

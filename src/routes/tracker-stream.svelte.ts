@@ -43,7 +43,7 @@ export class TrackerStream extends LiveFeed<never> {
 	/** The selected aircraft's latest messages, newest first. */
 	messages = $state.raw<Message[]>([]);
 
-	#receiver: () => LatLon | null;
+	#receiver: () => LatLon;
 	#tracker: Tracker;
 	// Plain Map on purpose: bookkeeping, never rendered (`messages` holds what is).
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
@@ -51,7 +51,7 @@ export class TrackerStream extends LiveFeed<never> {
 	/** The server's clock at the newest frame, and when (performance.now()) that arrived. */
 	#clock: { rx: number; at: number } | null = null;
 
-	constructor(receiver: () => LatLon | null) {
+	constructor(receiver: () => LatLon) {
 		super(0);
 		this.#receiver = receiver;
 		this.#tracker = new Tracker(receiver);

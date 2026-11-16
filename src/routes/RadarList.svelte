@@ -17,7 +17,7 @@
 		/** The radar whose panel this is: not a link. */
 		current: string;
 		now: number;
-		receiver: LatLon | null;
+		receiver: LatLon;
 		unit: Unit;
 		onselectradar: (id: string) => void;
 	}
@@ -46,7 +46,7 @@
 	</InfoTip>
 	<ul class="space-y-0.5 tabular-nums">
 		{#each radars as r (r.id)}
-			{@const from = receiver ? seenFrom(r, receiver) : null}
+			{@const from = seenFrom(r, receiver)}
 			<li class="flex justify-between gap-4">
 				{#if r.id === current}
 					<span class="font-mono text-zinc-100">{r.id}</span>
@@ -58,8 +58,8 @@
 					>
 				{/if}
 				<span class="text-zinc-400">
-					{(r.period / 1000).toFixed(2)} s
-					{#if from}· {km(from.km)} {compass(from.bearing)}{/if}
+					{(r.period / 1000).toFixed(2)} s · {km(from.km)}
+					{compass(from.bearing)}
 					· ±{km(shownSpread(r).major)}
 				</span>
 			</li>

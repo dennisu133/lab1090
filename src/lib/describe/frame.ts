@@ -28,8 +28,10 @@ import { advisoryFields, altitudeField, n, squawkField, type Field } from './fie
 import { cprFields, squitterFields } from './squitter';
 
 export interface Located {
-	reference: LatLon | null;
-	local: LatLon | null;
+	reference: LatLon;
+	/** Decoded with the reference point (local CPR decoding). */
+	local: LatLon;
+	/** Decoded from the even/odd pair (global CPR decoding), if there was one. */
 	global: LatLon | null;
 	/** Surface position (TC 5–8): quarter-size CPR zones. */
 	surface?: boolean;
@@ -70,7 +72,7 @@ const SAME_KM = 0.05;
 function locationFields({ reference, local, global, surface = false }: Located): Field[] {
 	const fields: Field[] = [];
 	let position: LatLon;
-	if (local && global) {
+	if (global) {
 		const off = distanceKm(local, global);
 		if (off < SAME_KM) {
 			position = local;
@@ -95,7 +97,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 				}
 			);
 		}
-	} else if (local) {
+	} else {
 		position = local;
 		fields.push({
 			value: 'unconfirmed',
@@ -103,16 +105,6 @@ function locationFields({ reference, local, global, surface = false }: Located):
 				"Decoded with the receiver's position as the reference point only. No message from this aircraft's other grid within the last 10 s (yet), so it can't be confirmed",
 			tone: 'minor'
 		});
-	} else if (global) {
-		position = global;
-		fields.push({
-			value: 'pair',
-			title:
-				'Decoded from the even/odd pair (global decoding). Set RECEIVER_POSITION to also decode single messages',
-			tone: 'minor'
-		});
-	} else {
-		return [];
 	}
 
 	const digits = surface ? 5 : 4;
@@ -124,13 +116,11 @@ function locationFields({ reference, local, global, surface = false }: Located):
 		tone: 'main',
 		mono: true
 	});
-	if (reference) {
-		fields.splice(1, 0, {
-			value: `${n(Math.round(distanceKm(reference, position)))} km ${compass(bearing(reference, position))}`,
-			title: 'Distance and direction from the receiver (RECEIVER_POSITION), along the great circle',
-			tone: 'main'
-		});
-	}
+	fields.splice(1, 0, {
+		value: `${n(Math.round(distanceKm(reference, position)))} km ${compass(bearing(reference, position))}`,
+		title: 'Distance and direction from the receiver (RECEIVER_POSITION), along the great circle',
+		tone: 'main'
+	});
 	return fields;
 }
 

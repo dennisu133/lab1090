@@ -39,11 +39,3 @@ test('reference only: unconfirmed', () => {
 		'minor: unconfirmed'
 	]);
 });
-
-test('no reference point: only pairs, no distance', () => {
-	expect(positionValues({ reference: null, local: null, global: there })).toEqual([
-		'main: 0.0000, 1.0000',
-		'minor: pair'
-	]);
-	expect(positionValues({ reference: null, local: null, global: null })).toEqual([]);
-});

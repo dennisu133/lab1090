@@ -25,8 +25,8 @@ test('bearing and compass', () => {
 test('parseLatLon', () => {
 	expect(parseLatLon('51.5,-0.1')).toEqual({ lat: 51.5, lon: -0.1 });
 	expect(parseLatLon(' -33.9 , 151.2 ')).toEqual({ lat: -33.9, lon: 151.2 });
-	expect(parseLatLon('')).toBeNull();
-	expect(parseLatLon(undefined)).toBeNull();
+	expect(() => parseLatLon('')).toThrow();
+	expect(() => parseLatLon(undefined)).toThrow();
 	expect(() => parseLatLon('51.5')).toThrow();
 	expect(() => parseLatLon('51.5;-0.1')).toThrow();
 	expect(() => parseLatLon('91,0')).toThrow();

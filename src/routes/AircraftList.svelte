@@ -19,7 +19,7 @@
 	interface Props {
 		aircraft: TrackedAircraft[];
 		now: number;
-		receiver: LatLon | null;
+		receiver: LatLon;
 		unit: Unit;
 		onselect: (icao: string) => void;
 	}
@@ -32,7 +32,7 @@
 		const elsewhere: Row[] = [];
 		for (const a of aircraft) {
 			const shown = shownPosition(a, now);
-			const km = shown && receiver ? distanceKm(receiver, shown) : null;
+			const km = shown ? distanceKm(receiver, shown) : null;
 			(shown ? onMap : elsewhere).push({ a, km });
 		}
 		onMap.sort((x, y) => (x.km ?? 0) - (y.km ?? 0) || x.a.icao.localeCompare(y.a.icao));

@@ -35,8 +35,8 @@ export class Streams {
 	readonly coverage: CoverageStream;
 	#connection: StreamConnection;
 
-	/** `reference`: the receiver's position (RECEIVER_POSITION), if set. */
-	constructor(reference: () => LatLon | null) {
+	/** `reference`: the receiver's position (RECEIVER_POSITION). */
+	constructor(reference: () => LatLon) {
 		this.tracker = new TrackerStream(reference);
 		this.frames = new FrameStream(reference);
 		this.commB = new CommBStream();

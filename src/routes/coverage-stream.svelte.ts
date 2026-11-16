@@ -34,7 +34,7 @@ export class CoverageStream extends LiveFeed<never> {
 	terrainState = $state<'idle' | 'loading' | 'ready' | 'failed'>('idle');
 
 	#tracker: TrackerStream;
-	#receiver: () => LatLon | null;
+	#receiver: () => LatLon;
 	#coverage: Coverage | null = null;
 	#feed = new CoverageFeed();
 	#sectorsAt = -Infinity;
@@ -42,7 +42,7 @@ export class CoverageStream extends LiveFeed<never> {
 	/** An extreme changed since the sectors were last published. */
 	#dirty = false;
 
-	constructor(tracker: TrackerStream, receiver: () => LatLon | null) {
+	constructor(tracker: TrackerStream, receiver: () => LatLon) {
 		super(0);
 		this.#tracker = tracker;
 		this.#receiver = receiver;
@@ -51,7 +51,7 @@ export class CoverageStream extends LiveFeed<never> {
 	/** The layer or the panel calls it: load the terrain (once). */
 	start(): void {
 		const receiver = this.#receiver();
-		if (!receiver || this.terrainState === 'loading' || this.terrainState === 'ready') return;
+		if (this.terrainState === 'loading' || this.terrainState === 'ready') return;
 		this.terrainState = 'loading';
 		loadTerrain(receiver).then(
 			(terrain) => {
@@ -76,9 +76,7 @@ export class CoverageStream extends LiveFeed<never> {
 
 	protected process(frames: WireFrame[]): never[] {
 		if (frames.length === 0) return [];
-		const receiver = this.#receiver();
-		if (!receiver) return [];
-		this.#coverage ??= new Coverage(receiver, this.terrain?.antennaKm ?? 0);
+		this.#coverage ??= new Coverage(this.#receiver(), this.terrain?.antennaKm ?? 0);
 		if (this.#feed.add(this.#coverage, this.#tracker.aircraft)) this.#dirty = true;
 		this.#publish(frames.at(-1)!.rx);
 		return [];

@@ -30,11 +30,11 @@ export const LIVE_FRAMES = 1000;
  * its tables come from ReceiverStats.
  */
 export class FrameStream extends LiveFeed<FeedFrame> {
-	/** RECEIVER_POSITION from the server, if set (the reference point for local CPR decoding). */
-	#reference: () => LatLon | null;
+	/** RECEIVER_POSITION from the server: the reference point for local CPR decoding. */
+	#reference: () => LatLon;
 	#decoder: FrameDecoder;
 
-	constructor(reference: () => LatLon | null) {
+	constructor(reference: () => LatLon) {
 		super(LIVE_FRAMES);
 		this.#reference = reference;
 		this.#decoder = new FrameDecoder(reference);
@@ -76,15 +76,14 @@ export class FrameStream extends LiveFeed<FeedFrame> {
  * decode pairs (global CPR), so frames must come in arrival order.
  */
 class FrameDecoder {
-	#reference: () => LatLon | null;
+	#reference: () => LatLon;
 	#pairs = new CprPairs();
 	/** The same for surface positions: a separate grid, and pairs need the reference too. */
-	#surfacePairs = new CprPairs(10_000, (even, odd, newer) => {
-		const reference = this.#reference();
-		return reference ? decodeSurfaceGlobal(even, odd, newer, reference) : null;
-	});
+	#surfacePairs = new CprPairs(10_000, (even, odd, newer) =>
+		decodeSurfaceGlobal(even, odd, newer, this.#reference())
+	);
 
-	constructor(reference: () => LatLon | null) {
+	constructor(reference: () => LatLon) {
 		this.#reference = reference;
 	}
 
@@ -125,7 +124,7 @@ class FrameDecoder {
 		if (surface) {
 			return {
 				reference,
-				local: reference ? decodeSurfaceLocal(surface.cpr, reference) : null,
+				local: decodeSurfaceLocal(surface.cpr, reference),
 				global: key ? this.#surfacePairs.add(key, surface.cpr, f.rx) : null,
 				surface: true
 			};
@@ -134,7 +133,7 @@ class FrameDecoder {
 		if (!position?.cpr) return null;
 		return {
 			reference,
-			local: reference ? decodeLocal(position.cpr, reference) : null,
+			local: decodeLocal(position.cpr, reference),
 			global: key ? this.#pairs.add(key, position.cpr, f.rx) : null
 		};
 	}

@@ -42,7 +42,7 @@
 		/** The aircraft on the map: callsigns, and which can be opened on the tracker. */
 		aircraft: TrackedAircraft[];
 		now: number;
-		receiver: LatLon | null;
+		receiver: LatLon;
 		unit: Unit;
 		onselect: (icao: string) => void;
 		onselectradar: (id: string) => void;
@@ -73,7 +73,7 @@
 
 	let seconds = $derived(r.period / 1000);
 	let rpm = $derived(60 / seconds);
-	let from = $derived(receiver ? seenFrom(r, receiver) : null);
+	let from = $derived(seenFrom(r, receiver));
 	let tracked = $derived(new Map(aircraft.map((a) => [a.icao, a])));
 	let heard = $derived(now - r.heard <= BEAM_FRESH_MS);
 	let others = $derived(codes.filter((c) => c.code !== r.code));
@@ -120,7 +120,8 @@
 		</h2>
 		<p class="text-sm text-zinc-400">
 			{fixed(rpm, 1)} rpm · {r.clockwise ? 'clockwise' : 'anticlockwise'}
-			{#if from}· {km(from.km)} {compass(from.bearing)} of the receiver{/if}
+			· {km(from.km)}
+			{compass(from.bearing)} of the receiver
 		</p>
 	</div>
 	<button
