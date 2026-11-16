@@ -1,6 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '#lib/assets/favicon.svg';
+	import logo from '#lib/assets/logo.svg';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
@@ -48,7 +49,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/svg+xml" href={favicon} />
 </svelte:head>
 
 <!-- --alert-banner: other notices (PauseButton) float below the alert banner, not over it. -->
@@ -60,8 +61,11 @@
 	style:--alert-banner={streams.alerts.top ? '3rem' : null}
 >
 	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
-		<!-- Ten Ninety: 1090 MHz, the frequency of Mode S and ADS-B. -->
-		<span class="font-semibold">Ten Ninety</span>
+		<!-- Ten Ninety: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
+		     "10 90" under radio waves, on an aircraft. -->
+		<a href={resolve('/')} class="shrink-0">
+			<img src={logo} alt="Ten Ninety" class="h-8 w-auto" />
+		</a>
 		{#each links as { route, href, label } (route)}
 			<a
 				{href}
