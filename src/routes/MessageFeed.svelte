@@ -7,7 +7,6 @@
 	message is open, the list holds still (like /frames when scrolled into), so it can be read.
 -->
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import type { Message } from './tracker-stream.svelte.ts';
 
@@ -37,11 +36,6 @@
 			<p>
 				The latest {messages.length} messages from this aircraft, newest first: ADS-B broadcasts (DF17),
 				all-call replies (DF11), and replies to radars (DF0/4/5/16/20/21) whose address could be verified.
-			</p>
-			<p>
-				Tap one to see what's in it. <a href={resolve('/frames')} class="text-sky-400 underline"
-					>Raw frames</a
-				> shows every message the receiver hears.
 			</p>
 		</InfoTip>
 	</h3>

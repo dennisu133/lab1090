@@ -1,7 +1,8 @@
 <!--
-	Sections of labelled values (lib/describe/aircraft.ts). Every label is an InfoTip with the
-	explanation: tappable on phones, where `title` tooltips never show. A blank line in it
-	starts a new paragraph.
+	Sections of labelled values (lib/describe/aircraft.ts). A label with an explanation is an
+	InfoTip: tappable on phones, where `title` tooltips never show. A blank line in it starts a
+	new paragraph; `choices` (e.g. every emitter category) follow as a table, the one sent
+	highlighted. Labels of self-explanatory values (Route, Messages) are plain text.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
@@ -28,10 +29,25 @@
 		<dl class="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-1.5 text-sm">
 			{#each section.fields as field (field.label)}
 				<dt class="text-zinc-400">
-					<InfoTip label={field.label}>
-						<!-- A blank line in the explanation starts a new paragraph. -->
-						{#each field.title.split('\n\n') as paragraph, i (i)}<p>{paragraph}</p>{/each}
-					</InfoTip>
+					{#if field.title || field.choices}
+						<InfoTip label={field.label}>
+							{#each field.title?.split('\n\n') ?? [] as paragraph, i (i)}<p>{paragraph}</p>{/each}
+							{#if field.choices}
+								<table class="w-full text-xs">
+									<tbody>
+										{#each field.choices as choice (choice.key)}
+											<tr class={choice.current ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'}>
+												<td class="w-8 py-0.5 pl-1.5 font-mono">{choice.key}</td>
+												<td class="py-0.5 pr-1.5">{choice.text}</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							{/if}
+						</InfoTip>
+					{:else}
+						{field.label}
+					{/if}
 				</dt>
 				<dd
 					class={[

@@ -36,16 +36,12 @@
 			<p>
 				The radar codes in the replies of the last {WINDOW_MS / 60_000} minutes with at least {LISTED_BURSTS}
 				bursts. Most are never placed: too few aircraft answer them often enough, or too few of those
-				have an ADS-B position. They may appear as more aircraft pass.
+				have an ADS-B position.
 			</p>
 			<p>
-				A candidate has been found, but not yet by every fit for long enough to be shown (see "All
-				radars").
-			</p>
-			<p>
-				Codes with only a few bursts are left out. Some of them aren't even radars: the code sits in
-				the last 7 bits of the parity field, where a flipped bit can't be caught (the CRC only says
-				what the code is), so a garbled reply names a code that nobody used.
+				Codes with fewer bursts are left out: some aren't even radars. The code is what's left of
+				the parity field after the CRC, so a flipped bit there can't be caught and names a code
+				nobody used.
 			</p>
 		</InfoTip>
 		<ul class="space-y-0.5 tabular-nums">

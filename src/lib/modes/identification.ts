@@ -94,6 +94,11 @@ const CATEGORIES: Record<EmitterCategory['set'], string[]> = {
 	D: Array.from({ length: 8 }, (_, i) => (i === 0 ? 'No category information' : 'Reserved'))
 };
 
+/** Every category in a set, by code (0–7): for showing the one sent among the others. */
+export function categoryNames(set: EmitterCategory['set']): readonly string[] {
+	return CATEGORIES[set];
+}
+
 export function emitterCategory(tc: number, code: number): EmitterCategory {
 	const set = (['D', 'C', 'B', 'A'] as const)[tc - 1];
 	return { set, code, name: CATEGORIES[set][code] };

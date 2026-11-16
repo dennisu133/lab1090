@@ -36,13 +36,10 @@
 	>
 		<p>
 			The radars on the map: every fit has found them again for {CONFIRM_MS / 60_000} minutes. One goes
-			after {MAX_MISSES} fits in a row that find other radars on its code but not it. Distances and directions
-			are from the receiver; ± is the drawn ellipse's half length.
+			after {MAX_MISSES} fits in a row that find other radars on its code but not it. ± is the drawn ellipse's
+			half length.
 		</p>
-		<p>
-			A candidate has been found but not yet for long enough: listed, not drawn. Most of the
-			phantoms of an early live run would have stayed candidates and gone.
-		</p>
+		<p>A candidate has been found, but not for long enough yet: listed, not drawn.</p>
 	</InfoTip>
 	<ul class="space-y-0.5 tabular-nums">
 		{#each radars as r (r.id)}

@@ -49,7 +49,7 @@ export function altitudeGradient(): string {
 	return `linear-gradient(to right in oklab, ${stops.join(', ')})`;
 }
 
-/** One colour for CSS (e.g. the list's swatches): the ramp at `feet`, mixed in oklab like the map. */
+/** One colour for CSS (e.g. the list's altitudes): the ramp at `feet`, mixed in oklab like the map. */
 export function altitudeCss(feet: number | null, ground = false): string {
 	if (ground) return GROUND_COLOUR;
 	if (feet === null) return UNKNOWN_COLOUR;

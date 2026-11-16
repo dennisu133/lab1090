@@ -237,7 +237,7 @@ export function weatherHereFields(
 				correction
 					? `, ${signed(correction)}° heading correction (below) = ${normalise(trueHeading + correction).toFixed(1)}°`
 					: ''
-			}. The difference between the two is the air moving: ${Math.round(latest.speed)} kt from ${degrees(latest.direction)} in the latest reading, ${ago(now - o.rx)}. The registers' rounding alone allows ±${Math.max(1, Math.round((speedRange[1] - speedRange[0]) / 2))} kt. On the map: the wind barbs along its path.`,
+			}. The difference between the two is the air moving: ${Math.round(latest.speed)} kt from ${degrees(latest.direction)} in the latest reading, ${ago(now - o.rx)}. The registers' rounding alone allows ±${Math.max(1, Math.round((speedRange[1] - speedRange[0]) / 2))} kt.`,
 			tone: 'main'
 		});
 		const c = components(latest, trueHeading + correction, track!);

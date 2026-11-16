@@ -1,7 +1,7 @@
 <!--
 	Every aircraft heard in the last minute: the ones on the map, nearest first, then the
-	ones without a position. Tap one for its details. Aircraft with an alert get a ring around
-	their dot in its colour and its badge next to the name ("7700", "RA ↑"), as on the map.
+	ones without a position. Tap one for its details. The altitude is in the map's colours.
+	Aircraft with an alert get its badge next to the name ("7700", "RA ↑"), as on the map.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
@@ -50,21 +50,12 @@
 
 {#snippet row(a: TrackedAircraft, km: number | null)}
 	{@const alerts = alertsOf(a, now)}
-	{@const emergency = alerts.some((x) => x.tier === 'emergency')}
 	<li>
 		<button
 			type="button"
 			onclick={() => onselect(a.icao)}
-			class="grid w-full grid-cols-[0.5rem_1fr_3.5rem_3.5rem_4.5rem] items-center gap-x-3 px-4 py-1.5 text-left text-sm hover:bg-zinc-900"
+			class="grid w-full grid-cols-[1fr_3.5rem_3.5rem_4.5rem] items-center gap-x-3 px-4 py-1.5 text-left text-sm hover:bg-zinc-900"
 		>
-			<span
-				class={[
-					'size-2 rounded-full',
-					alerts.length && 'ring-2 ring-offset-2 ring-offset-zinc-950',
-					emergency ? 'ring-red-500' : 'ring-amber-400'
-				]}
-				style:background-color={altitudeCss(a.altitude?.value ?? null, !!a.position?.surface)}
-			></span>
 			<span class="flex min-w-0 items-center gap-2">
 				{@render flag(a.icao)}
 				<!-- On a phone the badges give way, not the name. -->
@@ -83,7 +74,11 @@
 					<span class="shrink-0 text-xs text-zinc-300">IDENT</span>
 				{/if}
 			</span>
-			<span class="text-right text-zinc-300 tabular-nums">{altitudeText(a)}</span>
+			<span
+				class="text-right tabular-nums"
+				style:color={altitudeCss(a.altitude?.value ?? null, !!a.position?.surface)}
+				>{altitudeText(a)}</span
+			>
 			<span class="text-right text-zinc-400 tabular-nums">
 				{a.ground && !a.position?.surface ? Math.round(a.ground.value.speed) : ''}
 			</span>
@@ -95,37 +90,20 @@
 {/snippet}
 
 <div class="px-4 pt-3 pb-1">
-	<h2 class="font-semibold">
-		<InfoTip label="{aircraft.length} aircraft">
-			<p>
-				Everything heard in the last minute: aircraft broadcasting ADS-B, and aircraft replying to
-				radars whose address could be checked. An aircraft disappears after a minute without a
-				message.
-			</p>
-		</InfoTip>
-	</h2>
+	<h2 class="font-semibold">{aircraft.length} aircraft</h2>
 </div>
 
-<div
-	class="grid grid-cols-[0.5rem_1fr_3.5rem_3.5rem_4.5rem] gap-x-3 px-4 py-1 text-xs text-zinc-500"
->
-	<span></span>
+<div class="grid grid-cols-[1fr_3.5rem_3.5rem_4.5rem] gap-x-3 px-4 py-1 text-xs text-zinc-500">
 	<span>
 		<InfoTip label="Flight">
 			<p>
-				The callsign (airline code + flight number), or the transponder's 24-bit address while no
-				callsign has come in.
+				The callsign, or the transponder's 24-bit address until one comes in. The flag: the State of
+				registration, which the address alone says (each State has its own block).
 			</p>
 			<p>
-				The flag: the State the aircraft is registered in. Each State has its own block of addresses
-				(ICAO Annex 10), so the address alone says it. Not necessarily the airline's country: leased
-				aircraft often keep a foreign registration.
-			</p>
-			<p>
-				A ring around the dot and a code after the name: an alert, red for an emergency (7700, 7600,
-				7500), amber for an ACAS resolution advisory (RA) or a flight asking for priority. Open it
-				to see what it means. IDENT: the pilot pressed the button that makes it stand out on the
-				controller's screen.
+				A code after the name: an alert, red for an emergency (7700, 7600, 7500), amber for an ACAS
+				resolution advisory (RA) or a flight asking for priority. IDENT: the pilot pressed the
+				button that makes it stand out on the controller's screen.
 			</p>
 		</InfoTip>
 	</span>
@@ -133,21 +111,18 @@
 		<InfoTip label="Alt" align="right">
 			<p>
 				Barometric altitude as a flight level: hundreds of feet in the standard atmosphere, FL350 =
-				35,000 ft. GND: on the ground. The dot has the aircraft's colour on the map.
+				35,000 ft. GND: on the ground.
 			</p>
 		</InfoTip>
 	</span>
 	<span class="text-right">
 		<InfoTip label="kt" align="right">
-			<p>Ground speed in knots (nautical miles per hour; 1 kt = 1.852 km/h).</p>
+			<p>Ground speed in knots: nautical miles per hour, 1 kt = 1.852 km/h.</p>
 		</InfoTip>
 	</span>
 	<span class="text-right">
 		<InfoTip label="Dist" align="right">
-			<p>
-				Distance from the receiver, along the great circle. The receiver is the white dot on the
-				map: tap it for how far it hears in each direction.
-			</p>
+			<p>Great-circle distance from the receiver.</p>
 		</InfoTip>
 	</span>
 </div>
@@ -161,16 +136,14 @@
 {#if rows.elsewhere.length}
 	<div class="px-4 pt-4 pb-1 text-xs text-zinc-500">
 		<InfoTip label="Heard, not on the map ({rows.elsewhere.length})">
-			<p>Aircraft we hear but can't place:</p>
 			<p>
-				<strong class="text-zinc-200">No ADS-B:</strong> older transponders only answer radars (altitude,
-				squawk). A ground radar knows where they are from its antenna's direction and the reply's delay;
-				a receiver that only listens doesn't.
+				<strong class="text-zinc-200">No ADS-B:</strong> older transponders only answer radars. A radar
+				knows where they are from its antenna's direction and the reply's delay; a receiver that only
+				listens doesn't.
 			</p>
 			<p>
-				<strong class="text-zinc-200">ADS-B without a position:</strong> some send "no position information"
-				(TC 0), e.g. without a GPS fix. Others are just at the edge of reception: a position needs an
-				even and an odd message within 10 s.
+				<strong class="text-zinc-200">ADS-B without a position:</strong> no GPS fix ("no position information",
+				TC 0), or at the edge of reception: a position needs an even and an odd message within 10 s.
 			</p>
 			<p>
 				<strong class="text-zinc-200">Not confirmed yet:</strong> a first position is only drawn once

@@ -14,7 +14,6 @@
 	import { BURST_GAP_MS } from '#lib/radar/bursts.ts';
 	import {
 		BEAM_FRESH_MS,
-		CONFIRM_MS,
 		MAX_ELLIPSE_KM,
 		MIN_ELLIPSE_KM,
 		MIN_AIRCRAFT,
@@ -137,11 +136,7 @@
 		Nobody told us this radar is here, and the antenna never heard it: radars ask on 1030 MHz, we
 		listen on 1090. It was found from the answers of {r.codeAircraft} aircraft, in four steps.
 	</p>
-	<p class="text-zinc-400">
-		An experiment: checked against radar sites mapped on OpenStreetMap, the radars found lie 1–35 km
-		from one, the far ones furthest off, and a few have no mapped site nearby. Take the symbol as
-		"somewhere in the ellipse", not as the spot.
-	</p>
+	<p class="text-zinc-400">Take the symbol as "somewhere in the ellipse", not as the spot.</p>
 	{#if r.sharing.length}
 		<p class="text-zinc-400">
 			It shares its code with {r.sharing.join(', ')}: radars whose coverage overlaps may use the
@@ -166,14 +161,9 @@
 			of the message XOR the code of the radar that asked. Recomputing the CRC leaves the code.
 		</p>
 		<p>
-			II codes (interrogator identifier, 1–15) and SI codes (surveillance identifier, 1–63) are
-			handed out across Europe so that radars whose coverage overlaps have different ones
-			(Commission Regulation (EC) No 262/2009), unless they form a cluster. So a code is close to a
-			name.
-		</p>
-		<p>
-			II 0 is left out: aircraft also send DF11 with II 0 by themselves, about once a second
-			("acquisition squitter"). Those don't answer anyone's beam.
+			II (1–15) and SI (1–63) codes are assigned so that radars whose coverage overlaps have
+			different ones (in Europe: Regulation (EC) No 262/2009), so a code is close to a name. II 0 is
+			left out: aircraft send that by themselves, about once a second (acquisition squitter).
 		</p>
 	</InfoTip>
 	<p>
@@ -197,8 +187,8 @@
 			period would fit as well, so it's the longest that scores near the best.
 		</p>
 		<p>
-			Approach radars near airports turn every 4–5 s (12–15 rpm), to see aircraft that turn and
-			descend often; long-range en-route radars every 8–12 s (5–7.5 rpm), with more energy per look.
+			Approach radars near airports turn every 4–5 s (12–15 rpm); long-range en-route radars every
+			8–12 s (5–7.5 rpm).
 		</p>
 	</InfoTip>
 	<p>
@@ -259,14 +249,8 @@
 		</p>
 		<p>
 			The position is where the bursts are off the least: searched on a 25 km grid within 600 km of
-			the aircraft (further away no radar reaches them: the radio horizon), both directions of
-			rotation, then refined to 50 m. A burst more than {OUTLIER}° off counts as {OUTLIER}° (one
-			stray reply can't pull), and the last step only rewards bursts close to the line, so two
-			radars sharing a code don't blur into one between them.
-		</p>
-		<p>
-			Surveyors locate themselves the same way, by sighting known points (a resection): here the
-			aircraft are the known points and the radar takes the sightings, timed by its beam.
+			the aircraft (the radio horizon), both directions of rotation, then refined. A burst more than {OUTLIER}°
+			off counts as {OUTLIER}°, so one stray reply can't pull it.
 		</p>
 	</InfoTip>
 	<p>
@@ -324,8 +308,7 @@
 	</p>
 	<p class="mt-2 text-zinc-400">
 		To count, a radar needs at least {MIN_BURSTS} explained bursts, {MIN_AIRCRAFT} aircraft with {MIN_PER_AIRCRAFT}
-		or more each, and {pct(MIN_SHARE)} of the bursts it was fitted to. Chance doesn't get there: with
-		the capture's burst times shuffled by up to 5 s, the best explains 23 bursts.
+		or more each, and {pct(MIN_SHARE)} of the bursts it was fitted to.
 	</p>
 </section>
 
@@ -342,22 +325,15 @@
 		</p>
 		<p>
 			Bearings pin a radar down sideways, but hardly how far away it is: seen from a distant radar,
-			the aircraft sit in a small slice of its sky. So the ellipses of far radars are long and thin,
-			pointing at the aircraft. With few aircraft the ellipse itself is rough: checked against radar
-			sites mapped by others, most lay inside theirs, a few outside (up to 1.7 times as far as the
-			edge).
+			the aircraft sit in a small slice of its sky. So far radars get long, thin ellipses pointing
+			at the aircraft.
 		</p>
 		<p>
-			The jackknife only sees how much the position hangs on single aircraft, not what all the
-			bursts get wrong together (the beam is about 2.4° wide; the positions are up to half a second
-			old). A radar many aircraft answer can get an ellipse of almost nothing and still be 5–15 km
-			off. So the map draws it at least {km(MIN_ELLIPSE_KM)} either way.
-		</p>
-		<p>
-			A radar whose ellipse is longer than {km(MAX_ELLIPSE_KM)} (from the middle) isn't shown at all:
-			that's a line of places it could be, not a place. On the capture that rules out a long-range radar
-			350 km away that turns every 10 s: too few bursts, an ellipse 130–300 km long. Its fits came within
-			4–44 km of a mapped site, but only because the site happens to lie on that line.
+			The jackknife misses what all the bursts get wrong together (the beam is about 2.4° wide; the
+			positions are up to half a second old), so the map draws the ellipse at least {km(
+				MIN_ELLIPSE_KM
+			)} either way. Longer than {km(MAX_ELLIPSE_KM)} (from the middle), the radar isn't shown: that's
+			a line of places it could be, not a place.
 		</p>
 	</InfoTip>
 	<p>
@@ -384,9 +360,8 @@
 		label="Who answered"
 	>
 		<p>
-			Every aircraft with bursts to this code, with how many the fit explains. An aircraft with many
-			unexplained bursts may have answered another radar with the same code, or was too far away for
-			a good position. Tap one to open it on the tracker.
+			Every aircraft with bursts to this code, with how many the fit explains. Many unexplained
+			bursts: it answered another radar with the same code, or was too far away for a good position.
 		</p>
 	</InfoTip>
 	<ul class="space-y-0.5 text-zinc-300">
@@ -420,14 +395,12 @@
 		</p>
 		<p>
 			It's drawn while the radar is heard (the last {BEAM_FRESH_MS / 60_000} min): a period good to a
-			tenth of a millisecond still drifts a degree in a few minutes. Not at all if your system asks for
-			less motion.
+			tenth of a millisecond still drifts a degree in a few minutes.
 		</p>
 		<p>
-			A radar is fitted again about twice a minute, from where it was, on the bursts of the last {WINDOW_MS /
-				60_000} minutes. It was shown once every fit had found it for {CONFIRM_MS / 60_000} minutes, and
-			it goes if fits keep finding other radars on its code but not it. When they find nothing at all
-			(too few aircraft), it stays: radars don't move.
+			The radar is fitted again about twice a minute on the bursts of the last {WINDOW_MS / 60_000} minutes.
+			It goes if fits keep finding other radars on its code but not it; when they find nothing (too few
+			aircraft), it stays: radars don't move.
 		</p>
 	</InfoTip>
 	<p>

@@ -5,8 +5,10 @@
 	from a table header).
 
 	Placing it takes a little JS: `align` says which edge it lines up with, but where a label ends
-	up depends on the window width, so the tooltip is shifted sideways to stay inside the window.
-	Even hidden it takes up room: left sticking out, it would make the whole page scroll sideways.
+	up depends on the window width, so the tooltip is shifted sideways to stay inside the window,
+	or inside the nearest box that clips its content (a scrolling side panel: the tracker's list
+	would cut it off at the map's edge), narrowed if that box is narrower. Even hidden it takes up
+	room: left sticking out, it would make the whole page scroll sideways.
 
 	For a section title, pass `heading="h2"`: only the label goes inside the heading, the
 	tooltip sits next to it (a heading may only contain text, not paragraphs or tables).
@@ -47,19 +49,38 @@
 	const MARGIN = 8;
 
 	/**
-	 * Move the tooltip sideways so it stays inside the window: right away, on resize, and
+	 * The room the tooltip has across, in window coordinates: the window, narrowed to the
+	 * nearest ancestor that clips sideways (overflow other than visible; a vertical scroller
+	 * clips sideways too).
+	 */
+	function room(anchor: HTMLElement): { left: number; right: number } {
+		let left = 0;
+		let right = document.documentElement.clientWidth;
+		for (let el = anchor.parentElement; el && el !== document.body; el = el.parentElement) {
+			if (getComputedStyle(el).overflowX === 'visible') continue;
+			const box = el.getBoundingClientRect();
+			left = Math.max(left, box.left + el.clientLeft);
+			right = Math.min(right, box.left + el.clientLeft + el.clientWidth);
+			break;
+		}
+		return { left, right };
+	}
+
+	/**
+	 * Move the tooltip sideways so it stays inside its room: right away, on resize, and
 	 * whenever it opens (the label may have moved since, e.g. when a header wrapped).
 	 */
 	function keepInWindow(anchor: HTMLDivElement) {
 		const tip = anchor.querySelector<HTMLElement>('[role="tooltip"]')!;
 		const place = () => {
 			const box = anchor.getBoundingClientRect();
+			const bounds = room(anchor);
+			tip.style.maxWidth = `${Math.max(0, bounds.right - bounds.left - 2 * MARGIN)}px`;
 			const width = tip.offsetWidth;
-			const viewport = document.documentElement.clientWidth;
 			// Where it goes unshifted: lined up with the label's left or right edge.
 			const left = align === 'left' ? box.left : box.right - width;
-			const intoView = Math.min(0, viewport - MARGIN - (left + width));
-			const shift = Math.max(intoView, MARGIN - left);
+			const intoView = Math.min(0, bounds.right - MARGIN - (left + width));
+			const shift = Math.max(intoView, bounds.left + MARGIN - left);
 			// `left` (relative to the label), not a transform: Chrome counts a transformed
 			// element's untransformed box when sizing the page, so it would still scroll.
 			tip.style.left = `${left + shift - box.left}px`;
