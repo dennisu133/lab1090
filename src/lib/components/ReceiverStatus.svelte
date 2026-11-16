@@ -16,10 +16,7 @@
 		if (link.online && status?.state === 'connected')
 			return { dot: 'animate-pulse bg-emerald-400', label: `Receiving from ${source}` };
 		if (link.online && status?.state === 'waiting')
-			return {
-				dot: 'bg-amber-400',
-				label: `Receiver unreachable (${status.reason}), retrying in ${(status.retryInMs / 1000).toFixed(0)} s`
-			};
+			return { dot: 'bg-amber-400', label: 'Receiver unreachable' };
 		return { dot: 'bg-amber-400', label: `Connecting to ${source}…` };
 	});
 </script>
@@ -43,5 +40,10 @@
 			<span class="text-amber-400">●</span> the server can't reach the Pi (it retries on its own),
 			<span class="text-zinc-500">●</span> the browser lost the server (it retries too).
 		</p>
+		{#if link.online && link.status?.state === 'waiting'}
+			<p class="text-zinc-400">
+				Last attempt: {link.status.reason}. Next try in {(link.status.retryInMs / 1000).toFixed(0)} s.
+			</p>
+		{/if}
 	</InfoTip>
 </div>

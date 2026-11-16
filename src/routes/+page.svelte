@@ -128,9 +128,11 @@
 	<div class="relative min-h-0 flex-1">
 		<TrackerMap {stream} {weather} receiver={data.reference} {unit} {layers} {route} />
 
-		<!-- Taps between the boxes go through to the map (on a phone this spans much of it). -->
+		<!-- Taps between the boxes go through to the map (on a phone this spans much of it).
+		     Each box has a backdrop blur, so it's its own stacking context and a later box would
+		     paint over an earlier box's tooltip: the one in use goes on top. -->
 		<div
-			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto"
+			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
 			<MapLayers bind:layers bind:unit receiver={!!data.reference} />
 			<AltitudeLegend />
