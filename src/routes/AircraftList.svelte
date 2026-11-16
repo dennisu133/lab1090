@@ -2,13 +2,16 @@
 	Every aircraft heard in the last minute: the ones on the map, nearest first, then the
 	ones without a position. Tap one for its details. The altitude is in the map's colours.
 	Aircraft with an alert get its badge next to the name ("7700", "RA ↑"), as on the map.
+
+	The switch in the title row sets the units: NM and kt (aviation's) or km and km/h, for the
+	distances and speeds here, the range rings and the panels. Altitudes stay flight levels.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { distanceText } from '#lib/describe/aircraft.ts';
 	import { badge } from '#lib/describe/alert.ts';
-	import { distanceKm } from '#lib/geo.ts';
+	import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
@@ -20,11 +23,12 @@
 		aircraft: TrackedAircraft[];
 		now: number;
 		receiver: LatLon;
+		/** NM and kt, or km and km/h. */
 		unit: Unit;
 		onselect: (icao: string) => void;
 	}
 
-	let { aircraft, now, receiver, unit, onselect }: Props = $props();
+	let { aircraft, now, receiver, unit = $bindable(), onselect }: Props = $props();
 
 	let rows = $derived.by(() => {
 		type Row = { a: TrackedAircraft; km: number | null };
@@ -41,6 +45,18 @@
 
 	const altitudeText = (a: TrackedAircraft) =>
 		a.position?.surface ? 'GND' : a.altitude ? flightLevel(a.altitude.value) : '–';
+
+	/** Ground speed in the chosen unit; none for aircraft on the ground. */
+	const speedText = (a: TrackedAircraft) => {
+		if (!a.ground || a.position?.surface) return '';
+		const kt = a.ground.value.speed;
+		return String(Math.round(unit === 'NM' ? kt : kt * KM_PER_NM));
+	};
+
+	const UNITS = [
+		{ unit: 'NM', label: 'NM · kt' },
+		{ unit: 'km', label: 'km · km/h' }
+	] as const;
 </script>
 
 {#snippet flag(icao: string)}
@@ -79,9 +95,7 @@
 				style:color={altitudeCss(a.altitude?.value ?? null, !!a.position?.surface)}
 				>{altitudeText(a)}</span
 			>
-			<span class="text-right text-zinc-400 tabular-nums">
-				{a.ground && !a.position?.surface ? Math.round(a.ground.value.speed) : ''}
-			</span>
+			<span class="text-right text-zinc-400 tabular-nums">{speedText(a)}</span>
 			<span class="text-right text-zinc-400 tabular-nums">
 				{km === null ? '' : distanceText(km, unit)}
 			</span>
@@ -89,8 +103,21 @@
 	</li>
 {/snippet}
 
-<div class="px-4 pt-3 pb-1">
+<div class="flex items-center justify-between gap-3 px-4 pt-3 pb-1">
 	<h2 class="font-semibold">{aircraft.length} aircraft</h2>
+	<div class="flex text-xs text-zinc-400" role="group" aria-label="Units">
+		{#each UNITS as u (u.unit)}
+			<button
+				type="button"
+				onclick={() => (unit = u.unit)}
+				aria-pressed={unit === u.unit}
+				class={[
+					'rounded px-1.5 py-0.5',
+					unit === u.unit ? 'bg-zinc-700 text-zinc-100' : 'hover:bg-zinc-800'
+				]}>{u.label}</button
+			>
+		{/each}
+	</div>
 </div>
 
 <div class="grid grid-cols-[1fr_3.5rem_3.5rem_4.5rem] gap-x-3 px-4 py-1 text-xs text-zinc-500">
@@ -116,15 +143,11 @@
 		</InfoTip>
 	</span>
 	<span class="text-right">
-		<InfoTip label="kt" align="right">
-			<p>Ground speed in knots: nautical miles per hour, 1 kt = 1.852 km/h.</p>
+		<InfoTip label={unit === 'NM' ? 'kt' : 'km/h'} align="right">
+			<p>Ground speed. Aviation's unit is the knot: a nautical mile per hour, 1 kt = 1.852 km/h.</p>
 		</InfoTip>
 	</span>
-	<span class="text-right">
-		<InfoTip label="Dist" align="right">
-			<p>Great-circle distance from the receiver.</p>
-		</InfoTip>
-	</span>
+	<span class="text-right">Dist</span>
 </div>
 
 <ul>

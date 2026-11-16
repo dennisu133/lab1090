@@ -7,11 +7,23 @@
 	The panel shows the list, or a selected aircraft, or what was tapped on the map besides:
 	the receiver (its coverage) or a ground radar (experimental). One at a time.
 -->
+<script lang="ts" module>
+	import type { Unit } from '#lib/map/features.ts';
+
+	/**
+	 * Distances and speeds: nautical miles and knots, aviation's units, or km and km/h as a
+	 * reference (the switch above the list, AircraftList.svelte). Module state, so it lasts
+	 * while the tab is open, also across other pages, but isn't stored: a new visit starts in
+	 * NM and kt again, the units to get used to. Only ever set in the browser (a click), so
+	 * the server's renders all share 'NM'.
+	 */
+	let unit = $state<Unit>('NM');
+</script>
+
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { lookupFlight, type DbFlight } from '#lib/aircraft-db.ts';
 	import { RouteJudge } from '#lib/tracker/route.ts';
-	import type { Unit } from '#lib/map/features.ts';
 	import { layerAt, layers as profileLayers } from '#lib/weather/profile.ts';
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
@@ -35,23 +47,6 @@
 	const coverage = streams.coverage;
 	/** The ground radars: searched for only while their layer is on. */
 	const radars = streams.radars;
-
-	/**
-	 * Range rings and distances: nautical miles (aviation's unit) or km, switched next to
-	 * the rings (MapLayers.svelte). Remembered.
-	 */
-	const UNIT_KEY = 'tracker.unit';
-	let unit = $state<Unit>('NM');
-	let unitLoaded = false;
-	onMount(() => {
-		const saved = localStorage.getItem(UNIT_KEY);
-		if (saved === 'NM' || saved === 'km') unit = saved;
-		unitLoaded = true;
-	});
-	$effect(() => {
-		const u = unit;
-		if (unitLoaded) localStorage.setItem(UNIT_KEY, u);
-	});
 
 	/** What the map draws: ours on top of the aircraft, and parts of the base map (MapLayers.svelte). Remembered. */
 	const LAYERS_KEY = 'tracker.layers';
@@ -187,7 +182,7 @@
 		<div
 			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
-			<MapLayers bind:layers bind:unit {radars} />
+			<MapLayers bind:layers {radars} />
 			<AltitudeLegend />
 		</div>
 	</div>
@@ -238,7 +233,7 @@
 				aircraft={stream.aircraft}
 				{now}
 				receiver={data.reference}
-				{unit}
+				bind:unit
 				onselect={(icao) => stream.select(icao)}
 			/>
 		{/if}

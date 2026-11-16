@@ -6,8 +6,8 @@
 	always stay: they're what you find your way by). Below another, the experiments: the
 	ground radars. All on by default but coverage and the experiments. With the trails off,
 	the selected aircraft still has one. Labels whose layer needs explaining are InfoTips
-	(tappable: phones never show `title`); Trail, Roads and Place names are plain. The rings' row also holds the NM/km switch, which the distances in the
-	list and the panel follow too; the radars' row says how far the search has got.
+	(tappable: phones never show `title`); Trail, Roads and Place names are plain. The radars'
+	row says how far the search has got. The rings' unit is set above the aircraft list.
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
@@ -35,7 +35,7 @@
 	import { onMount } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { PREDICT_S, PREDICT_SELECTED_S, type Unit } from '#lib/map/features.ts';
+	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
 	import { BANDS, OPEN_DEG } from '#lib/coverage/coverage.ts';
@@ -46,13 +46,11 @@
 
 	interface Props {
 		layers: Layers;
-		/** Distances: the rings' labels, the list and the panel. */
-		unit: Unit;
 		/** The radar search: how far it has got, next to its switch. */
 		radars: RadarStream;
 	}
 
-	let { layers = $bindable(), unit = $bindable(), radars }: Props = $props();
+	let { layers = $bindable(), radars }: Props = $props();
 
 	/** Open or folded: null until the button is used (then it's by screen width, see above). */
 	const OPEN_KEY = 'tracker.layersOpen';
@@ -103,23 +101,9 @@
 			<InfoTip label="Rings" above>
 				<p>
 					Circles at equal distances around the receiver. Nautical miles are aviation's unit: one
-					minute of latitude, 1,852 m. The NM / km switch sets the distances in the list and the
-					panel too; altitudes stay in feet, as almost everywhere in aviation.
+					minute of latitude, 1,852 m.
 				</p>
 			</InfoTip>
-			<div class="ml-auto flex" role="group" aria-label="Distance unit">
-				{#each ['NM', 'km'] as const as u (u)}
-					<button
-						type="button"
-						onclick={() => (unit = u)}
-						aria-pressed={unit === u}
-						class={[
-							'rounded px-1.5 py-0.5',
-							unit === u ? 'bg-zinc-700 text-zinc-100' : 'hover:bg-zinc-800'
-						]}>{u}</button
-					>
-				{/each}
-			</div>
 		</div>
 		<div class="flex items-center gap-2">
 			<label class="flex cursor-pointer items-center gap-2 py-0.5">
