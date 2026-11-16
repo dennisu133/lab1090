@@ -1,7 +1,8 @@
 <!--
 	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
 	the dotted predicted paths ahead of them and the circles of their position uncertainty
-	(rings, trails, predictions and circles can be switched off: MapLayers.svelte). MapLibre
+	(rings, trails, predictions, circles, wind barbs, and the base map's roads and place names
+	can be switched off: MapLayers.svelte). MapLibre
 	draws with WebGL from GeoJSON sources; this component keeps those sources up to date with
 	the tracker. Aircraft, the pieces of trail up to them and the predictions move every
 	animation frame (dead
@@ -78,7 +79,10 @@
 		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
 		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown'],
 		rings: ['rings', 'ring-labels'],
-		winds: ['winds']
+		winds: ['winds'],
+		// The base map's own layers (lib/map/style.ts). Borders, terrain and airports always stay.
+		roads: ['roads', 'motorways'],
+		places: ['places']
 	};
 
 	/** Barbs further than this from the selected aircraft's altitude are dimmed, ft. */

@@ -43,20 +43,22 @@
 		if (unitLoaded) localStorage.setItem(UNIT_KEY, u);
 	});
 
-	/** What the map draws on top of the aircraft (MapLayers.svelte). Remembered. */
+	/** What the map draws: ours on top of the aircraft, and parts of the base map (MapLayers.svelte). Remembered. */
 	const LAYERS_KEY = 'tracker.layers';
 	let layers = $state<Layers>({
 		rings: true,
 		trail: true,
 		prediction: true,
 		uncertainty: true,
-		winds: true
+		winds: true,
+		roads: true,
+		places: true
 	});
 	let layersLoaded = false;
 	onMount(() => {
 		try {
 			const saved = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? 'null');
-			for (const key of ['rings', 'trail', 'prediction', 'uncertainty', 'winds'] as const)
+			for (const key of Object.keys(layers) as (keyof Layers)[])
 				if (typeof saved?.[key] === 'boolean') layers[key] = saved[key];
 		} catch {
 			// Not ours or broken: keep the defaults.

@@ -49,7 +49,8 @@ Pages:
 
 - **/**: the tracker. Live aircraft on a map, coloured by altitude, with their trails of the
   last 10 minutes, a dotted line predicting where each one goes next, circles showing how
-  accurate its position is (all three can be switched off), and range rings around the receiver.
+  accurate its position is, and range rings around the receiver. These, the wind barbs, and the
+  base map's roads and place names can be switched off.
   Tap one for everything known about it (identity, position, flight, autopilot settings,
   what radars read from it, reception) and its live messages, each value explained. Plus
   what no radio message says, looked up in a database: a photo, the type, registration and
