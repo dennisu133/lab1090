@@ -1,8 +1,14 @@
-# Ten Ninety
+# lab1090
 
 Live Mode S / ADS-B traffic from an RTL-SDR on a Raspberry Pi, decoded and shown by a
-SvelteKit app. The name is the frequency it all happens on: 1090 MHz, where transponders
-answer radars and broadcast ADS-B.
+SvelteKit app. 1090 MHz is the frequency it all happens on, where transponders answer
+radars and broadcast ADS-B; the name follows the custom of tools like dump1090 and tar1090,
+with "lab" for what this one is: a place to learn how it works.
+
+An independent learning project, not affiliated with dump1090, readsb, tar1090 or any
+other 1090 MHz tool. It stands on their shoulders: readsb does the demodulation on the Pi,
+and [pyModeS](https://github.com/junzis/pyModeS) is the reference the decoders are tested
+against.
 
 ## What this is
 

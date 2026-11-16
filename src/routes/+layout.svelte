@@ -61,10 +61,10 @@
 	style:--alert-banner={streams.alerts.top ? '3rem' : null}
 >
 	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
-		<!-- Ten Ninety: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
+		<!-- lab1090: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
 		     "10 90" under radio waves, on an aircraft. -->
 		<a href={resolve('/')} class="shrink-0">
-			<img src={logo} alt="Ten Ninety" class="h-8 w-auto" />
+			<img src={logo} alt="lab1090" class="h-8 w-auto" />
 		</a>
 		{#each links as { route, href, label } (route)}
 			<a

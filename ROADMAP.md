@@ -1,6 +1,6 @@
 # Roadmap
 
-What's left before Ten Ninety is done. It stays a learning tool for a single RTL-SDR with
+What's left before lab1090 is done. It stays a learning tool for a single RTL-SDR with
 a single antenna, and plug and play: the only setting it needs is the receiver's position.
 No extra hardware, no antenna height, no server-side storage. Everything new gets the same
 treatment as the rest: every value explained, every calculation shown, sources cited.

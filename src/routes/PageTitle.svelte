@@ -1,6 +1,6 @@
 <!--
-	The window title, "Tracker · Ten Ninety", with the most important alert in front while
-	there is one ("⚠ 7700 AUA98F · Tracker · Ten Ninety"): for a window left open on a second
+	The window title, "Tracker · lab1090", with the most important alert in front while
+	there is one ("⚠ 7700 AUA98F · Tracker · lab1090"): for a window left open on a second
 	screen, where the tab is often all that shows. Also for alerts whose banner was hidden.
 -->
 <script lang="ts">
@@ -17,5 +17,5 @@
 </script>
 
 <svelte:head>
-	<title>{prefix}{page} · Ten Ninety</title>
+	<title>{prefix}{page} · lab1090</title>
 </svelte:head>
