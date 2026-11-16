@@ -18,6 +18,11 @@
 	 * the server's renders all share 'NM'.
 	 */
 	let unit = $state<Unit>('NM');
+	/**
+	 * The aircraft list unfolded, on a phone (AircraftList.svelte): fold it to see more of the
+	 * map. Not stored either: open again on a new visit.
+	 */
+	let listOpen = $state(true);
 </script>
 
 <script lang="ts">
@@ -97,6 +102,11 @@
 	}
 	$effect(() => {
 		if (stream.selected) focus = null;
+	});
+	// A tap on the map (aircraft, receiver, radar) opens its panel where the list was, so a
+	// folded list unfolds; closing the panel then shows the list unfolded.
+	$effect(() => {
+		if (stream.selected || focus) listOpen = true;
 	});
 	let radar = $derived(focus?.kind === 'radar' ? radars.get(focus.id) : null);
 	// The terrain (for the sky plot's skyline and the antenna's height) loads on first need.
@@ -188,7 +198,10 @@
 	</div>
 
 	<aside
-		class="max-h-[45dvh] shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-950 pb-4 md:max-h-none md:w-104 md:border-t-0 md:border-l"
+		class={[
+			'max-h-[45dvh] shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-950 pb-4 md:max-h-none md:w-104 md:border-t-0 md:border-l',
+			!listOpen && 'max-md:pb-2'
+		]}
 	>
 		{#if selected}
 			<!-- Keyed: another aircraft gets a fresh panel (e.g. its own paused feed). -->
@@ -234,6 +247,7 @@
 				{now}
 				receiver={data.reference}
 				bind:unit
+				bind:open={listOpen}
 				onselect={(icao) => stream.select(icao)}
 			/>
 		{/if}

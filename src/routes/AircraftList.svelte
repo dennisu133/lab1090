@@ -5,6 +5,10 @@
 
 	The switch in the title row sets the units: NM and kt (aviation's) or km and km/h, for the
 	distances and speeds here, the range rings and the panels. Altitudes stay flight levels.
+
+	On a phone the list sits under the map and takes almost half the screen, so its title folds
+	it away down to the title row (`open`). From `md` on it's a side panel with room to spare:
+	always open, the title is plain text.
 -->
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
@@ -25,10 +29,21 @@
 		receiver: LatLon;
 		/** NM and kt, or km and km/h. */
 		unit: Unit;
+		/** Unfolded on a phone (below `md`); the side panel from `md` on ignores it. */
+		open: boolean;
 		onselect: (icao: string) => void;
 	}
 
-	let { aircraft, now, receiver, unit = $bindable(), onselect }: Props = $props();
+	let {
+		aircraft,
+		now,
+		receiver,
+		unit = $bindable(),
+		open = $bindable(),
+		onselect
+	}: Props = $props();
+
+	const id = $props.id();
 
 	let rows = $derived.by(() => {
 		type Row = { a: TrackedAircraft; km: number | null };
@@ -104,7 +119,26 @@
 {/snippet}
 
 <div class="flex items-center justify-between gap-3 px-4 pt-3 pb-1">
-	<h2 class="font-semibold">{aircraft.length} aircraft</h2>
+	<h2 class="font-semibold">
+		<button
+			type="button"
+			onclick={() => (open = !open)}
+			aria-expanded={open}
+			aria-controls={id}
+			class="-my-1 flex items-center gap-2 py-1 md:hidden"
+		>
+			{aircraft.length} aircraft
+			<!-- Like the Layers button's: ^ to unfold, v to fold. -->
+			<svg
+				viewBox="0 0 10 6"
+				class={['h-1.5 w-2.5 text-zinc-400 transition-transform', open && 'rotate-180']}
+				aria-hidden="true"
+			>
+				<path d="M1 5 5 1 9 5" fill="none" stroke="currentColor" stroke-width="1.25" />
+			</svg>
+		</button>
+		<span class="max-md:hidden">{aircraft.length} aircraft</span>
+	</h2>
 	<div class="flex text-xs text-zinc-400" role="group" aria-label="Units">
 		{#each UNITS as u (u.unit)}
 			<button
@@ -120,63 +154,67 @@
 	</div>
 </div>
 
-<div class="grid grid-cols-[1fr_3.5rem_3.5rem_4.5rem] gap-x-3 px-4 py-1 text-xs text-zinc-500">
-	<span>
-		<InfoTip label="Flight">
-			<p>
-				The callsign, or the transponder's 24-bit address until one comes in. The flag: the State of
-				registration, which the address alone says (each State has its own block).
-			</p>
-			<p>
-				A code after the name: an alert, red for an emergency (7700, 7600, 7500), amber for an ACAS
-				resolution advisory (RA) or a flight asking for priority. IDENT: the pilot pressed the
-				button that makes it stand out on the controller's screen.
-			</p>
-		</InfoTip>
-	</span>
-	<span class="text-right">
-		<InfoTip label="Alt" align="right">
-			<p>
-				Barometric altitude as a flight level: hundreds of feet in the standard atmosphere, FL350 =
-				35,000 ft. GND: on the ground.
-			</p>
-		</InfoTip>
-	</span>
-	<span class="text-right">
-		<InfoTip label={unit === 'NM' ? 'kt' : 'km/h'} align="right">
-			<p>Ground speed. Aviation's unit is the knot: a nautical mile per hour, 1 kt = 1.852 km/h.</p>
-		</InfoTip>
-	</span>
-	<span class="text-right">Dist</span>
-</div>
-
-<ul>
-	{#each rows.onMap as { a, km } (a.icao)}
-		{@render row(a, km)}
-	{/each}
-</ul>
-
-{#if rows.elsewhere.length}
-	<div class="px-4 pt-4 pb-1 text-xs text-zinc-500">
-		<InfoTip label="Heard, not on the map ({rows.elsewhere.length})">
-			<p>
-				<strong class="text-zinc-200">No ADS-B:</strong> older transponders only answer radars. A radar
-				knows where they are from its antenna's direction and the reply's delay; a receiver that only
-				listens doesn't.
-			</p>
-			<p>
-				<strong class="text-zinc-200">ADS-B without a position:</strong> no GPS fix ("no position information",
-				TC 0), or at the edge of reception: a position needs an even and an odd message within 10 s.
-			</p>
-			<p>
-				<strong class="text-zinc-200">Not confirmed yet:</strong> a first position is only drawn once
-				the next one agrees with it.
-			</p>
-		</InfoTip>
+<div {id} class={[!open && 'max-md:hidden']}>
+	<div class="grid grid-cols-[1fr_3.5rem_3.5rem_4.5rem] gap-x-3 px-4 py-1 text-xs text-zinc-500">
+		<span>
+			<InfoTip label="Flight">
+				<p>
+					The callsign, or the transponder's 24-bit address until one comes in. The flag: the State
+					of registration, which the address alone says (each State has its own block).
+				</p>
+				<p>
+					A code after the name: an alert, red for an emergency (7700, 7600, 7500), amber for an
+					ACAS resolution advisory (RA) or a flight asking for priority. IDENT: the pilot pressed
+					the button that makes it stand out on the controller's screen.
+				</p>
+			</InfoTip>
+		</span>
+		<span class="text-right">
+			<InfoTip label="Alt" align="right">
+				<p>
+					Barometric altitude as a flight level: hundreds of feet in the standard atmosphere, FL350
+					= 35,000 ft. GND: on the ground.
+				</p>
+			</InfoTip>
+		</span>
+		<span class="text-right">
+			<InfoTip label={unit === 'NM' ? 'kt' : 'km/h'} align="right">
+				<p>
+					Ground speed. Aviation's unit is the knot: a nautical mile per hour, 1 kt = 1.852 km/h.
+				</p>
+			</InfoTip>
+		</span>
+		<span class="text-right">Dist</span>
 	</div>
+
 	<ul>
-		{#each rows.elsewhere as { a, km } (a.icao)}
+		{#each rows.onMap as { a, km } (a.icao)}
 			{@render row(a, km)}
 		{/each}
 	</ul>
-{/if}
+
+	{#if rows.elsewhere.length}
+		<div class="px-4 pt-4 pb-1 text-xs text-zinc-500">
+			<InfoTip label="Heard, not on the map ({rows.elsewhere.length})">
+				<p>
+					<strong class="text-zinc-200">No ADS-B:</strong> older transponders only answer radars. A radar
+					knows where they are from its antenna's direction and the reply's delay; a receiver that only
+					listens doesn't.
+				</p>
+				<p>
+					<strong class="text-zinc-200">ADS-B without a position:</strong> no GPS fix ("no position information",
+					TC 0), or at the edge of reception: a position needs an even and an odd message within 10 s.
+				</p>
+				<p>
+					<strong class="text-zinc-200">Not confirmed yet:</strong> a first position is only drawn once
+					the next one agrees with it.
+				</p>
+			</InfoTip>
+		</div>
+		<ul>
+			{#each rows.elsewhere as { a, km } (a.icao)}
+				{@render row(a, km)}
+			{/each}
+		</ul>
+	{/if}
+</div>
