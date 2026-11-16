@@ -11,6 +11,20 @@
 		@apply bg-zinc-950;
 		color-scheme: dark;
 	}
+
+	/*
+	 * Tailwind 4's preflight leaves buttons with the arrow cursor (like the browser's own
+	 * buttons). Here everything you can click shows the hand, disabled things don't. In the
+	 * base layer, so a utility (InfoTip's cursor-help, the sky plot's crosshair) still wins.
+	 */
+	button:not(:disabled),
+	[role='button']:not([aria-disabled='true']),
+	summary,
+	select:not(:disabled),
+	input:is([type='checkbox'], [type='radio']):not(:disabled),
+	label:has(> input:is([type='checkbox'], [type='radio']):not(:disabled)) {
+		cursor: pointer;
+	}
 }
 
 /*

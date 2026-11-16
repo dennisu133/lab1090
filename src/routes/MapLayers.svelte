@@ -78,7 +78,7 @@
 		]}
 	>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.rings}
@@ -106,7 +106,7 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.trail}
@@ -129,7 +129,7 @@
 			</label>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.prediction}
@@ -158,7 +158,7 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.uncertainty}
@@ -187,7 +187,7 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.winds}
@@ -223,7 +223,7 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.coverage}
@@ -259,7 +259,7 @@
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2 border-t border-zinc-800 pt-1.5">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.roads}
@@ -277,7 +277,7 @@
 			</label>
 		</div>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.places}
@@ -304,7 +304,7 @@
 			Experimental
 		</p>
 		<div class="flex items-center gap-2">
-			<label class="flex cursor-pointer items-center gap-2 py-0.5">
+			<label class="flex items-center gap-2 py-0.5">
 				<input
 					type="checkbox"
 					bind:checked={layers.radars}

@@ -67,7 +67,7 @@
 			<!-- The whole key cell expands the row (the rest of the row selects it). -->
 			<td class={['p-0 font-mono whitespace-nowrap', row.keyClass]}>
 				<button
-					class="group/key flex w-full cursor-pointer items-center py-1 hover:text-zinc-100"
+					class="group/key flex w-full items-center py-1 hover:text-zinc-100"
 					aria-expanded={expanded.has(row.key)}
 					aria-label="{expanded.has(row.key) ? 'Hide' : 'Show'} {keyLabel} {key} one by one"
 					title="{expanded.has(row.key) ? 'Hide' : 'Show'} the codes one by one"

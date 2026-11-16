@@ -43,7 +43,7 @@
 					class="group rounded bg-zinc-900/60"
 					ontoggle={(e) => toggle(m.id, e.currentTarget.open)}
 				>
-					<summary class="flex cursor-pointer items-baseline gap-2 px-2 py-1 select-none">
+					<summary class="flex items-baseline gap-2 px-2 py-1 select-none">
 						<span class="text-zinc-500 tabular-nums">{clock.format(m.rx)}</span>
 						<span class="font-mono text-zinc-300">{m.kind}</span>
 						<span class="min-w-0 truncate text-zinc-400">
