@@ -3,6 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import logo from '#lib/assets/logo.svg';
 	import { page } from '$app/state';
+	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import AlertBanner from './AlertBanner.svelte';
@@ -43,6 +44,22 @@
 	const FULL_SCREEN = ['/', '/experimental/radars'];
 	const fullScreen = $derived(FULL_SCREEN.includes(page.route.id ?? ''));
 
+	/**
+	 * Below `lg` the links don't fit next to the status (the bar would wrap onto two or
+	 * three rows, a lot of a phone's map), so they fold into a menu at the right end. It
+	 * closes when you pick a page, press Escape or tap anywhere else.
+	 */
+	let menuOpen = $state(false);
+	let nav = $state<HTMLElement>();
+	afterNavigate(() => (menuOpen = false));
+	const closeOutside = (event: MouseEvent) => {
+		// The path, not `target`: the menu button's icon is swapped by the time this runs.
+		if (menuOpen && nav && !event.composedPath().includes(nav)) menuOpen = false;
+	};
+	const closeOnEscape = (event: KeyboardEvent) => {
+		if (event.key === 'Escape') menuOpen = false;
+	};
+
 	/** Is the current page this route or one of its sub-pages (the /weather tabs)? */
 	const within = (route: string) =>
 		page.route.id === route || (route !== '/' && !!page.route.id?.startsWith(`${route}/`));
@@ -52,6 +69,8 @@
 	<link rel="icon" type="image/svg+xml" href={favicon} />
 </svelte:head>
 
+<svelte:window onclick={closeOutside} onkeydown={closeOnEscape} />
+
 <!-- --alert-banner: other notices (PauseButton) float below the alert banner, not over it. -->
 <div
 	class={[
@@ -60,25 +79,61 @@
 	]}
 	style:--alert-banner={streams.alerts.top ? '3rem' : null}
 >
-	<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-6 py-3">
+	<nav
+		bind:this={nav}
+		class="relative z-40 flex items-center gap-4 border-b border-zinc-800 px-4 py-3 sm:gap-6 sm:px-6"
+	>
 		<!-- lab1090: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
 		     "10 90" under radio waves, on an aircraft. -->
 		<a href={resolve('/')} class="shrink-0">
 			<img src={logo} alt="lab1090" class="h-8 w-auto" />
 		</a>
-		{#each links as { route, href, label } (route)}
-			<a
-				{href}
-				class={['text-sm hover:text-white', within(route) ? 'text-white' : 'text-zinc-400']}
-				aria-current={within(route) ? 'page' : undefined}>{label}</a
-			>
-		{/each}
-		<div class="ml-auto flex items-center gap-6">
+		<div class="hidden items-center gap-6 lg:flex">
+			{@render pages('text-sm')}
+		</div>
+		<div class="ml-auto flex items-center gap-4 sm:gap-6">
 			<NotificationSwitch notifications={streams.alerts.notifications} />
 			<MessageCounts stats={streams.stats} />
 			<ReceiverStatus />
 		</div>
+		<button
+			type="button"
+			class="-m-1.5 shrink-0 rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white lg:hidden"
+			aria-label="Pages"
+			aria-expanded={menuOpen}
+			aria-controls="page-menu"
+			onclick={() => (menuOpen = !menuOpen)}
+		>
+			<!-- Three bars, or a cross while open. -->
+			<svg viewBox="0 0 20 20" class="size-5" aria-hidden="true">
+				<g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+					{#if menuOpen}
+						<path d="M5 5l10 10M15 5 5 15" />
+					{:else}
+						<path d="M3 5.5h14M3 10h14M3 14.5h14" />
+					{/if}
+				</g>
+			</svg>
+		</button>
+		{#if menuOpen}
+			<div
+				id="page-menu"
+				class="absolute top-full right-0 left-0 flex flex-col border-b border-zinc-800 bg-zinc-950 px-4 py-2 shadow-xl sm:left-auto sm:w-64 sm:rounded-bl-lg sm:border-l sm:px-6 lg:hidden"
+			>
+				{@render pages('py-2.5 text-base')}
+			</div>
+		{/if}
 	</nav>
+
+	{#snippet pages(size: string)}
+		{#each links as { route, href, label } (route)}
+			<a
+				{href}
+				class={[size, 'hover:text-white', within(route) ? 'text-white' : 'text-zinc-400']}
+				aria-current={within(route) ? 'page' : undefined}>{label}</a
+			>
+		{/each}
+	{/snippet}
 	<AlertBanner />
 	{#if WIDE_ONLY.some(within)}
 		<p

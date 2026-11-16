@@ -2,7 +2,8 @@
 	How busy the receiver is, in the navigation bar: messages per second and the total since
 	the server started. Both come from the server's running count of Mode S frames (every
 	frame that passed readsb's parity check); ReceiverStats turns the totals into a rate.
-	The total is hidden on phones, where the bar has little room.
+	The total is hidden on phones, where the bar has little room, and from 1024 to 1279 px,
+	where the page links share the row with it.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -34,7 +35,7 @@
 			by downlink format and type code.
 		</p>
 	</InfoTip>
-	<span class="hidden sm:inline">
+	<span class="hidden sm:inline lg:hidden xl:inline">
 		<InfoTip
 			label={stats.counts && stats.since !== null
 				? `${stats.counts.total.toLocaleString()} since ${clock.format(stats.since)}`
