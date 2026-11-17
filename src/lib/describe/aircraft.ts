@@ -470,7 +470,7 @@ export function aircraftSections(
 					ref === null
 						? 'True or magnetic: its operational status (TC 31) will say.'
 						: ref === 'magnetic'
-							? 'From magnetic north (its operational status says so; before ADS-B version 2 it is taken as magnetic); true from the World Magnetic Model.'
+							? `From magnetic north (${a.operational?.value.version === 0 ? 'ADS-B version 0 has no heading reference bit, so magnetic is assumed' : 'its operational status, TC 31, says so'}); true from the World Magnetic Model.`
 							: 'From true north (its operational status, TC 31, says so).'
 				}${why}${source(a.air, now)}`,
 				tone: 'main'

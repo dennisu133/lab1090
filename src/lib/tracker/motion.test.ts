@@ -123,9 +123,14 @@ describe('sideways', () => {
 			operational: op(2, 'magnetic')
 		});
 		expect(motion(a)!.rollOut).toBeCloseTo(120 + declination, 9);
-		// Versions 0/1 have no HRD bit: headings were magnetic.
-		const v1 = aircraft({ ...a, operational: op(1, null) });
-		expect(motion(v1)!.rollOut).toBeCloseTo(120 + declination, 9);
+		// Version 1 says which too (HRD, DO-260A; readsb and jet1090 read it); version 0 has
+		// no HRD bit: magnetic.
+		const v1True = aircraft({ ...a, operational: op(1, 'true') });
+		expect(motion(v1True)!.rollOut).toBeCloseTo(120, 9);
+		const v1Magnetic = aircraft({ ...a, operational: op(1, 'magnetic') });
+		expect(motion(v1Magnetic)!.rollOut).toBeCloseTo(120 + declination, 9);
+		const v0 = aircraft({ ...a, operational: op(0, null) });
+		expect(motion(v0)!.rollOut).toBeCloseTo(120 + declination, 9);
 		expect(trueHeading(120, 'true', start, 0)).toBe(120);
 		expect(trueHeading(120, 'magnetic', null, 0)).toBe(120); // no place: as given
 	});

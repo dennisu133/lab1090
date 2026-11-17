@@ -63,8 +63,10 @@ export interface Motion {
 export function headingReference(a: TrackedAircraft): 'true' | 'magnetic' | null {
 	const op = a.operational?.value;
 	if (!op) return null;
-	// Version 2 says which (HRD, DO-260B 2.2.3.2.7.2.13); before, headings were magnetic.
-	return op.version >= 2 ? op.hrd : 'magnetic';
+	// Versions 1 and 2 say which: HRD, ME bit 54 of TC 31 (DO-260A; DO-260B 2.2.3.2.7.2.13).
+	// readsb (mode_s.c, track.c) and jet1090 (bds65.rs, AirborneV1) read it in both. Version 0
+	// has no HRD: magnetic, as readsb assumes until a TC 31 says otherwise.
+	return op.version >= 1 ? (op.hrd ?? 'magnetic') : 'magnetic';
 }
 
 /**
