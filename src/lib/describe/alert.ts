@@ -146,6 +146,10 @@ function sourceText(s: Streak<unknown>): string {
 const CONFIRMATION =
 	'One message alone doesn’t raise an alert: a corrupted radar reply can pass as a known aircraft’s, and a transponder with a knob per digit runs through other codes while a new one is dialled (7000 → 2700 passes 7700). So it takes two in a row.';
 
+/** For advisories: no knob-turning example, a resolution advisory isn't dialled in. */
+const RA_CONFIRMATION =
+	'One message alone doesn’t raise an alert: a corrupted radar reply can pass as a known aircraft’s. So it takes two in a row.';
+
 /** "2 min", "40 s". */
 function duration(ms: number): string {
 	const s = Math.max(0, Math.round(ms / 1000));
@@ -208,7 +212,7 @@ export function alertSection(
 		fields.push({
 			label: 'Since',
 			value: `${since} (${duration(now - x.since)}, ${x.count} messages)`,
-			title: `When the first message with this RA arrived, from ${a.advisory ? sourceText(a.advisory) : 'ADS-B'} (the latest). The same RA comes three ways: ADS-B TC 28 subtype 2, about once a second while it lasts; DF16, the reply ACAS sends to another aircraft's ACAS to coordinate; and Comm-B register 3,0, if a radar asks. It's over when a message sets RAT (RA terminated), or after ${duration(ADVISORY_MS)} without one. ${CONFIRMATION}`,
+			title: `When the first message with this RA arrived; the latest came from ${a.advisory ? sourceText(a.advisory) : 'ADS-B'}. The same RA comes three ways: ADS-B TC 28 subtype 2, about once a second while it lasts; DF16, the transponder's reply to another aircraft's ACAS; and Comm-B register 3,0, if a radar asks. It's over when a message sets RAT (RA terminated), or after ${duration(ADVISORY_MS)} without one. ${RA_CONFIRMATION}`,
 			tone: 'main'
 		});
 	}

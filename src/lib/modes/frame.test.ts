@@ -87,7 +87,7 @@ test('containment radius only for position type codes', () => {
 	expect(containmentRadius(11)).toBe('< 75 m or < 185 m');
 	expect(containmentRadius(18)).toBe('unknown');
 	expect(containmentRadius(5)).toBe('< 7.5 m');
-	expect(containmentRadius(8)).toBe('unknown');
+	expect(containmentRadius(8)).toBe('unknown, or < 0.2–0.6 NM');
 	for (const tc of [0, 4, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
 });
 

@@ -273,7 +273,7 @@
 								</p>
 								<p class="text-zinc-400">
 									Warm air also makes the altimeter read low (pressure levels are further apart):
-									one of the tricks for step 3.
+									the Now tab turns that into the temperature of the column below.
 								</p>
 							</InfoTip>
 							at {flightLevel(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is
@@ -293,8 +293,7 @@
 							</p>
 							<p class="text-zinc-400">
 								Air data computers work the other way: they measure TAT and calculate the static
-								temperature from it and the Mach number. That's also why a parked aircraft in the
-								sun shows a much too warm "outside temperature".
+								temperature from it and the Mach number.
 							</p>
 						</InfoTip>
 						= {celsius(t.total)} (hollow dot), {n(t.total - t.kelvin, 0)} °C warmer than the air.

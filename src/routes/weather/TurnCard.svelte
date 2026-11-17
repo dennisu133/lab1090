@@ -59,7 +59,7 @@
 				A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
 					60_000} minutes and {MAX_CLIMB_FT.toLocaleString()} ft. An aircraft slowing down steadily spirals
 				inwards, which the fit allows for; anything else that leaves the points more than {MAX_RESIDUAL_KT}
-				kt off the curve doesn't count. Most turns happen near airports: holding patterns, approaches.
+				kt rms off the curve doesn't count. Most turns happen near airports: holding patterns, approaches.
 				Cruise traffic on airways rarely turns that far.
 			</p>
 		</InfoTip>

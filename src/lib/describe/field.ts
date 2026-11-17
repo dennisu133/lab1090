@@ -57,7 +57,10 @@ export function nacPField(nacP: number): Field {
 	return {
 		label: 'NACp',
 		value: String(nacP),
-		title: `Navigation accuracy (position): 95 % of the time within ${NAC_P[nacP] ?? '?'}`,
+		title:
+			nacP === 0
+				? 'Navigation accuracy (position): unknown, or 10 NM or worse'
+				: `Navigation accuracy (position): 95 % of the time within ${NAC_P[nacP] ?? '?'}`,
 		tone: 'minor'
 	};
 }
@@ -67,7 +70,10 @@ export function silField(sil: number, supplement: number | null = null): Field {
 	return {
 		label: 'SIL',
 		value: String(sil),
-		title: `Source integrity level: probability ${SIL[sil]}${per} that the position is outside the containment radius without an alert`,
+		title:
+			sil === 0
+				? 'Source integrity level: unknown, or a probability above 1e-3 that the position is outside the containment radius without an alert'
+				: `Source integrity level: probability ${SIL[sil]}${per} that the position is outside the containment radius without an alert`,
 		tone: 'minor'
 	};
 }

@@ -92,7 +92,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 				},
 				{
 					value: `reference decode ${n(Math.round(off))} km off`,
-					title: `Decoding with the receiver's position as the reference point picked the wrong zone: the aircraft is probably more than ~${surface ? 45 : 150} NM from it. Nothing in the message itself reveals this; only the even/odd pair does. Showing the pair's position instead`,
+					title: `Decoding with the receiver's position as the reference point picked the wrong zone: the aircraft is probably more than ~${surface ? 45 : 180} NM from it (half a zone). Nothing in the message itself reveals this; only the even/odd pair does. Showing the pair's position instead`,
 					tone: 'alert'
 				}
 			);
@@ -294,7 +294,8 @@ function statusFields(h: {
 			value: [
 				fs.onGround === null ? null : fs.onGround ? 'ground' : 'airborne',
 				fs.alert ? 'alert' : null,
-				fs.spi ? 'SPI' : null
+				fs.spi ? 'SPI' : null,
+				fs.code >= 6 ? 'reserved' : null
 			]
 				.filter(Boolean)
 				.join(', '),
@@ -315,7 +316,9 @@ function statusFields(h: {
 		fields.push({
 			label: 'UM',
 			value: `IIS ${h.utility.iis}/${RESERVATION_TYPES[h.utility.ids]}`,
-			title: `Utility message: interrogator ${h.utility.iis} has reserved the transponder (${RESERVATION_TYPES[h.utility.ids]})`,
+			title: h.utility.ids
+				? `Utility message: interrogator ${h.utility.iis} has reserved the transponder (${RESERVATION_TYPES[h.utility.ids]})`
+				: `Utility message: interrogator ${h.utility.iis}, no reservation (IDS 0)`,
 			tone: 'minor'
 		});
 	}

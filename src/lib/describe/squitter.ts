@@ -119,7 +119,7 @@ function surfaceFields(p: SurfacePosition): Field[] {
 					: m.speed.max === null
 						? `> ${m.speed.min} kt`
 						: `${kt(m.speed.min)}–${kt(m.speed.max)} kt`,
-		title: `Ground speed, movement code ${m.code}: a non-linear scale, fine when taxiing (1/8 kt), coarse when fast (5 kt). Codes 2–8 changed in ADS-B version 2; read as version 2`,
+		title: `Ground speed, movement code ${m.code}: a non-linear scale: 1/8 kt steps below 1 kt, ½ kt up to 15 kt, 1 kt up to 70 kt, 5 kt above 100 kt. Codes 2–8 changed in ADS-B version 2; read as version 2`,
 		tone: m.speed === null ? 'minor' : 'main'
 	});
 	fields.push(
@@ -163,7 +163,7 @@ function positionFields(p: AirbornePosition): Field[] {
 			label: 'NIC-B',
 			value: '1',
 			title:
-				'Integrity supplement bit; with the type code it refines the containment radius (in relayed TIS-B/ADS-R messages: the IMF bit instead)',
+				'Version 2: NIC supplement B, with the type code and NIC-A it picks the containment radius. Versions 0/1: the single antenna flag. In relayed TIS-B/ADS-R messages: the IMF bit',
 			tone: 'minor'
 		});
 	}
@@ -226,7 +226,7 @@ function velocityFields(v: Velocity): Field[] {
 			label: 'GNSS−baro',
 			value: `${v.gnssMinusBaro > 0 ? '+' : ''}${n(v.gnssMinusBaro)} ft`,
 			title:
-				'GNSS height minus barometric altitude. Barometric altitude assumes a standard atmosphere, so the difference shows the actual weather: positive in warm air, negative in cold air',
+				'GNSS height minus barometric altitude. Barometric altitude assumes the standard atmosphere, so the difference grows with warmer air and higher surface pressure, plus the geoid height (GNSS heights are above the WGS84 ellipsoid)',
 			tone: 'minor'
 		});
 	}
@@ -399,7 +399,8 @@ function nicBaroField(nicBaro: number): Field {
 	};
 }
 
-const GVA = ['unknown', '> 150 m', '≤ 150 m', '≤ 45 m'];
+/** DO-260B 2.2.3.2.7.2.8: GVA 0–3. */
+const GVA = ['unknown or > 150 m', '≤ 150 m', '≤ 45 m', 'reserved'];
 
 function operationalStatusFields(s: OperationalStatus): Field[] {
 	const fields: Field[] = [
@@ -432,7 +433,10 @@ function operationalStatusFields(s: OperationalStatus): Field[] {
 		fields.push({
 			label: s.version === 1 ? 'NIC-S' : 'NIC-A',
 			value: String(s.nicSupplementA),
-			title: 'NIC supplement (A): picks between the two containment radii of TC 7, 11, 13 and 16',
+			title:
+				s.version === 1
+					? 'NIC supplement: picks between the containment radii of TC 7, 11, 13 and 16'
+					: 'NIC supplement A: with the type code and NIC-B (airborne) or NIC-C (surface), picks the containment radius of TC 7, 8, 11, 13 and 16',
 			tone: 'minor'
 		});
 	}
@@ -477,7 +481,8 @@ function operationalStatusFields(s: OperationalStatus): Field[] {
 			fields.push({
 				label: 'NIC-C',
 				value: '1',
-				title: 'NIC supplement C: with NIC-A, refines the containment radius of TC 7',
+				title:
+					'NIC supplement C: with NIC-A, picks the containment radius of surface positions in TC 8',
 				tone: 'minor'
 			});
 		}

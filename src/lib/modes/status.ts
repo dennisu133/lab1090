@@ -222,7 +222,7 @@ export interface OperationalStatus {
 	subtype: 'airborne' | 'surface' | number;
 	/** 0 = DO-260, 1 = DO-260A, 2 = DO-260B. Decides how other messages are read. */
 	version: number;
-	/** Picks between the two Rc values of TC 7, 11, 13 and 16 ("NIC supplement" in version 1). */
+	/** With the type code and NIC-B/NIC-C, picks Rc for TC 7, 8, 11, 13 and 16 ("NIC supplement" in version 1). */
 	nicSupplementA: number | null;
 	nacP: number | null;
 	sil: number | null;
@@ -260,7 +260,7 @@ export interface OperationalStatus {
 		b2Low: boolean | null;
 		/** Surface, version 2: velocity accuracy, as NACv in TC 19. */
 		nacV: number | null;
-		/** Surface, version 2: NIC supplement C, refines the containment radius of TC 7. */
+		/** Surface, version 2: NIC supplement C, with NIC-A picks the containment radius of TC 8. */
 		nicSupplementC: number | null;
 	} | null;
 	/** Versions 1/2, if the OM format bits are 00. */

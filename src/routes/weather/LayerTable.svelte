@@ -17,8 +17,6 @@
 	import type { Column } from '#lib/weather/column.ts';
 	import {
 		LAYER_FT,
-		MIN_AIRCRAFT,
-		MIN_SAMPLES,
 		lapseRate,
 		type Layer,
 		type StrongestWind,
@@ -68,11 +66,6 @@
 							34,500–35,500 ft). Transponders always report pressure altitude against 1013.25 hPa, whatever
 							the pilots set.
 						</p>
-						<p class="text-zinc-400">
-							The counts are samples/aircraft. Orange: fewer than {MIN_SAMPLES} samples or fewer than
-							{MIN_AIRCRAFT}
-							aircraft, left out of the tropopause and jet stream.
-						</p>
 					</InfoTip>
 				</th>
 				<th class="w-56 py-1 font-normal">
@@ -94,7 +87,7 @@
 				</th>
 				<th class="w-64 py-1 font-normal">
 					<InfoTip label="Wind">
-						<p>Mean wind (from 5,0/6,0), where it blows from, and how steady it is.</p>
+						<p>Mean wind (5,0/6,0 and turns), where it blows from, and how steady it is.</p>
 					</InfoTip>
 				</th>
 				<th class="w-32 py-1 font-normal">

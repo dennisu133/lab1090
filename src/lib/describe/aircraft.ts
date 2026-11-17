@@ -12,6 +12,7 @@ import { categoryNames } from '#lib/modes/identification.ts';
 import { allocation } from '#lib/modes/nationality.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
 import { headingReference, motion, TURNING, trueHeading } from '#lib/tracker/motion.ts';
+import { MAX_RANGE_KM } from '#lib/tracker/positions.ts';
 import { alertsOf, identing, type Tier } from '#lib/tracker/alerts.ts';
 import type { Judged } from '#lib/tracker/route.ts';
 import { TURN_WINDOW_MS, type TrackedAircraft } from '#lib/tracker/tracker.ts';
@@ -341,11 +342,11 @@ export function aircraftSections(
 						: {
 								label: 'On the map',
 								value: `at the last position (${Math.round(shown.age / 1000)} s)`,
-								title: `The last position is ${(shown.age / 1000).toFixed(1)} s old${
+								// Under a second old and moving: the healthy case, nothing to explain.
+								title:
 									shown.extrapolatedKm > 0
-										? ', too fresh to move the symbol on yet.'
-										: ', and without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol there.'
-								} ${deadReckoning}`,
+										? undefined
+										: `Without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol at the last position. ${deadReckoning}`,
 								tone: 'minor'
 							}
 			);
@@ -354,7 +355,7 @@ export function aircraftSections(
 			position.push({
 				label: 'Rejected',
 				value: `${a.rejected} position${a.rejected === 1 ? '' : 's'}`,
-				title: `Positions that failed the plausibility checks: too far from the last one for the time between them, or beyond the radio horizon. Last reason: ${a.lastRejection?.value ?? '–'}.`,
+				title: `Positions that failed the plausibility checks: too far from the last one for the time between them, or more than ${MAX_RANGE_KM} km from the receiver, past any radio horizon. Last reason: ${a.lastRejection?.value ?? '–'}.`,
 				tone: 'alert'
 			});
 	} else {
@@ -445,7 +446,7 @@ export function aircraftSections(
 						value: straight
 							? 'straight'
 							: `${Math.abs(turn.value).toFixed(1)}°/s ${turn.value > 0 ? 'right' : 'left'}`,
-						title: `How fast the track changes: a straight line fitted through the last ${TURN_WINDOW_MS / 1000} s of tracks, so it lags a few seconds. Under ${TURNING}°/s counts as straight. A "standard rate" turn is 3°/s (a circle in two minutes); airliners at cruise turn at 1–1.5°/s.${source(turn, now)}`,
+						title: `How fast the track changes: a straight line fitted through the last ${TURN_WINDOW_MS / 1000} s of tracks, so it lags a few seconds. Under ${TURNING}°/s counts as straight. A "standard rate" turn is 3°/s (a circle in two minutes); airliners at cruise turn at about 0.5–1°/s.${source(turn, now)}`,
 						tone: straight ? 'minor' : 'main'
 					}
 		);
@@ -469,7 +470,7 @@ export function aircraftSections(
 					ref === null
 						? 'True or magnetic: its operational status (TC 31) will say.'
 						: ref === 'magnetic'
-							? 'From magnetic north (its operational status says so, or ADS-B version 0/1 always is); true from the World Magnetic Model.'
+							? 'From magnetic north (its operational status says so; before ADS-B version 2 it is taken as magnetic); true from the World Magnetic Model.'
 							: 'From true north (its operational status, TC 31, says so).'
 				}${why}${source(a.air, now)}`,
 				tone: 'main'
@@ -525,7 +526,7 @@ export function aircraftSections(
 					? `${speed.min}–${speed.max ?? '…'} kt${direction === null ? '' : `, ${deg(direction)}`}`
 					: 'unknown',
 			title:
-				'On the ground the speed is a step on a non-linear scale: 1/8 kt steps while taxiing slowly, 5 kt above 100 kt. The direction is the ground track or the heading; the operational status says which.' +
+				'On the ground the speed is a step on a non-linear scale: from 1/8 kt steps when barely moving to 5 kt steps above 100 kt. The direction is the ground track or the heading; the operational status says which.' +
 				source(a.surface, now),
 			tone: 'main'
 		});
@@ -614,7 +615,7 @@ export function aircraftSections(
 				.filter(Boolean)
 				.join(' · '),
 			title:
-				'IAS: what the pitot tube measures, which drops with height as the air thins. Mach: the speed as a fraction of the speed of sound there; airliners cruise at Mach 0.78–0.85. Register 6,0.' +
+				'IAS: what the pitot tube measures and the wings fly by; up high it reads far below the true airspeed. Mach: the speed as a fraction of the speed of sound there; airliners cruise at Mach 0.78–0.85. Register 6,0.' +
 				source(hs, now),
 			tone: 'main'
 		});

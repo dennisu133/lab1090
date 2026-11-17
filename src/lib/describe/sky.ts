@@ -2,7 +2,7 @@
  * What /weather's "Now" tab shows per 1,000 ft layer (lib/weather/profile.ts), as Fields.
  * Each tooltip says what went in and how it was computed, with the layer's own numbers.
  */
-import { isaTemperature } from '#lib/modes/air-data.ts';
+import { A0, isaTemperature, T0 } from '#lib/modes/air-data.ts';
 import type { Column } from '#lib/weather/column.ts';
 import {
 	MIN_AIRCRAFT,
@@ -22,17 +22,31 @@ const samplesText = (n: number, aircraft: number) =>
 
 const THINNING = `At most one sample per aircraft every ${SAMPLE_EVERY_MS / 1000} s, so busy aircraft don't outweigh the others.`;
 
-function countField(n: number, aircraft: number, what: string): Field {
+/** What each kind of layer value feeds when it's enough(), and one aircraft's typical error. */
+const COUNTED = {
+	temperature: {
+		usedFor: 'not used for the tropopause or the contrail answer',
+		error: 'a few kelvin, compared with weather balloons'
+	},
+	wind: {
+		usedFor: 'not used for the strongest wind',
+		error: 'a heading a few degrees off is 10–30 kt of wind, compared with weather balloons'
+	},
+	'GNSS height': { usedFor: null, error: "its altimeter's own error" }
+} as const;
+
+function countField(n: number, aircraft: number, what: keyof typeof COUNTED): Field {
 	const ok = enough({ n, aircraft });
+	const { usedFor, error } = COUNTED[what];
 	return {
 		value: `${n}/${aircraft}`,
 		title: [
 			`${samplesText(n, aircraft)}. ${THINNING}`,
 			ok
 				? ''
-				: ` Fewer than ${MIN_SAMPLES} samples, or fewer than ${MIN_AIRCRAFT} aircraft: shown, but not used for the tropopause or the jet stream.`,
+				: ` Fewer than ${MIN_SAMPLES} samples, or fewer than ${MIN_AIRCRAFT} aircraft: shown hollow${usedFor ? `, ${usedFor}` : ''}.`,
 			aircraft === 1
-				? ` One aircraft only: this is its ${what}, with whatever error its sensors have (compared with weather balloons: a few kelvin, or a heading a few degrees off, which is 10–30 kt of wind).`
+				? ` One aircraft only: this is its ${what}, with whatever error it has (${error}).`
 				: ''
 		].join(''),
 		tone: ok ? 'minor' : 'alert'
@@ -49,7 +63,7 @@ export function layerTemperatureFields(layer: Layer): Field[] {
 			value: celsius(t.kelvin),
 			title: [
 				`Mean static air temperature of ${samplesText(t.n, t.aircraft)}: ${celsius(t.kelvin, 2)}.`,
-				'Each one from true airspeed (5,0) and Mach (6,0): T = 288.15 K × (TAS / (Mach × 661.48 kt))², see "Per aircraft".',
+				`Each one from true airspeed (5,0) and Mach (6,0): T = ${T0} K × (TAS / (Mach × ${A0.toFixed(2)} kt))², see "Per aircraft".`,
 				'',
 				`They differ by ±${t.spread.toFixed(1)} K (standard deviation): rounding (about ±2 K each at cruise), different air where each aircraft is, and each aircraft's own probe.`
 			].join('\n'),
@@ -83,10 +97,10 @@ export function lapseField(
 			title: [
 				`From ${flightLevel(lower.level)} to ${flightLevel(upper.level)} (${km.toFixed(2)} km): ${celsius(lower.kelvin)} → ${celsius(upper.kelvin)}, ${lapse >= 0 ? 'colder' : 'warmer'} by ${Math.abs(lapse * km).toFixed(1)} K.`,
 				'',
-				'The standard atmosphere cools by 6.5 K/km up to the tropopause, then not at all. Real air between: moist air cools more slowly than dry air as it rises, an inversion is negative (warmer above).',
+				'The standard atmosphere cools by 6.5 K/km up to the tropopause, then not at all. Real air can cool faster or slower; an inversion is negative (warmer above).',
 				`At ${TROPOPAUSE_LAPSE} K/km or less, staying so for 2 km, the WMO calls it the tropopause.`,
 				'',
-				`Over 1,000 ft, 1 K of noise in a layer's mean is 3 K/km here: trust the trend over several layers more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples or ${MIN_AIRCRAFT} aircraft.` : ''}`
+				`Over this gap, 1 K of noise in a layer's mean is ${(1 / km).toFixed(1)} K/km: trust the trend over several layers more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples or ${MIN_AIRCRAFT} aircraft.` : ''}`
 			].join('\n'),
 			tone: noisy ? 'minor' : lapse <= TROPOPAUSE_LAPSE ? 'alert' : 'main'
 		}
@@ -95,13 +109,13 @@ export function lapseField(
 
 export function layerWindFields(layer: Layer): Field[] {
 	const w = layer.wind;
-	if (!w) return [{ value: '—', title: 'No trusted 5,0/6,0 wind in this layer', tone: 'minor' }];
+	if (!w) return [{ value: '—', title: 'No trusted wind in this layer', tone: 'minor' }];
 	return [
 		{
 			value: windText(w.wind),
 			title: [
 				`Mean wind of ${samplesText(w.n, w.aircraft)}, averaged as vectors (north and east parts separately): from ${w.wind.direction.toFixed(0)}° at ${w.wind.speed.toFixed(1)} kt.`,
-				'Each one from the wind triangle: ground vector (5,0) − air vector (5,0 TAS along 6,0 heading), see "Per aircraft".'
+				'Each one from the wind triangle: ground vector (5,0) − air vector (5,0 TAS along 6,0 heading), see "Per aircraft"; or from the circle fit of a turn.'
 			].join('\n'),
 			tone: 'main',
 			mono: true

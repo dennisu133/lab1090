@@ -21,8 +21,7 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 		fields.push({
 			label: 'IATA',
 			value: a.iata,
-			title:
-				"The airlines' code: on tickets, baggage tags and departure boards. Pilots and controllers use the ICAO code instead.",
+			title: "The airlines' code: on tickets, baggage tags and departure boards.",
 			tone: 'main',
 			mono: true
 		});
@@ -30,7 +29,7 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 		label: 'ICAO',
 		value: a.icao,
 		title:
-			'The ICAO location indicator: in flight plans, on air traffic control frequencies and in weather reports (METAR). The first letter is a region of the world, the second usually the country (ED: Germany, LK: Czechia), the last two the airport.',
+			'The ICAO location indicator: in flight plans, NOTAMs, charts and weather reports (METAR); on the radio, airports go by name. The first letter is a region of the world, the second usually the country (ED: Germany, LK: Czechia), the last two the airport.',
 		tone: 'main',
 		mono: true
 	});

@@ -126,9 +126,10 @@
 			<p class="text-zinc-400">
 				Each aircraft at each level gets its own offset, so its altimeter's own error drops out.
 				Needs
-				{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, on tracks at least
-				{MIN_SPREAD_KM} km apart. A balance, not a measurement: around a low the real wind is slower,
-				around a high faster. Against weather balloons: within 2° of their direction, 30 % faster.
+				{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, together spread
+				at least {MIN_SPREAD_KM} km (rms) in every direction: along one airway alone, the slope across
+				it is unknown. A balance, not a measurement: around a low the real wind is slower, around a high
+				faster. Against weather balloons: within 2° of their direction, 30 % faster.
 			</p>
 		</InfoTip>
 		{#if geo.found}

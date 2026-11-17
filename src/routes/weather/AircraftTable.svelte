@@ -44,8 +44,8 @@
 				the latest of the other: one <strong>observation</strong>. Its wind is
 				<strong>trusted</strong>
 				if the two are at most {MAX_SKEW_MS / 1000} s apart and the aircraft banks at most {MAX_ROLL}°:
-				in a turn every degree of heading is 8 kt of made-up crosswind. The temperature only needs
-				the first.
+				in a turn the heading changes by up to 3° a second between the two replies, and every degree
+				is about 8 kt of made-up crosswind. The temperature only needs the first.
 			</p>
 			<p>
 				<strong>Wind</strong> and <strong>Temperature</strong> are the latest trusted values,

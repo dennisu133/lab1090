@@ -121,10 +121,10 @@ function airlineFields(callsign: string, airline: DbAirline): Section['fields'] 
 }
 
 /** The end of every check tooltip: the rules. */
-function howChecked(c: RouteCheck | null): string {
+function howChecked(c: RouteCheck | null, unit: Unit): string {
 	const from = c ? place(c.leg.from) : 'the origin';
 	const to = c ? place(c.leg.to) : 'the destination';
-	return `It must be near the way: ${from} → ${to} via the aircraft at most ${MAX_DETOUR * 100} % (at least ${MIN_DETOUR_KM} km) longer than direct, as airways and detours allow. And going the right way: over the last minutes it got closer to ${to} or further from ${from}, by at least ${PROGRESS * 100} % of the distance flown. Positions only, never the heading: near airports controllers steer aircraft wherever traffic needs them.`;
+	return `It must be near the way: ${from} → ${to} via the aircraft at most ${MAX_DETOUR * 100} % longer than direct (${dist(MIN_DETOUR_KM, unit)} on short flights), as airways and detours allow. And going the right way: over the last minutes it got closer to ${to} or further from ${from}, by at least ${PROGRESS * 100} % of the distance flown. Positions only, never the heading: near airports controllers steer aircraft wherever traffic needs them.`;
 }
 
 /** "In the last 4 min it flew 30 NM, got 28 NM closer to Berlin and …". */
@@ -155,7 +155,7 @@ function misfitText(c: RouteCheck, unit: Unit): string {
 
 /** For a route that's shown: one that fits, or can't be judged yet (RouteJudge). */
 function checkField(c: RouteCheck | null, unit: Unit): Section['fields'][number] {
-	const how = `${WHY_CHECK} ${howChecked(c)} A route that doesn't fit isn't shown.`;
+	const how = `${WHY_CHECK} ${howChecked(c, unit)} A route that doesn't fit isn't shown.`;
 	if (!c)
 		return {
 			label: 'Check',
@@ -198,7 +198,7 @@ export function routeSection(
 		fields.push({
 			label: 'Route',
 			value: 'unknown',
-			title: `adsbdb lists ${routeText(r)} for the callsign ${callsign}, but ${misfitText(c, unit)} Callsigns get reused, so it's most likely another flight's route: not shown, and it doesn't come back when the aircraft turns.\n\n${howChecked(c)}`,
+			title: `adsbdb lists ${routeText(r)} for the callsign ${callsign}, but ${misfitText(c, unit)} Callsigns get reused, so it's most likely another flight's route: not shown, and it doesn't come back when the aircraft turns.\n\n${howChecked(c, unit)}`,
 			tone: 'minor'
 		});
 	} else if (r) {
