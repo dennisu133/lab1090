@@ -55,6 +55,14 @@ const ONE_BIT = (() => {
 	return table;
 })();
 
+/**
+ * Why a bit string was turned down. `parity`: the parity bits don't fit the message (no
+ * repair either): noise, or a message broken in more than one place. `unheard`: the parity
+ * could fit, but only for an aircraft not heard intact within KNOWN_FOR_S, which for AP
+ * formats (whose parity always "fits" some address) is how nearly all noise ends.
+ */
+export type Rejection = 'parity' | 'unheard';
+
 export interface FilterStats {
 	/** Passed with CRC 0 (or a radar's code) as received. */
 	accepted: number;
@@ -64,6 +72,8 @@ export interface FilterStats {
 
 export class MessageFilter {
 	readonly stats: FilterStats = { accepted: 0, repaired: 0 };
+	/** Why the last check returned null; null after one that passed. */
+	rejection: Rejection | null = null;
 	/** Address → when it was last heard intact, s. */
 	#known = new Map<number, number>();
 	#lastPrune = 0;
@@ -74,6 +84,7 @@ export class MessageFilter {
 	 */
 	check(data: Uint8Array, t: number): Uint8Array | null {
 		if (t - this.#lastPrune > KNOWN_FOR_S) this.#prune(t);
+		this.rejection = null;
 		const df = Math.min(data[0] >> 3, 24);
 		const s = syndrome(data);
 		if (df === 17 || df === 18 || df === 19) {
@@ -81,22 +92,24 @@ export class MessageFilter {
 				if (df === 17) this.#heard(address(data), t);
 				return this.#accept(data);
 			}
-			if (df === 19) return null;
+			if (df === 19) return this.#reject('parity');
 			const bit = ONE_BIT.get(s);
-			if (bit === undefined) return null;
+			if (bit === undefined) return this.#reject('parity');
 			const fixed = data.slice();
 			fixed[(bit - 1) >> 3] ^= 0x80 >> ((bit - 1) & 7);
-			if (!this.#isKnown(address(fixed), t)) return null;
+			if (!this.#isKnown(address(fixed), t)) return this.#reject('unheard');
 			this.stats.repaired++;
 			return fixed;
 		}
 		if (df === 11) {
 			if (s === 0) this.#heard(address(data), t);
-			else if ((s & ~0x7f) !== 0 || !this.#isKnown(address(data), t)) return null;
+			else if ((s & ~0x7f) !== 0) return this.#reject('parity');
+			else if (!this.#isKnown(address(data), t)) return this.#reject('unheard');
 			return this.#accept(data);
 		}
-		if (AP_FORMATS.has(df)) return this.#isKnown(s, t) ? this.#accept(data) : null;
-		return null;
+		if (AP_FORMATS.has(df))
+			return this.#isKnown(s, t) ? this.#accept(data) : this.#reject('unheard');
+		return this.#reject('parity');
 	}
 
 	/** Addresses heard intact within KNOWN_FOR_S. */
@@ -107,6 +120,11 @@ export class MessageFilter {
 	#accept(data: Uint8Array): Uint8Array {
 		this.stats.accepted++;
 		return data;
+	}
+
+	#reject(why: Rejection): null {
+		this.rejection = why;
+		return null;
 	}
 
 	#heard(icao: number, t: number): void {

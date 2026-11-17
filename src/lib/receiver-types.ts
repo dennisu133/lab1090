@@ -1,3 +1,4 @@
+import type { DemodulatorStats } from '#lib/demod/demodulator.ts';
 import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 
@@ -43,6 +44,96 @@ export interface ReceiverCounts {
 	byVerdict: Partial<Record<Verdict, number>>;
 }
 
+/** The dongle's sample clock against the server's (server/sdr/sample-clock.ts). */
+export interface ClockReport {
+	/** How long this run has been measured, s. */
+	seconds: number;
+	/** The crystal's error, parts per million (+: fast); null until there are 3 windows. */
+	ppm: number | null;
+	/** Its standard error, ppm. */
+	ppmError: number | null;
+	/** Samples lost in this run, as time (ms; × 2,400 for samples). */
+	lostMs: number;
+	/** How many times samples were lost. */
+	gaps: number;
+}
+
+/** The dongle, as far as its programs tell (rtl_sdr's messages, rtl_tcp's header). */
+export interface DeviceInfo {
+	/** The tuner chip, e.g. "Rafael Micro R820T"; null: not known (yet). */
+	tuner: string | null;
+	/** The USB device's name and serial number (rtl_sdr only). */
+	name: string | null;
+	serial: string | null;
+	/** Gain in dB: rtl_sdr's confirmation, else what lab1090 asked for; null: a recording. */
+	gain: number | null;
+}
+
+/** The demodulator's side of things: only for sources that deliver samples. */
+export interface DemodReport {
+	/** Totals since the server started, over every run (`level`: the latest). */
+	totals: DemodulatorStats;
+	/** Time spent demodulating, ms: against totals.samples / 2.4 million s of samples. */
+	busyMs: number;
+	/** The sample clock of the current run; null for a recording (we pace it ourselves). */
+	clock: ClockReport | null;
+	/** Samples lost over all runs. */
+	lostMs: number;
+	gaps: number;
+	/** Runs of the sample stream: rtl_sdr starts, rtl_tcp connections. */
+	runs: number;
+	device: DeviceInfo;
+}
+
+/**
+ * One 10-second point of the receiver's history (Receiver keeps an hour). Counts, not rates,
+ * so points add up over any stretch. Demodulator fields are null for a Beast feed.
+ */
+export interface RadioPoint {
+	/** End of the 10 s, ms since epoch. */
+	t: number;
+	/** Length of the stretch, ms (the first one after a start can be shorter). */
+	ms: number;
+	/** Messages that reached the server (all formats, after the address check). */
+	messages: number;
+	/** Mean noise level over the stretch, dBFS (mean magnitude); null: none measured. */
+	noise: number | null;
+	/** Demodulator counts over the stretch (differences of DemodulatorStats). */
+	candidates: number | null;
+	/** Messages the demodulator passed on, and of those, how many reached the ADC's limit. */
+	demodulated: number | null;
+	clipped: number | null;
+	/** Time spent demodulating, ms. */
+	busyMs: number | null;
+	/** Samples received, for the CPU share and to see gaps (2.4 million a second). */
+	samples: number | null;
+}
+
+/** A change in the link to the receiver, for the run history. */
+export interface SourceEvent {
+	/** Unique per server run. */
+	id: number;
+	/** When it happened (the first time, if repeated), ms since epoch. */
+	t: number;
+	/** The last time, for a repeated one. */
+	last: number;
+	state: 'connected' | 'waiting' | 'ended';
+	/** Why it's waiting. */
+	reason?: string;
+	/** The same reason again and again (backoff retries) is one event, counted. */
+	count: number;
+}
+
+export interface RadioUpdate {
+	/** null: a Beast feed (demodulated elsewhere). */
+	demod: DemodReport | null;
+	/** `full`: the whole history (first update), else the points and events since the last. */
+	full: boolean;
+	points: RadioPoint[];
+	/** Events: in a full update all of them; else the new ones and any whose count grew. */
+	events: SourceEvent[];
+}
+
 export interface StreamUpdate {
 	status: SourceStatus;
 	/** Where the messages come from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource). */
@@ -50,6 +141,8 @@ export interface StreamUpdate {
 	/** When the counting started (server start), ms since epoch. */
 	since: number;
 	counts: ReceiverCounts;
+	/** The receiver's own numbers, for /receiver. */
+	radio: RadioUpdate;
 	/** New frames since the previous update (the first update holds recent history). */
 	frames: WireFrame[];
 	/**

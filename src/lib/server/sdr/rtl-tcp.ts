@@ -37,6 +37,31 @@ export interface RtlTcpOptions {
 const HEADER = 12;
 const MAGIC = 'RTL0';
 
+/**
+ * The tuner named by the header's type number (librtlsdr's enum rtlsdr_tuner, in the order
+ * of its "Found … tuner" messages). rtl_tcp doesn't tell R828D from R820T apart from this.
+ */
+export const TUNERS = [
+	null,
+	'Elonics E4000',
+	'Fitipower FC0012',
+	'Fitipower FC0013',
+	'FCI 2580',
+	'Rafael Micro R820T',
+	'Rafael Micro R828D'
+];
+
+/** The tuner from rtl_tcp's 12-byte header (as a string of byte values). */
+export function tunerName(header: string): string | null {
+	const type =
+		((header.charCodeAt(4) << 24) |
+			(header.charCodeAt(5) << 16) |
+			(header.charCodeAt(6) << 8) |
+			header.charCodeAt(7)) >>>
+		0;
+	return TUNERS[type] ?? null;
+}
+
 /** The commands that set up the dongle for Mode S. */
 export function setupCommands(gain: number): Uint8Array {
 	const commands: [number, number][] = [
@@ -60,7 +85,7 @@ export class RtlTcp implements FrameSource {
 	#tcp: TcpClient;
 
 	constructor({ gain, onFrame, ...options }: RtlTcpOptions) {
-		this.decoder = new SampleDecoder(onFrame);
+		this.decoder = new SampleDecoder(onFrame, { gain });
 		this.#tcp = new TcpClient({
 			idleTimeoutMs: 10_000,
 			...options,
@@ -76,6 +101,7 @@ export class RtlTcp implements FrameSource {
 							fail(`not an rtl_tcp server (it doesn't start with "${MAGIC}")`);
 							return;
 						}
+						if (header.length === HEADER) this.decoder.device.tuner = tunerName(header);
 					}
 					if (at < data.length) this.decoder.push(data.subarray(at));
 				};

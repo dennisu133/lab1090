@@ -28,7 +28,7 @@ export class Recording implements FrameSource {
 
 	constructor(options: RecordingOptions) {
 		this.#opts = { onStatus: () => {}, ...options };
-		this.decoder = new SampleDecoder(options.onFrame);
+		this.decoder = new SampleDecoder(options.onFrame, { live: false });
 	}
 
 	start(): this {

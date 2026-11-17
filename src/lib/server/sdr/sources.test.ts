@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { modulate } from '#lib/demod/modulate.ts';
 import { toHex } from '#lib/modes/frame.ts';
-import type { SourceStatus } from '#lib/receiver-types.ts';
+import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
 import { waitFor } from '../beast/testing';
 import type { BeastFrame } from '../beast/parser';
 import { Recording } from './recording';
-import { explain, RtlSdr } from './rtl-sdr';
-import { RtlTcp, setupCommands } from './rtl-tcp';
+import { explain, learn, RtlSdr } from './rtl-sdr';
+import { RtlTcp, setupCommands, tunerName } from './rtl-tcp';
 
 const hex = (s: string) => Uint8Array.from(s.match(/../g)!.map((b) => parseInt(b, 16)));
 const MESSAGES = ['8D4840D6202CC371C32CE0576098', '8D4840D6202CC371C32CE0576098'].map(hex);
@@ -166,5 +166,37 @@ describe('Recording', () => {
 		// 0.1 s of samples take about that long.
 		expect(performance.now() - start).toBeGreaterThan(90);
 		expect(frames.map((f) => toHex(f.data))).toEqual(MESSAGES.map(toHex));
+	});
+});
+
+describe('the dongle, as its programs describe it', () => {
+	test("rtl_sdr's messages", () => {
+		const device: DeviceInfo = { tuner: null, name: null, serial: null, gain: 40 };
+		const listed = new Map<string, string>();
+		const messages = [
+			'Found 2 device(s):',
+			'  0:  Realtek, RTL2838UHIDIR, SN: 00000001',
+			'  1:  Realtek, RTL2838UHIDIR, SN: 1090',
+			'',
+			'Using device 1: Generic RTL2832U OEM',
+			'Found Rafael Micro R820T tuner',
+			'Tuner gain set to 49.60 dB.',
+			'Sampling at 2400000 S/s.'
+		];
+		for (const line of messages) learn(line, device, listed);
+		expect(device).toEqual({
+			tuner: 'Rafael Micro R820T',
+			name: 'Generic RTL2832U OEM',
+			serial: '1090',
+			gain: 49.6
+		});
+	});
+
+	test("rtl_tcp's header", () => {
+		const header = (type: number) => 'RTL0' + String.fromCharCode(0, 0, 0, type, 0, 0, 0, 29);
+		expect(tunerName(header(5))).toBe('Rafael Micro R820T');
+		expect(tunerName(header(1))).toBe('Elonics E4000');
+		expect(tunerName(header(0))).toBeNull();
+		expect(tunerName(header(9))).toBeNull();
 	});
 });

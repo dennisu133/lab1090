@@ -9,6 +9,8 @@ import { CommBStream } from './comm-b/comm-b-stream.svelte';
 import { CoverageStream } from './coverage-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
 import { RadarStream } from './radar-stream.svelte';
+import { RadioStream } from './receiver/radio-stream.svelte';
+import { SignalStream } from './receiver/signal-stream.svelte';
 import { TrackerStream } from './tracker-stream.svelte';
 import { WeatherStream } from './weather/weather-stream.svelte';
 
@@ -21,7 +23,7 @@ import { WeatherStream } from './weather/weather-stream.svelte';
  * more than that on its own, so it only runs while its map layer is on.
  */
 export class Streams {
-	/** The server's message counts and the rates: for the navigation bar and /frames. */
+	/** The server's message counts and the rates: for the navigation bar, /frames and /receiver. */
 	readonly stats = new ReceiverStats();
 	readonly tracker: TrackerStream;
 	readonly frames: FrameStream;
@@ -33,6 +35,10 @@ export class Streams {
 	readonly radars: RadarStream;
 	/** The antenna's coverage (map layer, receiver panel): collects from the start, it's cheap. */
 	readonly coverage: CoverageStream;
+	/** /receiver: the server's hour of receiver history, and the demodulator's numbers. */
+	readonly radio = new RadioStream();
+	/** /receiver: signal against distance, from the tracker's positions. */
+	readonly signal: SignalStream;
 	#connection: StreamConnection;
 
 	/** `reference`: the receiver's position (the page data, from the server's settings). */
@@ -44,6 +50,7 @@ export class Streams {
 		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
 		this.radars = new RadarStream(this.tracker);
 		this.coverage = new CoverageStream(this.tracker, reference);
+		this.signal = new SignalStream(this.tracker, reference);
 		this.#connection = new StreamConnection('/api/stream', [
 			// First: /setup changed the position while this tab was open. Everything decoded
 			// with the old one is wrong (coverage, ground positions, distances, declination):
@@ -59,6 +66,8 @@ export class Streams {
 			this.alerts, // after the tracker: reads what it made of the update
 			this.radars, // the same
 			this.coverage, // the same: reads the trails
+			this.signal, // the same: reads the positions
+			this.radio,
 			this.frames,
 			this.commB,
 			this.weather

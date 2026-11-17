@@ -1,6 +1,7 @@
 import type { SourceStatus } from '#lib/receiver-types.ts';
 import { BeastClient } from './beast/client';
 import type { BeastFrame } from './beast/parser';
+import type { SampleDecoder } from './sdr/decoder';
 import { Recording } from './sdr/recording';
 import { RtlSdr } from './sdr/rtl-sdr';
 import { RtlTcp } from './sdr/rtl-tcp';
@@ -15,6 +16,8 @@ import type { Source } from './settings';
  */
 export interface FrameSource {
 	readonly status: SourceStatus;
+	/** Sources that deliver samples demodulate them here (and report on it). */
+	readonly decoder?: SampleDecoder;
 	start(): this;
 	close(): void;
 }

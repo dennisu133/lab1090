@@ -1,6 +1,6 @@
 import type { Subprocess } from 'bun';
 import { SAMPLE_RATE } from '#lib/demod/samples.ts';
-import type { SourceStatus } from '#lib/receiver-types.ts';
+import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
 import type { FrameHandler, FrameSource } from '../frame-source';
 import { SampleDecoder } from './decoder';
 
@@ -52,7 +52,7 @@ export class RtlSdr implements FrameSource {
 			idleTimeoutMs: 10_000,
 			...options
 		};
-		this.decoder = new SampleDecoder(options.onFrame);
+		this.decoder = new SampleDecoder(options.onFrame, { gain: options.gain });
 	}
 
 	start(): this {
@@ -97,7 +97,8 @@ export class RtlSdr implements FrameSource {
 			return;
 		}
 		this.#process = process;
-		const messages = new Response(process.stderr).text();
+		const listed = new Map<string, string>();
+		const messages = readLines(process.stderr, (line) => learn(line, this.decoder.device, listed));
 		this.decoder.restart();
 
 		let lastData = performance.now();
@@ -141,6 +142,46 @@ export class RtlSdr implements FrameSource {
 		this.status = status;
 		this.#opts.onStatus(status);
 	}
+}
+
+/**
+ * What rtl_sdr (and librtlsdr in it) says about the dongle as it starts, into `device`:
+ *
+ *   Found 1 device(s):
+ *     0:  Realtek, RTL2838UHIDIR, SN: 00000001
+ *   Using device 0: Generic RTL2832U OEM
+ *   Found Rafael Micro R820T tuner
+ *   Tuner gain set to 49.60 dB.
+ *
+ * `listed`: the device list so far (index → serial number), one per start.
+ */
+export function learn(line: string, device: DeviceInfo, listed: Map<string, string>): void {
+	let m: RegExpMatchArray | null;
+	if ((m = line.match(/^\s*(\d+):\s+.*,\s*SN:\s*(.*?)\s*$/))) listed.set(m[1], m[2]);
+	else if ((m = line.match(/^Using device (\d+): (.+?)\s*$/))) {
+		device.name = m[2];
+		device.serial = listed.get(m[1]) || null;
+	} else if ((m = line.match(/^Found (.+) tuner/)) && m[1] !== 'No supported') device.tuner = m[1];
+	else if ((m = line.match(/^Tuner gain set to ([\d.]+) dB/))) device.gain = Number(m[1]);
+}
+
+/** A stream's text, handing each complete line to `onLine` as it comes; all of it at the end. */
+async function readLines(
+	stream: ReadableStream<Uint8Array>,
+	onLine: (line: string) => void
+): Promise<string> {
+	const decoder = new TextDecoder();
+	let text = '';
+	let from = 0;
+	for await (const chunk of stream) {
+		text += decoder.decode(chunk, { stream: true });
+		let end: number;
+		while ((end = text.indexOf('\n', from)) >= 0) {
+			onLine(text.slice(from, end));
+			from = end + 1;
+		}
+	}
+	return text;
 }
 
 /** Why rtl_sdr stopped, from what it printed (librtlsdr's messages) and its exit code. */

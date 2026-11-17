@@ -35,7 +35,7 @@
 	/** The handful of dB values worth knowing by heart. */
 	const reference = [
 		{ db: 0, note: 'full scale: the loudest the 8-bit ADC can represent' },
-		{ db: -3, note: 'half the power: the practical maximum here (see below)' },
+		{ db: -3, note: 'half the power: readsb’s ceiling (see below)' },
 		{ db: -6, note: 'half the amplitude, a quarter of the power' },
 		{ db: -10, note: 'a tenth of the power' },
 		{ db: -20, note: 'a tenth of the amplitude, a hundredth of the power' },
@@ -85,11 +85,11 @@
 					</tbody>
 				</table>
 				<p>
-					readsb averages the power over the whole message, pulses and the gaps between them, so
-					even pulses at full scale come out at half power: −3 dBFS is the ceiling. Messages there
-					are
-					<span class="text-rose-400">red</span>: readsb counts them as strong, and its auto-gain
-					turns the gain down when there are many.
+					lab1090's demodulator measures the pulses' amplitude, so pulses at full scale are 0 dBFS.
+					readsb (a Beast feed) averages the power over pulses and gaps alike, which puts the same
+					message 3 dB lower: there −3 dBFS is the ceiling. Either way the
+					<span class="text-rose-400">red</span> bucket is close to the top: those messages may have clipped
+					(/receiver counts the ones that did).
 				</p>
 			</InfoTip>
 		</div>

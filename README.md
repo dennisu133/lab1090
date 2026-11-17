@@ -47,6 +47,14 @@ Pages:
 
   Every step shown with its own numbers.
 
+- **/receiver**: the receiver itself. A diagnosis first: is the gain right (from the noise in
+  ADC steps and from messages that clipped, with a gain to try), are samples getting lost,
+  how much CPU demodulating takes, how far off the dongle's crystal is. Then the tuner and
+  the link's history, what the demodulator does with 2.4 million samples a second step by
+  step (and why the rest stops where it does), the last hour of noise and message rate,
+  and signal against distance with the free-space line. With a Beast feed only the rate and
+  the signal levels: the rest happens on the machine that demodulates.
+
 - **/**: the tracker. Live aircraft on a map, coloured by altitude, with their trails of the
   last 10 minutes, a dotted line predicting where each one goes next, circles showing how
   accurate its position is, and range rings around the receiver. These, the wind barbs, the

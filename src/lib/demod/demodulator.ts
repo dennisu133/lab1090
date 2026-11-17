@@ -32,8 +32,8 @@
  * Samples come in chunks of any size; a message can straddle two of them, so the end of one
  * chunk is kept for the next.
  */
-import { KNOWN_FORMATS, MessageFilter, messageBits } from './filter';
-import { FULL_SCALE, magnitudes, SAMPLE_RATE } from './samples';
+import { KNOWN_FORMATS, MessageFilter, messageBits, type Rejection } from './filter';
+import { ADC_LIMIT, FULL_SCALE, magnitudes, SAMPLE_RATE } from './samples';
 
 /** A message as the server takes it (the same shape as a Beast frame). */
 export interface DemodulatedFrame {
@@ -48,16 +48,42 @@ export interface DemodulatedFrame {
 	data: Uint8Array;
 }
 
+/**
+ * What the demodulator did, counted from its start. Every candidate ends in exactly one of
+ * the outcomes: candidates = noPreamble + unknownFormat + parity + unheard + accepted +
+ * repaired.
+ */
 export interface DemodulatorStats {
 	samples: number;
-	/** Samples that passed the quick test (1). */
+	/**
+	 * Samples that passed the quick test (1). Not preambles: the samples next to a real one
+	 * often pass too, and so does the middle of a message.
+	 */
 	candidates: number;
-	/** Bit strings read and checked (3, 4). */
+	/** Candidates where none of the five starts scored as a preamble (2). */
+	noPreamble: number;
+	/** Candidates where every start read gave a format that doesn't exist (3). */
+	unknownFormat: number;
+	/**
+	 * Candidates the parity turned down (4), by the reason for the best-scored start that got
+	 * that far (filter.ts Rejection).
+	 */
+	parity: number;
+	unheard: number;
+	/** Bit strings read and checked (3, 4): one candidate can be read at several starts. */
 	decoded: number;
 	accepted: number;
 	repaired: number;
+	/** Messages passed on (accepted or repaired) with a sample at the ADC's limit. */
+	clipped: number;
 	/** Mean magnitude of the latest 27 ms, 1 = full scale: mostly the noise. */
 	level: number;
+	/**
+	 * Blocks of LEVEL_BLOCK samples measured, and the sum of their mean magnitudes: the mean
+	 * level over any stretch of time is the difference of two readings.
+	 */
+	blocks: number;
+	levelSum: number;
 }
 
 /** 12 MHz ticks per sample (5), per µs (12) and per pulse or half bit (6). */
@@ -118,10 +144,17 @@ export class Demodulator {
 	readonly stats: DemodulatorStats = {
 		samples: 0,
 		candidates: 0,
+		noPreamble: 0,
+		unknownFormat: 0,
+		parity: 0,
+		unheard: 0,
 		decoded: 0,
 		accepted: 0,
 		repaired: 0,
-		level: 0
+		clipped: 0,
+		level: 0,
+		blocks: 0,
+		levelSum: 0
 	};
 	readonly filter = new MessageFilter();
 	/** The first sample's time, 12 MHz ticks. */
@@ -173,6 +206,8 @@ export class Demodulator {
 			if (++this.#blockFill === LEVEL_BLOCK) {
 				this.#levels.push(this.#blockSum / LEVEL_BLOCK);
 				this.stats.level = this.#blockSum / LEVEL_BLOCK / FULL_SCALE;
+				this.stats.blocks++;
+				this.stats.levelSum += this.stats.level;
 				this.#blockSum = 0;
 				this.#blockFill = 0;
 			}
@@ -251,6 +286,12 @@ export class Demodulator {
 			starts.push(s);
 			scores.push(pulseMean - gapMean);
 		}
+		if (starts.length === 0) {
+			this.stats.noPreamble++;
+			return null;
+		}
+		/** Why the best start that reached the parity check was turned down. */
+		let rejection: Rejection | null = null;
 		while (starts.length > 0) {
 			let best = 0;
 			for (let k = 1; k < scores.length; k++) if (scores[k] > scores[best]) best = k;
@@ -258,13 +299,19 @@ export class Demodulator {
 			starts.splice(best, 1);
 			scores.splice(best, 1);
 			const found = this.#read(s);
-			if (found) return found;
+			if (typeof found === 'object') return found;
+			if (found !== 'format') rejection ??= found;
 		}
+		if (rejection) this.stats[rejection]++;
+		else this.stats.unknownFormat++;
 		return null;
 	}
 
-	/** Steps 3 and 4: the bits of a message starting at tick s (relative to #mag[0]). */
-	#read(s: number): { frame: DemodulatedFrame; end: number } | null {
+	/**
+	 * Steps 3 and 4: the bits of a message starting at tick s (relative to #mag[0]); if it's
+	 * not a message, where it stopped: an unknown format, or why the parity turned it down.
+	 */
+	#read(s: number): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
 		const bits = this.#bits;
 		const data0 = s + DATA;
 		let df = 0;
@@ -272,7 +319,7 @@ export class Demodulator {
 			bits[i] = this.#bit(data0 + i * US);
 			df = (df << 1) | bits[i];
 		}
-		if (!KNOWN_FORMATS.has(Math.min(df, 24))) return null;
+		if (!KNOWN_FORMATS.has(Math.min(df, 24))) return 'format';
 		const length = messageBits(df);
 		let pulses = 0;
 		const data = new Uint8Array(length / 8);
@@ -292,7 +339,9 @@ export class Demodulator {
 		const accepted = this.filter.check(data, timestamp / 12e6);
 		this.stats.accepted = this.filter.stats.accepted;
 		this.stats.repaired = this.filter.stats.repaired;
-		if (!accepted) return null;
+		if (!accepted) return this.filter.rejection ?? 'parity';
+		const end = data0 + length * US;
+		if (this.#reachesLimit(s, end)) this.stats.clipped++;
 		// #energy counts in ticks: a sample fully inside a window adds its magnitude 5 times.
 		const amplitude = pulses / SAMPLE / length / FULL_SCALE;
 		return {
@@ -302,8 +351,16 @@ export class Demodulator {
 				signal: Math.max(1, Math.min(255, Math.round(amplitude * 255))),
 				data: accepted
 			},
-			end: data0 + length * US
+			end
 		};
+	}
+
+	/** Whether any sample between ticks a and b got to the ADC's limit. */
+	#reachesLimit(a: number, b: number): boolean {
+		for (let k = Math.floor(a / SAMPLE); k <= Math.ceil(b / SAMPLE); k++) {
+			if (this.#mag[k] >= ADC_LIMIT) return true;
+		}
+		return false;
 	}
 
 	/** 1 if the bit at t has more energy in its first half than in its second. */

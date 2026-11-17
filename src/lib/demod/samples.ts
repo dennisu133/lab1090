@@ -21,6 +21,13 @@ export const SAMPLES_PER_US = SAMPLE_RATE / 1e6;
 /** The magnitude that stands for full scale (I or Q at its limit): 1.0 = 65535. */
 export const FULL_SCALE = 65535;
 
+/**
+ * The ADC's limit as a magnitude: I or Q at its last code (0 or 255) is 127.5/128 of full
+ * scale. A sample this strong (or stronger, I and Q both large) means the wave reached the
+ * edge of what the 8 bits can hold: at some phase of the carrier it was cut off ("clipped").
+ */
+export const ADC_LIMIT = Math.floor((127.5 / 128) * FULL_SCALE);
+
 /** Magnitude of every (I, Q) byte pair, index (I << 8) | Q. Clipped at full scale. */
 const MAGNITUDE = Uint16Array.from({ length: 65536 }, (_, index) => {
 	const i = ((index >> 8) - 127.5) / 128;

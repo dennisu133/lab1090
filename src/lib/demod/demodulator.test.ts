@@ -78,4 +78,28 @@ describe('Demodulator', () => {
 		expect(noisy.length).toBeGreaterThan(sent.length / 5);
 		for (const f of noisy) expect(addresses.has(checkParity(f.data)?.icao)).toBe(true);
 	});
+
+	test('every candidate ends in one outcome, and loud messages count as clipped', () => {
+		const sent = fromCapture(2);
+		const loud = sent.map((t, i) => (i % 4 === 0 ? { ...t, amplitude: 1.2 } : t));
+		const demodulator = new Demodulator();
+		const iq = modulate(loud, Math.ceil(2.1 * SAMPLE_RATE), { noise: 0.008, seed: 3 });
+		const frames = demodulator.push(iq);
+		const s = demodulator.stats;
+		expect(s.candidates).toBe(
+			s.noPreamble + s.unknownFormat + s.parity + s.unheard + s.accepted + s.repaired
+		);
+		expect(s.accepted + s.repaired).toBe(frames.length);
+		// Every outcome happens in two seconds of noise and traffic.
+		for (const n of [s.noPreamble, s.unknownFormat, s.parity, s.unheard])
+			expect(n).toBeGreaterThan(0);
+		// The loud ones found (by time: the same message can be sent loud and quiet).
+		const loudAt = loud.filter((t) => t.amplitude > 1).map((t) => t.at * 5);
+		const found = frames.filter((f) => loudAt.some((at) => Math.abs(f.timestamp - at) < 5));
+		expect(found.length).toBeGreaterThan(10);
+		expect(s.clipped).toBe(found.length);
+		// The level blocks add up to a mean (27 ms each).
+		expect(s.blocks).toBe(Math.floor(iq.length / 2 / 65536));
+		expect(s.levelSum / s.blocks).toBeCloseTo(s.level, 1);
+	});
 });

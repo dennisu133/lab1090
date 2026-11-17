@@ -2,11 +2,18 @@ import type { BeastFrame } from './beast/parser';
 import { openSource, type FrameSource } from './frame-source';
 import { FrameBuffers } from './frame-buffers';
 import { FrameCounts } from './frame-counts';
+import { RadioHistory } from './radio-history';
 import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
 import { describeSource, type Source } from './settings';
-import type { StreamUpdate, ReceiverCounts, SourceStatus, WireFrame } from '#lib/receiver-types.ts';
+import type {
+	RadioUpdate,
+	ReceiverCounts,
+	SourceStatus,
+	StreamUpdate,
+	WireFrame
+} from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
 const HISTORY = 1000;
@@ -29,6 +36,8 @@ export class Receiver {
 	readonly buffers = new FrameBuffers(PER_KIND);
 	/** Thinned position frames of the last 10 minutes, for the tracker's trails. */
 	readonly tracks = new TrackHistory();
+	/** The last hour in 10-second points, and the link's events: for /receiver. */
+	readonly radio = new RadioHistory(this.since);
 
 	#client: FrameSource;
 	#counts = new FrameCounts();
@@ -47,7 +56,10 @@ export class Receiver {
 		this.#client = openSource(
 			source,
 			(f) => this.#onFrame(f),
-			(status) => log && this.#log(status)
+			(status) => {
+				this.radio.status(status, Date.now());
+				if (log) this.#log(status);
+			}
 		);
 	}
 
@@ -109,7 +121,7 @@ export class Receiver {
 		// pending ones are in TrackHistory already.
 		const last = this.#history.at(-1)?.id ?? 0;
 		send({
-			...this.#update(this.#history),
+			...this.#update(this.#history, this.radio.full(this.#client.decoder?.report() ?? null)),
 			tracks: this.tracks.frames.filter((f) => f.id <= last)
 		});
 		return () => this.#subscribers.delete(subscriber);
@@ -144,16 +156,19 @@ export class Receiver {
 		const frames = this.#pending;
 		this.#pending = [];
 		this.#history = [...this.#history, ...frames].slice(-HISTORY);
-		const update = this.#update(frames);
+		const demod = this.#client.decoder?.report() ?? null;
+		this.radio.read(now, this.counts.total, demod);
+		const update = this.#update(frames, this.radio.take(demod));
 		for (const s of this.#subscribers) s.send(update);
 	}
 
-	#update(frames: WireFrame[]): StreamUpdate {
+	#update(frames: WireFrame[], radio: RadioUpdate): StreamUpdate {
 		return {
 			status: this.#client.status,
 			source: this.source,
 			since: this.since,
 			counts: this.counts,
+			radio,
 			frames
 		};
 	}

@@ -22,7 +22,8 @@
 		{ href: resolve('/(app)'), label: 'Tracker' },
 		{ href: resolve('/(app)/frames'), label: 'Raw frames' },
 		{ href: resolve('/(app)/comm-b'), label: 'Comm-B registers' },
-		{ href: resolve('/(app)/weather'), label: 'Weather' }
+		{ href: resolve('/(app)/weather'), label: 'Weather' },
+		{ href: resolve('/(app)/receiver'), label: 'Receiver' }
 	];
 
 	/**
@@ -30,7 +31,12 @@
 	 * support 1024 px and up (tables scroll sideways below their minimum width); narrower
 	 * screens get a notice. The tracker (/) is meant to work on phones too, so it doesn't.
 	 */
-	const WIDE_ONLY = [resolve('/(app)/frames'), resolve('/(app)/comm-b'), resolve('/(app)/weather')];
+	const WIDE_ONLY = [
+		resolve('/(app)/frames'),
+		resolve('/(app)/comm-b'),
+		resolve('/(app)/weather'),
+		resolve('/(app)/receiver')
+	];
 
 	/**
 	 * The map pages (the tracker) fill the window below the navigation: a map, no margins, no
