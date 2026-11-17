@@ -12,7 +12,7 @@
 	destination, with the airports' codes.
 
 	Wind barbs (lib/map/winds.ts) where the aircraft measured the wind, from /weather's
-	pipeline. Their images are drawn when first needed (styleimagemissing). Tap one for a card
+	pipeline. Their images are drawn when first needed (missing style image resolver). Tap one for a card
 	with its numbers. While an aircraft is selected, the barbs far from its level are dimmed:
 	what's left is the wind it flies in.
 
@@ -224,10 +224,12 @@
 		let creditsTimer: ReturnType<typeof setTimeout> | undefined;
 
 		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
-		m.on('styleimagemissing', (e) => {
-			const barb = barbImage(e.id);
-			if (barb && !m.hasImage(e.id))
-				m.addImage(e.id, barb.image, { sdf: true, pixelRatio: barb.pixelRatio });
+		// A resolver, not the styleimagemissing event: since MapLibre 6 an image added by the
+		// event's listener only shows from the next redraw on (and MapLibre warns).
+		m.setMissingStyleImageResolver((id) => {
+			const barb = barbImage(id);
+			if (barb && !m.hasImage(id))
+				m.addImage(id, barb.image, { sdf: true, pixelRatio: barb.pixelRatio });
 		});
 		m.on('move', placeCard);
 

@@ -124,7 +124,7 @@ const BARB_STROKE = 3;
 
 /**
  * A wind barb's SDF image (lib/map/winds.ts), by its name ("barb-n-65"); null if the name
- * isn't a barb's. Made when the map first needs it (TrackerMap: styleimagemissing): only
+ * isn't a barb's. Made when the map first needs it (TrackerMap: missing style image resolver): only
  * the speeds that occur, a dozen or so.
  */
 export function barbImage(name: string): { image: ImageData; pixelRatio: number } | null {
