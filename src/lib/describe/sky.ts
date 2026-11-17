@@ -138,9 +138,7 @@ export function layerColumnFields(layer: Layer, c: Column | null): Field[] {
 			value: `${signed(col.gnssMinusBaro, 0)} ft`,
 			title: [
 				`Mean GNSS height − pressure altitude of ${samplesText(col.n, col.aircraft)}, as the aircraft send it (ADS-B TC 19, 25 ft steps).`,
-				`They differ by ±${col.spread.toFixed(0)} ft: different places and times, and avionics that send different kinds of height.`,
-				'',
-				'Pressure altitude assumes a standard column of air below. The real height of this pressure level is off from it by what the sea-level pressure and the temperature of the column did.'
+				`They differ by ±${col.spread.toFixed(0)} ft: different places and times, and avionics that send different kinds of height.`
 			].join('\n'),
 			tone: 'main'
 		},
@@ -157,9 +155,7 @@ export function columnDeviationFields(c: Column | null): Field[] {
 				`The air column from the ground up to here is on average ${Math.abs(c.isaDeviation).toFixed(1)} K ${c.isaDeviation >= 0 ? 'warmer' : 'colder'} than standard.`,
 				'',
 				`Offset after the geoid and geopotential corrections: ${signed(c.offset, 0)} ft.`,
-				`The sea-level pressure explains ${signed(c.pressurePart, 0)} ft of it, the rest (${signed(c.temperaturePart, 0)} ft) is temperature: at ${c.feetPerKelvin.toFixed(0)} ft per kelvin here, ${signed(c.isaDeviation)} K.`,
-				'',
-				"Not the temperature at this level (that's the Temperature column): an average over everything below, which in winter includes the cold air near the ground."
+				`The sea-level pressure explains ${signed(c.pressurePart, 0)} ft of it, the rest (${signed(c.temperaturePart, 0)} ft) is temperature: at ${c.feetPerKelvin.toFixed(0)} ft per kelvin here, ${signed(c.isaDeviation)} K.`
 			].join('\n'),
 			tone: 'main'
 		}

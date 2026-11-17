@@ -80,8 +80,8 @@
 					<InfoTip label="Lapse rate">
 						<p>
 							How much colder it gets per km up, to the next layer with a temperature. 6.5 K/km in
-							the standard troposphere, 0 above the tropopause. Orange: ≤ 2 K/km, the WMO's
-							tropopause threshold.
+							the standard troposphere, 0 above the tropopause. ≤ 2 K/km is the WMO's threshold for
+							the tropopause.
 						</p>
 					</InfoTip>
 				</th>
@@ -102,7 +102,8 @@
 					<InfoTip label="Column below" align="right">
 						<p>
 							The mean temperature of all the air below, compared with standard, worked out from
-							GNSS − baro. Not the temperature here.
+							GNSS − baro. Not the temperature here: in winter it includes the cold air near the
+							ground.
 						</p>
 					</InfoTip>
 				</th>

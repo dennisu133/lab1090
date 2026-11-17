@@ -108,12 +108,12 @@
 					</li>
 				</ol>
 				<p>
-					Which ones radars read is set by EU regulation 1207/2011:
+					EU regulation 1207/2011 sets which ones aircraft must provide:
 					<strong>Elementary Surveillance</strong> 1,0, 1,7 and 2,0 for every IFR flight (3,0 during
 					an ACAS advisory);
 					<strong>Enhanced Surveillance</strong> adds 4,0, 5,0 and 6,0 for aircraft over 5,700 kg or faster
-					than 250 kt. Rarely asked ones (4,4, 4,5, 5,3, 2,1) are a last resort: random bits fit them
-					by chance now and then.
+					than 250 kt. Which ones a radar asks for is up to its operator. Rarely asked ones (4,4, 4,5,
+					5,3, 2,1) are a last resort: random bits fit them by chance now and then.
 				</p>
 			</InfoTip>
 		</div>
@@ -261,7 +261,7 @@
 								class="py-0.5 whitespace-nowrap"
 								title={r.inference
 									? inferenceTitle(r.inference)
-									: `${r.key} ${NAMES[r.key] ?? ''}\nBroadcast: the ADS-B type code says which register.`}
+									: `${r.key} ${NAMES[r.key] ?? ''}\nBroadcast (ADS-B)`}
 							>
 								{#if r.inference?.best || !r.inference}
 									<span class="font-mono">{r.key}</span>

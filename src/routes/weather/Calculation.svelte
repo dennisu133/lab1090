@@ -69,9 +69,10 @@
 					>: ground speed along the track).
 				</p>
 				<p>
-					So <strong>wind = ground − air</strong>. The ground vector comes from GPS and the inertial
-					reference system, the air vector from the pitot tube and the compass: two independent
-					measurements, and their difference is the wind.
+					So <strong>wind = ground − air</strong>. The ground vector comes from GPS, often blended
+					with the inertial reference system; the air vector from the pitot tube (true airspeed) and
+					the inertial reference system (heading). Mostly separate sensors, so their difference is
+					the wind, but an error in the heading goes straight into it.
 				</p>
 				<p class="text-zinc-400">
 					Directions are true (geographic north), clockwise. The wind is given where it blows

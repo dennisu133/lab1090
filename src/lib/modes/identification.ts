@@ -59,7 +59,7 @@ export function character(code: number): string {
 	return '#';
 }
 
-/** Names from DO-260B, Table A-2-8. Weights are maximum take-off weight. */
+/** Names from ICAO Doc 9871, Table A-2-8. Weights are maximum take-off weight. */
 const CATEGORIES: Record<EmitterCategory['set'], string[]> = {
 	A: [
 		'No category information',

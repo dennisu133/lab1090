@@ -153,7 +153,7 @@ export function registerFields(r: Register): Field[] {
 				{
 					value: r.registration,
 					title:
-						'Registration ("tail number"), as painted on the aircraft but without the dash: the 6-bit alphabet has none, so DAIZA is D-AIZA. The check next to it puts the dash back, from the nationality mark of the State the address belongs to.',
+						'Registration ("tail number"), as painted on the aircraft but without the dash: the 6-bit alphabet has none, so DAIZA is D-AIZA. The dash goes back after the nationality mark of the State the address belongs to.',
 					tone: 'main',
 					mono: true
 				}

@@ -356,7 +356,7 @@ function targetStateV1Fields(t: Extract<TargetState, { subtype: 0 }>): Field[] {
 		{
 			value: 'DO-260A',
 			title:
-				'Target state, ADS-B version 1 layout (subtype 0): the altitude and heading the aircraft is flying towards. Layout as readsb decodes it',
+				'Target state, ADS-B version 1 layout (subtype 0): the altitude and heading the aircraft is flying towards',
 			tone: 'minor'
 		}
 	];
@@ -382,7 +382,7 @@ function targetStateV1Fields(t: Extract<TargetState, { subtype: 0 }>): Field[] {
 		fields.push({
 			label: 'TCAS',
 			value: t.acas.operational ? 'on' : 'off',
-			title: `Collision avoidance system (code ${t.acas.code})`,
+			title: 'Collision avoidance system operational',
 			tone: t.acas.operational ? 'minor' : 'alert'
 		});
 	}
@@ -463,7 +463,8 @@ function operationalStatusFields(s: OperationalStatus): Field[] {
 		fields.push({
 			label: 'BAQ',
 			value: String(s.baq),
-			title: 'Barometric altitude quality (version 1; always 0 in practice)',
+			title:
+				'Barometric altitude quality (version 1): transponders are meant to send 0 here, so this value is unusual',
 			tone: 'minor'
 		});
 	}

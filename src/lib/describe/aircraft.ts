@@ -253,7 +253,7 @@ export function aircraftSections(
 			label: 'Category',
 			value: `${set}${code} · ${name}`,
 			title:
-				`Emitter category (DO-260B Table A-2-8): the set from the type code (TC ${'DCBA'.indexOf(set) + 1} = set ${set}), the number from the message. For aircraft it's the weight class (maximum take-off weight), which sets how much wake turbulence it leaves and so how far behind it others must fly.` +
+				`Emitter category (ICAO Doc 9871 Table A-2-8): the set from the type code (TC ${'DCBA'.indexOf(set) + 1} = set ${set}), the number from the message. For aircraft it's the weight class (maximum take-off weight), which sets how much wake turbulence it leaves and so how far behind it others must fly.` +
 				source(a.category, now),
 			// The set's categories, without the reserved codes nobody sends.
 			choices: categoryNames(set).flatMap((text, i) =>
@@ -327,14 +327,14 @@ export function aircraftSections(
 					? {
 							label: 'On the map',
 							value: `hidden (no position for ${Math.round(age / 1000)} s)`,
-							title: `After ${SHOW_MS / 1000} s without a position the map stops drawing it: probably out of range, behind a hill or below the radio horizon. It stays in the list while other messages come.`,
+							title: `After ${SHOW_MS / 1000} s without a position the map stops drawing it: probably out of range, behind a hill or below the radio horizon.`,
 							tone: 'alert'
 						}
 					: shown.extrapolatedKm > 0 && shown.age >= 1000
 						? {
 								label: 'On the map',
 								value: `moved on ${distanceText(shown.extrapolatedKm, unit)} (${Math.round(shown.age / 1000)} s)`,
-								title: `The last position is ${(shown.age / 1000).toFixed(1)} s old. ${deadReckoning}`,
+								title: deadReckoning,
 								tone: 'minor'
 							}
 						: {

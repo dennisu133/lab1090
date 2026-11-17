@@ -118,7 +118,7 @@ function locationFields({ reference, local, global, surface = false }: Located):
 	});
 	fields.splice(1, 0, {
 		value: `${n(Math.round(distanceKm(reference, position)))} km ${compass(bearing(reference, position))}`,
-		title: 'Distance and direction from the receiver (RECEIVER_POSITION), along the great circle',
+		title: 'Distance and direction from the receiver, along the great circle',
 		tone: 'main'
 	});
 	return fields;
@@ -300,7 +300,7 @@ function statusFields(h: {
 			]
 				.filter(Boolean)
 				.join(', '),
-			title: `Flight status ${fs.code}. Alert: the squawk changed in the last 18 s or is an emergency code. SPI: the pilot pressed IDENT`,
+			title: `Alert: the squawk changed in the last 18 s or is an emergency code. SPI: the pilot pressed IDENT`,
 			tone: fs.alert || fs.spi ? 'alert' : 'minor'
 		}
 	];

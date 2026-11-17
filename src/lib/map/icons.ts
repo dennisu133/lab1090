@@ -1,6 +1,6 @@
 /**
  * The aircraft symbols on the map: a few silhouettes, chosen by the emitter category the
- * aircraft broadcasts (TC 1–4, DO-260B Table A-2-8), sized by its weight class. Seen from
+ * aircraft broadcasts (TC 1–4, ICAO Doc 9871 Table A-2-8), sized by its weight class. Seen from
  * above, nose up (north): the map rotates them by the ground track.
  *
  * Drawn here, not taken from another tracker (tar1090's shapes are GPL). Each is an SVG path
