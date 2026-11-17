@@ -135,28 +135,47 @@ feeds a flight tracking network can be used as is.
 
 ## Getting started
 
-The project is Bun-native: [Bun](https://bun.sh) installs, runs, tests and serves it.
-Node.js and npm are not needed.
+lab1090 is one program: it connects to a Beast feed and serves the web page.
 
 ```sh
-bun install
-cp .env.example .env   # then adjust, see Configuration
-bun run dev            # http://localhost:5173
+lab1090 --connect pi:30005   # readsb on another machine; default: localhost:30005
 ```
+
+Then open the address it prints (port 1090) from any device on your network. The first
+time, the page asks where the antenna is ([below](#receiver-position)).
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Only the receiver position is required:
+Everything is optional; `lab1090 --help` lists it too.
 
-| Variable            | Default  | What it is                                           |
-| ------------------- | -------- | ---------------------------------------------------- |
-| `RECEIVER_HOST`     | `pi`     | Host running readsb with Beast output                |
-| `RECEIVER_PORT`     | `30005`  | readsb Beast output port                             |
-| `RECEIVER_POSITION` | required | Where the antenna is, `"latitude,longitude"` (below) |
+| Option                    | Default                         | What it is                                               |
+| ------------------------- | ------------------------------- | -------------------------------------------------------- |
+| `--connect <host[:port]>` | `localhost:30005`               | readsb's or dump1090's Beast output                      |
+| `--position <lat,lon>`    | from the config file            | Where the antenna is, decimal degrees (below)            |
+| `--port <port>`           | `1090`                          | The web page's port                                      |
+| `--bind <address>`        | all                             | Listen on this address only (`127.0.0.1` behind a proxy) |
+| `--config <file>`         | `~/.config/lab1090/config.json` | The config file                                          |
+
+The config file takes the same settings as JSON, and options on the command line win over
+it. The setup page writes `position` into it:
+
+```json
+{ "connect": "pi:30005", "position": { "lat": 52.5163, "lon": 13.3777 } }
+```
+
+The page is plain HTTP. Browsers only allow system notifications on HTTPS pages or on
+`localhost`, so for those, open it on the same machine or put it behind a reverse proxy
+with HTTPS (`--bind 127.0.0.1`).
 
 ### Receiver position
 
-`RECEIVER_POSITION` is where the antenna is. The server won't start without it. It's used for:
+Where the antenna is, to about 100 m. On the first start every page leads to the setup
+page, which finds it from an address (OpenStreetMap's Nominatim, asked by your browser) or
+takes coordinates or a map link. To correct it later: the receiver's panel on the map
+(tap the receiver), "Change". `--position` sets it for one run instead, and then the page
+can't change it.
+
+It's used for:
 
 - **Decoding positions**: the reference point that picks which CPR zone an aircraft is in,
   so a single ADS-B message is enough (local CPR decoding). Aircraft on the ground need it
@@ -174,21 +193,29 @@ sharing screenshots or running the app where others can see it.
 
 ## Development
 
-| Command          | What it does                               |
-| ---------------- | ------------------------------------------ |
-| `bun run dev`    | Dev server (Vite, running on Bun)          |
-| `bun test`       | Tests (Bun's test runner)                  |
-| `bun run check`  | Type check (`svelte-check`)                |
-| `bun run lint`   | Prettier and ESLint                        |
-| `bun run format` | Format everything with Prettier            |
-| `bun run build`  | Production build (`@sveltejs/adapter-bun`) |
+The project is Bun-native: [Bun](https://bun.sh) installs, runs, tests and builds it.
+Node.js and npm are not needed.
+
+| Command                | What it does                                            |
+| ---------------------- | ------------------------------------------------------- |
+| `bun install`          | Install the dependencies                                |
+| `bun run dev`          | Dev server (Vite, running on Bun); options as above     |
+| `bun test`             | Tests (Bun's test runner)                               |
+| `bun run check`        | Type check (`svelte-check`)                             |
+| `bun run lint`         | Prettier and ESLint                                     |
+| `bun run format`       | Format everything with Prettier                         |
+| `bun run build:binary` | The `lab1090` program for this machine: `build/lab1090` |
+| `bun run build:arm64`  | The same for a 64-bit Raspberry Pi (Linux arm64)        |
+
+Options go after the command: `bun run dev --connect pi`. The dev server shares the config
+file with the program, so the position set up once is there for both.
 
 Nothing in the sky (at night, say)? Replay the recording instead of the Pi, at its original
 pace:
 
 ```sh
-bun tools/replay.ts --loop                                # serves it on 127.0.0.1:30105
-RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
+bun tools/replay.ts --loop                     # serves it on 127.0.0.1:30105
+bun run dev --connect 127.0.0.1:30105
 ```
 
 The tests run against a 10-minute recording from the receiver
@@ -198,10 +225,7 @@ Python is only needed to regenerate them ([tools/](tools/README.md)).
 
 ## Deployment
 
-```sh
-bun run build
-bun ./build            # http://localhost:3000, PORT and HOST to change it
-```
-
-The server reads `.env` from the working directory. See the
-[adapter-bun docs](https://svelte.dev/docs/kit/adapter-bun) for its other options.
+`bun run build:binary` (or `build:arm64` for a Pi) makes one file, `build/lab1090`, with
+the Bun runtime and the web page inside: copy it to the machine and run it. It runs on
+64-bit Linux with glibc (Raspberry Pi OS, Debian, Ubuntu) with nothing else installed.
+The Pi's is ~116 MB.

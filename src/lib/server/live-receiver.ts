@@ -1,5 +1,5 @@
 import { building } from '$app/env';
-import { RECEIVER_HOST, RECEIVER_PORT } from '$app/env/private';
+import { settings } from './live-settings';
 import { Receiver } from './receiver';
 
 /**
@@ -15,7 +15,7 @@ const g = globalThis as typeof globalThis & { __adsbReceiver?: Receiver };
 
 if (!building) {
 	g.__adsbReceiver?.stop();
-	g.__adsbReceiver = new Receiver(RECEIVER_HOST, RECEIVER_PORT).start();
+	g.__adsbReceiver = new Receiver(settings.connect.host, settings.connect.port).start();
 }
 
 export function receiver(): Receiver {

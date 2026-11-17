@@ -1,4 +1,5 @@
 import { receiver } from '#lib/server/live-receiver.ts';
+import { settings } from '#lib/server/live-settings.ts';
 import type { StreamUpdate } from '#lib/receiver-types.ts';
 import type { RequestHandler } from './$types';
 
@@ -6,7 +7,7 @@ import type { RequestHandler } from './$types';
  * Server-Sent Events: one long-lived HTTP response, one `data: <json>` message per update.
  * The browser's EventSource parses this and reconnects by itself if the stream ends.
  * The first update also holds the last 10 minutes of positions, for the tracker's trails
- * (see TrackHistory).
+ * (see TrackHistory), and the receiver's position: tabs loaded with an older one reload.
  */
 export const GET: RequestHandler = () => {
 	const encoder = new TextEncoder();
@@ -14,7 +15,12 @@ export const GET: RequestHandler = () => {
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
+			let first = true;
 			const send = (update: StreamUpdate) => {
+				if (first) {
+					update = { ...update, reference: settings.position };
+					first = false;
+				}
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(update)}\n\n`));
 				} catch {

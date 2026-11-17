@@ -223,6 +223,7 @@
 		{:else if focus?.kind === 'receiver'}
 			<CoveragePanel
 				stream={coverage}
+				receiver={data.reference}
 				{unit}
 				selected={sector}
 				onselect={(i) => (sector = i)}

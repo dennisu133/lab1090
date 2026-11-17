@@ -140,7 +140,7 @@ bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11
 
 ```sh
 bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
-RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
+bun run dev --connect 127.0.0.1:30105
 ```
 
 - `replay.ts`: serves a Beast recording over TCP like readsb does, so the app can run

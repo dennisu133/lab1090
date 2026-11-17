@@ -1,0 +1,109 @@
+import { expect, test } from 'bun:test';
+import {
+	BEAST_PORT,
+	DEFAULT_PORT,
+	SettingsError,
+	defaultConfigPath,
+	formatEndpoint,
+	parseConfig,
+	parseEndpoint,
+	parseFlags,
+	resolveSettings,
+	withPosition
+} from './settings';
+
+test('endpoints: host, host:port, IPv6 in brackets; Beast port by default', () => {
+	expect(parseEndpoint('pi')).toEqual({ host: 'pi', port: BEAST_PORT });
+	expect(parseEndpoint('192.168.1.20:30105')).toEqual({ host: '192.168.1.20', port: 30105 });
+	expect(parseEndpoint('[::1]:30005')).toEqual({ host: '::1', port: 30005 });
+	expect(parseEndpoint('[fe80::1]')).toEqual({ host: 'fe80::1', port: BEAST_PORT });
+	expect(() => parseEndpoint('pi:')).toThrow();
+	expect(() => parseEndpoint('pi:70000')).toThrow('TCP port');
+	expect(() => parseEndpoint('::1')).toThrow(); // ambiguous without brackets
+	expect(formatEndpoint({ host: '::1', port: 30005 })).toBe('[::1]:30005');
+	expect(formatEndpoint({ host: 'pi', port: 30005 })).toBe('pi:30005');
+});
+
+test('flags', () => {
+	expect(parseFlags([])).toEqual({ help: false, config: null });
+	expect(
+		parseFlags(['--connect', 'pi', '--position', '52,14', '--port', '8080', '--bind', '127.0.0.1'])
+	).toEqual({
+		help: false,
+		config: null,
+		connect: { host: 'pi', port: BEAST_PORT },
+		position: { lat: 52, lon: 14 },
+		port: 8080,
+		bind: '127.0.0.1'
+	});
+	expect(parseFlags(['--connect=pi:1234']).connect).toEqual({ host: 'pi', port: 1234 });
+	expect(parseFlags(['-h']).help).toBe(true);
+});
+
+test('flag mistakes name the flag', () => {
+	expect(() => parseFlags(['--conect', 'pi'])).toThrow(SettingsError);
+	expect(() => parseFlags(['--port', 'eighty'])).toThrow('--port: expected a TCP port');
+	expect(() => parseFlags(['--position', '52'])).toThrow('--position:');
+	expect(() => parseFlags(['--position', '95,14'])).toThrow('within ±90');
+	expect(() => parseFlags(['build'])).toThrow(SettingsError); // no positionals
+});
+
+test('config file', () => {
+	const text = JSON.stringify({ connect: 'pi:30005', position: { lat: 52, lon: 14 }, port: 8080 });
+	expect(parseConfig(text, 'c.json')).toEqual({
+		connect: 'pi:30005',
+		position: { lat: 52, lon: 14 },
+		port: 8080
+	});
+	expect(parseConfig('{}', 'c.json')).toEqual({});
+});
+
+test('config mistakes name the file and the key', () => {
+	expect(() => parseConfig('{', 'c.json')).toThrow('c.json: not valid JSON');
+	expect(() => parseConfig('[]', 'c.json')).toThrow('expected an object');
+	expect(() => parseConfig('{"conect": "pi"}', 'c.json')).toThrow('unknown setting "conect"');
+	expect(() => parseConfig('{"position": "52,14"}', 'c.json')).toThrow('c.json: "position"');
+	expect(() => parseConfig('{"position": {"lat": 52, "lon": 200}}', 'c.json')).toThrow('±180');
+	expect(() => parseConfig('{"connect": 30005}', 'c.json')).toThrow('c.json: "connect"');
+	expect(() => parseConfig('{"port": 0}', 'c.json')).toThrow('c.json: "port"');
+});
+
+test('flags win over the file, the file over the defaults', () => {
+	const file = parseConfig(
+		JSON.stringify({ connect: 'pi', position: { lat: 52, lon: 14 }, port: 8080 }),
+		'c.json'
+	);
+	expect(resolveSettings(parseFlags([]), {})).toEqual({
+		connect: { host: 'localhost', port: BEAST_PORT },
+		position: null,
+		positionFrom: null,
+		port: DEFAULT_PORT,
+		bind: null
+	});
+	expect(resolveSettings(parseFlags([]), file)).toMatchObject({
+		connect: { host: 'pi', port: BEAST_PORT },
+		position: { lat: 52, lon: 14 },
+		positionFrom: 'file',
+		port: 8080
+	});
+	expect(
+		resolveSettings(parseFlags(['--position', '50,10', '--connect', 'localhost:30105']), file)
+	).toMatchObject({
+		connect: { host: 'localhost', port: 30105 },
+		position: { lat: 50, lon: 10 },
+		positionFrom: 'flag',
+		port: 8080
+	});
+});
+
+test('a new position keeps the rest of the file, rounded to ~0.1 m', () => {
+	expect(withPosition({ connect: 'pi' }, { lat: 52.123456789, lon: 13.987654321 })).toEqual({
+		connect: 'pi',
+		position: { lat: 52.123457, lon: 13.987654 }
+	});
+});
+
+test('config path follows XDG', () => {
+	expect(defaultConfigPath({}, '/home/a')).toBe('/home/a/.config/lab1090/config.json');
+	expect(defaultConfigPath({ XDG_CONFIG_HOME: '/x' }, '/home/a')).toBe('/x/lab1090/config.json');
+});

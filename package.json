@@ -8,8 +8,10 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"scripts": {
-		"dev": "bun --bun vite dev",
+		"dev": "bun --bun vite dev --",
 		"build": "bun --bun vite build",
+		"build:binary": "COMPILE=native bun --bun vite build",
+		"build:arm64": "COMPILE=bun-linux-arm64 bun --bun vite build",
 		"preview": "bun --bun vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

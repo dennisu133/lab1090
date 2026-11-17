@@ -1,4 +1,5 @@
 import type { Checked, Verdict } from '#lib/modes/address-filter.ts';
+import type { LatLon } from '#lib/modes/cpr.ts';
 
 /** Shape of the messages on the /api/stream Server-Sent Events stream. Shared by server and page. */
 
@@ -54,6 +55,12 @@ export interface StreamUpdate {
 	 * `frames` (same ids): mergeFrames joins the two.
 	 */
 	tracks?: WireFrame[];
+	/**
+	 * First update only: the receiver's position as the server has it now. A tab that was
+	 * loaded with another one reloads (streams.ts): /setup changed it, and everything decoded
+	 * with the old one (coverage, ground positions, distances) would be wrong.
+	 */
+	reference?: LatLon | null;
 }
 
 /** Answer of /api/frames: stored frames matching a filter, oldest first. */

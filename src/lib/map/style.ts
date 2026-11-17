@@ -29,13 +29,20 @@ const C = {
 	road: '#27272a', // zinc-800
 	runway: '#71717a', // zinc-500
 	airportArea: '#1f1f23',
+	building: '#232327',
+	buildingEdge: '#2e2e33',
 	label: '#a1a1aa', // zinc-400
 	minorLabel: '#71717a', // zinc-500
 	halo: '#09090b' // zinc-950
 };
 
-export function mapStyle(): StyleSpecification {
-	return {
+/**
+ * `streets`: buildings, every street, street names and house numbers when zoomed in, for
+ * /setup's "is the marker on your building?". The tracker leaves them out: at its zooms
+ * they're clutter under the aircraft.
+ */
+export function mapStyle({ streets = false } = {}): StyleSpecification {
+	const style: StyleSpecification = {
 		version: 8,
 		glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
 		sources: {
@@ -221,4 +228,68 @@ export function mapStyle(): StyleSpecification {
 			}
 		]
 	};
+	if (streets) {
+		const after = (id: string, ...layers: StyleSpecification['layers']) => {
+			const i = style.layers.findIndex((l) => l.id === id);
+			style.layers.splice(i + 1, 0, ...layers);
+		};
+		after('residential', ...BUILDINGS);
+		after('airport-area', ...STREETS);
+		style.layers.push(...STREET_LABELS);
+	}
+	return style;
 }
+
+const BUILDINGS: StyleSpecification['layers'] = [
+	{
+		id: 'buildings',
+		type: 'fill',
+		source: 'openmaptiles',
+		'source-layer': 'building',
+		minzoom: 14,
+		paint: { 'fill-color': C.building, 'fill-outline-color': C.buildingEdge }
+	}
+];
+
+/** The streets the tracker leaves out: everything below trunk and primary roads. */
+const STREETS: StyleSpecification['layers'] = [
+	{
+		id: 'streets',
+		type: 'line',
+		source: 'openmaptiles',
+		'source-layer': 'transportation',
+		minzoom: 12,
+		filter: ['match', ['get', 'class'], ['secondary', 'tertiary', 'minor', 'service'], true, false],
+		layout: { 'line-cap': 'round', 'line-join': 'round' },
+		paint: {
+			'line-color': C.road,
+			'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 18, 6]
+		}
+	}
+];
+
+const STREET_LABELS: StyleSpecification['layers'] = [
+	{
+		id: 'street-names',
+		type: 'symbol',
+		source: 'openmaptiles',
+		'source-layer': 'transportation_name',
+		minzoom: 14,
+		layout: {
+			'text-field': ['coalesce', ['get', 'name:latin'], ['get', 'name']],
+			'text-font': FONT,
+			'text-size': 11,
+			'symbol-placement': 'line'
+		},
+		paint: { 'text-color': C.label, 'text-halo-color': C.halo, 'text-halo-width': 1.5 }
+	},
+	{
+		id: 'house-numbers',
+		type: 'symbol',
+		source: 'openmaptiles',
+		'source-layer': 'housenumber',
+		minzoom: 17,
+		layout: { 'text-field': ['get', 'housenumber'], 'text-font': FONT, 'text-size': 10 },
+		paint: { 'text-color': C.minorLabel, 'text-halo-color': C.halo, 'text-halo-width': 1 }
+	}
+];

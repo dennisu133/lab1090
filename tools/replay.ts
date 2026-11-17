@@ -3,7 +3,7 @@
  * when the sky is empty (at night), or with a recording that shows something specific.
  *
  *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
- *   RECEIVER_HOST=127.0.0.1 RECEIVER_PORT=30105 bun run dev
+ *   bun run dev --connect 127.0.0.1:30105
  *
  * Frames go out at the pace they were recorded, by their Beast timestamps (the receiver's
  * 12 MHz clock), so CPR pairs, trails and dead reckoning behave as they would live. Each

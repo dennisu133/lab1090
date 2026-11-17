@@ -5,6 +5,7 @@
 	and how to read the outlines on the map, which show while it's open.
 -->
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, distanceText } from '#lib/describe/aircraft.ts';
@@ -21,19 +22,22 @@
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
 	import type { Unit } from '#lib/map/features.ts';
+	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { BAND_COLOUR_FT } from '#lib/map/coverage.ts';
 	import type { CoverageStream } from './coverage-stream.svelte';
 	import SkyPlot from './SkyPlot.svelte';
 
 	interface Props {
 		stream: CoverageStream;
+		/** The antenna's position, from the setup. */
+		receiver: LatLon;
 		unit: Unit;
 		selected: number | null;
 		onselect: (index: number | null) => void;
 		onclose: () => void;
 	}
 
-	let { stream, unit, selected, onselect, onclose }: Props = $props();
+	let { stream, receiver, unit, selected, onselect, onclose }: Props = $props();
 
 	const km = (x: number) => distanceText(x, unit);
 	const deg = (x: number) => `${x.toFixed(1)}°`;
@@ -85,6 +89,13 @@
 		aria-label="Close and show all aircraft"><CloseIcon /></button
 	>
 </header>
+
+<p class="px-4 pb-3 text-sm text-zinc-400">
+	Antenna at
+	<span class="font-mono text-zinc-300">{receiver.lat.toFixed(5)}, {receiver.lon.toFixed(5)}</span>
+	·
+	<a href={resolve('/setup')} class="text-sky-400 hover:text-sky-300">Change</a>
+</p>
 
 <p class="px-4 pb-3 text-sm text-zinc-300">
 	Where this antenna hears aircraft. Distance mixes up how high they fly with what's in the way, so

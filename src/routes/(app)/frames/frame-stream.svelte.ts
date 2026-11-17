@@ -30,7 +30,7 @@ export const LIVE_FRAMES = 1000;
  * its tables come from ReceiverStats.
  */
 export class FrameStream extends LiveFeed<FeedFrame> {
-	/** RECEIVER_POSITION from the server: the reference point for local CPR decoding. */
+	/** The receiver's position from the server: the reference point for local CPR decoding. */
 	#reference: () => LatLon;
 	#decoder: FrameDecoder;
 

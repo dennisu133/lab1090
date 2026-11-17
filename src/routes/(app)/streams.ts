@@ -35,7 +35,7 @@ export class Streams {
 	readonly coverage: CoverageStream;
 	#connection: StreamConnection;
 
-	/** `reference`: the receiver's position (RECEIVER_POSITION). */
+	/** `reference`: the receiver's position (the page data, from the server's settings). */
 	constructor(reference: () => LatLon) {
 		this.tracker = new TrackerStream(reference);
 		this.frames = new FrameStream(reference);
@@ -45,6 +45,15 @@ export class Streams {
 		this.radars = new RadarStream(this.tracker);
 		this.coverage = new CoverageStream(this.tracker, reference);
 		this.#connection = new StreamConnection('/api/stream', [
+			// First: /setup changed the position while this tab was open. Everything decoded
+			// with the old one is wrong (coverage, ground positions, distances, declination):
+			// start over with a reload rather than reset each view.
+			{
+				receive: ({ reference: now }) => {
+					const then = reference();
+					if (now && (now.lat !== then.lat || now.lon !== then.lon)) location.reload();
+				}
+			},
 			this.stats,
 			this.tracker,
 			this.alerts, // after the tracker: reads what it made of the update
@@ -65,7 +74,7 @@ export class Streams {
 	/** Select an aircraft on the tracker, from whatever page is open. */
 	show(icao: string): void {
 		this.tracker.select(icao);
-		goto(resolve('/'));
+		goto(resolve('/(app)'));
 	}
 }
 

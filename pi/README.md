@@ -15,9 +15,9 @@ Quick look at live traffic: `nc pi 30002`
 
 ## Feeding the app
 
-All the app needs is a Beast feed it can reach over TCP: set `RECEIVER_HOST` (and
-`RECEIVER_PORT`, if it isn't 30005) in the app's `.env`. The Pi needs no location, no web
-interface and no other outputs.
+All the app needs is a Beast feed it can reach over TCP: `lab1090 --connect pi` (add
+`:port` if it isn't 30005), or run `lab1090` on the Pi itself, next to readsb (the default,
+`localhost:30005`). readsb needs no location, no web interface and no other outputs.
 
 If you already run readsb or dump1090 (e.g. on a Pi that feeds a flight tracking network),
 it most likely serves Beast on port 30005 already: point the app at it and skip the setup

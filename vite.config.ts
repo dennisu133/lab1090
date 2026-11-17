@@ -18,13 +18,17 @@ export default defineConfig({
 			// Builds a standalone Bun server: `bun run build`, then `bun ./build`.
 			// See https://svelte.dev/docs/kit/adapter-bun
 			// COMPILE=<bun target> (e.g. bun-linux-arm64, or "native") builds one executable
-			// instead, client files embedded: build/server.
+			// instead, client files embedded: build/lab1090.
 			adapter: adapter(
 				process.env.COMPILE
 					? {
 							buildOptions: {
-								compile:
-									process.env.COMPILE === 'native' || (process.env.COMPILE as Build.CompileTarget),
+								compile: {
+									outfile: 'lab1090',
+									...(process.env.COMPILE !== 'native' && {
+										target: process.env.COMPILE as Build.CompileTarget
+									})
+								},
 								minify: true
 							}
 						}

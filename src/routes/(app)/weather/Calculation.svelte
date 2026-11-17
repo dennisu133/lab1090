@@ -103,7 +103,7 @@
 							<p>
 								{latLon(position!)}: {position?.from === 'ADS-B'
 									? "the aircraft's last ADS-B position."
-									: 'the receiver (RECEIVER_POSITION): this aircraft sent no ADS-B position. The declination can be up to about a degree off at the edge of the range.'}
+									: 'the receiver: this aircraft sent no ADS-B position. The declination can be up to about a degree off at the edge of the range.'}
 							</p>
 							<p>
 								Declination is where a compass points, relative to true north. It comes from the

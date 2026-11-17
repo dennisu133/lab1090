@@ -5,6 +5,7 @@ import { FrameCounts } from './frame-counts';
 import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
+import { formatEndpoint } from './settings';
 import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
@@ -39,7 +40,7 @@ export class Receiver {
 	#timer: ReturnType<typeof setInterval> | undefined;
 
 	constructor(host: string, port: number) {
-		this.source = `${host}:${port}`;
+		this.source = formatEndpoint({ host, port });
 		this.#client = new BeastClient({
 			host,
 			port,
@@ -61,6 +62,14 @@ export class Receiver {
 	stop(): void {
 		clearInterval(this.#timer);
 		this.#client.close();
+		this.disconnectAll();
+	}
+
+	/**
+	 * End every tab's stream; the browsers reconnect by themselves (EventSource). After a new
+	 * receiver position: the first update of the new stream carries it, and the tabs reload.
+	 */
+	disconnectAll(): void {
 		for (const s of this.#subscribers) s.close();
 		this.#subscribers.clear();
 	}
