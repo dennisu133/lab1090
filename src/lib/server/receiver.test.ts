@@ -23,7 +23,10 @@ function trickle() {
 }
 
 function start(port: number) {
-	const r = new Receiver('127.0.0.1', port).start();
+	const r = new Receiver(
+		{ kind: 'beast', endpoint: { host: '127.0.0.1', port } },
+		{ log: false }
+	).start();
 	receivers.push(r);
 	return r;
 }

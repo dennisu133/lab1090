@@ -6,9 +6,9 @@ radars and broadcast ADS-B; the name follows the custom of tools like dump1090 a
 with "lab" for what this one is: a place to learn how it works.
 
 An independent learning project, not affiliated with dump1090, readsb, tar1090 or any
-other 1090 MHz tool. It stands on their shoulders: readsb does the demodulation on the Pi,
-and [pyModeS](https://github.com/junzis/pyModeS) is the reference the decoders are tested
-against.
+other 1090 MHz tool. It stands on their shoulders: readsb is the reference its demodulator
+is compared with, and [pyModeS](https://github.com/junzis/pyModeS) the one its decoders are
+tested against.
 
 ## What this is
 
@@ -103,7 +103,7 @@ Pages:
 
 The reference setup:
 
-- Raspberry Pi 5 (anything that runs readsb will do)
+- Raspberry Pi 5 (any 64-bit Linux machine with a USB port will do)
 - [RTL-SDR Blog v3](https://www.rtl-sdr.com/) dongle
 - The RTL-SDR Blog dipole antenna kit, mounted outdoors
 
@@ -122,27 +122,38 @@ Notes on the antenna:
 
 ## Receiver
 
-The Pi is a deliberately "dumb" relay: readsb demodulates, drops frames that fail the CRC,
-and streams them raw (Beast format, TCP port 30005). Nothing is decoded there. Setup:
-[pi/README.md](pi/README.md).
+lab1090 reads the RTL-SDR itself. It runs `rtl_sdr` (from the rtl-sdr package), which tunes
+the dongle to 1090 MHz and hands over 2.4 million raw samples a second, and demodulates
+them: it finds each message's preamble, reads the bits from the pulses and keeps what passes
+the parity check ([src/lib/demod/](src/lib/demod/demodulator.ts)). That and the address
+check is all the server does: it passes the messages on to the browser four times a second
+(Server-Sent Events), and all decoding happens there.
 
-The app's server holds the one connection to the Pi for all browser tabs. It only checks
-each frame's CRC and address, counts the frames and passes them on to the browser four
-times a second (Server-Sent Events). All decoding happens in the browser.
+Other ways in:
 
-Any readsb or dump1090 that serves Beast output on port 30005 works, so a Pi that already
-feeds a flight tracking network can be used as is.
+- **An RTL-SDR on another machine**, through `rtl_tcp` there: `--rtl-tcp pi`. It sends the
+  raw samples over the network, 38 Mbit/s: fine over Ethernet, too much for weak Wi-Fi.
+- **Messages demodulated by readsb or dump1090**, from their Beast output: `--connect pi`.
+  A Pi that already feeds a flight tracking network can be used as is.
+- **A recording of samples** (`rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 72000000 sky.u8`, 30 s):
+  `--samples sky.u8`.
+
+The Pi: [pi/README.md](pi/README.md).
 
 ## Getting started
 
-lab1090 is one program: it connects to a Beast feed and serves the web page.
+lab1090 is one program: it reads the RTL-SDR and serves the web page. Plug in the dongle,
+then:
 
 ```sh
-lab1090 --connect pi:30005   # readsb on another machine; default: localhost:30005
+sudo apt install rtl-sdr     # rtl_sdr, which lab1090 reads the dongle with
+lab1090
 ```
 
 Then open the address it prints (port 1090) from any device on your network. The first
-time, the page asks where the antenna is ([below](#receiver-position)).
+time, the page asks where the antenna is ([below](#receiver-position)). If something is
+wrong with the dongle (not found, in use by another program), the program and the page's
+status bar say so, and it keeps trying.
 
 ## Configuration
 
@@ -150,17 +161,24 @@ Everything is optional; `lab1090 --help` lists it too.
 
 | Option                    | Default                         | What it is                                               |
 | ------------------------- | ------------------------------- | -------------------------------------------------------- |
-| `--connect <host[:port]>` | `localhost:30005`               | readsb's or dump1090's Beast output                      |
+| `--device <index/serial>` | `0`, the first RTL-SDR          | Which RTL-SDR, if there are several                      |
+| `--gain <dB>`             | `49.6`, the most                | The RTL-SDR's gain; less if strong signals overload it   |
+| `--rtl-tcp <host[:port]>` |                                 | An RTL-SDR on another machine, via rtl_tcp (port 1234)   |
+| `--connect <host[:port]>` |                                 | readsb's or dump1090's Beast output (port 30005)         |
+| `--samples <file>`        |                                 | A recording of samples, played at its own pace           |
 | `--position <lat,lon>`    | from the config file            | Where the antenna is, decimal degrees (below)            |
 | `--port <port>`           | `1090`                          | The web page's port                                      |
 | `--bind <address>`        | all                             | Listen on this address only (`127.0.0.1` behind a proxy) |
 | `--config <file>`         | `~/.config/lab1090/config.json` | The config file                                          |
 
-The config file takes the same settings as JSON, and options on the command line win over
-it. The setup page writes `position` into it:
+`--rtl-tcp`, `--connect` and `--samples` replace the RTL-SDR on this machine: one source
+at a time.
+
+The config file takes the same settings as JSON (all but `--samples`), and options on the
+command line win over it. The setup page writes `position` into it:
 
 ```json
-{ "connect": "pi:30005", "position": { "lat": 52.5163, "lon": 13.3777 } }
+{ "gain": 40, "position": { "lat": 52.5163, "lon": 13.3777 } }
 ```
 
 The page is plain HTTP. Browsers only allow system notifications on HTTPS pages or on
@@ -207,15 +225,19 @@ Node.js and npm are not needed.
 | `bun run build:binary` | The `lab1090` program for this machine: `build/lab1090` |
 | `bun run build:arm64`  | The same for a 64-bit Raspberry Pi (Linux arm64)        |
 
-Options go after the command: `bun run dev --connect pi`. The dev server shares the config
-file with the program, so the position set up once is there for both.
+Options go after the command. With the dongle on the Pi, run `rtl_tcp -a 0.0.0.0` there
+and `bun run dev --rtl-tcp pi` here. The dev server shares the config file with the
+program, so the position set up once is there for both.
 
-Nothing in the sky (at night, say)? Replay the recording instead of the Pi, at its original
-pace:
+Nothing in the sky (at night, say)? Replay the recording instead, at its original pace,
+either as messages or turned back into samples for the demodulator:
 
 ```sh
 bun tools/replay.ts --loop                     # serves it on 127.0.0.1:30105
 bun run dev --connect 127.0.0.1:30105
+
+bun tools/modulate.ts --seconds 120 --sigma 0.0095 --out sky.u8
+bun run dev --samples sky.u8
 ```
 
 The tests run against a 10-minute recording from the receiver
@@ -227,5 +249,6 @@ Python is only needed to regenerate them ([tools/](tools/README.md)).
 
 `bun run build:binary` (or `build:arm64` for a Pi) makes one file, `build/lab1090`, with
 the Bun runtime and the web page inside: copy it to the machine and run it. It runs on
-64-bit Linux with glibc (Raspberry Pi OS, Debian, Ubuntu) with nothing else installed.
-The Pi's is ~116 MB.
+64-bit Linux with glibc (Raspberry Pi OS, Debian, Ubuntu); the only other thing it needs
+is the rtl-sdr package, for a dongle on that machine. The Pi's is ~116 MB. On a Pi 5 it
+uses about 7 % of one core (`rtl_sdr` included) and 55 MB of memory.

@@ -1,12 +1,12 @@
-import { BeastClient } from './beast/client';
 import type { BeastFrame } from './beast/parser';
+import { openSource, type FrameSource } from './frame-source';
 import { FrameBuffers } from './frame-buffers';
 import { FrameCounts } from './frame-counts';
 import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
-import { formatEndpoint } from './settings';
-import type { StreamUpdate, ReceiverCounts, WireFrame } from '#lib/receiver-types.ts';
+import { describeSource, type Source } from './settings';
+import type { StreamUpdate, ReceiverCounts, SourceStatus, WireFrame } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
 const HISTORY = 1000;
@@ -16,7 +16,8 @@ const PER_KIND = 200;
 type Subscriber = { send: (update: StreamUpdate) => void; close: () => void };
 
 /**
- * The app's single connection to the Pi. Each frame gets an address verdict (AddressFilter)
+ * The app's single source of messages (frame-source.ts: the RTL-SDR, rtl_tcp, a Beast feed,
+ * a recording). Each frame gets an address verdict (AddressFilter)
  * and goes to the counts (FrameCounts), the per-kind buffers (FrameBuffers), the trail
  * history (TrackHistory) and the next batch. Batches fan out to any number of subscribers
  * (browser tabs) every 250 ms: one update with ~12 frames instead of ~12 separate events.
@@ -29,23 +30,44 @@ export class Receiver {
 	/** Thinned position frames of the last 10 minutes, for the tracker's trails. */
 	readonly tracks = new TrackHistory();
 
-	#client: BeastClient;
+	#client: FrameSource;
 	#counts = new FrameCounts();
 	#addresses = new AddressFilter();
 	#nextId = 1;
+	/** The last status said on the console (#log). */
+	#said: string | null = null;
 	/** Recent frames, so a new tab doesn't start with an empty feed. */
 	#history: WireFrame[] = [];
 	#pending: WireFrame[] = [];
 	#subscribers = new Set<Subscriber>();
 	#timer: ReturnType<typeof setInterval> | undefined;
 
-	constructor(host: string, port: number) {
-		this.source = formatEndpoint({ host, port });
-		this.#client = new BeastClient({
-			host,
-			port,
-			onFrame: (f) => this.#onFrame(f)
-		});
+	constructor(source: Source, { log = true }: { log?: boolean } = {}) {
+		this.source = describeSource(source);
+		this.#client = openSource(
+			source,
+			(f) => this.#onFrame(f),
+			(status) => log && this.#log(status)
+		);
+	}
+
+	/**
+	 * Say on the console when the link to the receiver comes up or goes down, and why: on a
+	 * Pi without a screen that's the first place to look. A retry for the same reason is
+	 * said once, not every 30 s.
+	 */
+	#log(status: SourceStatus): void {
+		const said =
+			status.state === 'waiting'
+				? status.reason
+				: status.state === 'connecting'
+					? null
+					: status.state;
+		if (said === null || said === this.#said) return;
+		this.#said = said;
+		if (status.state === 'waiting') console.warn(`${this.source}: ${status.reason}, trying again`);
+		else if (status.state === 'connected') console.log(`${this.source}: receiving`);
+		else if (status.state === 'ended') console.log(`${this.source}: the recording has ended`);
 	}
 
 	/** Every frame since the server started (FrameCounts). */

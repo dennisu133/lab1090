@@ -152,3 +152,25 @@ bun run dev --connect 127.0.0.1:30105
   advisory into the recording (`src/lib/tracker/alert-scenario.ts` has the timeline; the
   capture itself has none), to see the alerts work: with `--speed 4 --loop` every one of
   them comes round within 2.5 minutes.
+
+## Samples for the demodulator
+
+```sh
+bun tools/modulate.ts [fixtures/capture.beast] [--seconds 60] [--out sky.u8]
+                      [--noise noise.u8 | --sigma 0.0095] [--gain-db 0]
+bun run dev --samples sky.u8
+```
+
+- `modulate.ts`: turns a Beast recording back into what the RTL-SDR would have delivered
+  (`src/lib/demod/modulate.ts`: preamble and bit pulses at each message's timestamp and
+  signal level, plus `--gain-db`, on a random carrier phase), with noise: Gaussian
+  (`--sigma`, full scale = 1; the Pi's dongle has about 0.0095) or a recording of the
+  dongle with nothing on air (`--noise`, looped), which is closer to the real thing. 4.8 MB
+  per second.
+- **Comparing with readsb**: readsb demodulates the same file with
+  `readsb --device-type ifile --ifile sky.u8 --iformat UC8 --raw` (one message per line).
+  Nov 2026, 30 s of the capture at its own levels on the Pi's noise: readsb 188 messages,
+  lab1090 174, 165 of them the same; each finds about 10 the other misses. Both find
+  nothing in 30 s of noise alone. Most messages are lost to noise in both: the capture's
+  weakest (~−33 dBFS) are only ~4 dB above this noise, and readsb heard them at a quieter
+  moment than the one recorded indoors.

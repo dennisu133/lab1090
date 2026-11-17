@@ -1,0 +1,130 @@
+/**
+ * Which decoded bit strings are real messages?
+ *
+ * The demodulator tries thousands of places a second that look a little like a preamble:
+ * nearly all are noise, or the middle of another message. Each gives 56 or 112 bits, and
+ * only the parity can tell a message from garbage (crc.ts explains it per format). What
+ * passes here goes to the server like a frame from readsb.
+ *
+ * - DF17/18 (ADS-B) and DF11 squitters: the CRC must come out at 0. Random bits pass once in
+ *   16.7 million (2²⁴) tries.
+ * - DF11 replies to a radar: the syndrome is the radar's 7-bit code, so 128 syndromes pass,
+ *   and noise would get through 128 times as often (several times an hour, each with an
+ *   invented address). So only from an aircraft already heard.
+ * - DF0/4/5/16/20/21/24: the parity is overlaid with the address, so every bit string
+ *   "passes" with some address. Only from an aircraft already heard: noise matching one of a
+ *   few dozen known addresses is a one-in-a-million chance per try. That also keeps out
+ *   replies from aircraft whose squitters we can't hear: readsb does the same.
+ * - One flipped bit in an ADS-B message: each of the 112 bit positions gives its own
+ *   syndrome, so a syndrome on that list says which bit to flip back. But noise lands on
+ *   one of the 107 entries once in ~150,000 tries, which would be several false messages
+ *   an hour. So a repaired message only counts from an aircraft already heard intact.
+ *
+ * "Already heard" means a DF11 or DF17 with CRC 0 within the last 60 s (like
+ * address-filter.ts, which the server still applies to every frame on top of this).
+ */
+import { syndrome } from '#lib/modes/crc.ts';
+
+/** How long an address counts as heard, in seconds of samples (readsb: 60 s too). */
+export const KNOWN_FOR_S = 60;
+
+/** Formats whose parity is overlaid with the aircraft's address. */
+const AP_FORMATS = new Set([0, 4, 5, 16, 20, 21, 24]);
+
+/** The downlink formats that exist; anything else is noise. */
+export const KNOWN_FORMATS = new Set([0, 4, 5, 11, 16, 17, 18, 19, 20, 21, 24]);
+
+/** Bits in a message of this format: 56 for DF0–15, 112 from DF16 on. */
+export function messageBits(df: number): 56 | 112 {
+	return df >= 16 ? 112 : 56;
+}
+
+/**
+ * The syndrome a single wrong bit leaves, for every bit of a 112-bit message: the CRC is
+ * linear, so a flipped bit's syndrome doesn't depend on the rest of the message. Bits 1–5
+ * (the format) are left out: a message whose format is wrong was checked against the wrong
+ * rules to begin with.
+ */
+const ONE_BIT = (() => {
+	const table = new Map<number, number>();
+	for (let bit = 6; bit <= 112; bit++) {
+		const data = new Uint8Array(14);
+		data[(bit - 1) >> 3] = 0x80 >> ((bit - 1) & 7);
+		table.set(syndrome(data), bit);
+	}
+	return table;
+})();
+
+export interface FilterStats {
+	/** Passed with CRC 0 (or a radar's code) as received. */
+	accepted: number;
+	/** ADS-B with one bit repaired. */
+	repaired: number;
+}
+
+export class MessageFilter {
+	readonly stats: FilterStats = { accepted: 0, repaired: 0 };
+	/** Address → when it was last heard intact, s. */
+	#known = new Map<number, number>();
+	#lastPrune = 0;
+
+	/**
+	 * The message to pass on (`data` itself, or a repaired copy), or null for noise. `t`: the
+	 * message's time in seconds on any steady clock (the demodulator uses its sample count).
+	 */
+	check(data: Uint8Array, t: number): Uint8Array | null {
+		if (t - this.#lastPrune > KNOWN_FOR_S) this.#prune(t);
+		const df = Math.min(data[0] >> 3, 24);
+		const s = syndrome(data);
+		if (df === 17 || df === 18 || df === 19) {
+			if (s === 0) {
+				if (df === 17) this.#heard(address(data), t);
+				return this.#accept(data);
+			}
+			if (df === 19) return null;
+			const bit = ONE_BIT.get(s);
+			if (bit === undefined) return null;
+			const fixed = data.slice();
+			fixed[(bit - 1) >> 3] ^= 0x80 >> ((bit - 1) & 7);
+			if (!this.#isKnown(address(fixed), t)) return null;
+			this.stats.repaired++;
+			return fixed;
+		}
+		if (df === 11) {
+			if (s === 0) this.#heard(address(data), t);
+			else if ((s & ~0x7f) !== 0 || !this.#isKnown(address(data), t)) return null;
+			return this.#accept(data);
+		}
+		if (AP_FORMATS.has(df)) return this.#isKnown(s, t) ? this.#accept(data) : null;
+		return null;
+	}
+
+	/** Addresses heard intact within KNOWN_FOR_S. */
+	get known(): number {
+		return this.#known.size;
+	}
+
+	#accept(data: Uint8Array): Uint8Array {
+		this.stats.accepted++;
+		return data;
+	}
+
+	#heard(icao: number, t: number): void {
+		this.#known.set(icao, t);
+	}
+
+	#isKnown(icao: number, t: number): boolean {
+		const seen = this.#known.get(icao);
+		return seen !== undefined && t - seen <= KNOWN_FOR_S;
+	}
+
+	#prune(t: number): void {
+		this.#lastPrune = t;
+		for (const [icao, seen] of this.#known) if (t - seen > KNOWN_FOR_S) this.#known.delete(icao);
+	}
+}
+
+/** The address sent in the clear (bits 9–32) of DF11/17/18. */
+function address(data: Uint8Array): number {
+	return (data[1] << 16) | (data[2] << 8) | data[3];
+}

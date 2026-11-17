@@ -3,11 +3,15 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 
 /** Shape of the messages on the /api/stream Server-Sent Events stream. Shared by server and page. */
 
-/** The server's connection to the Pi (BeastClient), for the status in the navigation bar. */
-export type BeastClientStatus =
+/**
+ * The server's link to the receiver (a FrameSource: the RTL-SDR, rtl_tcp, a Beast feed), for
+ * the status in the navigation bar. `ended`: a recording (--samples) has played to its end.
+ */
+export type SourceStatus =
 	| { state: 'connecting'; attempt: number }
 	| { state: 'connected' }
 	| { state: 'waiting'; retryInMs: number; reason: string }
+	| { state: 'ended' }
 	| { state: 'closed' };
 
 export interface WireFrame {
@@ -40,8 +44,8 @@ export interface ReceiverCounts {
 }
 
 export interface StreamUpdate {
-	status: BeastClientStatus;
-	/** Where the receiver connects to, e.g. "pi:30005". */
+	status: SourceStatus;
+	/** Where the messages come from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource). */
 	source: string;
 	/** When the counting started (server start), ms since epoch. */
 	since: number;

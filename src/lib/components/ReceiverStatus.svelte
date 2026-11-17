@@ -1,10 +1,10 @@
 <!--
 	The receiver's state in the navigation bar, one block: "● Live: 57.3 msg/s" over the total
 	since the server started. The two links between the antenna and this page, browser ↔
-	server (the event stream) and server ↔ Pi (the Beast connection), are reported to
-	`receiverLink` by the page's stream (receiver-link.svelte.ts); the counts come from the
-	server's running count of Mode S frames (every frame that passed readsb's parity check),
-	which ReceiverStats turns into a rate over the last 10 s.
+	server (the event stream) and server ↔ receiver (the RTL-SDR, rtl_tcp or a Beast feed), are
+	reported to `receiverLink` by the page's stream (receiver-link.svelte.ts); the counts come
+	from the server's running count of Mode S frames (every frame that passed the parity
+	check), which ReceiverStats turns into a rate over the last 10 s.
 
 	While a link is down the numbers are hidden (they'd be stale or zero): one line says which
 	link, its tooltip the reason.
@@ -23,6 +23,8 @@
 			return { dot: 'animate-pulse bg-emerald-400', label: 'Live' };
 		if (link.online && status?.state === 'waiting')
 			return { dot: 'bg-amber-400', label: 'Receiver unreachable', status };
+		if (link.online && status?.state === 'ended')
+			return { dot: 'bg-zinc-500', label: 'Recording ended' };
 		return { dot: 'bg-amber-400', label: 'Connecting…' };
 	});
 
@@ -61,8 +63,8 @@
 			{:else if state.status}
 				<InfoTip label={state.label} align="right">
 					<p>
-						The server can't reach the receiver at {link.source ?? 'its address'}: {state.status
-							.reason}. Next try in {(state.status.retryInMs / 1000).toFixed(0)} s.
+						The server can't read from {link.source ?? 'the receiver'}: {state.status.reason}. Next
+						try in {(state.status.retryInMs / 1000).toFixed(0)} s.
 					</p>
 				</InfoTip>
 			{:else}

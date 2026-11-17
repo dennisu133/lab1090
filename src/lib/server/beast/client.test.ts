@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
-import { BeastClient, type BeastClientOptions, type BeastClientStatus } from './client';
+import type { SourceStatus } from '#lib/receiver-types.ts';
+import { BeastClient, type BeastClientOptions } from './client';
 import { BeastParser, type BeastFrame } from './parser';
 import {
 	capture,
@@ -22,7 +23,7 @@ afterEach(() => {
 
 function client(opts: Partial<BeastClientOptions> & { port: number }) {
 	const frames: BeastFrame[] = [];
-	const statuses: BeastClientStatus[] = [];
+	const statuses: SourceStatus[] = [];
 	const c = new BeastClient({
 		host: '127.0.0.1',
 		onFrame: (f) => frames.push(f),

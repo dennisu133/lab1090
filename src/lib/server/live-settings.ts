@@ -3,11 +3,11 @@
  * line and the config file. A wrong flag or file ends the program with a message, not a
  * stack trace: it's the first thing a new user sees.
  *
- * The flags: everything after the program's name for the binary (`lab1090 --connect pi`)
- * and `bun ./build`; in dev, everything after `--` (`bun run dev --connect pi`: the script
+ * The flags: everything after the program's name for the binary (`lab1090 --gain 40`)
+ * and `bun ./build`; in dev, everything after `--` (`bun run dev --rtl-tcp pi`: the script
  * is `vite dev --`, since Vite rejects options it doesn't know).
  */
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname } from 'node:path';
 import { building } from '$app/env';
@@ -66,14 +66,18 @@ class LiveSettings {
 			}
 			this.configPath = flags.config ?? defaultConfigPath(process.env, homedir());
 			this.#settings = resolveSettings(flags, readConfig(this.configPath));
+			const source = this.#settings.source;
+			if (source.kind === 'samples' && !existsSync(source.file)) {
+				throw new SettingsError(`--samples: no such file: ${source.file}`);
+			}
 		} catch (e) {
 			if (e instanceof SettingsError) fail(e.message);
 			throw e;
 		}
 	}
 
-	get connect(): Settings['connect'] {
-		return this.#settings.connect;
+	get source(): Settings['source'] {
+		return this.#settings.source;
 	}
 	get position(): LatLon | null {
 		return this.#settings.position;

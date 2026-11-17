@@ -1,9 +1,12 @@
 import { expect, test } from 'bun:test';
 import {
 	BEAST_PORT,
+	DEFAULT_GAIN,
 	DEFAULT_PORT,
+	RTL_TCP_PORT,
 	SettingsError,
 	defaultConfigPath,
+	describeSource,
 	formatEndpoint,
 	parseConfig,
 	parseEndpoint,
@@ -37,7 +40,35 @@ test('flags', () => {
 		bind: '127.0.0.1'
 	});
 	expect(parseFlags(['--connect=pi:1234']).connect).toEqual({ host: 'pi', port: 1234 });
+	expect(parseFlags(['--rtl-tcp', 'pi']).rtlTcp).toEqual({ host: 'pi', port: RTL_TCP_PORT });
+	expect(parseFlags(['--device', '00000001', '--gain', '40'])).toMatchObject({
+		device: '00000001',
+		gain: 40
+	});
+	expect(parseFlags(['--samples', 'x.u8']).samples).toBe('x.u8');
 	expect(parseFlags(['-h']).help).toBe(true);
+});
+
+test('one source at a time', () => {
+	expect(() => parseFlags(['--connect', 'pi', '--device', '0'])).toThrow(
+		'--device and --connect are different sources'
+	);
+	expect(() => parseFlags(['--rtl-tcp', 'pi', '--samples', 'x.u8'])).toThrow('pick one');
+	expect(() => parseConfig('{"device": "0", "connect": "pi"}', 'c.json')).toThrow(
+		'c.json: "device" and "connect" are different sources'
+	);
+	// A gain only goes with an RTL-SDR.
+	expect(() => resolveSettings(parseFlags(['--connect', 'pi', '--gain', '40']), {})).toThrow(
+		'--gain: only an RTL-SDR'
+	);
+	expect(() => resolveSettings(parseFlags(['--gain', '40']), { connect: 'pi' })).toThrow('--gain');
+});
+
+test('gains are dB above 0', () => {
+	expect(() => parseFlags(['--gain', '0'])).toThrow('--gain: expected a gain');
+	expect(() => parseFlags(['--gain', 'max'])).toThrow('--gain');
+	expect(() => parseConfig('{"gain": -3}', 'c.json')).toThrow('c.json: "gain"');
+	expect(parseConfig('{"gain": 33.8, "device": 1}', 'c.json')).toEqual({ gain: 33.8, device: '1' });
 });
 
 test('flag mistakes name the flag', () => {
@@ -74,14 +105,14 @@ test('flags win over the file, the file over the defaults', () => {
 		'c.json'
 	);
 	expect(resolveSettings(parseFlags([]), {})).toEqual({
-		connect: { host: 'localhost', port: BEAST_PORT },
+		source: { kind: 'rtlsdr', device: '0', gain: DEFAULT_GAIN },
 		position: null,
 		positionFrom: null,
 		port: DEFAULT_PORT,
 		bind: null
 	});
 	expect(resolveSettings(parseFlags([]), file)).toMatchObject({
-		connect: { host: 'pi', port: BEAST_PORT },
+		source: { kind: 'beast', endpoint: { host: 'pi', port: BEAST_PORT } },
 		position: { lat: 52, lon: 14 },
 		positionFrom: 'file',
 		port: 8080
@@ -89,11 +120,38 @@ test('flags win over the file, the file over the defaults', () => {
 	expect(
 		resolveSettings(parseFlags(['--position', '50,10', '--connect', 'localhost:30105']), file)
 	).toMatchObject({
-		connect: { host: 'localhost', port: 30105 },
+		source: { kind: 'beast', endpoint: { host: 'localhost', port: 30105 } },
 		position: { lat: 50, lon: 10 },
 		positionFrom: 'flag',
 		port: 8080
 	});
+});
+
+test('a source flag wins over the file’s; the gain goes with any RTL-SDR', () => {
+	const tcp = { 'rtl-tcp': 'pi', gain: 30 };
+	expect(resolveSettings(parseFlags([]), tcp).source).toEqual({
+		kind: 'rtl-tcp',
+		endpoint: { host: 'pi', port: RTL_TCP_PORT },
+		gain: 30
+	});
+	expect(resolveSettings(parseFlags(['--device', '1']), tcp).source).toEqual({
+		kind: 'rtlsdr',
+		device: '1',
+		gain: 30
+	});
+	expect(resolveSettings(parseFlags(['--gain', '20']), { device: '1' }).source).toEqual({
+		kind: 'rtlsdr',
+		device: '1',
+		gain: 20
+	});
+	expect(resolveSettings(parseFlags(['--samples', 'x.u8']), tcp).source).toEqual({
+		kind: 'samples',
+		file: 'x.u8'
+	});
+	expect(describeSource({ kind: 'rtlsdr', device: '0', gain: 1 })).toBe('RTL-SDR 0');
+	expect(describeSource({ kind: 'rtl-tcp', endpoint: { host: 'pi', port: 1234 }, gain: 1 })).toBe(
+		'pi:1234 (rtl_tcp)'
+	);
 });
 
 test('a new position keeps the rest of the file, rounded to ~0.1 m', () => {

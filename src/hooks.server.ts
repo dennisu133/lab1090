@@ -4,10 +4,10 @@ import { building, dev } from '$app/env';
 import { receiver } from '#lib/server/live-receiver.ts';
 import { settings } from '#lib/server/live-settings.ts';
 
-/** Connect to the Pi when the server starts, not on the first request. */
+/** Start reading the receiver when the server starts, not on the first request. */
 export const init: ServerInit = () => {
 	if (building) return;
-	console.log(`receiver: streaming from ${receiver().source}`);
+	console.log(`Receiving from ${receiver().source}`);
 
 	// --port and --bind: adapter-bun reads PORT and HOST once this hook is done, just before
 	// it starts listening. (Vite's dev server has its own port.)
