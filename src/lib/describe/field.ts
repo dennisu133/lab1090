@@ -3,7 +3,7 @@
  * (frame.ts, squitter.ts, comm-b.ts): altitude, squawk, accuracy and integrity levels, ACAS
  * resolution advisories.
  */
-import type { ResolutionAdvisory } from '#lib/modes/acas.ts';
+import { inEffect, splitAdvisory, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import type { Altitude } from '#lib/modes/altitude.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
 import { NAC_P, SIL } from '#lib/modes/status.ts';
@@ -82,20 +82,51 @@ export const degrees = (x: number) => `${Math.round(x) % 360}°`;
 
 // --- ACAS --------------------------------------------------------------------------------
 
+/** What an RA tells the pilots, and which way: up, down, or neither (a speed limit). */
+export function advisoryInstruction(r: ResolutionAdvisory): {
+	text: string;
+	sense: 'up' | 'down' | null;
+} {
+	if (!r.active) {
+		// Several threats, passing above some and below others (acas.ts, splitAdvisory).
+		const s = splitAdvisory(r);
+		if (s.climb) return { text: 'climb (several threats)', sense: 'up' };
+		if (s.descend) return { text: 'descend (several threats)', sense: 'down' };
+		if (s.upward) return { text: 'don’t descend (several threats)', sense: 'up' };
+		if (s.downward) return { text: 'don’t climb (several threats)', sense: 'down' };
+		return { text: 'several threats', sense: null };
+	}
+	const sense = r.downward ? 'down' : 'up';
+	if (!r.positive)
+		// A vertical speed limit: keep the climb or descent below a rate, or stop it.
+		return {
+			text: r.corrective ? 'level off' : r.downward ? 'don’t climb' : 'don’t descend',
+			sense: null
+		};
+	const verb = sense === 'up' ? 'climb' : 'descend';
+	if (r.senseReversal) return { text: `${verb}, now (reversal)`, sense };
+	if (r.increasedRate) return { text: `increase ${sense === 'up' ? 'climb' : 'descent'}`, sense };
+	if (r.altitudeCrossing) return { text: `${verb}, crossing`, sense };
+	return { text: verb, sense };
+}
+
 /** A resolution advisory: Comm-B 3,0, ADS-B TC 28 subtype 2, or a DF16 coordination reply. */
 export function advisoryFields(r: ResolutionAdvisory): Field[] {
-	if (!r.active && !r.terminated)
+	// In effect: ARA bit 9 (one threat) or MTE (several, bit 9 clear: acas.ts splitAdvisory).
+	if (!inEffect(r) && !r.terminated)
 		return [{ value: 'no RA', title: 'No resolution advisory right now', tone: 'minor' }];
-	const what = r.downward ? 'descend' : 'climb';
+	const several = splitAdvisory(r);
+	// Corrective: the pilots must change what they're doing. A "positive" climb or descent
+	// always is, whatever bit 10 says; with several threats a correction alone only limits
+	// the vertical speed.
+	const corrective = r.active ? r.corrective || r.positive : several.climb || several.descend;
 	const fields: Field[] = [
 		{
-			value: r.terminated
-				? 'RA ended'
-				: `RA: ${r.corrective ? what : `don't ${what === 'climb' ? 'descend' : 'climb'}`}`,
+			value: r.terminated ? 'RA ended' : `RA: ${advisoryInstruction(r).text}`,
 			title: r.terminated
 				? 'The resolution advisory has just ended (RAT): the pilots return to their clearance'
-				: r.corrective
-					? 'ACAS resolution advisory, corrective: the pilots must climb or descend now to miss another aircraft'
+				: corrective
+					? 'ACAS resolution advisory, corrective: the pilots must change their climb or descent now, as shown, to miss another aircraft'
 					: 'ACAS resolution advisory, preventive: the pilots must avoid the climb or descent shown; no manoeuvre needed as long as they do',
 			tone: 'alert'
 		}

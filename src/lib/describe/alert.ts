@@ -8,11 +8,11 @@
  * Part I (minimum fuel), DO-260B (TC 28’s emergency states).
  */
 import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
-import { splitAdvisory, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import { ADVISORY_MS, type Alert, type Cause } from '#lib/tracker/alerts.ts';
 import type { Streak, TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { shownPosition, type Unit } from '#lib/map/features.ts';
 import type { Section } from './aircraft';
+import { advisoryInstruction } from './field';
 
 const n = (x: number) => Math.round(x).toLocaleString('en');
 
@@ -72,34 +72,6 @@ const CAUSES: Record<
 		next: 'Controllers avoid delaying it. If it’s going to land with less than the final reserve, the crew declares "Mayday fuel" and squawks 7700.'
 	}
 };
-
-/** What an RA tells the pilots, and which way: up, down, or neither (a speed limit). */
-export function advisoryInstruction(r: ResolutionAdvisory): {
-	text: string;
-	sense: 'up' | 'down' | null;
-} {
-	if (!r.active) {
-		// Several threats, passing above some and below others (acas.ts, splitAdvisory).
-		const s = splitAdvisory(r);
-		if (s.climb) return { text: 'climb (several threats)', sense: 'up' };
-		if (s.descend) return { text: 'descend (several threats)', sense: 'down' };
-		if (s.upward) return { text: 'don’t descend (several threats)', sense: 'up' };
-		if (s.downward) return { text: 'don’t climb (several threats)', sense: 'down' };
-		return { text: 'several threats', sense: null };
-	}
-	const sense = r.downward ? 'down' : 'up';
-	if (!r.positive)
-		// A vertical speed limit: keep the climb or descent below a rate, or stop it.
-		return {
-			text: r.corrective ? 'level off' : r.downward ? 'don’t climb' : 'don’t descend',
-			sense: null
-		};
-	const verb = sense === 'up' ? 'climb' : 'descend';
-	if (r.senseReversal) return { text: `${verb}, now (reversal)`, sense };
-	if (r.increasedRate) return { text: `increase ${sense === 'up' ? 'climb' : 'descent'}`, sense };
-	if (r.altitudeCrossing) return { text: `${verb}, crossing`, sense };
-	return { text: verb, sense };
-}
 
 export function headline(x: Alert): string {
 	if (x.kind === 'advisory') return `RA: ${advisoryInstruction(x.advisory).text}`;
