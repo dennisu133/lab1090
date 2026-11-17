@@ -124,7 +124,7 @@ function airlineFields(callsign: string, airline: DbAirline): Section['fields'] 
 function howChecked(c: RouteCheck | null, unit: Unit): string {
 	const from = c ? place(c.leg.from) : 'the origin';
 	const to = c ? place(c.leg.to) : 'the destination';
-	return `It must be near the way: ${from} → ${to} via the aircraft at most ${MAX_DETOUR * 100} % longer than direct (${dist(MIN_DETOUR_KM, unit)} on short flights), as airways and detours allow. And going the right way: over the last minutes it got closer to ${to} or further from ${from}, by at least ${PROGRESS * 100} % of the distance flown. Positions only, never the heading: near airports controllers steer aircraft wherever traffic needs them.`;
+	return `It must be near the way: from ${from} to ${to} via the aircraft may be at most ${MAX_DETOUR * 100} % longer than direct (${dist(MIN_DETOUR_KM, unit)} longer on short flights), as airways and detours allow. And going the right way: over the last minutes it got closer to ${to} or further from ${from}, by at least ${PROGRESS * 100} % of the distance flown. Positions only, never the heading: near airports controllers steer aircraft wherever traffic needs them.`;
 }
 
 /** "In the last 4 min it flew 30 NM, got 28 NM closer to Berlin and …". */
@@ -160,21 +160,21 @@ function checkField(c: RouteCheck | null, unit: Unit): Section['fields'][number]
 		return {
 			label: 'Check',
 			value: "can't tell (no position)",
-			title: `${how}\n\nThere's no position yet.`,
+			title: `There's no position yet.\n\n${how}`,
 			tone: 'minor'
 		};
 	if (c.verdict === 'fits')
 		return {
 			label: 'Check',
 			value: 'fits',
-			title: `${how}\n\nThis one fits. ${detourText(c, unit)}${movedText(c, unit)}`,
+			title: `This one fits. ${detourText(c, unit)}${movedText(c, unit)}\n\n${how}`,
 			tone: 'minor'
 		};
 	// 'unknown' (off-route and backwards never get here: those routes aren't shown).
 	return {
 		label: 'Check',
 		value: "can't tell yet",
-		title: `${how}\n\nIt's near the way (${detourOf(c, unit)}), but which way it's going isn't clear yet: ${c.progress ? 'in the last minutes it neither closed in on the destination nor left the origin behind (turning, holding, or taxiing).' : `that takes at least ${MIN_PROGRESS_WINDOW_MS / 60_000} min of trail.`}${movedText(c, unit)}`,
+		title: `It's near the way (${detourOf(c, unit)}), but which way it's going isn't clear yet: ${c.progress ? 'in the last minutes it neither closed in on the destination nor left the origin behind (turning, holding, or taxiing).' : `that takes at least ${MIN_PROGRESS_WINDOW_MS / 60_000} min of trail.`}${movedText(c, unit)}\n\n${how}`,
 		tone: 'minor'
 	};
 }

@@ -33,7 +33,13 @@ export function squitterFields(s: Squitter): Field[] {
 	switch (s.kind) {
 		case 'identification':
 			return [
-				{ value: s.callsign, title: 'Callsign', tone: 'main', mono: true },
+				{
+					value: s.callsign,
+					title:
+						"Callsign, as the crew entered it: the airline's designator and a flight number, or the registration",
+					tone: 'main',
+					mono: true
+				},
 				{
 					value: s.category.name,
 					title: `Emitter category ${s.category.set}${s.category.code}`,
@@ -285,7 +291,7 @@ function targetStateFields(t: TargetState): Field[] {
 		fields.push({
 			label: 'sel',
 			value: `${n(t.selectedAltitude.feet)} ft`,
-			title: `Selected altitude, from the ${t.selectedAltitude.source === 'FMS' ? 'flight management system' : 'autopilot control panel (MCP/FCU)'}: where the aircraft is cleared to and will level off. 32 ft steps, so 38,016 means 38,000`,
+			title: `Selected altitude, from the ${t.selectedAltitude.source === 'FMS' ? 'flight management system' : 'autopilot control panel (MCP/FCU)'}: where the aircraft will level off, as the crew set it (normally the cleared level). 32 ft steps, so 38,016 means 38,000`,
 			tone: 'main'
 		});
 	}
@@ -302,7 +308,8 @@ function targetStateFields(t: TargetState): Field[] {
 		fields.push({
 			label: 'sel hdg',
 			value: degrees(t.selectedHeading),
-			title: 'Selected heading',
+			title:
+				'Heading set on the autopilot panel. Flown only in heading mode, not while following the route (LNAV). True or magnetic, as HRD in TC 31 says',
 			tone: 'main'
 		});
 	}
@@ -398,6 +405,9 @@ function nicBaroField(nicBaro: number): Field {
 		tone: 'minor'
 	};
 }
+
+/** SDA 0–3 (DO-260B, TC 31): probability of undetected faulty data, per flight hour. */
+const SDA = ['unknown, or more than 1e-3', '≤ 1e-3', '≤ 1e-5', '≤ 1e-7'];
 
 /** DO-260B 2.2.3.2.7.2.8: GVA 0–3. */
 const GVA = ['unknown or > 150 m', '≤ 150 m', '≤ 45 m', 'reserved'];
@@ -522,7 +532,7 @@ function operationalStatusFields(s: OperationalStatus): Field[] {
 			fields.push({
 				label: 'SDA',
 				value: String(m.sda),
-				title: 'System design assurance 0–3: how strictly the ADS-B equipment is certified',
+				title: `System design assurance ${m.sda}: probability per flight hour that an equipment fault sends wrong position data undetected: ${SDA[m.sda]}`,
 				tone: 'minor'
 			});
 		}

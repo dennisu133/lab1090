@@ -242,11 +242,10 @@
 		label="3 · Where it stands"
 	>
 		<p>
-			If the beam turns steadily, it points at β(t) = 360° · (t − t₀) / P. Each burst says: at this
-			moment the beam pointed at this aircraft. For a guessed radar position, that gives the
-			aircraft's bearing from there for every burst, and the bursts' times must then lie on one
-			straight line against the bearings: the fit finds the line's phase t₀ and period P, and how
-			far each burst is off it, as an angle of the beam.
+			If the beam turns steadily, it points at β(t) = 360° · (t − t₀) / P. Each burst is a moment it
+			pointed at an aircraft whose position we know. For a guessed radar position, the bearings from
+			there to the aircraft must fit one such line through the bursts' times: the fit gives t₀ and
+			P, and how far each burst is off, as an angle of the beam.
 		</p>
 		<p>
 			The position is where the bursts are off the least: searched on a 25 km grid within 600 km of

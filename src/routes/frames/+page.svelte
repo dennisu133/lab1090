@@ -199,7 +199,8 @@
 				<p>
 					The first 5 bits of the payload: what the message carries. In the position groups the code
 					also gives the <strong>containment radius Rc</strong>: the circle the aircraft vouches for
-					(integrity), not its accuracy.
+					(integrity), not its accuracy. Where it says "or", supplement bits in TC 31 and the
+					position message pick the radius.
 				</p>
 			{/snippet}
 		</CountTable>
@@ -220,6 +221,11 @@
 					the CRC: you get an address back, trusted only if that aircraft was heard in a checked
 					message within 60 s (<span class={VERDICTS.known.color}>known</span>, else
 					<span class={VERDICTS.unknown.color}>unknown</span>).
+				</p>
+				<p>
+					A DF11 reply's CRC also carries the code of the radar that asked: II 1–15 or SI 1–63; II 0
+					is the aircraft's own squitter. <span class={VERDICTS.unknown.color}>IC n?</span>: a code
+					no radar can have, a bit error the CRC can't catch (the address is still right).
 				</p>
 				<p class="text-zinc-400">
 					readsb drops corrupted frames on the Pi, so that row stays at 0.

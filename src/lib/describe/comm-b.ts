@@ -140,7 +140,13 @@ export function registerFields(r: Register): Field[] {
 			];
 		case '2,0':
 			return [
-				{ value: r.callsign, title: 'Callsign, as the crew entered it', tone: 'main', mono: true }
+				{
+					value: r.callsign,
+					title:
+						"Callsign, as the crew entered it: the airline's designator and a flight number, or the registration",
+					tone: 'main',
+					mono: true
+				}
 			];
 		case '2,1': {
 			const fields: Field[] = [
@@ -349,7 +355,16 @@ export function registerFields(r: Register): Field[] {
 							)
 						]
 					: []),
-				...(r.ias !== null ? [field('IAS', `${r.ias} kt`, 'Indicated airspeed', 'main')] : []),
+				...(r.ias !== null
+					? [
+							field(
+								'IAS',
+								`${r.ias} kt`,
+								'Indicated airspeed: what the cockpit airspeed indicator shows',
+								'main'
+							)
+						]
+					: []),
 				...(r.mach !== null
 					? [field('M', r.mach.toFixed(3), 'Mach number, 0.008 steps', 'main')]
 					: []),

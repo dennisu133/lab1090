@@ -57,11 +57,11 @@
 				So each aircraft's wind is compared with the other aircraft's within {MAX_LEVEL_FT.toLocaleString()}
 				ft and {MAX_TIME_MS / 60_000} minutes. Its ground vector minus their wind is the air vector it
 				should have flown; the angle from its own to that one is its heading error. Each other aircraft
-				counts once, and needs {MIN_OTHERS} or more of them: one against one, who'd be wrong?
+				counts once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?
 			</p>
 			<p class="text-zinc-400">
-				Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons this
-				agreed within 2.2° for every aircraft. It can't see an error every aircraft shares.
+				Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons, the
+				check's own estimates were up to 2.2° off. It can't see an error every aircraft shares.
 			</p>
 		</InfoTip>
 		<span class="text-sm text-zinc-500">

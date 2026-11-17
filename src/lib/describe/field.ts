@@ -92,8 +92,11 @@ export function advisoryFields(r: ResolutionAdvisory): Field[] {
 			value: r.terminated
 				? 'RA ended'
 				: `RA: ${r.corrective ? what : `don't ${what === 'climb' ? 'descend' : 'climb'}`}`,
-			title:
-				'ACAS resolution advisory: the collision avoidance system is telling the pilots how to avoid another aircraft',
+			title: r.terminated
+				? 'The resolution advisory has just ended (RAT): the pilots return to their clearance'
+				: r.corrective
+					? 'ACAS resolution advisory, corrective: the pilots must climb or descend now to miss another aircraft'
+					: 'ACAS resolution advisory, preventive: the pilots must avoid the climb or descent shown; no manoeuvre needed as long as they do',
 			tone: 'alert'
 		}
 	];
@@ -101,7 +104,7 @@ export function advisoryFields(r: ResolutionAdvisory): Field[] {
 		fields.push({
 			label: 'threat',
 			value: r.threat.icao,
-			title: 'The other aircraft',
+			title: 'ICAO address of the aircraft ACAS is avoiding (threat identity)',
 			tone: 'alert',
 			mono: true
 		});

@@ -361,7 +361,9 @@ export function aircraftSections(
 			label: 'Position',
 			value: 'none',
 			title: a.adsb
-				? 'It sends ADS-B, but no position yet: its position messages say "no position information" (TC 0, e.g. no GPS fix), or too few got through (a position needs an even and an odd message within 10 s).'
+				? a.rejected > 0
+					? `It sends positions, but all ${a.rejected} so far failed the plausibility checks: too far from the one before for the time between them, or more than ${MAX_RANGE_KM} km from the receiver. Last reason: ${a.lastRejection?.value ?? '–'}.`
+					: 'It sends ADS-B, but no position yet: its position messages say "no position information" (TC 0, e.g. no GPS fix), or too few got through (a position needs an even and an odd message within 10 s).'
 				: "No ADS-B, only radar replies (altitude, squawk), which don't say where it is. A radar knows from its antenna's direction and the reply's delay; one receiver that only listens can't (several timing the same reply could: multilateration).",
 			tone: 'alert'
 		});

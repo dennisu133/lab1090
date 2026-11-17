@@ -135,7 +135,7 @@ function headerFields(h: Header): Field[] {
 				{
 					label: 'VS',
 					value: h.onGround ? 'ground' : 'airborne',
-					title: 'Vertical status',
+					title: 'Vertical status: whether the aircraft says it is on the ground or airborne',
 					tone: 'minor'
 				},
 				...(h.crossLink === null
@@ -152,7 +152,8 @@ function headerFields(h: Header): Field[] {
 				{
 					label: 'SL',
 					value: String(h.sensitivity),
-					title: `ACAS sensitivity level ${h.sensitivity}: ${h.sensitivity === 0 ? 'ACAS inoperative' : 'higher = larger protection volume around the aircraft'}`,
+					title:
+						'ACAS sensitivity level: 0 inoperative, 1 standby, 2 traffic advisories only, 3–7 resolution advisories too, set by altitude (higher = a larger protection volume)',
 					tone: 'minor'
 				},
 				{

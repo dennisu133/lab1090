@@ -45,7 +45,7 @@ export const EPSILON = 0.622;
  * Overall propulsion efficiency. Schumann (2000) gives ~0.3 for the engines of the 1990s,
  * up to ~0.4 for modern high-bypass ones: more of the heat leaves as thrust, the plume is
  * cooler, and contrails form in warmer air. One value for all, since we can't tell the
- * engine; ETA_MODERN is for the tooltip's "how much would it move".
+ * engine; ETA_MODERN is for /weather's "how much would it move".
  */
 export const ETA = 0.3;
 export const ETA_MODERN = 0.4;

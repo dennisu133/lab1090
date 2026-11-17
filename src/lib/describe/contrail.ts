@@ -6,11 +6,8 @@
  */
 import { staticPressure } from '#lib/modes/air-data.ts';
 import {
-	ETA,
-	ETA_MODERN,
 	TEMPERATURE_MARGIN,
 	contrailRange,
-	thresholds,
 	type ContrailRange,
 	type Verdict
 } from '#lib/weather/contrail.ts';
@@ -41,16 +38,15 @@ export function humidityNeeded(r: ContrailRange): string | null {
 	return lo === null ? null : rangeText(lo, r.warmer.humidityNeeded);
 }
 
-/** The thresholds at a pressure, in a sentence, with what a modern engine would change. */
+/** The thresholds at a pressure, in a sentence. */
 function thresholdText(r: ContrailRange, pressure: number): string {
 	const t = r.at.thresholds;
-	const modern = thresholds(pressure, ETA_MODERN).saturated - t.saturated;
-	return `At ${(pressure / 100).toFixed(0)} hPa an engine's exhaust makes a contrail in air colder than ${celsius(t.saturated)} if the air is saturated, and in air colder than ${celsius(t.dry)} even if it's perfectly dry (the Schmidt–Appleman criterion: the hot, wet exhaust cools as it mixes with the air, and if it passes the point where water condenses, droplets form and freeze). That assumes an engine that turns ${ETA * 100} % of the fuel's energy into pushing the aircraft; a modern one (${ETA_MODERN * 100} %) has a cooler exhaust and leaves contrails in air ${modern.toFixed(1)} K warmer.`;
+	return `At ${(pressure / 100).toFixed(0)} hPa an engine's exhaust makes a contrail in air colder than ${celsius(t.saturated)} if the air is saturated, and in air colder than ${celsius(t.dry)} even if it's perfectly dry (the Schmidt–Appleman criterion: the hot, wet exhaust cools as it mixes with the air, and if it passes the point where water condenses, droplets form and freeze).`;
 }
 
 /** Whether a contrail lasts: ice saturation, which we can't see. */
 function persistText(r: ContrailRange): string {
-	return `Whether it lasts is another question: its ice crystals only survive where the air is saturated over ice, here ${percent(r.at.iceSaturation)} humidity (over water). A short trail that vanishes within seconds means drier air; one that stays and spreads into cirrus means air at least that humid. Nobody here measures the humidity at cruise (register 4,4 is almost never sent), so neither is known from the data.`;
+	return `It only lasts where the air is saturated over ice, here ${percent(r.at.iceSaturation)} humidity (over water): a trail that stays and spreads means air at least that humid. Nobody here measures it (register 4,4 is almost never sent).`;
 }
 
 const MARGIN_TEXT = `Temperatures from airspeed and Mach are a couple of kelvin off, and 1 K can change the humidity needed by 20 points, so the answer allows ${TEMPERATURE_MARGIN} K either way.`;
