@@ -163,8 +163,8 @@
 		</p>
 		<p>
 			II (1–15) and SI (1–63) codes are assigned so that radars whose coverage overlaps have
-			different ones (in Europe: Regulation (EC) No 262/2009), so a code is close to a name. II 0 is
-			left out: aircraft send that by themselves, about once a second (acquisition squitter).
+			different ones, so a code is close to a name. II 0 is left out: aircraft send that by
+			themselves, about once a second (acquisition squitter).
 		</p>
 	</InfoTip>
 	<p>
@@ -400,8 +400,6 @@
 		</p>
 		<p>
 			The radar is fitted again about twice a minute on the bursts of the last {WINDOW_MS / 60_000} minutes.
-			It goes if fits keep finding other radars on its code but not it; when they find nothing (too few
-			aircraft), it stays: radars don't move.
 		</p>
 	</InfoTip>
 	<p>

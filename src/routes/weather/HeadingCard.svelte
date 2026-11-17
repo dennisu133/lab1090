@@ -106,7 +106,7 @@
 						<td
 							class={c.significant ? 'text-amber-300' : 'text-zinc-400'}
 							title={c.significant
-								? `Corrected by ${signed(Math.round(c.correction * 10) / 10 + 0)}°`
+								? undefined
 								: `Under ${MIN_CORRECTION}°: within what the comparison can tell, left as sent`}
 						>
 							{signed(Math.round(c.correction * 10) / 10 + 0)}°

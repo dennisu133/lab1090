@@ -107,8 +107,7 @@
 							<p>
 								Declination is where a compass points, relative to true north. It comes from the
 								<strong>World Magnetic Model</strong> (WMM2025, NOAA and the British Geological
-								Survey, valid {WMM_VALID.from}–{WMM_VALID.to}): the Earth's field as a sum of 168
-								spherical harmonic terms, plus how each changes per year.
+								Survey, valid {WMM_VALID.from}–{WMM_VALID.to}).
 							</p>
 							<p class="text-zinc-400">
 								Every 1° of heading error is {n(track.tas! * Math.sin(Math.PI / 180), 0)} kt of made-up
@@ -267,9 +266,7 @@
 								</p>
 								<p>
 									Real air is rarely exactly standard, so temperatures aloft are often given as the
-									difference: "ISA +10" is 10 °C warmer than standard. Unlike the temperature
-									itself, it hardly changes when an aircraft climbs, which makes aircraft at
-									different levels comparable.
+									difference: "ISA +10" is 10 °C warmer than standard.
 								</p>
 								<p class="text-zinc-400">
 									Warm air also makes the altimeter read low (pressure levels are further apart):

@@ -120,8 +120,7 @@
 	>
 		<p>
 			Seen from below: north up, east right, like the map. The edge is the horizon (0°), the middle
-			straight overhead (90°). The rings are at 5, 15, 30 and 60°: the scale stretches the low
-			angles, where coverage is decided.
+			straight overhead (90°). The scale stretches the low angles, where coverage is decided.
 		</p>
 		<p>
 			Elevation = atan((h − h<sub>antenna</sub> − d²/2R′) / d), with h the aircraft's altitude, d its
@@ -223,7 +222,7 @@
 					The farthest position of all, and that distance as a share of the radio horizon at its
 					altitude: √(2R′h) for each end, with R′ the 4/3 Earth (FL350 from sea level: {km(
 						radioHorizon(HORIZON_FT)
-					)}). The amber circle on the map is the horizon at FL350.
+					)}).
 				</p>
 				<p>
 					Well short of it in a direction that's open down to a few degrees: the signal gives out
@@ -263,9 +262,9 @@
 			<InfoTip label="Terrain">
 				<p>
 					The bare land around the antenna, from the Terrain Tiles on AWS (mostly SRTM), traced out
-					to {MAX_KM} km in every direction: the dashed amber line on the plot. The antenna is taken to
-					stand {ANTENNA_ABOVE_GROUND_M} m above the ground there, a guess; it changes the angles by hundredths
-					of a degree for aircraft more than a few km away.
+					to {MAX_KM} km in every direction. The antenna is taken to stand {ANTENNA_ABOVE_GROUND_M} m
+					above the ground there, a guess; it changes the angles by hundredths of a degree for aircraft
+					more than a few km away.
 				</p>
 			</InfoTip>
 		</dt>

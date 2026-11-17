@@ -148,11 +148,13 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 		fields.push({
 			label: 'Registration',
 			value: db.registration,
-			title: `The "tail number" painted on the aircraft, starting with its State's nationality mark (D- for Germany); military aircraft carry serials instead (15+10).${register}${
-				decoded === undefined || decoded === db.registration
-					? ''
-					: ` A radar read ${decoded} from the transponder (register 2,1): one of the two is out of date.`
-			}`,
+			// Only where the radio disagrees: "Registered in" already gives the nationality mark.
+			title:
+				`${register}${
+					decoded === undefined || decoded === db.registration
+						? ''
+						: ` A radar read ${decoded} from the transponder (register 2,1): one of the two is out of date.`
+				}`.trim() || undefined,
 			tone: decoded !== undefined && decoded !== db.registration ? 'alert' : 'main',
 			mono: true
 		});
@@ -164,7 +166,7 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 			: flying === null
 				? ` In brackets: its usual operator's ICAO designator.`
 				: flying === db.operator
-					? ` In brackets: its usual operator, the airline in the callsign.`
+					? ''
 					: ` In brackets: its usual operator, but the callsign says ${flying}: it's flying for another airline today (a wet lease or charter), or it changed hands.`;
 		fields.push({
 			label: 'Owner',
@@ -213,9 +215,7 @@ export function aircraftSections(
 		identity.push({
 			label: 'Callsign',
 			value: a.callsign.value,
-			title:
-				"What the flight is called on the radio and on the controller's screen: the airline's ICAO code and a flight number (DLH = Lufthansa, RYR = Ryanair); private flights often use the registration." +
-				source(a.callsign, now),
+			title: source(a.callsign, now).trim(),
 			tone: 'main',
 			mono: true
 		});
@@ -306,8 +306,6 @@ export function aircraftSections(
 		position.push({
 			label: 'From receiver',
 			value: `${distanceText(km, unit)} ${compass(b)} (${deg(b)})`,
-			title:
-				"Great-circle distance from the antenna, and the direction you'd look in (degrees from true north).",
 			tone: 'main'
 		});
 		position.push(...uncertaintyFields(a, now));
@@ -385,7 +383,7 @@ export function aircraftSections(
 			label: 'Altitude',
 			value: `${flightLevel(a.altitude.value)} · ${n(a.altitude.value)} ft`,
 			title:
-				'Pressure altitude: where the standard atmosphere (1013.25 hPa at sea level) has the pressure measured outside. Every aircraft measures it the same way, so they stay separated whatever the weather. In hundreds of feet it is the flight level (FL350 = 35,000 ft). Below the transition altitude (5,000 ft in Germany) pilots fly by the local pressure (QNH); this value stays standard.' +
+				'Pressure altitude: where the standard atmosphere (1013.25 hPa at sea level) has the pressure measured outside. Every aircraft measures it the same way, so they stay separated whatever the weather. Below the transition altitude (5,000 ft in Germany) pilots fly by the local pressure (QNH); this value stays standard.' +
 				source(a.altitude, now),
 			tone: 'main'
 		});
@@ -455,7 +453,7 @@ export function aircraftSections(
 		const { heading, speed, type } = a.air.value;
 		// Said once: on the heading, or on the airspeed without one.
 		const why =
-			" It sends heading and airspeed instead of track and ground speed (TC 19 subtype 3/4): it can't measure those, which usually means no satellite fix (jamming, or a fault). Without the wind they don't say where it goes, so the map doesn't move it on.";
+			" It sends heading and airspeed instead of track and ground speed (TC 19 subtype 3/4): it can't measure those, which usually means no satellite fix (jamming, or a fault).";
 		if (heading !== null) {
 			const ref = headingReference(a);
 			const at = p ?? receiver;
@@ -577,7 +575,7 @@ export function aircraftSections(
 			label: 'Altimeter',
 			value: `${target.qnh.toFixed(1)} hPa${Math.abs(target.qnh - 1013.2) < 0.5 ? ' (standard)' : ''}`,
 			title:
-				"The altimeter's setting: standard (1013.25 hPa) above the transition altitude, so it shows the flight level; lower down the local QNH, the airport's pressure reduced to sea level. Sent in 0.8 hPa steps, so standard comes out as 1013.6." +
+				"The altimeter's setting: 1013.25 hPa at flight levels, else the local QNH (the airport's pressure reduced to sea level). Sent in 0.8 hPa steps, so standard comes out as 1013.6." +
 				source(a.target!, now),
 			tone: 'minor'
 		});
@@ -600,9 +598,7 @@ export function aircraftSections(
 		radar.push({
 			label: 'Heading',
 			value: `${deg(hs.value.heading)} magnetic`,
-			title:
-				'Where the nose points, from magnetic north: register 6,0, which a ground radar asked for. With the track and the speeds it gives the wind.' +
-				source(hs, now),
+			title: 'Where the nose points, from magnetic north.' + source(hs, now),
 			tone: 'main'
 		});
 	if (hs && (hs.value.ias !== null || hs.value.mach !== null))
@@ -615,7 +611,7 @@ export function aircraftSections(
 				.filter(Boolean)
 				.join(' · '),
 			title:
-				'IAS: what the pitot tube measures and the wings fly by; up high it reads far below the true airspeed. Mach: the speed as a fraction of the speed of sound there; airliners cruise at Mach 0.78–0.85. Register 6,0.' +
+				'IAS: what the pitot tube measures and the wings fly by; up high it reads far below the true airspeed. Mach: the speed as a fraction of the speed of sound there; airliners cruise at Mach 0.78–0.85.' +
 				source(hs, now),
 			tone: 'main'
 		});
@@ -623,9 +619,7 @@ export function aircraftSections(
 		radar.push({
 			label: 'True airspeed',
 			value: `${n(tt.value.tas)} kt`,
-			title:
-				'Speed through the air: the ground speed minus the tailwind. Register 5,0.' +
-				source(tt, now),
+			title: 'Speed through the air: the ground speed minus the tailwind.' + source(tt, now),
 			tone: 'main'
 		});
 	if (tt?.value.roll !== null && tt?.value.roll !== undefined)
@@ -636,8 +630,7 @@ export function aircraftSections(
 					? 'wings level'
 					: `${Math.abs(tt.value.roll).toFixed(1)}° ${tt.value.roll > 0 ? 'right' : 'left'}`,
 			title:
-				'Roll angle: an aircraft turns by banking; airliners use up to 25–30°. Register 5,0.' +
-				source(tt, now),
+				'Roll angle: an aircraft turns by banking; airliners use up to 25–30°.' + source(tt, now),
 			tone: 'main'
 		});
 	add('From radar interrogations (Comm-B)', radar);

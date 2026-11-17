@@ -32,8 +32,7 @@
 			<p>
 				Aircraft report their setting in register 4,0 (0.1 hPa steps) and ADS-B TC 29 (0.8 hPa
 				steps). A setting more than {STANDARD_TOLERANCE} hPa from standard is someone's QNH; the median
-				of each aircraft's latest one is used, an average for the area. With none, standard is assumed:
-				then every hPa the real QNH differs makes about 27 ft of the offset look like temperature.
+				of each aircraft's latest one is used, an average for the area. With none, standard is assumed.
 			</p>
 		</InfoTip>
 		<span class="text-lg">{hpa(qnh.hPa)}</span>

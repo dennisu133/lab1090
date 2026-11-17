@@ -114,7 +114,7 @@ function airlineFields(callsign: string, airline: DbAirline): Section['fields'] 
 		fields.push({
 			label: 'On the radio',
 			value: words,
-			title: `The airline goes by its telephony designator, "${airline.radio}" (Doc 8585): a word that's easy to hear through noise, not always the airline's name (British Airways is "Speedbird"). The rest is spelled in ICAO's alphabet; "niner" so it doesn't sound like the German "nein". It often isn't the flight number on the ticket: airlines pick letters and digits so that similar callsigns on one frequency don't get mixed up.`,
+			title: `The airline goes by its telephony designator, "${airline.radio}" (Doc 8585): a word that's easy to hear through noise, not always the airline's name (British Airways is "Speedbird"). The rest is spelled in ICAO's alphabet. It often isn't the flight number on the ticket: airlines pick letters and digits so that similar callsigns on one frequency don't get mixed up.`,
 			tone: 'main'
 		});
 	return fields;

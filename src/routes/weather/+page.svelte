@@ -184,10 +184,6 @@
 					the tropopause, where cold polar air meets warmer air. Over Europe it often reaches 100–200
 					kt in winter.
 				</p>
-				<p class="text-zinc-400">
-					It's why flights from America to Europe are an hour shorter than the other way. If the
-					strongest layer is the highest or lowest one with data, the core may be beyond it.
-				</p>
 			</InfoTip>
 			{#if strongest}
 				<p class="mt-2 font-mono text-2xl text-emerald-300">{windText(strongest.wind)}</p>
@@ -213,10 +209,7 @@
 				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
 				label="Sea-level pressure"
 			>
-				<p>
-					QNH: the pressure the pilots near the ground set on their altimeters. More on it below,
-					under the column calculation.
-				</p>
+				<p>QNH: the pressure the pilots near the ground set on their altimeters.</p>
 			</InfoTip>
 			<p class="mt-2 text-2xl">{hpa(pressure.hPa)}</p>
 			<p class="mt-1 text-xs text-zinc-500">
@@ -235,8 +228,7 @@
 			>
 				<p>
 					How much warmer or colder than standard the air is on average from the ground up to the
-					layer with the most GNSS heights (or the one you picked in the table), from how far the
-					aircraft's GNSS height is from its pressure altitude. The calculation is below.
+					level shown, from how far the aircraft's GNSS height is from its pressure altitude.
 				</p>
 			</InfoTip>
 			{#if example}
@@ -263,10 +255,6 @@
 				<p>
 					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
 					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
-				</p>
-				<p>
-					The blue band: where contrails depend on the humidity. Left of it engines leave them even
-					in dry air, right of it never. Explained below the chart.
 				</p>
 			</InfoTip>
 			<TemperatureProfile layers={all} tropopause={top} />
@@ -314,8 +302,7 @@
 			>
 				<p>
 					Each layer's mean wind speed, with an arrow pointing where the air goes (up is north: an
-					arrow to the right is a westerly). The dashed line is jet stream strength. Hollow: fewer
-					than {MIN_SAMPLES} samples, or all from one aircraft.
+					arrow to the right is a westerly). The dashed line is jet stream strength.
 				</p>
 			</InfoTip>
 			<WindProfile layers={all} {strongest} />
@@ -335,7 +322,7 @@
 				</p>
 				<p class="text-zinc-400">
 					A dot left of the dashed ISA line: the level is lower than standard, the air below colder
-					(or the pressure lower). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
+					(or the pressure lower).
 				</p>
 			</InfoTip>
 			<ColumnChart

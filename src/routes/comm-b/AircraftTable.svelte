@@ -97,12 +97,7 @@
 					>
 						Replies
 					</th>
-					<th
-						class="w-12 py-1 text-right font-normal xl:w-14"
-						title="Seconds since its last Comm-B reply"
-					>
-						Last
-					</th>
+					<th class="w-12 py-1 text-right font-normal xl:w-14">Last</th>
 					<th class="py-1 font-normal">
 						<InfoTip label="4,0 Intention">
 							<p>

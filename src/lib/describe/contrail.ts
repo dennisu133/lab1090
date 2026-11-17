@@ -53,7 +53,7 @@ function persistText(r: ContrailRange): string {
 	return `Whether it lasts is another question: its ice crystals only survive where the air is saturated over ice, here ${percent(r.at.iceSaturation)} humidity (over water). A short trail that vanishes within seconds means drier air; one that stays and spreads into cirrus means air at least that humid. Nobody here measures the humidity at cruise (register 4,4 is almost never sent), so neither is known from the data.`;
 }
 
-const MARGIN_TEXT = `Temperatures from airspeed and Mach are a couple of kelvin off (against weather balloons, aircraft read 2 K too cold on average, one 7 K), and 1 K can change the humidity needed by 20 points, so the answer allows ${TEMPERATURE_MARGIN} K either way.`;
+const MARGIN_TEXT = `Temperatures from airspeed and Mach are a couple of kelvin off, and 1 K can change the humidity needed by 20 points, so the answer allows ${TEMPERATURE_MARGIN} K either way.`;
 
 /** The short answer, as the panel's value and the worked example's headline. */
 export function contrailValue(r: ContrailRange): string {

@@ -36,8 +36,8 @@
 	>
 		<p>
 			The radars on the map: every fit has found them again for {CONFIRM_MS / 60_000} minutes. One goes
-			after {MAX_MISSES} fits in a row that find other radars on its code but not it. ± is the drawn ellipse's
-			half length.
+			after {MAX_MISSES} fits in a row that find other radars on its code but not it; fits that find nothing
+			(too few aircraft) don't count: radars don't move. ± is the drawn ellipse's half length.
 		</p>
 		<p>A candidate has been found, but not for long enough yet: listed, not drawn.</p>
 	</InfoTip>

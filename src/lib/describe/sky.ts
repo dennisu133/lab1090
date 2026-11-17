@@ -122,7 +122,7 @@ export function layerWindFields(layer: Layer): Field[] {
 		},
 		{
 			value: `${Math.round(w.steadiness * 100)} %`,
-			title: `Steadiness: the mean vector's length over the mean speed. 100 % if every sample blew the same way; lower if they disagree in direction (different places, a wind changing direction with height or time). Here ${Math.round(w.steadiness * 100)} %.`,
+			title: `Steadiness: the mean vector's length over the mean speed. 100 % if every sample blew the same way; lower if they disagree in direction (different places, a wind changing direction with height or time).`,
 			tone: w.steadiness < 0.9 ? 'alert' : 'minor'
 		},
 		countField(w.n, w.aircraft, 'wind')
@@ -140,7 +140,7 @@ export function layerColumnFields(layer: Layer, c: Column | null): Field[] {
 				`Mean GNSS height − pressure altitude of ${samplesText(col.n, col.aircraft)}, as the aircraft send it (ADS-B TC 19, 25 ft steps).`,
 				`They differ by ±${col.spread.toFixed(0)} ft: different places and times, and avionics that send different kinds of height.`,
 				'',
-				'Pressure altitude assumes a standard column of air below. The real height of this pressure level is off from it by what the sea-level pressure and the temperature of the column did; click the layer for the calculation.'
+				'Pressure altitude assumes a standard column of air below. The real height of this pressure level is off from it by what the sea-level pressure and the temperature of the column did.'
 			].join('\n'),
 			tone: 'main'
 		},

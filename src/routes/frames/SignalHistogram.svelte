@@ -61,7 +61,7 @@
 			>
 				<p>
 					Decibels below <em>full scale</em>, the loudest signal the dongle can measure, so always 0
-					or negative. −6 dB is half the amplitude, −10 dB a tenth of the power.
+					or negative.
 				</p>
 				<table class="w-full text-xs tabular-nums">
 					<thead class="text-left text-zinc-500">

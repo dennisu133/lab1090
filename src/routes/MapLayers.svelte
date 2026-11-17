@@ -38,9 +38,9 @@
 	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
-	import { BANDS, OPEN_DEG } from '#lib/coverage/coverage.ts';
+	import { BANDS } from '#lib/coverage/coverage.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
-	import { CONFIRM_MS, MIN_ELLIPSE_KM } from '#lib/radar/finder.ts';
+	import { MIN_ELLIPSE_KM } from '#lib/radar/finder.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 
 	interface Props {
@@ -248,11 +248,6 @@
 					Earth. An outline well short of it: a building or a hill in the way, or the signal gives
 					out first.
 				</p>
-				<p>
-					The receiver's own panel shows the antenna's sky: in each direction, how low above the
-					horizon aircraft are heard. Down to {OPEN_DEG}° means open; a wall hides everything below
-					its own angle, near or far. A direction stays empty until an aircraft has flown there.
-				</p>
 			</InfoTip>
 		</div>
 		<div class="flex items-center gap-2 border-t border-zinc-800 pt-1.5">
@@ -330,8 +325,8 @@
 					line: where the beam points now.
 				</p>
 				<p>
-					A radar shows once every fit has found it for {CONFIRM_MS / 60_000} minutes. It costs about
-					a minute of CPU an hour when the sky is busy; switched off, it stops and forgets.
+					It costs about a minute of CPU an hour when the sky is busy; switched off, it stops and
+					forgets.
 				</p>
 			</InfoTip>
 		</div>

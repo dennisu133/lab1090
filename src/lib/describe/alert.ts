@@ -29,7 +29,7 @@ const CAUSES: Record<
 		badge: 'EMERG',
 		meaning:
 			'The crew has declared an emergency: "Mayday" on the radio, and 7700 on the transponder, which makes the aircraft stand out on every radar screen in range. Most are a passenger taken ill or a technical problem (an engine, the pressurisation, smoke, a warning that won’t go away), and most end with a normal landing.',
-		next: 'It gets priority over everyone else: controllers move other traffic out of its way and clear it straight to the nearest suitable airport. Losing cabin pressure, it descends quickly to 10,000 ft, where the air is breathable. Once in contact, controllers often give it a normal code again, so a squawk back to normal doesn’t mean it’s over. Watch its altitude and track.'
+		next: 'It gets priority over everyone else: controllers move other traffic out of its way and clear it straight to the nearest suitable airport. Losing cabin pressure, it descends quickly to 10,000 ft, where the air is breathable. Once in contact, controllers often give it a normal code again, so a squawk back to normal doesn’t mean it’s over.'
 	},
 	radio: {
 		nextShort: 'last level for 7 min, then its flight plan',
@@ -190,7 +190,7 @@ export function alertSection(
 		fields.push({
 			label: 'What',
 			value: `RA: ${text}`,
-			title: `${RA_MEANING} This one: ${text}.`,
+			title: RA_MEANING,
 			tone: 'alert'
 		});
 		fields.push({
@@ -204,7 +204,7 @@ export function alertSection(
 			fields.push({
 				label: 'Threat',
 				value: `${nameOf(other, x.threat)}${relation(a, other, now, unit)}`,
-				title: `The aircraft ACAS is avoiding, named by its address in the advisory (threat type 1, the TID field: ${x.threat}).${other ? ' The map draws a line between the two.' : ' Not in range of this receiver, or not heard yet.'} Its own ACAS usually gets the opposite RA at the same time.`,
+				title: `The aircraft ACAS is avoiding, named by its address in the advisory (threat type 1, the TID field: ${x.threat}).${other ? '' : ' Not in range of this receiver, or not heard yet.'}`,
 				tone: 'main',
 				mono: !other?.callsign
 			});
@@ -256,7 +256,7 @@ export function identField(): Section['fields'][number] {
 		label: 'IDENT',
 		value: 'pressed (SPI)',
 		title:
-			'The controller said "squawk ident", and the pilot pressed the IDENT button: for 18 s the transponder sets the SPI bit (special position identification: SS 3 in ADS-B positions, FS 4/5 in radar replies), and the aircraft’s symbol stands out on the controller’s screen, so they can be sure which one it is. The map here blinks it the same way. Nothing is wrong.',
+			'The controller said "squawk ident", and the pilot pressed the IDENT button: for 18 s the transponder sets the SPI bit (special position identification: SS 3 in ADS-B positions, FS 4/5 in radar replies), and the aircraft’s symbol stands out on the controller’s screen, so they can be sure which one it is. Nothing is wrong.',
 		tone: 'main'
 	};
 }

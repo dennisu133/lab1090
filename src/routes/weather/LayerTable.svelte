@@ -102,7 +102,7 @@
 					<InfoTip label="Column below" align="right">
 						<p>
 							The mean temperature of all the air below, compared with standard, worked out from
-							GNSS − baro. Not the temperature here. Click a layer for the calculation.
+							GNSS − baro. Not the temperature here.
 						</p>
 					</InfoTip>
 				</th>
@@ -116,23 +116,16 @@
 						{#if r.layer.column}
 							<button
 								class={['hover:underline', selected === level && 'text-amber-300']}
-								title="Work this layer's column through below"
 								onclick={() => onselect(level)}>{flightLevel(level)}</button
 							>
 						{:else}
 							<span>{flightLevel(level)}</span>
 						{/if}
 						{#if tropopause.found && tropopause.level === level}
-							<span
-								class="ml-1 text-xs text-amber-300"
-								title="The tropopause by the WMO definition (see the summary above)"
-								>tropopause</span
-							>
+							<span class="ml-1 text-xs text-amber-300">tropopause</span>
 						{/if}
 						{#if strongest?.level === level}
-							<span class="ml-1 text-xs text-emerald-300" title="The strongest wind of all layers"
-								>strongest</span
-							>
+							<span class="ml-1 text-xs text-emerald-300">strongest</span>
 						{/if}
 					</td>
 					<td class="py-0.5"><Fields fields={layerTemperatureFields(r.layer)} /></td>

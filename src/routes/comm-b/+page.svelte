@@ -221,7 +221,7 @@
 								<p>
 									The 56 register bits: MB of DF20/21, ME of DF17.
 									<span class="font-semibold text-zinc-100">Highlighted</span>: what gave the
-									register away by pattern. Hover for the bits in binary.
+									register away by pattern.
 								</p>
 							</InfoTip>
 						</th>
@@ -250,7 +250,6 @@
 										'font-mono hover:underline',
 										r.verdict === 'unknown' ? 'text-zinc-500' : 'text-amber-300'
 									]}
-									title="Show only this aircraft"
 									onclick={() => (aircraft = aircraft === r.icao ? null : r.icao)}
 								>
 									{r.icao}

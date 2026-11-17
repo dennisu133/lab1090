@@ -2,7 +2,6 @@
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import {
 		checkFields,
 		flightLevel,
@@ -14,7 +13,6 @@
 	import type { Observation } from '#lib/weather/observation.ts';
 	import { layerAt, layers } from '#lib/weather/profile.ts';
 	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
-	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import AircraftTable from '../AircraftTable.svelte';
 	import Calculation from '../Calculation.svelte';
 	import PageTitle from '../../PageTitle.svelte';
@@ -98,17 +96,7 @@
 	<!-- Worked example -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Worked example"
-			>
-				<p>
-					One observation, step by step, with its own numbers. It follows the aircraft selected in
-					the table (else the first with a trusted wind) and updates with every new pair.
-				</p>
-				<p class="text-zinc-400">Hold it to read it at your own pace.</p>
-			</InfoTip>
+			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Worked example</h2>
 			{#if example}
 				<span class="text-sm">
 					<span class="font-mono text-amber-300">{example.observation.icao}</span>
@@ -173,28 +161,10 @@
 						<th class="w-28 py-1 font-normal">Received</th>
 						<th class="w-32 py-1 font-normal xl:w-36">Aircraft</th>
 						<th class="w-20 py-1 font-normal">Altitude</th>
-						<th class="w-36 py-1 font-normal xl:w-40">
-							<InfoTip label="Checks">
-								<p>
-									<strong>Δt</strong>: time between the 5,0 and the 6,0 reply, by the receiver's
-									clock (12 MHz). At most {MAX_SKEW_MS / 1000} s.
-								</p>
-								<p>
-									<strong>bank</strong>: the roll angle from 5,0. At most {MAX_ROLL}° for the wind.
-								</p>
-								<p class="text-zinc-400">Orange: this check failed.</p>
-							</InfoTip>
-						</th>
+						<th class="w-36 py-1 font-normal xl:w-40">Checks</th>
 						<th class="w-40 py-1 font-normal xl:w-44">Wind</th>
 						<th class="w-36 py-1 font-normal xl:w-40">Temperature</th>
-						<th class="py-1 font-normal">
-							<InfoTip label="Registers" align="right">
-								<p>
-									The register values that go in: ground speed, track and true airspeed from 5,0;
-									magnetic heading and Mach from 6,0. Speeds in kt.
-								</p>
-							</InfoTip>
-						</th>
+						<th class="py-1 font-normal">Registers</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -205,7 +175,6 @@
 							<td class="py-0.5 whitespace-nowrap">
 								<button
 									class="font-mono text-amber-300 hover:underline"
-									title="Show only this aircraft"
 									onclick={() => select(o.icao)}
 								>
 									{o.icao}

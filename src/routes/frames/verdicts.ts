@@ -28,7 +28,8 @@ export function interrogatorLabel(addr: Checked | null): string | null {
 }
 
 export function addressTitle(addr: Checked): string {
-	const how =
-		addr.source === 'clear' ? 'sent in the clear' : 'recovered from the parity (CRC XOR address)';
-	return `${addr.icao}, ${how}`;
+	// The address itself is the cell's text: only say where it came from.
+	return addr.source === 'clear'
+		? 'Sent in the clear'
+		: 'Recovered from the parity (CRC XOR address)';
 }

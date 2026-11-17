@@ -192,7 +192,7 @@ function headerFields(h: Header): Field[] {
 				{
 					label: 'AF',
 					value: String(h.application),
-					title: `Application field ${h.application}: military extended squitter. What the other 104 bits mean is up to the military (whether AF 0 means "laid out like ADS-B" is disputed)`,
+					title: `Application field ${h.application}: military extended squitter. What the other 104 bits mean is up to the military`,
 					tone: 'minor'
 				}
 			];

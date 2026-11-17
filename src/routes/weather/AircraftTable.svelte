@@ -44,8 +44,8 @@
 				the latest of the other: one <strong>observation</strong>. Its wind is
 				<strong>trusted</strong>
 				if the two are at most {MAX_SKEW_MS / 1000} s apart and the aircraft banks at most {MAX_ROLL}°:
-				in a turn the heading changes by up to 3° a second between the two replies, and every degree
-				is about 8 kt of made-up crosswind. The temperature only needs the first.
+				in a turn the heading changes by up to 3° a second between the two replies. The temperature
+				only needs the first.
 			</p>
 			<p>
 				<strong>Wind</strong> and <strong>Temperature</strong> are the latest trusted values,
@@ -70,8 +70,7 @@
 							<p class="text-zinc-400">
 								Shown as a flight level from 18,000 ft: FL370 is 37,000 ft. (Pilots switch to flight
 								levels above the transition altitude: 18,000 ft in the US, 5,000 ft in most of
-								Germany.) A flight level is really a pressure: FL370 is wherever the air pressure is
-								217 hPa.
+								Germany.)
 							</p>
 						</InfoTip>
 					</th>
@@ -175,16 +174,10 @@
 								</span>
 							{/if}
 						</td>
-						<td
-							class="py-0.5 text-right text-zinc-400"
-							title="{a.trustedWinds} of {a.observations} observations had a trusted wind"
-						>
+						<td class="py-0.5 text-right text-zinc-400">
 							{a.trustedWinds.toLocaleString()}/{a.observations.toLocaleString()}
 						</td>
-						<td
-							class="truncate py-0.5 text-xs"
-							title={problem ?? 'Wind and temperature both trusted'}
-						>
+						<td class="truncate py-0.5 text-xs" title={problem ?? undefined}>
 							<span class="text-zinc-500">{seconds(a.latest.rx)}</span>
 							{#if problem}<span class="text-orange-400">{problem}</span>{:else}<span
 									class="text-zinc-400">trusted</span

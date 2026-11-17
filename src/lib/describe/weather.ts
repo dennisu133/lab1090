@@ -90,7 +90,7 @@ export function windFields(o: Observation): Field[] {
 	else
 		fields.push({
 			value: `±${Math.max(Math.round((speedRange[1] - speedRange[0]) / 2), 1)}`,
-			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors (the aircraft's own magnetic variation table, compass calibration) come on top: each 1° is ${(tas! * Math.sin(Math.PI / 180)).toFixed(0)} kt at this airspeed.`,
+			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors (the aircraft's own magnetic variation table, compass calibration) come on top.`,
 			tone: 'minor'
 		});
 	return fields;
@@ -254,7 +254,7 @@ export function weatherHereFields(
 				c.tailwind >= 0
 					? `A tailwind: it makes ${Math.round(c.tailwind)} kt more over the ground than through the air, which shortens the flight.`
 					: `A headwind: it makes ${Math.round(-c.tailwind)} kt less over the ground than through the air, which costs time and fuel.`
-			} The ${acrossText(c.crosswind)} pushes it sideways, so it flies a little crabwise: the nose points ${Math.abs(c.drift).toFixed(1)}° ${c.drift >= 0 ? 'left' : 'right'} of where it goes (the drift angle), and the symbol on the map points along the track, not the nose.`,
+			} The ${acrossText(c.crosswind)} makes it crab: the nose points ${Math.abs(c.drift).toFixed(1)}° ${c.drift >= 0 ? 'left' : 'right'} of the track.`,
 			tone: 'main'
 		});
 		if (check) {

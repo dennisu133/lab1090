@@ -51,10 +51,6 @@
 				wind: so the ground vectors lie on the same circle, <strong>shifted by the wind</strong>.
 				Fit a circle through them: the centre is the wind, the radius the true airspeed.
 			</p>
-			<p>
-				No heading, no airspeed, no radar questions: ADS-B alone, so a compass that's off doesn't
-				matter. Gliders and drones find the wind the same way.
-			</p>
 			<p class="text-zinc-400">
 				A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
 					60_000} minutes and {MAX_CLIMB_FT.toLocaleString()} ft. An aircraft slowing down steadily spirals
