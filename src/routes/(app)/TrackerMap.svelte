@@ -94,6 +94,7 @@
 	import { degrees } from '#lib/describe/weather.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 	import { mapStyle } from '#lib/map/style.ts';
+	import { watchBaseMap } from '#lib/map/base-map.ts';
 	import type { CoverageStream } from './coverage-stream.svelte.ts';
 	import type { Layers } from './MapLayers.svelte';
 	import type { RadarStream } from './radar-stream.svelte.ts';
@@ -165,6 +166,8 @@
 
 	/** Set once the style has loaded and our sources and layers exist. */
 	let map = $state<maplibregl.Map | null>(null);
+	/** The base map's tiles don't load (lib/map/base-map.ts): no internet on this device? */
+	let baseMapDown = $state(false);
 
 	/** Redraw moving aircraft at most this often: smooth enough, and cheap. */
 	const FRAME_MS = 50;
@@ -222,6 +225,7 @@
 		});
 		m.touchZoomRotate.disableRotation();
 		let creditsTimer: ReturnType<typeof setTimeout> | undefined;
+		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));
 
 		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
 		// A resolver, not the styleimagemissing event: since MapLibre 6 an image added by the
@@ -798,6 +802,7 @@
 
 		return () => {
 			clearTimeout(creditsTimer);
+			unwatch();
 			map = null;
 			m.remove();
 		};
@@ -1074,6 +1079,17 @@
      `absolute`): the positioning goes on a wrapper. -->
 <div class="absolute inset-0">
 	<div class="h-full w-full" {@attach create}></div>
+
+	{#if baseMapDown}
+		<!-- Below the alert banner, if one floats over the map. -->
+		<p
+			class="absolute top-[calc(0.75rem+var(--alert-banner,0px))] left-1/2 z-10 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-sm text-zinc-300 shadow-xl"
+			role="status"
+		>
+			No map: this device can't reach OpenFreeMap, where the map comes from. The aircraft are live:
+			they come from your receiver.
+		</p>
+	{/if}
 
 	{#if picked && pickedAt && pickedBy}
 		{@const b = picked.barb}

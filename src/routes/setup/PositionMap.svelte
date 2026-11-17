@@ -9,6 +9,7 @@
 	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { mapStyle } from '#lib/map/style.ts';
+	import { watchBaseMap } from '#lib/map/base-map.ts';
 
 	interface Props {
 		position: LatLon;
@@ -21,6 +22,8 @@
 	maplibregl.setWorkerUrl(workerUrl);
 
 	let map = $state<maplibregl.Map>();
+	/** The map's tiles don't load (lib/map/base-map.ts): no internet on this device? */
+	let baseMapDown = $state(false);
 	let marker: maplibregl.Marker | undefined;
 
 	function create(container: HTMLDivElement) {
@@ -38,7 +41,9 @@
 		marker = new maplibregl.Marker({ color: '#f4f4f5' }).setLngLat([position.lon, position.lat]);
 		marker.addTo(m);
 		map = m;
+		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));
 		return () => {
+			unwatch();
 			m.remove();
 			map = undefined;
 		};
@@ -63,7 +68,19 @@
 	});
 </script>
 
-<div
-	{@attach create}
-	class="h-72 w-full overflow-hidden rounded-lg border border-zinc-800 sm:h-80"
-></div>
+<!-- MapLibre makes its container `position: relative`: the notice's anchor is a wrapper. -->
+<div class="relative">
+	<div
+		{@attach create}
+		class="h-72 w-full overflow-hidden rounded-lg border border-zinc-800 sm:h-80"
+	></div>
+	{#if baseMapDown}
+		<p
+			class="absolute inset-x-3 top-3 rounded-lg border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-sm text-zinc-300"
+			role="status"
+		>
+			No map: this device can't reach OpenFreeMap. Check the spot on a map elsewhere before you save
+			it.
+		</p>
+	{/if}
+</div>

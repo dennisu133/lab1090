@@ -124,6 +124,17 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 	return fields;
 }
 
+/** The lookup failed: say what's missing, not just leave the section out. */
+function unreachableField(): PanelField {
+	return {
+		label: 'Database',
+		value: 'not reachable',
+		title:
+			'This device couldn’t reach adsbdb (api.adsbdb.com), the database of airframes and routes: no type, registration, owner, photo or route. Everything else here is decoded from the aircraft’s own messages, which need no internet. It’s asked again the next time you select the aircraft.',
+		tone: 'minor'
+	};
+}
+
 /**
  * The database's entry: what the messages can't say (lib/aircraft-db.ts). The section's
  * title names the source; a tooltip only says more where the radio disagrees with it.
@@ -183,8 +194,11 @@ export function aircraftSections(
 	now: number,
 	receiver: LatLon,
 	unit: Unit,
-	/** What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet). */
-	db: DbAircraft | null = null,
+	/**
+	 * What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet);
+	 * 'unreachable': the lookup failed (offline, or adsbdb down).
+	 */
+	db: DbAircraft | null | 'unreachable' = null,
 	/** What adsbdb knows about the flight under its callsign; null: nothing (yet). */
 	trip: DbFlight | null = null,
 	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
@@ -280,7 +294,9 @@ export function aircraftSections(
 	add('Identity', identity);
 	const route = trip && routeSection(a, trip, judged, unit);
 	if (route) sections.push(route);
-	if (db) {
+	if (db === 'unreachable') {
+		sections.push({ title: 'Airframe', source: 'adsbdb', fields: [unreachableField()] });
+	} else if (db) {
 		const fields = airframeFields(a, db);
 		if (fields.length) sections.push({ title: 'Airframe', source: 'adsbdb', fields });
 	}

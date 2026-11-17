@@ -48,15 +48,19 @@
 
 	// The snapshot is replaced every update; the address isn't, so this looks it up once.
 	let icao = $derived(aircraft.icao);
-	let db = $state<DbAircraft | null>(null);
+	let db = $state<DbAircraft | null | 'unreachable'>(null);
 	$effect(() => {
 		let current = true;
+		db = null;
 		lookupAircraft(icao).then(
 			(entry) => {
 				if (current) db = entry;
 			},
-			// Offline or adsbdb down: no photo, no airframe section; the next look retries.
-			() => {}
+			// Offline or adsbdb down: no photo, and the airframe section says so. The next
+			// look retries (lookupAircraft forgets failures).
+			() => {
+				if (current) db = 'unreachable';
+			}
 		);
 		return () => (current = false);
 	});
@@ -94,7 +98,7 @@
 		aria-label="Close and show all aircraft"><CloseIcon /></button
 	>
 </header>
-{#if db?.photo}
+{#if db && db !== 'unreachable' && db.photo}
 	<AircraftPhoto photo={db.photo} registration={db.registration} />
 {/if}
 <Details {sections} />
