@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test';
-import { inferRegister } from './comm-b';
+import { inferRegister, type Inference } from './comm-b';
 import { fromHex } from './frame';
 import { combineFine, FINE_SPAN, RARE, REGISTERS, type Register } from './registers';
 import { build, commbOracle as oracle, registration21 } from './testing';
+import { rejectionText } from '#lib/describe/comm-b.ts';
+
+/** Why an inference ruled a register out, in words (describe/comm-b.ts). */
+const reason = (inference: Inference, bds: string) =>
+	rejectionText(inference.rejected.find((r) => r.bds === bds)!);
 
 /** pyModeS's inference with include_meteo, too (the oracle has it; see tools/oracle-commb.py). */
 const commbOracle = oracle as ((typeof oracle)[number] & { inferred_meteo: string[] })[];
@@ -238,7 +243,7 @@ describe('5,1 and 5,2 (layout inferred, not from the spec)', () => {
 		expect(spec('5,1').reject(mb)).toBeNull();
 		const inference = inferRegister(mb, null);
 		expect(inference.how).toBe('unknown');
-		expect(inference.rejected.find((r) => r.bds === '5,1')?.reason).toMatch(/too little structure/);
+		expect(reason(inference, '5,1')).toMatch(/too little structure/);
 	});
 });
 
@@ -340,7 +345,7 @@ describe('2,1 aircraft and airline registration markings (ICAO Doc 9871 Table A-
 	test('rare and weakly structured: never picked without an address to check it against', () => {
 		expect(RARE.has('2,1')).toBe(true);
 		const inference = inferRegister(registration21([...'DAIZA']), null);
-		expect(inference.rejected.find((r) => r.bds === '2,1')?.reason).toBe(
+		expect(reason(inference, '2,1')).toBe(
 			'too little structure to tell without a trusted address to check the nationality mark against'
 		);
 	});

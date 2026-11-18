@@ -2,13 +2,7 @@
  * What /comm-b shows: register contents, comparisons with ADS-B, and how the register was
  * inferred, as Fields (field.ts) and tooltip text.
  */
-import {
-	mismatch,
-	type Candidate,
-	type Comparison,
-	type How,
-	type Inference
-} from '#lib/modes/comm-b.ts';
+import type { Candidate, Comparison, How, Inference, Rejection, Unit } from '#lib/modes/comm-b.ts';
 import {
 	HAZARD_LEVELS,
 	type DataLinkCapability,
@@ -43,6 +37,24 @@ export const HOW: Record<How, { label: string; title: string }> = {
 	unknown: { label: 'unknown', title: 'No register fits these bits.' }
 };
 
+/** Why the bits aren't (or don't count as) a register. */
+export function rejectionText(r: Rejection): string {
+	switch (r.why) {
+		case 'structure':
+			return r.reason;
+		case 'unconfirmed':
+			return `too little structure to tell ${
+				r.by === 'address'
+					? 'without a trusted address to check the nationality mark against'
+					: 'without recent ADS-B to compare with'
+			}`;
+		case 'disagrees':
+			return `${r.by === 'address' ? 'The address' : 'ADS-B'} disagrees: ${r.failed.map(mismatch).join('; ')}`;
+		case 'rare':
+			return 'fits too, but is rarely asked for: only considered when nothing else fits';
+	}
+}
+
 /** The whole reasoning, for a tooltip: what was picked, how, and why not the others. */
 export function inferenceTitle(inference: Inference): string {
 	const lines = [];
@@ -52,7 +64,7 @@ export function inferenceTitle(inference: Inference): string {
 		lines.push(`Fitted: ${inference.candidates.map((c) => c.bds).join(', ')}`);
 	if (inference.rejected.length > 0) {
 		lines.push('', 'Ruled out:');
-		for (const r of inference.rejected) lines.push(`${r.bds}: ${r.reason}`);
+		for (const r of inference.rejected) lines.push(`${r.bds}: ${rejectionText(r)}`);
 	}
 	return lines.join('\n');
 }
@@ -508,11 +520,35 @@ function field(label: string, value: string, title: string, tone: Field['tone'])
 
 // --- comparisons -------------------------------------------------------------------------
 
-function format(value: number | string, c: Comparison): string {
-	if (typeof value === 'string') return value;
-	const digits = c.unit === '' ? 3 : c.unit === 'hPa' ? 1 : 0;
-	const text = value.toLocaleString('en', { maximumFractionDigits: digits });
-	return c.unit === '' || c.unit === '°' ? `${text}${c.unit}` : `${text} ${c.unit}`;
+/** Digits after the point, per unit: Mach to 0.001, pressure settings and km to 0.1. */
+const DIGITS: Record<Unit | 'km', number> = {
+	'': 3,
+	hPa: 1,
+	km: 1,
+	kt: 0,
+	'°': 0,
+	ft: 0,
+	'ft/min': 0
+};
+
+/** "12,450 ft", "263°", "0.804" (Mach): the one rule for every number in a comparison. */
+function quantityText(x: number, unit: Unit | 'km'): string {
+	const text = x.toLocaleString('en', { maximumFractionDigits: DIGITS[unit] });
+	return unit === '' || unit === '°' ? `${text}${unit}` : `${text} ${unit}`;
+}
+
+/** A failed comparison: "altitude 12,450 ft vs 38,000 ft", "position 87.2 km off", "callsign "X" vs "Y"". */
+export function mismatch(c: Comparison): string {
+	switch (c.kind) {
+		case 'numeric':
+			return `${c.quantity} ${quantityText(c.commB, c.unit)} vs ${quantityText(c.other, c.unit)}`;
+		case 'text':
+			return `${c.quantity} "${c.commB}" vs "${c.other}"`;
+		case 'position':
+			return `position ${quantityText(c.difference, 'km')} off`;
+		case 'copy':
+			return 'all 56 bits differ';
+	}
 }
 
 function age(c: Comparison): string {
@@ -520,25 +556,38 @@ function age(c: Comparison): string {
 }
 
 export function comparisonFields(comparisons: Comparison[]): Field[] {
-	return comparisons.map((c) => {
-		if (c.quantity === 'all 56 bits') {
-			return {
-				value: '✓ = DF17',
-				title: `All 56 bits identical to an ADS-B message the aircraft broadcast${age(c)}`,
-				tone: 'minor'
-			};
+	return comparisons.map((c): Field => {
+		const tone = c.ok ? 'minor' : 'alert';
+		switch (c.kind) {
+			case 'copy':
+				return {
+					value: '✓ = DF17',
+					title: `All 56 bits identical to an ADS-B message the aircraft broadcast${age(c)}`,
+					tone: 'minor'
+				};
+			case 'position':
+				return {
+					value: c.ok ? `✓ position${delta(c.difference, 'km')}` : `✗ ${mismatch(c)}`,
+					title: `Position ${c.difference.toFixed(2)} km from the ADS-B position (${c.from}${age(c)}); allowed: ${c.tolerance.toFixed(1)} km`,
+					tone
+				};
+			case 'text':
+				return {
+					value: c.ok ? `✓ ${c.quantity}` : `✗ ${mismatch(c)}`,
+					title: `Comm-B: ${c.commB}. ${c.from}${age(c)}: ${c.other}.`,
+					tone
+				};
+			case 'numeric':
+				return {
+					value: c.ok ? `✓ ${c.quantity}${delta(c.difference, c.unit)}` : `✗ ${mismatch(c)}`,
+					title: `Comm-B: ${quantityText(c.commB, c.unit)}. ${c.from}${age(c)}: ${quantityText(c.other, c.unit)}. Allowed difference: ${quantityText(c.tolerance, c.unit)}`,
+					tone
+				};
 		}
-		const difference =
-			c.difference === null || c.difference === 0 ? '' : ` Δ${format(c.difference, c)}`;
-		const title =
-			c.unit === 'km'
-				? `Position ${c.difference!.toFixed(2)} km from the ADS-B position (${c.from}${age(c)}); allowed: ${c.tolerance.toFixed(1)} km`
-				: `Comm-B: ${format(c.commB, c)}. ${c.from}${age(c)}: ${format(c.other, c)}.` +
-					(c.difference === null ? '' : ` Allowed difference: ${format(c.tolerance, c)}`);
-		return {
-			value: c.ok ? `✓ ${c.quantity}${difference}` : `✗ ${mismatch(c)}`,
-			title,
-			tone: c.ok ? 'minor' : 'alert'
-		};
 	});
+}
+
+/** " Δ2°" after an agreeing value; nothing when they're identical. */
+function delta(difference: number, unit: Unit | 'km'): string {
+	return difference === 0 ? '' : ` Δ${quantityText(difference, unit)}`;
 }

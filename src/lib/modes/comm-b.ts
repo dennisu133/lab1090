@@ -44,24 +44,51 @@ export interface Context {
 	address: string | null;
 }
 
-export type Unit = 'kt' | '°' | 'ft' | 'hPa' | 'ft/min' | 'km' | '';
+/** '': a plain number (Mach). */
+export type Unit = 'kt' | '°' | 'ft' | 'hPa' | 'ft/min' | '';
 
 /** One value of the register reading, next to the same quantity from somewhere else. */
-export interface Comparison {
-	/** e.g. "ground speed" */
-	quantity: string;
-	unit: Unit;
-	commB: number | string;
-	other: number | string;
-	/** Where `other` comes from, e.g. "TC 19" (ADS-B) or "IAS + altitude". */
+export type Comparison = {
+	/** Where the other value comes from, e.g. "TC 19" (ADS-B) or "IAS at reply altitude". */
 	from: string;
 	/** How long ago the ADS-B value was received, ms; null if it's from the reply itself. */
 	ageMs: number | null;
-	/** Absolute difference (angles the short way round); null for text. */
-	difference: number | null;
-	tolerance: number;
 	ok: boolean;
-}
+} & (
+	| {
+			kind: 'numeric';
+			/** e.g. "ground speed" */
+			quantity: string;
+			unit: Unit;
+			commB: number;
+			other: number;
+			/** Absolute difference (angles the short way round). */
+			difference: number;
+			tolerance: number;
+	  }
+	/** Callsign, or the registration against the address block's nationality marks. */
+	| { kind: 'text'; quantity: string; commB: string; other: string }
+	/** The register's position against the ADS-B position: `difference` and `tolerance` in km. */
+	| { kind: 'position'; difference: number; tolerance: number }
+	/** All 56 bits identical to a DF17 the aircraft broadcast: an ADS-B register, read out. */
+	| { kind: 'copy' }
+);
+
+/** Who can confirm or contradict a register: ADS-B, or (2,1) the address's State. */
+export type Confirmer = 'ADS-B' | 'address';
+
+/** A register the bits can't be (or won't count as), and why. */
+export type Rejection = { bds: string; name: string } &
+	/** Its structure rules it out (registers.ts reject): the reason in words. */
+	(
+		| { why: 'structure'; reason: string }
+		/** It fits, but has too little structure to count without a confirmation, and there's none. */
+		| { why: 'unconfirmed'; by: Confirmer }
+		/** It fits, but disagrees with ADS-B or the address: the comparisons that failed. */
+		| { why: 'disagrees'; by: Confirmer; failed: Comparison[] }
+		/** It fits, but is rarely asked for, and a common register fits too. */
+		| { why: 'rare' }
+	);
 
 export interface Candidate {
 	bds: string;
@@ -85,7 +112,7 @@ export interface Inference {
 	/** Every register the bits could be. */
 	candidates: Candidate[];
 	/** Every other register, and why not. */
-	rejected: { bds: string; name: string; reason: string }[];
+	rejected: Rejection[];
 }
 
 /** Registers recognised by a fixed pattern: if one fits, nothing else is considered. */
@@ -103,44 +130,36 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 
 	const rare: Candidate[] = [];
 	for (const spec of REGISTERS) {
+		const { bds, name } = spec;
 		const reason = spec.reject(mb);
 		if (reason) {
-			inference.rejected.push({ bds: spec.bds, name: spec.name, reason });
+			inference.rejected.push({ bds, name, why: 'structure', reason });
 			continue;
 		}
 		const register = spec.decode(mb);
 		const comparisons = context ? compare(register, mb, context) : [];
 		const failed = comparisons.filter((c) => !c.ok);
-		if (NEEDS_ADSB.has(spec.bds) || spec.bds === '2,1') {
-			const [by, without] =
-				spec.bds === '2,1'
-					? ['The address', 'without a trusted address to check the nationality mark against']
-					: ['ADS-B', 'without recent ADS-B to compare with'];
-			const why =
-				comparisons.length === 0
-					? `too little structure to tell ${without}`
-					: failed.length > 0 && `${by} disagrees: ${failed.map(mismatch).join('; ')}`;
-			if (why) {
-				inference.rejected.push({ bds: spec.bds, name: spec.name, reason: why });
+		if (NEEDS_ADSB.has(bds) || bds === '2,1') {
+			const by: Confirmer = bds === '2,1' ? 'address' : 'ADS-B';
+			if (comparisons.length === 0) {
+				inference.rejected.push({ bds, name, why: 'unconfirmed', by });
+				continue;
+			}
+			if (failed.length > 0) {
+				inference.rejected.push({ bds, name, why: 'disagrees', by, failed });
 				continue;
 			}
 		}
-		if (RARE.has(spec.bds) && failed.length > 0) {
-			const reason = `ADS-B disagrees: ${failed.map(mismatch).join('; ')}`;
-			inference.rejected.push({ bds: spec.bds, name: spec.name, reason });
+		if (RARE.has(bds) && failed.length > 0) {
+			inference.rejected.push({ bds, name, why: 'disagrees', by: 'ADS-B', failed });
 			continue;
 		}
-		const candidate = { bds: spec.bds, name: spec.name, register, comparisons };
-		(RARE.has(spec.bds) ? rare : inference.candidates).push(candidate);
+		const candidate = { bds, name, register, comparisons };
+		(RARE.has(bds) ? rare : inference.candidates).push(candidate);
 	}
 	// The rare registers only get a chance when none of the common ones fits.
 	if (inference.candidates.length === 0) inference.candidates.push(...rare);
-	else {
-		for (const c of rare) {
-			const reason = 'fits too, but is rarely asked for: only considered when nothing else fits';
-			inference.rejected.push({ bds: c.bds, name: c.name, reason });
-		}
-	}
+	else for (const { bds, name } of rare) inference.rejected.push({ bds, name, why: 'rare' });
 
 	const { candidates } = inference;
 	const fixed = candidates.find((c) => FIXED.has(c.bds));
@@ -160,17 +179,6 @@ export function inferRegister(mb: Uint8Array, context: Context | null): Inferenc
 		: { ...inference, how: 'ambiguous' };
 }
 
-/** "altitude 12,450 ft vs 38,000 ft", "position 87.2 km off", "callsign "X" vs "Y"" */
-export function mismatch(c: Comparison): string {
-	if (c.unit === 'km') return `${c.quantity} ${c.difference!.toFixed(1)} km off`;
-	if (typeof c.commB === 'string') return `${c.quantity} "${c.commB}" vs "${c.other}"`;
-	const suffix = c.unit === '' || c.unit === '°' ? c.unit : ` ${c.unit}`;
-	const digits = c.unit === '' ? 3 : 1; // Mach: 0.804
-	const f = (x: number | string) =>
-		typeof x === 'number' ? x.toLocaleString('en', { maximumFractionDigits: digits }) + suffix : x;
-	return `${c.quantity} ${f(c.commB)} vs ${f(c.other)}`;
-}
-
 function tier(c: Candidate): number {
 	if (c.comparisons.length === 0) return 1;
 	return c.comparisons.every((x) => x.ok) ? 0 : 2;
@@ -178,9 +186,11 @@ function tier(c: Candidate): number {
 
 /** Mean difference relative to the tolerance: 0 = perfect, 1 = at the limit. */
 function score(c: Candidate): number {
-	const numeric = c.comparisons.filter((x) => x.difference !== null);
-	if (numeric.length === 0) return 0;
-	return numeric.reduce((sum, x) => sum + x.difference! / x.tolerance, 0) / numeric.length;
+	const measured = c.comparisons.flatMap((x) =>
+		x.kind === 'numeric' || x.kind === 'position' ? [x.difference / x.tolerance] : []
+	);
+	if (measured.length === 0) return 0;
+	return measured.reduce((sum, x) => sum + x, 0) / measured.length;
 }
 
 // --- the comparisons ---------------------------------------------------------------------
@@ -209,6 +219,7 @@ function numeric(
 	if (angle) difference = Math.min(difference % 360, 360 - (difference % 360));
 	return [
 		{
+			kind: 'numeric',
 			quantity,
 			unit,
 			commB,
@@ -226,17 +237,7 @@ function text(quantity: string, commB: string, other: Other<string> | null): Com
 	if (other === null) return [];
 	const ok = commB === other.value;
 	return [
-		{
-			quantity,
-			unit: '',
-			commB,
-			other: other.value,
-			from: other.from,
-			ageMs: other.ageMs,
-			difference: null,
-			tolerance: 0,
-			ok
-		}
+		{ kind: 'text', quantity, commB, other: other.value, from: other.from, ageMs: other.ageMs, ok }
 	];
 }
 
@@ -279,10 +280,7 @@ function compare(
 		const tolerance = positionTolerance(position.ageMs);
 		return [
 			{
-				quantity: 'position',
-				unit: 'km',
-				commB: '',
-				other: '',
+				kind: 'position',
 				from: position.from,
 				ageMs: position.ageMs,
 				difference: km,
@@ -430,19 +428,7 @@ function compare(
 		case '6,5': {
 			const sent = adsb.recent.get(toHex(mb));
 			if (sent !== undefined && now - sent <= MAX_AGE_MS) {
-				return [
-					{
-						quantity: 'all 56 bits',
-						unit: '',
-						commB: 'identical',
-						other: 'identical',
-						from: 'DF17',
-						ageMs: Math.max(0, now - sent),
-						difference: null,
-						tolerance: 0,
-						ok: true
-					}
-				];
+				return [{ kind: 'copy', from: 'DF17', ageMs: Math.max(0, now - sent), ok: true }];
 			}
 			const s = register.squitter;
 			if (s.kind === 'identification')
@@ -518,14 +504,12 @@ function registrationCheck(r: Registration, address: string | null): Comparison[
 	const mark = nationalityMark(r.registration, block.marks);
 	return [
 		{
+			kind: 'text',
 			quantity: 'registration',
-			unit: '',
 			commB: mark ? formatRegistration(r.registration, mark) : r.registration,
 			other: block.marks.map((m) => `${m}…`).join(' or '),
 			from: `Address block (${block.state})`,
 			ageMs: null,
-			difference: null,
-			tolerance: 0,
 			ok: mark !== null
 		}
 	];

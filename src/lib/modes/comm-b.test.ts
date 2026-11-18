@@ -7,6 +7,11 @@ import { downlinkFormat, fromHex, payload, toHex } from './frame';
 import { combineFine, REGISTERS, type PositionCoarse, type PositionFine } from './registers';
 import { squitter } from './squitter';
 import { commbOracle, oracle, registration21, timedMessages } from './testing';
+import { rejectionText } from '#lib/describe/comm-b.ts';
+
+/** Why an inference ruled a register out, in words (describe/comm-b.ts). */
+const reason = (inference: Inference, bds: string) =>
+	rejectionText(inference.rejected.find((r) => r.bds === bds)!);
 
 interface Reply {
 	t: number;
@@ -69,7 +74,7 @@ describe('the capture, with ADS-B to compare with', () => {
 
 	test('almost half of the ADS-B registers read via Comm-B are exact copies of a recent DF17', () => {
 		const adsb = replies.filter((r) => ['0,5', '0,8', '0,9'].includes(r.inference.best?.bds ?? ''));
-		const copies = adsb.filter((r) => r.inference.best!.comparisons[0].quantity === 'all 56 bits');
+		const copies = adsb.filter((r) => r.inference.best!.comparisons[0].kind === 'copy');
 		expect(copies.length).toBe(45);
 		expect(adsb.length).toBe(98);
 	});
@@ -98,7 +103,9 @@ describe('the capture, with ADS-B to compare with', () => {
 	test("5,2's altitude: barometric for one aircraft, GNSS height for the others", () => {
 		const quantity = new Map<string, Set<string>>();
 		for (const r of replies.filter((r) => r.inference.best?.bds === '5,2')) {
-			const height = r.inference.best!.comparisons.find((c) => c.unit === 'ft')!;
+			const height = r.inference.best!.comparisons.find((c) => c.kind === 'numeric')!;
+			if (height.kind !== 'numeric') throw new Error('no height comparison');
+			expect(height.unit).toBe('ft');
 			expect(height.ok).toBe(true);
 			quantity.set(r.icao, (quantity.get(r.icao) ?? new Set()).add(height.quantity));
 		}
@@ -113,15 +120,19 @@ describe('the capture, with ADS-B to compare with', () => {
 	test('6,0: indicated airspeed and altitude predict the Mach number', () => {
 		const machs = replies
 			.filter((r) => r.inference.best?.bds === '6,0')
-			.flatMap((r) => r.inference.best!.comparisons.filter((c) => c.quantity === 'Mach'));
+			.flatMap((r) =>
+				r.inference.best!.comparisons.flatMap((c) =>
+					c.kind === 'numeric' && c.quantity === 'Mach' ? [c] : []
+				)
+			);
 		expect(machs.length).toBeGreaterThan(2500);
 		expect(machs.every((c) => c.ok)).toBe(true);
-		expect(Math.max(...machs.map((c) => c.difference!))).toBeLessThan(0.01);
+		expect(Math.max(...machs.map((c) => c.difference))).toBeLessThan(0.01);
 	});
 
 	test('the one reply nothing fits says why', () => {
 		const [unknown] = replies.filter((r) => r.inference.how === 'unknown');
-		const why = unknown.inference.rejected.find((r) => r.bds === '0,5')!.reason;
+		const why = reason(unknown.inference, '0,5');
 		expect(why).toBe('ADS-B disagrees: position 188.3 km off; altitude 12,450 ft vs 38,000 ft');
 	});
 });
@@ -201,6 +212,7 @@ test('angles are compared the short way round: 359° and 1° are 2° apart', () 
 	const inference = inferRegister(mb, { now: 0, replyAltitude: null, adsb, address: null });
 	expect(inference.best?.bds).toBe('5,0');
 	const [track] = inference.best!.comparisons;
+	if (track.kind !== 'numeric') throw new Error(`a ${track.kind} comparison`);
 	expect(track.quantity).toBe('track');
 	expect(track.difference).toBeCloseTo(2.05, 2);
 	expect(track.ok).toBe(true);
@@ -232,12 +244,12 @@ describe('ADS-B registers read via Comm-B: only an exact copy (or agreeing value
 			const mb = fromHex(hex);
 			const alone = inferRegister(mb, null);
 			expect(alone.best?.bds).not.toBe(bds);
-			expect(alone.rejected.find((r) => r.bds === bds)?.reason).toMatch(/too little structure/);
+			expect(reason(alone, bds)).toMatch(/too little structure/);
 
 			const adsb = { ...nothing, recent: new Map([[hex, 0]]) };
 			const copy = inferRegister(mb, { now: 2000, replyAltitude: null, adsb, address: null });
 			expect(copy.best?.bds).toBe(bds);
-			expect(copy.best?.comparisons[0]).toMatchObject({ quantity: 'all 56 bits', ok: true });
+			expect(copy.best?.comparisons[0]).toMatchObject({ kind: 'copy', ok: true });
 		});
 	}
 
@@ -253,7 +265,7 @@ describe('ADS-B registers read via Comm-B: only an exact copy (or agreeing value
 			address: null
 		});
 		expect(inference.best?.bds).toBe('6,2');
-		expect(inference.best?.comparisons.map((c) => c.quantity)).toEqual([
+		expect(inference.best?.comparisons.map((c) => c.kind === 'numeric' && c.quantity)).toEqual([
 			'selected altitude',
 			'pressure setting'
 		]);
@@ -261,9 +273,7 @@ describe('ADS-B registers read via Comm-B: only an exact copy (or agreeing value
 		const disagree = { ...agree, selectedAltitude: at({ ...selected, feet: 24_000 }) };
 		const no = inferRegister(mb, { now: 1000, replyAltitude: null, adsb: disagree, address: null });
 		expect(no.best?.bds).not.toBe('6,2');
-		expect(no.rejected.find((r) => r.bds === '6,2')?.reason).toBe(
-			'ADS-B disagrees: selected altitude 38,016 ft vs 24,000 ft'
-		);
+		expect(reason(no, '6,2')).toBe('ADS-B disagrees: selected altitude 38,016 ft vs 24,000 ft');
 	});
 
 	test('0,6: a surface position, as an exact copy', () => {
@@ -298,7 +308,7 @@ describe('the rare registers (4,4, 4,5, 5,3) are a last resort', () => {
 			.find((mb) => spec('5,3').reject(mb) === null && spec('6,0').reject(mb) === null)!;
 		const inference = inferRegister(both, null);
 		expect(inference.candidates.map((c) => c.bds)).not.toContain('5,3');
-		expect(inference.rejected.find((r) => r.bds === '5,3')?.reason).toMatch(/rarely asked for/);
+		expect(reason(inference, '5,3')).toMatch(/rarely asked for/);
 	});
 
 	test('5,3 alone fits, but ADS-B contradicts it: unknown', () => {
@@ -324,9 +334,7 @@ describe('the rare registers (4,4, 4,5, 5,3) are a last resort', () => {
 		};
 		const inference = inferRegister(alone, { now: 1000, replyAltitude: null, adsb, address: null });
 		expect(inference.best).toBeNull();
-		expect(inference.rejected.find((x) => x.bds === '5,3')?.reason).toMatch(
-			/^ADS-B disagrees: indicated airspeed/
-		);
+		expect(reason(inference, '5,3')).toMatch(/^ADS-B disagrees: indicated airspeed/);
 	});
 });
 
@@ -346,9 +354,7 @@ describe('2,1: the registration must start with the nationality mark of the addr
 	test('the same bits from a US address: random, not a registration', () => {
 		const inference = inferRegister(daiza, at('A00001'));
 		expect(inference.best).toBeNull();
-		expect(inference.rejected.find((r) => r.bds === '2,1')?.reason).toBe(
-			'The address disagrees: registration "DAIZA" vs "N…"'
-		);
+		expect(reason(inference, '2,1')).toBe('The address disagrees: registration "DAIZA" vs "N…"');
 	});
 
 	test('one block, several registers: the UK block also holds Bermuda (VP-B…)', () => {
@@ -367,9 +373,7 @@ describe('2,1: the registration must start with the nationality mark of the addr
 			const mb = payload(fromHex(r.hex))!;
 			expect(['6,0', '5,2']).toContain(r.inference.best!.bds);
 			const alone = inferRegister(mb, at(r.icao));
-			expect(alone.rejected.find((x) => x.bds === '2,1')?.reason).toMatch(
-				/^The address disagrees: registration/
-			);
+			expect(reason(alone, '2,1')).toMatch(/^The address disagrees: registration/);
 		}
 	});
 });
