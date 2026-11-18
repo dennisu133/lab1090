@@ -112,6 +112,24 @@ export function containment(tc: number, s: Supplements): Containment | null {
 	return null;
 }
 
+/**
+ * Every radius of containment a position type code (5–8, 9–18, 20–22) can stand for in ADS-B
+ * versions 1 and 2 (DO-260A/B), whatever the supplement bits say: metres, "unknown" (null)
+ * first, then smallest first. null for type codes that aren't positions.
+ */
+export function containmentRadii(tc: number): (number | null)[] | null {
+	const radii = new Set<number | null>();
+	for (const version of [1, 2])
+		for (const nicA of [0, 1])
+			for (const nicB of [0, 1])
+				for (const nicC of [0, 1]) {
+					const c = containment(tc, { version, nicA, nicB, nicC });
+					if (c) radii.add(c.rc);
+				}
+	if (!radii.size) return null;
+	return [...radii].sort((a, b) => (a === null ? -1 : b === null ? 1 : a - b));
+}
+
 /** Type codes whose NIC needs no supplement: [NIC, Rc in metres or null for unknown]. */
 const FIXED: Record<number, [number, number | null]> = {
 	5: [11, 7.5],

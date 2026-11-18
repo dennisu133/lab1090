@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { containment, NAC_P_METRES, type Supplements } from './integrity';
+import { containment, containmentRadii, NAC_P_METRES, type Supplements } from './integrity';
 
 const NM = 1852;
 const v2 = (nicA: number | null, nicB = 0, nicC: number | null = null): Supplements => ({
@@ -95,4 +95,13 @@ test('NACp: the 95 % bounds, 10 NM down to 3 m; 0 unknown', () => {
 	expect(NAC_P_METRES[8]).toBeCloseTo(92.6, 9); // 0.05 NM; pyModeS rounds to 93
 	expect(NAC_P_METRES.slice(9)).toEqual([30, 10, 3]);
 	expect(containment(19, v2(0))).toBeNull(); // not a position
+});
+
+test('containment radii: every value a type code can stand for (versions 1 and 2)', () => {
+	expect(containmentRadii(11)).toEqual([75, 0.1 * NM]);
+	expect(containmentRadii(13)).toEqual([0.3 * NM, 0.5 * NM, 0.6 * NM]);
+	expect(containmentRadii(18)).toEqual([null]);
+	expect(containmentRadii(5)).toEqual([7.5]);
+	expect(containmentRadii(8)).toEqual([null, 0.2 * NM, 0.3 * NM, 0.6 * NM]);
+	for (const tc of [0, 4, 19, 23, 28, 29, 31]) expect(containmentRadii(tc)).toBeNull();
 });

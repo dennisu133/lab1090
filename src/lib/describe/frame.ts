@@ -11,6 +11,7 @@
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { esFormat, payload } from '#lib/modes/frame.ts';
+import { containmentRadii } from '#lib/modes/integrity.ts';
 import {
 	CAPABILITIES,
 	CONTROL_FIELDS,
@@ -24,6 +25,7 @@ import {
 } from '#lib/modes/header.ts';
 import { extendedSquitter, imf } from '#lib/modes/squitter.ts';
 import { advisoryFields, altitudeField, squawkField, type Field } from './field';
+import { NM } from '#lib/units.ts';
 import { n } from './format';
 import { cprFields, squitterFields } from './squitter';
 
@@ -35,6 +37,28 @@ export interface Located {
 	global: LatLon | null;
 	/** Surface position (TC 5–8): quarter-size CPR zones. */
 	surface?: boolean;
+}
+
+/**
+ * What a position message's type code says about the radius of containment Rc: a circle the
+ * true position is inside with ~1e-7 risk of being wrong (integrity, not accuracy). Every
+ * value it can stand for in DO-260A/B (ADS-B version 1/2, modes/integrity.ts); where there are
+ * several, supplement bits from the operational status (TC 31) and the position message decide.
+ * "< 75 or 185 m", "unknown, or < 0.2, 0.3 or 0.6 NM"; null for other type codes.
+ */
+export function containmentText(tc: number): string | null {
+	const radii = containmentRadii(tc);
+	if (!radii) return null;
+	const known = radii.filter((r) => r !== null);
+	if (!known.length) return 'unknown';
+	// One unit for all: metres below a quarter nautical mile (0.1 NM reads better as 185 m).
+	const metres = known.at(-1)! < 0.25 * NM;
+	const values = known.map((r) =>
+		metres ? (r < 10 ? String(r) : n(r)) : String(Number((r / NM).toFixed(1)))
+	);
+	const list =
+		values.length === 1 ? values[0] : `${values.slice(0, -1).join(', ')} or ${values.at(-1)}`;
+	return `${known.length < radii.length ? 'unknown, or ' : ''}< ${list} ${metres ? 'm' : 'NM'}`;
 }
 
 const TONE_ORDER = { main: 0, alert: 1, minor: 2 };

@@ -161,34 +161,3 @@ export function typeCodeGroup(tc: number) {
 export function typeCodeName(tc: number): string {
 	return typeCodeGroup(tc).name;
 }
-
-/**
- * Position messages (airborne TC 9–18 and 20–22, surface TC 5–8) have one layout each. The
- * type code additionally says how much the aircraft vouches for the position: the containment radius Rc,
- * a circle the true position is inside with ~1e-7 risk of being wrong (integrity, not accuracy).
- * Values from DO-260A/B (ADS-B version 1/2). Where two values are given, a supplement bit from
- * the aircraft's operational status message (TC 31) decides.
- */
-export function containmentRadius(tc: number): string | null {
-	return RC[tc] ?? null;
-}
-
-const RC: Record<number, string> = {
-	5: '< 7.5 m',
-	6: '< 25 m',
-	7: '< 75 m or < 185 m',
-	8: 'unknown, or < 0.2–0.6 NM',
-	9: '< 7.5 m',
-	10: '< 25 m',
-	11: '< 75 m or < 185 m',
-	12: '< 370 m',
-	13: '< 0.3, 0.5 or 0.6 NM',
-	14: '< 1 NM',
-	15: '< 2 NM',
-	16: '< 4 or 8 NM',
-	17: '< 20 NM',
-	18: 'unknown',
-	20: '< 7.5 m',
-	21: '< 25 m',
-	22: 'unknown'
-};

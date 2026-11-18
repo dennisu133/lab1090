@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { fromHex } from '#lib/modes/frame.ts';
-import { describe as describeFrame, type Located } from './frame';
+import { containmentText, describe as describeFrame, type Located } from './frame';
 
 const position = fromHex('8d4400f858c3a2beccc74b9d3525'); // DF17 TC 11, 38,050 ft
 
@@ -38,4 +38,16 @@ test('reference only: unconfirmed', () => {
 		'main: 111 km E',
 		'minor: unconfirmed'
 	]);
+});
+
+test('containment radius per position type code', () => {
+	expect(containmentText(5)).toBe('< 7.5 m');
+	expect(containmentText(11)).toBe('< 75 or 185 m');
+	expect(containmentText(12)).toBe('< 370 m');
+	expect(containmentText(13)).toBe('< 0.3, 0.5 or 0.6 NM');
+	expect(containmentText(16)).toBe('< 4 or 8 NM');
+	expect(containmentText(17)).toBe('< 20 NM');
+	expect(containmentText(18)).toBe('unknown');
+	expect(containmentText(8)).toBe('unknown, or < 0.2, 0.3 or 0.6 NM');
+	expect(containmentText(19)).toBeNull();
 });

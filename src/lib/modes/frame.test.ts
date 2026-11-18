@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
 import {
-	containmentRadius,
 	downlinkFormat,
 	fromHex,
 	signalBucket,
@@ -81,14 +80,6 @@ test('signal buckets: 3 dB wide, lower edge, clamped to -48 … -3', () => {
 	expect(signalBucket(signalDbfs(1))).toBe(-48); // -48.1, the weakest possible byte
 	expect(signalBucket(-Infinity)).toBe(-48);
 	expect(signalBucket(0)).toBe(-3); // full scale still counts as the top bucket
-});
-
-test('containment radius only for position type codes', () => {
-	expect(containmentRadius(11)).toBe('< 75 m or < 185 m');
-	expect(containmentRadius(18)).toBe('unknown');
-	expect(containmentRadius(5)).toBe('< 7.5 m');
-	expect(containmentRadius(8)).toBe('unknown, or < 0.2–0.6 NM');
-	for (const tc of [0, 4, 19, 23, 28, 29, 31]) expect(containmentRadius(tc)).toBeNull();
 });
 
 test('type code groups cover 0–31 exactly once, in order', () => {

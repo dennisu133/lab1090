@@ -5,7 +5,8 @@
 	import Fields from '#lib/components/Fields.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
-	import { DF_NAMES, TYPE_CODE_GROUPS, containmentRadius, typeCodeName } from '#lib/modes/frame.ts';
+	import { DF_NAMES, TYPE_CODE_GROUPS, typeCodeName } from '#lib/modes/frame.ts';
+	import { containmentText } from '#lib/describe/frame.ts';
 	import CountTable from './CountTable.svelte';
 	import HexFrame, { PART_COLORS } from './HexFrame.svelte';
 	import SignalHistogram from './SignalHistogram.svelte';
@@ -87,7 +88,7 @@
 
 	/** What a type code adds to its group's meaning. */
 	function codeLabel(tc: number) {
-		const rc = containmentRadius(tc);
+		const rc = containmentText(tc);
 		if (rc) return `Rc ${rc}`;
 		return EMITTER_SETS[tc] ?? typeCodeName(tc);
 	}
