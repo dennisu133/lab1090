@@ -371,7 +371,7 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 		flight.push({
 			label: 'Vertical rate',
 			value: Math.abs(r.rate) < 100 ? 'level' : `${signed(r.rate, 0)} ft/min`,
-			title: `From ${r.source === 'GNSS' ? 'satellite navigation' : 'the change in air pressure'}. Airliners climb at 1,000–3,000 ft/min and descend at 1,000–2,000; under 100 counts as level here (the message's step is 64).${source(a.verticalRate, now)}`,
+			title: `From ${r.source === 'gnss' ? 'satellite navigation' : 'the change in air pressure'}. Airliners climb at 1,000–3,000 ft/min and descend at 1,000–2,000; under 100 counts as level here (the message's step is 64).${source(a.verticalRate, now)}`,
 			tone: 'main'
 		});
 	}

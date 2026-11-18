@@ -36,7 +36,7 @@ export interface Velocity {
 	air: { speed: number | null; type: 'IAS' | 'TAS'; heading: number | null } | null;
 	/** ft/min, positive = climbing. */
 	verticalRate: number | null;
-	verticalRateSource: 'GNSS' | 'baro';
+	verticalRateSource: 'gnss' | 'baro';
 	/** GNSS height minus barometric altitude, in feet. Shows the weather: baro altitude
 	 * assumes a standard atmosphere, so this grows in warm air and turns negative in cold. */
 	gnssMinusBaro: number | null;
@@ -78,7 +78,7 @@ export function velocity(me: Uint8Array): Velocity | null {
 		ground,
 		air,
 		verticalRate: vr === 0 ? null : signed(bits(me, 37, 1), (vr - 1) * 64),
-		verticalRateSource: bits(me, 36, 1) ? 'baro' : 'GNSS',
+		verticalRateSource: bits(me, 36, 1) ? 'baro' : 'gnss',
 		// 127 means "more than 3,137 ft": out of range, treated as unknown.
 		gnssMinusBaro: dAlt === 0 || dAlt === 127 ? null : signed(bits(me, 49, 1), (dAlt - 1) * 25)
 	};

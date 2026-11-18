@@ -49,7 +49,7 @@ describe('velocity (TC 19)', () => {
 			expect(v.subtype).toBe(o.subtype);
 			expect(v.nacV).toBe(o.nac_v);
 			expect(v.verticalRate).toBe(o.vertical_rate);
-			expect(v.verticalRateSource).toBe(o.vr_source === 'BARO' ? 'baro' : 'GNSS');
+			expect(v.verticalRateSource).toBe(o.vr_source === 'BARO' ? 'baro' : 'gnss');
 			expect(v.gnssMinusBaro).toBe(o.geo_minus_baro);
 			if (o.subtype === 1) {
 				// pyModeS truncates the speed to whole knots; we keep the exact value.

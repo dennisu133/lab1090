@@ -373,7 +373,7 @@ function compare(
 					'vertical rate',
 					'ft/min',
 					register.inertialRate,
-					map(rate, (r) => (r.source === 'GNSS' ? r.rate : null)),
+					map(rate, (r) => (r.source === 'gnss' ? r.rate : null)),
 					500
 				)
 			];

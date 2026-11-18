@@ -37,7 +37,7 @@ export interface Broadcast {
 	position: Timed<LatLon> | null;
 	ground: Timed<{ speed: number; track: number }> | null;
 	air: Timed<{ speed: number | null; type: 'IAS' | 'TAS'; heading: number | null }> | null;
-	verticalRate: Timed<{ rate: number; source: 'GNSS' | 'baro' }> | null;
+	verticalRate: Timed<{ rate: number; source: 'gnss' | 'baro' }> | null;
 	selectedAltitude: Timed<{ feet: number; source: 'MCP/FCU' | 'FMS' }> | null;
 	qnh: Timed<number> | null;
 	/** When the last message arrived. */

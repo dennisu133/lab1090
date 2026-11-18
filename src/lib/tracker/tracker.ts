@@ -196,7 +196,7 @@ export interface TrackedAircraft {
 	 * magnetic north (see headingReference).
 	 */
 	air: Timed<NonNullable<Velocity['air']>> | null;
-	verticalRate: Timed<{ rate: number; source: 'GNSS' | 'baro' }> | null;
+	verticalRate: Timed<{ rate: number; source: 'gnss' | 'baro' }> | null;
 	/**
 	 * From the operational status (TC 31): the ADS-B version (decides how other messages are
 	 * read), the heading reference, and what the integrity of positions needs (integrity.ts).
