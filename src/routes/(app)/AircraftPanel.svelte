@@ -5,8 +5,12 @@
 	flight (route, airline: looked up by the page, which draws the route on the map too).
 -->
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
-	import { lookupAircraft, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
+	import {
+		lookupAircraft,
+		type DbAircraft,
+		type DbFlight,
+		type DbRoute
+	} from '#lib/aircraft-db.ts';
 	import { aircraftSections } from '#lib/describe/aircraft.ts';
 	import { routeText } from '#lib/describe/route.ts';
 	import type { Unit } from '#lib/describe/format.ts';
@@ -22,6 +26,7 @@
 	import Details from './Details.svelte';
 	import MessageFeed from './MessageFeed.svelte';
 	import type { Message } from './tracker-stream.svelte.ts';
+	import PanelHeader from './PanelHeader.svelte';
 
 	interface Props {
 		aircraft: TrackedAircraft;
@@ -32,6 +37,8 @@
 		flight: DbFlight | null;
 		/** Whether its route fits (lib/tracker/route.ts); a dismissed one isn't shown. */
 		judged: Judged | null;
+		/** The route shown (the page's: the map draws it too); null: none, or dismissed. */
+		route: DbRoute | null;
 		/**
 		 * Its wind and temperature (/weather's pipeline), heading check, and the temperature
 		 * layer at its level (for the contrail line); null: none.
@@ -43,8 +50,19 @@
 		onclose: () => void;
 	}
 
-	let { aircraft, all, messages, flight, judged, weather, now, receiver, unit, onclose }: Props =
-		$props();
+	let {
+		aircraft,
+		all,
+		messages,
+		flight,
+		judged,
+		route,
+		weather,
+		now,
+		receiver,
+		unit,
+		onclose
+	}: Props = $props();
 
 	// The snapshot is replaced every update; the address isn't, so this looks it up once.
 	let icao = $derived(aircraft.icao);
@@ -68,36 +86,27 @@
 	let sections = $derived(
 		aircraftSections(aircraft, now, receiver, unit, db, flight, judged, all, weather)
 	);
-	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 
 	let block = $derived(allocation(aircraft.icao));
 </script>
 
-<header class="flex items-start justify-between gap-4 px-4 py-3">
-	<div class="min-w-0">
-		<h2 class="flex items-center gap-2 font-mono text-xl font-semibold">
-			{#if block?.country}
-				<Flag country={block.country} name={block.state} />
-			{/if}
-			<span class="truncate">{aircraft.callsign?.value ?? aircraft.icao}</span>
-		</h2>
-		<!-- With a route: where it goes (the address and category are under Identity). -->
-		{#if route}
-			<p class="truncate text-sm text-zinc-300">{routeText(route)}</p>
-		{:else}
-			<p class="truncate text-sm text-zinc-400">
-				{aircraft.callsign ? aircraft.icao : 'no callsign (yet)'}
-				{#if aircraft.category}· {aircraft.category.value.name}{/if}
-			</p>
+<PanelHeader {onclose}>
+	<h2 class="flex items-center gap-2 font-mono text-xl font-semibold">
+		{#if block?.country}
+			<Flag country={block.country} name={block.state} />
 		{/if}
-	</div>
-	<button
-		type="button"
-		onclick={onclose}
-		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft"><CloseIcon /></button
-	>
-</header>
+		<span class="truncate">{aircraft.callsign?.value ?? aircraft.icao}</span>
+	</h2>
+	<!-- With a route: where it goes (the address and category are under Identity). -->
+	{#if route}
+		<p class="truncate text-sm text-zinc-300">{routeText(route)}</p>
+	{:else}
+		<p class="truncate text-sm text-zinc-400">
+			{aircraft.callsign ? aircraft.icao : 'no callsign (yet)'}
+			{#if aircraft.category}· {aircraft.category.value.name}{/if}
+		</p>
+	{/if}
+</PanelHeader>
 {#if db && db !== 'unreachable' && db.photo}
 	<AircraftPhoto photo={db.photo} registration={db.registration} />
 {/if}

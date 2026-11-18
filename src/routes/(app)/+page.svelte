@@ -209,6 +209,7 @@
 					messages={stream.messages}
 					{flight}
 					{judged}
+					{route}
 					weather={selectedWeather}
 					{now}
 					receiver={data.reference}
