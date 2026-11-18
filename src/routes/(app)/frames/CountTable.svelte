@@ -81,7 +81,7 @@
 						viewBox="0 0 16 16"
 						aria-hidden="true"
 						class={[
-							'mr-1 size-4 shrink-0 fill-current p-0.5 text-zinc-500 transition-transform group-hover/key:text-zinc-100',
+							'mr-1 size-4 shrink-0 fill-current p-0.5 text-zinc-500 group-hover/key:text-zinc-100 motion-safe:transition-transform',
 							expanded.has(row.key) && 'rotate-90'
 						]}><path d="M5 3l6 5-6 5z" /></svg
 					>{key}

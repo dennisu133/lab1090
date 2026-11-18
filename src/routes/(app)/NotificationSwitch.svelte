@@ -37,7 +37,7 @@
 	>
 		<span
 			class={[
-				'absolute top-0.5 left-0.5 size-3 rounded-full bg-zinc-100 transition-transform',
+				'absolute top-0.5 left-0.5 size-3 rounded-full bg-zinc-100 motion-safe:transition-transform',
 				notifications.on && 'translate-x-3'
 			]}
 		></span>

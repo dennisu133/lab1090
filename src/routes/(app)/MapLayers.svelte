@@ -277,7 +277,7 @@
 		<svg
 			viewBox="0 0 10 6"
 			class={[
-				'ml-auto h-1.5 w-2.5 transition-transform',
+				'ml-auto h-1.5 w-2.5 motion-safe:transition-transform',
 				open === null ? 'md:rotate-180' : open && 'rotate-180'
 			]}
 			aria-hidden="true"

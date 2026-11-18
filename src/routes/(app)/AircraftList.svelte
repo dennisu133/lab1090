@@ -132,7 +132,7 @@
 			<!-- Like the Layers button's: ^ to unfold, v to fold. -->
 			<svg
 				viewBox="0 0 10 6"
-				class={['h-1.5 w-2.5 text-zinc-400 transition-transform', open && 'rotate-180']}
+				class={['h-1.5 w-2.5 text-zinc-400 motion-safe:transition-transform', open && 'rotate-180']}
 				aria-hidden="true"
 			>
 				<path d="M1 5 5 1 9 5" fill="none" stroke="currentColor" stroke-width="1.25" />

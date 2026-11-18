@@ -21,7 +21,7 @@
 		const status = link.status;
 		if (link.online === false) return { dot: 'bg-zinc-500', label: 'Server offline' };
 		if (link.online && status?.state === 'connected')
-			return { dot: 'animate-pulse bg-emerald-400', label: 'Live' };
+			return { dot: 'motion-safe:animate-pulse bg-emerald-400', label: 'Live' };
 		if (link.online && status?.state === 'waiting')
 			return { dot: 'bg-amber-400', label: 'Receiver unreachable', status };
 		if (link.online && status?.state === 'ended')
