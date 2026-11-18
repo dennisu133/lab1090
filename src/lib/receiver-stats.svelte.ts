@@ -1,4 +1,5 @@
 import type { ReceiverCounts, StreamUpdate } from '#lib/receiver-types.ts';
+import { perSecond, RateWindow } from '#lib/rate-window.ts';
 import type { UpdateListener } from '#lib/stream-connection.ts';
 
 export interface Rates {
@@ -7,9 +8,6 @@ export interface Rates {
 	byTc: Record<number, number>;
 	byVerdict: Record<string, number>;
 }
-
-/** Rates are averaged over this window. */
-const RATE_WINDOW_MS = 10_000;
 
 const NO_RATES: Rates = { total: 0, byDf: {}, byTc: {}, byVerdict: {} };
 
@@ -30,11 +28,11 @@ export class ReceiverStats implements UpdateListener {
 	/** Per second, over the last 10 s. */
 	rates = $state.raw<Rates>(NO_RATES);
 
-	#samples: { t: number; counts: ReceiverCounts }[] = [];
+	#window = new RateWindow<ReceiverCounts>();
 
 	/** A new server run: the totals start over, so does the rate window. */
 	reset(): void {
-		this.#samples = [];
+		this.#window.clear();
 		this.rates = NO_RATES;
 	}
 
@@ -42,22 +40,15 @@ export class ReceiverStats implements UpdateListener {
 		this.since = update.since;
 		this.counts = update.counts;
 
-		const now = performance.now();
-		this.#samples.push({ t: now, counts: update.counts });
-		while (this.#samples.length > 2 && now - this.#samples[0].t > RATE_WINDOW_MS)
-			this.#samples.shift();
-
-		const oldest = this.#samples[0];
-		const seconds = (now - oldest.t) / 1000;
-		if (seconds < 1) return; // too short a window to say anything
 		const counts = update.counts;
-		const per = (a: Record<string, number>, b: Record<string, number>) =>
-			Object.fromEntries(Object.keys(a).map((k) => [k, ((a[k] ?? 0) - (b[k] ?? 0)) / seconds]));
+		const window = this.#window.add(performance.now(), counts);
+		if (!window) return;
+		const { then, seconds } = window;
 		this.rates = {
-			total: (counts.total - oldest.counts.total) / seconds,
-			byDf: per(counts.byDf, oldest.counts.byDf),
-			byTc: per(counts.byTc, oldest.counts.byTc),
-			byVerdict: per(counts.byVerdict, oldest.counts.byVerdict)
+			total: (counts.total - then.total) / seconds,
+			byDf: perSecond(counts.byDf, then.byDf, seconds),
+			byTc: perSecond(counts.byTc, then.byTc, seconds),
+			byVerdict: perSecond(counts.byVerdict, then.byVerdict, seconds)
 		};
 	}
 }

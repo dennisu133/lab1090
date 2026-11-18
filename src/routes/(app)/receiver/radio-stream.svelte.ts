@@ -1,9 +1,7 @@
 import type { DemodulatorStats } from '#lib/demod/demodulator.ts';
 import type { DemodReport, RadioPoint, SourceEvent, StreamUpdate } from '#lib/receiver-types.ts';
+import { perSecond, RateWindow } from '#lib/rate-window.ts';
 import type { UpdateListener } from '#lib/stream-connection.ts';
-
-/** Rates are averaged over this window, like the navigation bar's. */
-const RATE_WINDOW_MS = 10_000;
 
 export type DemodRates = Record<Exclude<keyof DemodulatorStats, 'level'>, number>;
 
@@ -21,14 +19,15 @@ export class RadioStream implements UpdateListener {
 	/** Per second over the last 10 s; null until there's a window to measure. */
 	rates = $state.raw<DemodRates | null>(null);
 
-	#samples: { t: number; totals: DemodulatorStats }[] = [];
+	/** Over the last 10 s, like the navigation bar's. */
+	#window = new RateWindow<DemodulatorStats>();
 
 	receive({ radio }: StreamUpdate): void {
 		this.demod = radio.demod;
 		if (radio.full) {
 			this.points = radio.points;
 			this.events = radio.events;
-			this.#samples = [];
+			this.#window.clear();
 			this.rates = null;
 		} else {
 			// An hour, like the server keeps (RadioHistory POINTS).
@@ -46,21 +45,14 @@ export class RadioStream implements UpdateListener {
 
 	#rate(demod: DemodReport | null): void {
 		if (!demod) {
-			this.#samples = [];
+			this.#window.clear();
 			this.rates = null;
 			return;
 		}
-		const now = performance.now();
-		this.#samples.push({ t: now, totals: demod.totals });
-		while (this.#samples.length > 2 && now - this.#samples[0].t > RATE_WINDOW_MS)
-			this.#samples.shift();
-		const oldest = this.#samples[0];
-		const seconds = (now - oldest.t) / 1000;
-		if (seconds < 1) return;
-		const rates = {} as DemodRates;
-		for (const key of Object.keys(demod.totals) as (keyof DemodulatorStats)[]) {
-			if (key !== 'level') rates[key] = (demod.totals[key] - oldest.totals[key]) / seconds;
-		}
-		this.rates = rates;
+		const window = this.#window.add(performance.now(), demod.totals);
+		if (!window) return;
+		const rates: Partial<DemodulatorStats> = perSecond(demod.totals, window.then, window.seconds);
+		delete rates.level; // a sum of noise levels, not a count: no rate
+		this.rates = rates as DemodRates;
 	}
 }

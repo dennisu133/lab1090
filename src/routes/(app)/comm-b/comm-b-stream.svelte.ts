@@ -7,6 +7,7 @@ import {
 import type { Field } from '#lib/describe/field.ts';
 import { squitterFields } from '#lib/describe/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
+import { perSecond, RateWindow } from '#lib/rate-window.ts';
 import type { Verdict } from '#lib/modes/address-filter.ts';
 import { AdsbMemory } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
@@ -43,7 +44,6 @@ export interface RegisterRow {
 export type Counts = Record<string, Record<Source, number>>;
 
 const MAX_ROWS = 2000;
-const RATE_WINDOW_MS = 10_000;
 
 /**
  * /comm-b's view of the live stream: every register reading, broadcast or interrogated.
@@ -64,7 +64,8 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 	// Plain Map on purpose: bookkeeping, never rendered (rows copy the callsign out).
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	#callsigns = new Map<string, string>();
-	#recent: { rx: number; key: string; source: Source }[] = [];
+	/** On the server's clock, like the frames. */
+	#window = new RateWindow<Counts>();
 
 	constructor() {
 		super(MAX_ROWS);
@@ -74,7 +75,7 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		super.reset();
 		this.#memory = new AdsbMemory();
 		this.#callsigns.clear();
-		this.#recent = [];
+		this.#window.clear();
 		this.#aircraft.clear();
 		this.counts = {};
 		this.rates = {};
@@ -163,16 +164,14 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		for (const r of rows) {
 			const c = (counts[r.key] = { ...(counts[r.key] ?? { broadcast: 0, interrogated: 0 }) });
 			c[r.source]++;
-			this.#recent.push({ rx: r.rx, key: r.key, source: r.source });
 		}
 		this.counts = counts;
 
-		this.#recent = this.#recent.filter((e) => now - e.rx <= RATE_WINDOW_MS);
-		const rates: Counts = {};
-		for (const e of this.#recent) {
-			const r = (rates[e.key] ??= { broadcast: 0, interrogated: 0 });
-			r[e.source] += 1000 / RATE_WINDOW_MS;
-		}
-		this.rates = rates;
+		const window = this.#window.add(now, counts);
+		if (!window) return;
+		const { then, seconds } = window;
+		this.rates = Object.fromEntries(
+			Object.entries(counts).map(([key, c]) => [key, perSecond(c, then[key] ?? {}, seconds)])
+		);
 	}
 }
