@@ -40,13 +40,14 @@ export type Register =
 	| AirReferencedState
 	| ExtendedSquitter;
 
-export interface RegisterSpec {
-	bds: string;
+/** One register: how to rule it out, and how to read it. `R`: what `decode` returns. */
+export interface RegisterSpec<R extends Register = Register> {
+	bds: R['bds'];
 	name: string;
 	/** Why `mb` can't be this register; null if it can. */
 	reject(mb: Uint8Array): string | null;
 	/** Only meaningful if `reject` returned null. */
-	decode(mb: Uint8Array): Register;
+	decode(mb: Uint8Array): R;
 }
 
 // --- helpers -------------------------------------------------------------------------------
@@ -130,7 +131,7 @@ export interface DataLinkCapability {
 	dteStatus: number;
 }
 
-const BDS_1_0: RegisterSpec = {
+const BDS_1_0: RegisterSpec<DataLinkCapability> = {
 	bds: '1,0',
 	name: 'Data link capability report',
 	reject(mb) {
@@ -180,7 +181,7 @@ export const GICB_MAP = [
 	'4,4', '4,5', '4,8', '5,0', '5,1', '5,2', '5,3', '5,4', '5,5', '5,6', '5,F', '6,0'
 ]; // prettier-ignore
 
-const BDS_1_7: RegisterSpec = {
+const BDS_1_7: RegisterSpec<GicbCapability> = {
 	bds: '1,7',
 	name: 'Common usage GICB capability report',
 	reject(mb) {
@@ -200,7 +201,7 @@ export interface AircraftIdentification {
 	callsign: string;
 }
 
-const BDS_2_0: RegisterSpec = {
+const BDS_2_0: RegisterSpec<AircraftIdentification> = {
 	bds: '2,0',
 	name: 'Aircraft identification',
 	reject(mb) {
@@ -252,7 +253,7 @@ function registrationCharacter(mb: Uint8Array, bit: number): string {
 const registrationText = (mb: Uint8Array) =>
 	Array.from({ length: 7 }, (_, i) => registrationCharacter(mb, 2 + 6 * i)).join('');
 
-const BDS_2_1: RegisterSpec = {
+const BDS_2_1: RegisterSpec<Registration> = {
 	bds: '2,1',
 	name: 'Aircraft and airline registration markings',
 	reject(mb) {
@@ -286,7 +287,7 @@ export interface ResolutionAdvisory extends Advisory {
 	bds: '3,0';
 }
 
-const BDS_3_0: RegisterSpec = {
+const BDS_3_0: RegisterSpec<ResolutionAdvisory> = {
 	bds: '3,0',
 	name: 'ACAS active resolution advisory',
 	reject(mb) {
@@ -316,7 +317,7 @@ export interface VerticalIntention {
 
 const TARGET_SOURCES = ['unknown', 'aircraft altitude', 'MCP/FCU', 'FMS'] as const;
 
-const BDS_4_0: RegisterSpec = {
+const BDS_4_0: RegisterSpec<VerticalIntention> = {
 	bds: '4,0',
 	name: 'Selected vertical intention',
 	reject(mb) {
@@ -364,11 +365,11 @@ export interface TrackAndTurn {
 	tas: number | null;
 }
 
-const BDS_5_0: RegisterSpec = {
+const BDS_5_0: RegisterSpec<TrackAndTurn> = {
 	bds: '5,0',
 	name: 'Track and turn report',
 	reject(mb) {
-		const r = BDS_5_0.decode(mb) as TrackAndTurn;
+		const r = BDS_5_0.decode(mb);
 		return firstOf(
 			wrongStatus(mb, 1, 10, 'roll'),
 			wrongStatus(mb, 12, 11, 'track'),
@@ -420,11 +421,11 @@ export interface HeadingAndSpeed {
 	inertialRate: number | null;
 }
 
-const BDS_6_0: RegisterSpec = {
+const BDS_6_0: RegisterSpec<HeadingAndSpeed> = {
 	bds: '6,0',
 	name: 'Heading and speed report',
 	reject(mb) {
-		const r = BDS_6_0.decode(mb) as HeadingAndSpeed;
+		const r = BDS_6_0.decode(mb);
 		const tooSteep = (rate: number | null) => rate !== null && Math.abs(rate) > 6000;
 		return firstOf(
 			wrongStatus(mb, 1, 11, 'heading'),
@@ -481,11 +482,11 @@ export const METEO_SOURCES = ['invalid', 'INS', 'GNSS', 'DME/DME', 'VOR/DME'];
 /** Turbulence, wind shear, … in 4,4 and 4,5. */
 export const HAZARD_LEVELS = ['nil', 'light', 'moderate', 'severe'];
 
-const BDS_4_4: RegisterSpec = {
+const BDS_4_4: RegisterSpec<MeteoRoutine> = {
 	bds: '4,4',
 	name: 'Meteorological routine air report',
 	reject(mb) {
-		const r = BDS_4_4.decode(mb) as MeteoRoutine;
+		const r = BDS_4_4.decode(mb);
 		return firstOf(
 			r.source > 4 ? `FOM/source ${r.source} is reserved (0–4 are defined)` : null,
 			// Not required by the spec, but a report without wind says next to nothing (pyModeS).
@@ -537,11 +538,11 @@ export interface MeteoHazard {
 	radioHeight: number | null;
 }
 
-const BDS_4_5: RegisterSpec = {
+const BDS_4_5: RegisterSpec<MeteoHazard> = {
 	bds: '4,5',
 	name: 'Meteorological hazard report',
 	reject(mb) {
-		const r = BDS_4_5.decode(mb) as MeteoHazard;
+		const r = BDS_4_5.decode(mb);
 		return firstOf(
 			// 1,7's pattern (32 zero bits at the end) also passes 4,5's checks; it's more specific.
 			BDS_1_7.reject(mb) === null ? "fits 1,7's pattern, which is more specific" : null,
@@ -593,11 +594,11 @@ export interface AirReferencedState {
 	verticalRate: number | null;
 }
 
-const BDS_5_3: RegisterSpec = {
+const BDS_5_3: RegisterSpec<AirReferencedState> = {
 	bds: '5,3',
 	name: 'Air-referenced state vector',
 	reject(mb) {
-		const r = BDS_5_3.decode(mb) as AirReferencedState;
+		const r = BDS_5_3.decode(mb);
 		return firstOf(
 			wrongStatus(mb, 1, 11, 'heading'),
 			wrongStatus(mb, 13, 10, 'indicated airspeed'),
@@ -665,11 +666,11 @@ function altitudeReason(feet: number): string | null {
 		: null;
 }
 
-const BDS_5_1: RegisterSpec = {
+const BDS_5_1: RegisterSpec<PositionCoarse> = {
 	bds: '5,1',
 	name: 'Position report coarse',
 	reject(mb) {
-		const r = BDS_5_1.decode(mb) as PositionCoarse;
+		const r = BDS_5_1.decode(mb);
 		return firstOf(
 			!flag(mb, 1) ? 'status bit 1 says "no position"' : null,
 			Math.abs(r.lat) > 90 ? `latitude ${r.lat.toFixed(1)}° is beyond ±90°` : null,
@@ -684,11 +685,11 @@ const BDS_5_1: RegisterSpec = {
 	})
 };
 
-const BDS_5_2: RegisterSpec = {
+const BDS_5_2: RegisterSpec<PositionFine> = {
 	bds: '5,2',
 	name: 'Position report fine',
 	reject(mb) {
-		const r = BDS_5_2.decode(mb) as PositionFine;
+		const r = BDS_5_2.decode(mb);
 		return firstOf(
 			!flag(mb, 1) ? 'status bit 1 says "no position"' : null,
 			altitudeReason(r.altitude)
@@ -745,7 +746,7 @@ export function adsbRegister(s: Squitter): ExtendedSquitter['bds'] | null {
 	return null;
 }
 
-function squitterSpec(bds: ExtendedSquitter['bds'], name: string): RegisterSpec {
+function squitterSpec(bds: ExtendedSquitter['bds'], name: string): RegisterSpec<ExtendedSquitter> {
 	return {
 		bds,
 		name,
