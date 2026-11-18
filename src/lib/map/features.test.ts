@@ -30,18 +30,22 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		messages: 10,
 		signal: null,
 		adsb: true,
-		callsign: { value: 'DLH4LW', t: 0, from: 'TC 4' },
+		callsign: { value: 'DLH4LW', t: 0, from: { kind: 'adsb', tc: 4 } },
 		registration: null,
-		category: { value: { set: 'A', code: 3, name: 'Large (34–136 t)' }, t: 0, from: 'TC 4' },
+		category: {
+			value: { set: 'A', code: 3, name: 'Large (34–136 t)' },
+			t: 0,
+			from: { kind: 'adsb', tc: 4 }
+		},
 		squawk: null,
 		emergency: null,
 		advisory: null,
 		ident: null,
-		altitude: { value: 35_000, t: 0, from: 'TC 11' },
+		altitude: { value: 35_000, t: 0, from: { kind: 'adsb', tc: 11 } },
 		gnssHeight: null,
 		onGround: false,
 		surface: null,
-		ground: { value: { speed: 480, track: 90 }, t: 0, from: 'TC 19' },
+		ground: { value: { speed: 480, track: 90 }, t: 0, from: { kind: 'adsb', tc: 19 } },
 		turnRate: null,
 		air: null,
 		verticalRate: null,
@@ -77,7 +81,7 @@ describe('dead reckoning', () => {
 
 	test('in a turn: along the arc, the symbol turning with it', () => {
 		// 3°/s right for 10 s: 30° on. Moving the chord's length along the mean track (105°).
-		const a = aircraft({ turnRate: { value: 3, t: 0, from: 'TC 19' } });
+		const a = aircraft({ turnRate: { value: 3, t: 0, from: { kind: 'adsb', tc: 19 } } });
 		const shown = shownPosition(a, 10_000)!;
 		expect(shown.track).toBeCloseTo(120, 0);
 		expect(bearing({ lat: 52, lon: 14 }, shown)).toBeCloseTo(105, 0);
@@ -91,7 +95,7 @@ describe('dead reckoning', () => {
 
 	test('not without a recent ground speed, not on the ground, never unconfirmed', () => {
 		const old = aircraft({
-			ground: { value: { speed: 480, track: 90 }, t: -11_000, from: 'TC 19' }
+			ground: { value: { speed: 480, track: 90 }, t: -11_000, from: { kind: 'adsb', tc: 19 } }
 		});
 		expect(shownPosition(old, 3000)!.extrapolatedKm).toBe(0);
 		const parked = aircraft({ position: { lat: 52, lon: 14, t: 0, from: 'pair', surface: true } });
@@ -122,10 +126,10 @@ describe('features', () => {
 	});
 
 	test('alerts: ring tier, badge, a pulse when it starts, IDENT blinking', () => {
-		const streak = <T>(value: T, since: number, from = 'TC 28') => ({
+		const streak = <T>(value: T, since: number, tc = 28) => ({
 			value,
 			t: 1000,
-			from,
+			from: { kind: 'adsb' as const, tc },
 			since,
 			count: 2
 		});
@@ -136,7 +140,7 @@ describe('features', () => {
 		expect(at(750).pulse).toBeCloseTo(0.5); // half way through the first of the pulses
 		expect(at(PULSES * PULSE_MS).pulse).toBe(-1);
 		expect(at(750, false).pulse).toBe(-1);
-		const ident = aircraft({ ident: streak(true as const, 0, 'TC 11') });
+		const ident = aircraft({ ident: streak(true as const, 0, 11) });
 		const blink = (now: number) => aircraftFeatures([ident], now).features[0].properties;
 		expect(blink(1000)).toMatchObject({ badge: 'IDENT', dim: false, tier: '' });
 		expect(blink(1500).dim).toBe(true);
@@ -148,14 +152,14 @@ describe('features', () => {
 				...resolutionAdvisory(advisoryField(0xe2, { sense, threat }))
 			},
 			t: 1000,
-			from: 'TC 28',
+			from: { kind: 'adsb' as const, tc: 28 },
 			since: 0,
 			count: 2
 		});
 		const up = aircraft({ icao: 'AAAAAA', advisory: ra('BBBBBB', 'up') });
 		const down = aircraft({
 			icao: 'BBBBBB',
-			altitude: { value: 34_000, t: 0, from: 'TC 11' },
+			altitude: { value: 34_000, t: 0, from: { kind: 'adsb', tc: 11 } },
 			position: { lat: 52.05, lon: 14, t: 0, from: 'pair', surface: false },
 			advisory: ra('AAAAAA', 'down')
 		});
@@ -212,7 +216,7 @@ describe('features', () => {
 
 	test(`the predicted path: ${PREDICT_S} s in 5 s pieces, ${PREDICT_SELECTED_S} s with minute marks when selected`, () => {
 		const climbing = aircraft({
-			verticalRate: { value: { rate: 1200, source: 'baro' }, t: 0, from: 'TC 19' }
+			verticalRate: { value: { rate: 1200, source: 'baro' }, t: 0, from: { kind: 'adsb', tc: 19 } }
 		});
 		const { lines, minutes } = predictionFeatures([climbing], 2000, null);
 		expect(lines.features.length).toBe(PREDICT_S / 5);
@@ -242,12 +246,12 @@ describe('features', () => {
 
 	test('uncertainty circles: metres to pixels at zoom 0, at the latitude', () => {
 		const a = aircraft({
-			nacP: { value: 9, t: 0, from: 'TC 29' },
-			positionCode: { value: { tc: 11, nicB: 1 }, t: 0, from: 'TC 11' },
+			nacP: { value: 9, t: 0, from: { kind: 'adsb', tc: 29 } },
+			positionCode: { value: { tc: 11, nicB: 1 }, t: 0, from: { kind: 'adsb', tc: 11 } },
 			operational: {
 				value: { version: 2, hrd: 'true', sil: 3, silSupplement: 0, nicA: 1, nicC: null },
 				t: 0,
-				from: 'TC 31'
+				from: { kind: 'adsb', tc: 31 }
 			}
 		});
 		const [f] = uncertaintyFeatures([a], 0).features;
@@ -263,8 +267,8 @@ describe('features', () => {
 
 	test('uncertainty unknown (NACp 0, TC 18): the warning ring; nothing said yet: nothing', () => {
 		const blind = aircraft({
-			nacP: { value: 0, t: 0, from: 'TC 31' },
-			positionCode: { value: { tc: 18, nicB: 0 }, t: 0, from: 'TC 18' }
+			nacP: { value: 0, t: 0, from: { kind: 'adsb', tc: 31 } },
+			positionCode: { value: { tc: 18, nicB: 0 }, t: 0, from: { kind: 'adsb', tc: 18 } }
 		});
 		const [f] = uncertaintyFeatures([blind], 0).features;
 		expect(f.properties).toEqual({

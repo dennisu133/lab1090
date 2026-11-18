@@ -4,6 +4,7 @@
  * resolution advisories.
  */
 import { inEffect, splitAdvisory, type ResolutionAdvisory } from '#lib/modes/acas.ts';
+import type { Provenance } from '#lib/modes/adsb-memory.ts';
 import type { Altitude } from '#lib/modes/altitude.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
 import { NAC_P, SIL } from '#lib/modes/status.ts';
@@ -20,6 +21,23 @@ export interface Field {
 	mono?: boolean;
 	/** A flag before the value: ISO 3166-1 alpha-2 code and the State's name. */
 	flag?: { country: string | null; name: string };
+}
+
+/**
+ * Where a value came from (modes/adsb-memory.ts), as the specs name it: "TC 19" or "TC 5–8"
+ * (ADS-B type codes), "DF4 reply" (a radar reply), "5,0" (a Comm-B register), "position check".
+ */
+export function provenanceText(p: Provenance): string {
+	switch (p.kind) {
+		case 'adsb':
+			return p.to === undefined ? `TC ${p.tc}` : `TC ${p.tc}–${p.to}`;
+		case 'reply':
+			return `DF${p.df} reply`;
+		case 'comm-b':
+			return p.bds;
+		case 'position check':
+			return 'position check';
+	}
 }
 
 export function altitudeField(altitude: Altitude, what = 'Barometric altitude'): Field {

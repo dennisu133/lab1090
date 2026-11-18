@@ -152,9 +152,9 @@ describe('the capture', () => {
 		const withAll = aircraft.filter((a) => Object.values(a.commB).every((r) => r !== null));
 		expect(withAll.length).toBe(12);
 		const bel = byCallsign('BEL5XD').commB;
-		expect(bel.intention?.from).toBe('4,0');
-		expect(bel.trackAndTurn?.from).toBe('5,0');
-		expect(bel.headingAndSpeed?.from).toBe('6,0');
+		expect(bel.intention?.from).toEqual({ kind: 'comm-b', bds: '4,0' });
+		expect(bel.trackAndTurn?.from).toEqual({ kind: 'comm-b', bds: '5,0' });
+		expect(bel.headingAndSpeed?.from).toEqual({ kind: 'comm-b', bds: '6,0' });
 	});
 });
 
@@ -176,11 +176,15 @@ describe('Tracker', () => {
 		t.add(df4, as('known'), 2000);
 		t.add(df5, as('known'), 2500);
 		const a = t.get('ABC123')!;
-		expect(a.altitude).toEqual({ value: replyAltitude(df4).feet!, t: 2000, from: 'DF4 reply' });
+		expect(a.altitude).toEqual({
+			value: replyAltitude(df4).feet!,
+			t: 2000,
+			from: { kind: 'reply', df: 4 }
+		});
 		expect(a.squawk).toEqual({
 			value: replySquawk(df5),
 			t: 2500,
-			from: 'DF5 reply',
+			from: { kind: 'reply', df: 5 },
 			since: 1500,
 			count: 2
 		});
@@ -270,7 +274,11 @@ describe('Tracker', () => {
 		t.add(reply('NABCD'), german, 1000); // not D…: random bits
 		expect(t.get('3C6586')!.registration).toBeNull();
 		t.add(reply('DAIZA'), german, 2000);
-		expect(t.get('3C6586')!.registration).toEqual({ value: 'D-AIZA', t: 2000, from: '2,1' });
+		expect(t.get('3C6586')!.registration).toEqual({
+			value: 'D-AIZA',
+			t: 2000,
+			from: { kind: 'comm-b', bds: '2,1' }
+		});
 	});
 });
 

@@ -2,7 +2,15 @@
  * What /comm-b shows: register contents, comparisons with ADS-B, and how the register was
  * inferred, as Fields (field.ts) and tooltip text.
  */
-import type { Candidate, Comparison, How, Inference, Rejection, Unit } from '#lib/modes/comm-b.ts';
+import type {
+	Candidate,
+	ComparedWith,
+	Comparison,
+	How,
+	Inference,
+	Rejection,
+	Unit
+} from '#lib/modes/comm-b.ts';
 import {
 	HAZARD_LEVELS,
 	type DataLinkCapability,
@@ -12,7 +20,7 @@ import {
 	type MeteoRoutine,
 	type Register
 } from '#lib/modes/registers.ts';
-import { advisoryFields, type Field } from './field';
+import { advisoryFields, provenanceText, type Field } from './field';
 import { directionText, n, signed } from './format';
 import { squitterFields } from './squitter';
 
@@ -551,6 +559,20 @@ export function mismatch(c: Comparison): string {
 	}
 }
 
+/** What a register value was compared with: "TC 19", "this reply", "IAS at reply altitude", … */
+function comparedWithText(w: ComparedWith): string {
+	switch (w.kind) {
+		case 'this reply':
+			return 'this reply';
+		case 'mach':
+			return `IAS at ${w.altitude} altitude`;
+		case 'address block':
+			return `Address block (${w.state})`;
+		default:
+			return provenanceText(w);
+	}
+}
+
 function age(c: Comparison): string {
 	return c.ageMs === null ? '' : ` ${(c.ageMs / 1000).toFixed(1)} s earlier`;
 }
@@ -568,19 +590,19 @@ export function comparisonFields(comparisons: Comparison[]): Field[] {
 			case 'position':
 				return {
 					value: c.ok ? `✓ position${delta(c.difference, 'km')}` : `✗ ${mismatch(c)}`,
-					title: `Position ${c.difference.toFixed(2)} km from the ADS-B position (${c.from}${age(c)}); allowed: ${c.tolerance.toFixed(1)} km`,
+					title: `Position ${c.difference.toFixed(2)} km from the ADS-B position (${comparedWithText(c.from)}${age(c)}); allowed: ${c.tolerance.toFixed(1)} km`,
 					tone
 				};
 			case 'text':
 				return {
 					value: c.ok ? `✓ ${c.quantity}` : `✗ ${mismatch(c)}`,
-					title: `Comm-B: ${c.commB}. ${c.from}${age(c)}: ${c.other}.`,
+					title: `Comm-B: ${c.commB}. ${comparedWithText(c.from)}${age(c)}: ${c.other}.`,
 					tone
 				};
 			case 'numeric':
 				return {
 					value: c.ok ? `✓ ${c.quantity}${delta(c.difference, c.unit)}` : `✗ ${mismatch(c)}`,
-					title: `Comm-B: ${quantityText(c.commB, c.unit)}. ${c.from}${age(c)}: ${quantityText(c.other, c.unit)}. Allowed difference: ${quantityText(c.tolerance, c.unit)}`,
+					title: `Comm-B: ${quantityText(c.commB, c.unit)}. ${comparedWithText(c.from)}${age(c)}: ${quantityText(c.other, c.unit)}. Allowed difference: ${quantityText(c.tolerance, c.unit)}`,
 					tone
 				};
 		}

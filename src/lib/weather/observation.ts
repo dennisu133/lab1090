@@ -44,6 +44,7 @@ import {
 	temperatureFromMach,
 	totalTemperature
 } from '#lib/modes/air-data.ts';
+import type { Provenance } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import type { HeadingAndSpeed, TrackAndTurn } from '#lib/modes/registers.ts';
 import { KT } from '#lib/units.ts';
@@ -97,7 +98,7 @@ export interface Inputs {
 	trackAndTurn: Reading<TrackAndTurn>;
 	headingAndSpeed: Reading<HeadingAndSpeed>;
 	/** Pressure altitude, ft, and where it was heard. */
-	altitude: { feet: number; from: string } | null;
+	altitude: { feet: number; from: Provenance } | null;
 	/** Where the declination is looked up: the aircraft's own ADS-B position, else the receiver's. */
 	position: LookupPosition;
 }

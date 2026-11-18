@@ -5,7 +5,7 @@ import { decimalYear, magneticField } from '#lib/weather/wmm.ts';
 import { advance, MAX_OPEN_TURN, motion, path, trueHeading, type Motion } from './motion';
 import type { TrackedAircraft } from './tracker';
 
-const at = <T>(value: T, from = 'TC 19') => ({ value, t: 0, from });
+const at = <T>(value: T, tc = 19) => ({ value, t: 0, from: { kind: 'adsb' as const, tc } });
 
 /** At 52°N 14°E at t = 0, eastbound at 480 kt, FL300; changes on top. */
 function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
@@ -23,7 +23,7 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		emergency: null,
 		advisory: null,
 		ident: null,
-		altitude: at(30_000, 'TC 11'),
+		altitude: at(30_000, 11),
 		gnssHeight: null,
 		onGround: false,
 		surface: null,
@@ -46,7 +46,7 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 }
 
 const op = (version: number, hrd: 'true' | 'magnetic' | null) =>
-	at({ version, hrd, sil: 3, silSupplement: 0, nicA: 0, nicC: null }, 'TC 31');
+	at({ version, hrd, sil: 3, silSupplement: 0, nicA: 0, nicC: null }, 31);
 
 const autopilot = (selectedHeading: number, lnav = false) =>
 	at(
@@ -56,7 +56,7 @@ const autopilot = (selectedHeading: number, lnav = false) =>
 			qnh: null,
 			modes: { autopilot: true, vnav: false, altitudeHold: false, approach: false, lnav }
 		},
-		'TC 29'
+		29
 	);
 
 const start = { lat: 52, lon: 14 };
@@ -174,7 +174,7 @@ describe('up and down', () => {
 				qnh: null,
 				modes: { autopilot: true, vnav: false, altitudeHold, approach: false, lnav: true }
 			},
-			'TC 29'
+			29
 		);
 
 	test('climbing at the vertical rate, levelling off at the selected altitude', () => {
@@ -197,7 +197,7 @@ describe('up and down', () => {
 
 	test('the altitude is carried forward to the position time', () => {
 		// Altitude from 3 s before the position, climbing 2,000 ft/min: +100 ft.
-		const m = climbing({ altitude: { value: 30_000, t: -3000, from: 'TC 11' } });
+		const m = climbing({ altitude: { value: 30_000, t: -3000, from: { kind: 'adsb', tc: 11 } } });
 		expect(m.altitude).toBeCloseTo(30_100, 9);
 	});
 });

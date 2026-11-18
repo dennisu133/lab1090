@@ -23,7 +23,7 @@
  * Shared by server and browser; no state here (the ADS-B side comes from AdsbMemory).
  */
 import { distanceKm } from '#lib/geo.ts';
-import type { Broadcast, Timed } from './adsb-memory';
+import type { Broadcast, Provenance, Timed } from './adsb-memory';
 import { machFromCas } from './air-data';
 import { decodeLocal } from './cpr';
 import { toHex } from './frame';
@@ -47,10 +47,21 @@ export interface Context {
 /** '': a plain number (Mach). */
 export type Unit = 'kt' | '°' | 'ft' | 'hPa' | 'ft/min' | '';
 
+/**
+ * What a register value is compared with: an ADS-B value (its Provenance), the altitude in
+ * the same reply (DF20's AC field), the Mach number its IAS gives at the reply's or ADS-B's
+ * altitude, or (2,1) the nationality marks of the address's State.
+ */
+export type ComparedWith =
+	| Provenance
+	| { kind: 'this reply' }
+	| { kind: 'mach'; altitude: 'reply' | 'ADS-B' }
+	| { kind: 'address block'; state: string };
+
 /** One value of the register reading, next to the same quantity from somewhere else. */
 export type Comparison = {
-	/** Where the other value comes from, e.g. "TC 19" (ADS-B) or "IAS at reply altitude". */
-	from: string;
+	/** Where the other value comes from: describe/comm-b.ts says it in words. */
+	from: ComparedWith;
 	/** How long ago the ADS-B value was received, ms; null if it's from the reply itself. */
 	ageMs: number | null;
 	ok: boolean;
@@ -197,7 +208,7 @@ function score(c: Candidate): number {
 
 interface Other<T> {
 	value: T;
-	from: string;
+	from: ComparedWith;
 	ageMs: number | null;
 }
 
@@ -260,7 +271,7 @@ function compare(
 	if (register.bds === '2,1') return registrationCheck(register, address);
 	const altitude: Other<number> | null =
 		replyAltitude !== null
-			? { value: replyAltitude, from: 'this reply', ageMs: null }
+			? { value: replyAltitude, from: { kind: 'this reply' }, ageMs: null }
 			: fresh(adsb?.altitude ?? null, now);
 	if (!adsb) {
 		// Only the reply itself to compare with.
@@ -428,7 +439,14 @@ function compare(
 		case '6,5': {
 			const sent = adsb.recent.get(toHex(mb));
 			if (sent !== undefined && now - sent <= MAX_AGE_MS) {
-				return [{ kind: 'copy', from: 'DF17', ageMs: Math.max(0, now - sent), ok: true }];
+				return [
+					{
+						kind: 'copy',
+						from: { kind: 'adsb', tc: mb[0] >> 3 },
+						ageMs: Math.max(0, now - sent),
+						ok: true
+					}
+				];
 			}
 			const s = register.squitter;
 			if (s.kind === 'identification')
@@ -508,7 +526,7 @@ function registrationCheck(r: Registration, address: string | null): Comparison[
 			quantity: 'registration',
 			commB: mark ? formatRegistration(r.registration, mark) : r.registration,
 			other: block.marks.map((m) => `${m}…`).join(' or '),
-			from: `Address block (${block.state})`,
+			from: { kind: 'address block', state: block.state },
 			ageMs: null,
 			ok: mark !== null
 		}
@@ -524,7 +542,7 @@ function machCheck(mach: number | null, ias: number, altitude: Other<number>): C
 		{
 			...altitude,
 			value: machFromCas(ias, altitude.value),
-			from: `IAS at ${altitude.from === 'this reply' ? 'reply' : 'ADS-B'} altitude`
+			from: { kind: 'mach', altitude: altitude.from.kind === 'this reply' ? 'reply' : 'ADS-B' }
 		},
 		0.03
 	);

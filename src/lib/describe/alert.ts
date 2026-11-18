@@ -13,7 +13,7 @@ import { ADVISORY_MS, type Alert, type Cause } from '#lib/tracker/alerts.ts';
 import type { Streak, TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { shownPosition } from '#lib/tracker/shown.ts';
 import type { Section } from './aircraft';
-import { advisoryInstruction } from './field';
+import { advisoryInstruction, provenanceText } from './field';
 import { n, type Unit } from './format';
 
 /** The callsign, or the address while there's none. */
@@ -110,9 +110,11 @@ const RA_NEXT =
 
 /** Where a streak came from, in words. */
 function sourceText(s: Streak<unknown>): string {
-	if (s.from.startsWith('TC')) return `ADS-B (${s.from})`;
-	if (s.from.startsWith('DF')) return `radar replies (${s.from.replace(' reply', '')})`;
-	return `Comm-B register ${s.from}`;
+	const p = s.from;
+	if (p.kind === 'adsb') return `ADS-B (${provenanceText(p)})`;
+	if (p.kind === 'reply') return `radar replies (DF${p.df})`;
+	if (p.kind === 'comm-b') return `Comm-B register ${p.bds}`;
+	return `the ${provenanceText(p)}`;
 }
 
 const CONFIRMATION =

@@ -30,7 +30,7 @@
 import { destination } from '#lib/geo.ts';
 import { KM_PER_NM } from '#lib/units.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
-import { AdsbMemory } from '#lib/modes/adsb-memory.ts';
+import { AdsbMemory, type Provenance } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
@@ -61,7 +61,7 @@ export class WeatherPipeline {
 
 	#reference: () => LatLon;
 	#memory = new AdsbMemory();
-	#altitudes = new Map<string, { feet: number; from: string; rx: number }>();
+	#altitudes = new Map<string, { feet: number; from: Provenance; rx: number }>();
 	/** From ADS-B or register 2,0; kept as long as the aircraft is (AIRCRAFT_TTL_MS). */
 	#callsigns = new Map<string, { callsign: string; rx: number }>();
 
@@ -92,7 +92,7 @@ export class WeatherPipeline {
 
 		const altitude = [0, 4, 16, 20].includes(df) ? replyAltitude(data).feet : null;
 		if (altitude !== null)
-			this.#altitudes.set(addr.icao, { feet: altitude, from: `DF${df} reply`, rx });
+			this.#altitudes.set(addr.icao, { feet: altitude, from: { kind: 'reply', df }, rx });
 		if ((df !== 20 && df !== 21) || !mb) return null;
 
 		const adsb = this.#memory.get(addr.icao);

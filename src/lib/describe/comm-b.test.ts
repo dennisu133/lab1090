@@ -17,7 +17,7 @@ test('bitsTitle numbers the bits like the spec tables, 8 per line', () => {
 });
 
 test('comparisons: one rule for the digits, in the value and the tooltip alike', () => {
-	const base = { from: 'TC 19', ageMs: 1500 };
+	const base = { from: { kind: 'adsb', tc: 19 } as const, ageMs: 1500 };
 	const comparisons: Comparison[] = [
 		{
 			...base,
@@ -43,7 +43,7 @@ test('comparisons: one rule for the digits, in the value and the tooltip alike',
 		},
 		{ ...base, kind: 'position', difference: 87.24, tolerance: 1.5, ok: false },
 		{ ...base, kind: 'text', quantity: 'callsign', commB: 'DLH4LW', other: 'DLH4LW', ok: true },
-		{ ...base, kind: 'copy', from: 'DF17', ok: true }
+		{ ...base, kind: 'copy', ok: true }
 	];
 	const fields = comparisonFields(comparisons);
 	expect(fields.map((f) => f.value)).toEqual([

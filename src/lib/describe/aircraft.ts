@@ -24,7 +24,7 @@ import { EXTRAPOLATE_MS, SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
 import { KM_PER_NM, NM } from '#lib/units.ts';
 import { alertSection, identField } from './alert';
 import { contrailField } from './contrail';
-import type { Field } from './field';
+import { provenanceText, type Field } from './field';
 import { ago, directionText, distanceText, flightLevel, n, signed, type Unit } from './format';
 import { routeSection } from './route';
 import { weatherHereFields } from './weather';
@@ -51,14 +51,15 @@ export interface Section {
 
 /** Where a value came from, for the end of a tooltip. */
 function source<T>(v: Timed<T>, now: number): string {
+	const p = v.from;
 	const what =
-		v.from === 'position check'
+		p.kind === 'position check'
 			? 'the position check'
-			: v.from.startsWith('TC')
-				? `ADS-B (${v.from})`
-				: v.from.startsWith('DF')
-					? `a radar ${v.from.replace('DF', 'DF ')}`
-					: `Comm-B register ${v.from}, read by a radar`;
+			: p.kind === 'adsb'
+				? `ADS-B (${provenanceText(p)})`
+				: p.kind === 'reply'
+					? `a radar DF ${p.df} reply`
+					: `Comm-B register ${p.bds}, read by a radar`;
 	return ` From ${what}, ${ago(now - v.t)}.`;
 }
 
@@ -259,7 +260,7 @@ function positionFields(
 				p.from === 'pair'
 					? 'an even and an odd message together say which zone (global decoding)'
 					: 'the zone came from its own position a moment earlier (local decoding)'
-			}. It resolves about 5 m (1.25 m on the ground).${source({ value: null, t: p.t, from: p.surface ? 'TC 5–8' : 'TC 9–18' }, now)}`,
+			}. It resolves about 5 m (1.25 m on the ground).${source({ value: null, t: p.t, from: p.surface ? { kind: 'adsb', tc: 5, to: 8 } : { kind: 'adsb', tc: 9, to: 18 } }, now)}`,
 			tone: 'main',
 			mono: true
 		});

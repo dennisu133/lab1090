@@ -47,7 +47,7 @@
  */
 import { inEffect, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
-import { AdsbMemory, type Timed } from '#lib/modes/adsb-memory.ts';
+import { AdsbMemory, type Provenance, type Timed } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
@@ -105,6 +105,12 @@ export const ADVISORY_GAP_MS = 10_000;
 export const IDENT_GAP_MS = 20_000;
 
 /** A value, and how many messages in a row said so (alerts.ts wants two). */
+/** A radar reply's value waiting for a second, agreeing one (#fromReply). */
+interface Pending {
+	value: string | number;
+	t: number;
+}
+
 export interface Streak<T> extends Timed<T> {
 	/** When the first of them arrived. */
 	since: number;
@@ -119,7 +125,7 @@ function streak<T>(
 	old: Streak<T> | null,
 	value: T,
 	t: number,
-	from: string,
+	from: Provenance,
 	same: (a: T, b: T) => boolean = (a, b) => a === b,
 	gap = Infinity,
 	count = 1
@@ -273,7 +279,7 @@ export class Tracker {
 	/** Recent ground tracks per aircraft, oldest first, for the turn rate (#turn). */
 	#tracks = new Map<string, { t: number; track: number }[]>();
 	/** Reply values waiting for confirmation, per `${icao} ${field}`. */
-	#pending = new Map<string, Timed<string | number>>();
+	#pending = new Map<string, Pending>();
 	/** Reply values that weren't taken (yet): the tests read this. */
 	heldBack = 0;
 	/** The latest MAX_REJECTIONS positions that failed the checks: the tests read them. */
@@ -312,10 +318,10 @@ export class Tracker {
 		let a: TrackedAircraft = { ...old, lastSeen: t, messages: old.messages + 1, signal };
 		const mb = payload(data);
 		if (df === 17 && mb) a = this.#adsb(a, mb, t);
-		const from = `DF${df} reply`;
+		const from: Provenance = { kind: 'reply', df };
 		if ([0, 4, 16, 20].includes(df)) {
 			const feet = replyAltitude(data).feet;
-			const close = (b: Timed<string | number>) =>
+			const close = (b: Pending) =>
 				Math.abs(feet! - (b.value as number)) <=
 				ALTITUDE_SLACK_FT + (MAX_FT_PER_MIN * Math.abs(t - b.t)) / 60_000;
 			if (feet !== null && this.#fromReply(a.icao, 'altitude', a.altitude, feet, t, close))
@@ -323,7 +329,7 @@ export class Tracker {
 		}
 		if (df === 5 || df === 21) {
 			const squawk = replySquawk(data);
-			const same = (b: Timed<string | number>) => b.value === squawk;
+			const same = (b: Pending) => b.value === squawk;
 			const taken = this.#fromReply(a.icao, 'squawk', a.squawk, squawk, t, same);
 			// Confirmed by a waiting reply: that one started the streak.
 			if (taken === 'current') a.squawk = streak(a.squawk, squawk, t, from);
@@ -362,7 +368,7 @@ export class Tracker {
 		this.#memory.add(a.icao, me, t);
 		a.adsb = true;
 		const s = squitter(me);
-		const from = `TC ${me[0] >> 3}`;
+		const from: Provenance = { kind: 'adsb', tc: me[0] >> 3 };
 		const stamp = <T>(value: T): Timed<T> => ({ value, t, from });
 
 		switch (s.kind) {
@@ -438,7 +444,7 @@ export class Tracker {
 	 * unwrapped first (359° → 1° is +2°, not −358°). In the capture, aircraft flying straight
 	 * come out within ±0.04°/s; the two course changes in it turned at up to 0.4 and 0.8°/s.
 	 */
-	#turn(icao: string, track: number, t: number, from: string): Timed<number> | null {
+	#turn(icao: string, track: number, t: number, from: Provenance): Timed<number> | null {
 		const recent = (this.#tracks.get(icao) ?? []).filter((s) => t - s.t <= TURN_WINDOW_MS);
 		recent.push({ t, track });
 		this.#tracks.set(icao, recent);
@@ -476,7 +482,7 @@ export class Tracker {
 		if (outcome.kind === 'rejected' || outcome.kind === 'restart') {
 			this.rejections.push({ icao: a.icao, outcome });
 			if (this.rejections.length > MAX_REJECTIONS) this.rejections.shift();
-			a.lastRejection = { value: outcome.reason, t, from: 'position check' };
+			a.lastRejection = { value: outcome.reason, t, from: { kind: 'position check' } };
 		}
 		if (outcome.kind === 'rejected') return a;
 
@@ -507,7 +513,7 @@ export class Tracker {
 		current: Timed<string | number> | null,
 		value: string | number,
 		t: number,
-		agrees: (other: Timed<string | number>) => boolean
+		agrees: (other: Pending) => boolean
 	): 'current' | { pending: number } | null {
 		const key = `${icao} ${field}`;
 		if (current && t - current.t <= REPLY_CURRENT_MS && agrees(current)) {
@@ -519,13 +525,13 @@ export class Tracker {
 			this.#pending.delete(key);
 			return { pending: pending.t };
 		}
-		this.#pending.set(key, { value, t, from: field });
+		this.#pending.set(key, { value, t });
 		this.heldBack++;
 		return null;
 	}
 
 	/** SPI on or off, from a message that carries the bit. */
-	#ident(a: TrackedAircraft, spi: boolean, t: number, from: string): TrackedAircraft {
+	#ident(a: TrackedAircraft, spi: boolean, t: number, from: Provenance): TrackedAircraft {
 		a.ident = spi ? streak<true>(a.ident, true, t, from, () => true, IDENT_GAP_MS) : null;
 		return a;
 	}
@@ -534,7 +540,7 @@ export class Tracker {
 		old: Streak<ResolutionAdvisory> | null,
 		r: ResolutionAdvisory,
 		t: number,
-		from: string
+		from: Provenance
 	): Streak<ResolutionAdvisory> {
 		return streak(old, r, t, from, sameEffect, ADVISORY_GAP_MS);
 	}
@@ -549,11 +555,12 @@ export class Tracker {
 		}).best;
 		if (!best || !best.comparisons.every((c) => c.ok)) return a;
 		const r = best.register;
-		const stamped = <T>(value: T): Timed<T> => ({ value, t, from: r.bds });
+		const from: Provenance = { kind: 'comm-b', bds: r.bds };
+		const stamped = <T>(value: T): Timed<T> => ({ value, t, from });
 		if (r.bds === '2,0') {
-			const same = (b: Timed<string | number>) => b.value === r.callsign;
+			const same = (b: Pending) => b.value === r.callsign;
 			// ADS-B's callsign has a CRC: a different one in a reply is more likely corrupted.
-			const adsb = a.callsign?.from.startsWith('TC') ? a.callsign : null;
+			const adsb = a.callsign?.from.kind === 'adsb' ? a.callsign : null;
 			if (adsb ? same(adsb) : this.#fromReply(a.icao, 'callsign', a.callsign, r.callsign, t, same))
 				a.callsign = stamped(r.callsign);
 		}
@@ -563,7 +570,7 @@ export class Tracker {
 			const mark = nationalityMark(r.registration, marks);
 			if (mark) a.registration = stamped(formatRegistration(r.registration, mark));
 		}
-		if (r.bds === '3,0') a.advisory = this.#advisory(a.advisory, r, t, r.bds);
+		if (r.bds === '3,0') a.advisory = this.#advisory(a.advisory, r, t, from);
 		if (r.bds === '4,0') a.commB = { ...a.commB, intention: stamped(r) };
 		if (r.bds === '5,0') a.commB = { ...a.commB, trackAndTurn: stamped(r) };
 		if (r.bds === '6,0') a.commB = { ...a.commB, headingAndSpeed: stamped(r) };

@@ -30,7 +30,7 @@ function inputs(
 	return {
 		trackAndTurn: { value: { ...TRACK, ...track }, rx: RX, t: 1000 },
 		headingAndSpeed: { value: { ...HEADING, ...heading }, rx: RX, t: 1000 + skewMs },
-		altitude: { feet: 39_000, from: 'DF20' },
+		altitude: { feet: 39_000, from: { kind: 'reply', df: 20 } },
 		position: { lat: 51.853, lon: 12.856, from: 'ADS-B' },
 		...more
 	};

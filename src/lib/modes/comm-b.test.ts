@@ -167,7 +167,11 @@ describe('two registers fit: ADS-B decides', () => {
 			const r = decode('5,0', mb);
 			if (r.bds !== '5,0' || r.groundSpeed === null || r.track === null) continue;
 			const adsb = broadcast({
-				ground: { value: { speed: r.groundSpeed + 5, track: r.track + 2 }, t: 0, from: 'TC 19' }
+				ground: {
+					value: { speed: r.groundSpeed + 5, track: r.track + 2 },
+					t: 0,
+					from: { kind: 'adsb', tc: 19 }
+				}
 			});
 			const inference = inferRegister(mb, { now: 1000, replyAltitude: null, adsb, address: null });
 			expect(inference.how).toBe('ADS-B');
@@ -182,7 +186,11 @@ describe('two registers fit: ADS-B decides', () => {
 			const r = decode('6,0', mb);
 			if (r.bds !== '6,0' || r.ias === null || r.heading === null) continue;
 			const adsb = broadcast({
-				air: { value: { speed: r.ias, type: 'IAS', heading: r.heading }, t: 0, from: 'TC 19' }
+				air: {
+					value: { speed: r.ias, type: 'IAS', heading: r.heading },
+					t: 0,
+					from: { kind: 'adsb', tc: 19 }
+				}
 			});
 			const inference = inferRegister(mb, { now: 1000, replyAltitude: null, adsb, address: null });
 			expect(inference.best?.bds).toBe('6,0');
@@ -201,7 +209,7 @@ test('angles are compared the short way round: 359° and 1° are 2° apart', () 
 		altitude: null,
 		gnssMinusBaro: null,
 		position: null,
-		ground: { value: { speed: 450, track: 1 }, t: 0, from: 'TC 19' },
+		ground: { value: { speed: 450, track: 1 }, t: 0, from: { kind: 'adsb', tc: 19 } },
 		air: null,
 		verticalRate: null,
 		selectedAltitude: null,
@@ -256,7 +264,7 @@ describe('ADS-B registers read via Comm-B: only an exact copy (or agreeing value
 	test('6,2 is also confirmed by agreeing values: selected altitude and pressure setting', () => {
 		const mb = fromHex(ME['6,2']);
 		const [selected, qnh] = [{ feet: 38_016, source: 'MCP/FCU' as const }, 1012.8];
-		const at = <T>(value: T) => ({ value, t: 0, from: 'TC 29' });
+		const at = <T>(value: T) => ({ value, t: 0, from: { kind: 'adsb' as const, tc: 29 } });
 		const agree = { ...nothing, selectedAltitude: at(selected), qnh: at(qnh) };
 		const inference = inferRegister(mb, {
 			now: 1000,
@@ -325,7 +333,11 @@ describe('the rare registers (4,4, 4,5, 5,3) are a last resort', () => {
 			gnssMinusBaro: null,
 			position: null,
 			ground: null,
-			air: { value: { speed: ias(alone)! + 100, type: 'IAS', heading: null }, t: 0, from: 'TC 19' },
+			air: {
+				value: { speed: ias(alone)! + 100, type: 'IAS', heading: null },
+				t: 0,
+				from: { kind: 'adsb', tc: 19 }
+			},
 			verticalRate: null,
 			selectedAltitude: null,
 			qnh: null,

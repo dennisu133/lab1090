@@ -10,12 +10,22 @@ import { CprPairs, decodeLocal, type LatLon } from './cpr';
 import { toHex } from './frame';
 import { squitter } from './squitter';
 
+/**
+ * Where a value came from: an ADS-B message (its type code, or a range of them: `to`), a radar
+ * reply (its DF), a Comm-B register a radar read out (its BDS code), or the tracker's own
+ * position check. In words: describe/field.ts provenanceText.
+ */
+export type Provenance =
+	| { kind: 'adsb'; tc: number; to?: number }
+	| { kind: 'reply'; df: number }
+	| { kind: 'comm-b'; bds: string }
+	| { kind: 'position check' };
+
 export interface Timed<T> {
 	value: T;
 	/** When it was received, ms (the same clock as `add`'s `t`). */
 	t: number;
-	/** Where it came from, e.g. "TC 19". */
-	from: string;
+	from: Provenance;
 }
 
 export interface Broadcast {
@@ -74,8 +84,7 @@ export class AdsbMemory {
 		a.recent.set(toHex(me), t);
 
 		const s = squitter(me);
-		const tc = me[0] >> 3;
-		const from = `TC ${tc}`;
+		const from: Provenance = { kind: 'adsb', tc: me[0] >> 3 };
 		const stamp = <T>(value: T): Timed<T> => ({ value, t, from });
 
 		switch (s.kind) {
