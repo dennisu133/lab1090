@@ -4,7 +4,6 @@
 	agree. The switch says whether the profile uses the corrected winds.
 -->
 <script lang="ts">
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { n, signed } from '#lib/describe/format.ts';
 	import {
 		MAX_LEVEL_FT,
@@ -13,6 +12,7 @@
 		MIN_OTHERS,
 		type HeadingCheck
 	} from '#lib/weather/headings.ts';
+	import Card from './Card.svelte';
 
 	interface Props {
 		checks: Map<string, HeadingCheck>;
@@ -39,31 +39,26 @@
 	];
 </script>
 
-<div class="rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Heading checks"
-			wide
-		>
-			<p>
-				A wind is ground vector − air vector, and the air vector points along the aircraft's
-				<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. A
-				heading a few degrees off (an outdated magnetic variation table, a compass out of
-				calibration) adds a crosswind that isn't there: 8 kt per degree at 450 kt.
-			</p>
-			<p>
-				So each aircraft's wind is compared with the other aircraft's within {n(MAX_LEVEL_FT)}
-				ft and {MAX_TIME_MS / 60_000} minutes. Its ground vector minus their wind is the air vector it
-				should have flown; the angle from its own to that one is its heading error. Each other aircraft
-				counts once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?
-			</p>
-			<p class="text-zinc-400">
-				Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons, the
-				check's own estimates were up to 2.2° off. It can't see an error every aircraft shares.
-			</p>
-		</InfoTip>
+<Card title="Heading checks" wide>
+	{#snippet info()}
+		<p>
+			A wind is ground vector − air vector, and the air vector points along the aircraft's
+			<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. A
+			heading a few degrees off (an outdated magnetic variation table, a compass out of calibration)
+			adds a crosswind that isn't there: 8 kt per degree at 450 kt.
+		</p>
+		<p>
+			So each aircraft's wind is compared with the other aircraft's within {n(MAX_LEVEL_FT)}
+			ft and {MAX_TIME_MS / 60_000} minutes. Its ground vector minus their wind is the air vector it should
+			have flown; the angle from its own to that one is its heading error. Each other aircraft counts
+			once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?
+		</p>
+		<p class="text-zinc-400">
+			Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons, the
+			check's own estimates were up to 2.2° off. It can't see an error every aircraft shares.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		<span class="text-sm text-zinc-500">
 			{rows.length
 				? `${rows.length} aircraft checked, ${off} clearly off`
@@ -83,7 +78,7 @@
 				</button>
 			{/each}
 		</span>
-	</div>
+	{/snippet}
 
 	{#if rows.length}
 		<table class="w-full table-fixed text-sm tabular-nums">
@@ -130,4 +125,4 @@
 			? 'The profile, the layers and the strongest wind use the corrected winds.'
 			: 'The profile uses the winds as the aircraft sent them.'}
 	</p>
-</div>
+</Card>

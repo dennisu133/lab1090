@@ -11,6 +11,7 @@
 	import { R_OVER_G_FT, type Column, type HeightReference } from '#lib/weather/column.ts';
 	import type { Layer } from '#lib/weather/profile.ts';
 	import type { Qnh } from '#lib/weather/sky.ts';
+	import Card from './Card.svelte';
 
 	interface Props {
 		layer: Layer;
@@ -31,35 +32,30 @@
 	];
 </script>
 
-<div class="rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="The column below {levelOrFeet(layer.level)}"
-			wide
-		>
-			<p>
-				Pressure altitude is a pressure turned into a height with the standard atmosphere. It's only
-				a real height if the column of air below is standard. If it isn't, the pressure level the
-				aircraft flies on sits higher or lower, and the GNSS height shows by how much.
-			</p>
-			<p>
-				Two things move it: the <strong>pressure at the bottom</strong> (high pressure lifts every
-				level, about 27 ft per hPa) and the <strong>temperature of the column</strong> (warm air takes
-				more room, cold air less: the hypsometric equation, Δz = (R / g) · T · ln(p₁ / p₂)). With the
-				first from the pilots' QNH, what's left is the temperature.
-			</p>
-			<p class="text-zinc-400">
-				It's the same reason altimeters over-read in the cold, and why approach charts list
-				corrections for cold days: the aircraft is lower than the altimeter says.
-			</p>
-		</InfoTip>
+<Card title="The column below {levelOrFeet(layer.level)}" wide>
+	{#snippet info()}
+		<p>
+			Pressure altitude is a pressure turned into a height with the standard atmosphere. It's only a
+			real height if the column of air below is standard. If it isn't, the pressure level the
+			aircraft flies on sits higher or lower, and the GNSS height shows by how much.
+		</p>
+		<p>
+			Two things move it: the <strong>pressure at the bottom</strong> (high pressure lifts every
+			level, about 27 ft per hPa) and the <strong>temperature of the column</strong> (warm air takes more
+			room, cold air less: the hypsometric equation, Δz = (R / g) · T · ln(p₁ / p₂)). With the first from
+			the pilots' QNH, what's left is the temperature.
+		</p>
+		<p class="text-zinc-400">
+			It's the same reason altimeters over-read in the cold, and why approach charts list
+			corrections for cold days: the aircraft is lower than the altimeter says.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		<span class="text-lg">{isaText(c.isaDeviation)}</span>
 		<span class="text-sm text-zinc-500">
 			mean of {col.n} samples from {col.aircraft} aircraft
 		</span>
-	</div>
+	{/snippet}
 
 	<ol class="list-decimal space-y-2 pl-5 text-sm text-zinc-300">
 		<li>
@@ -153,4 +149,4 @@
 		Simplified: dry air, the ground at sea level, and the column wherever the aircraft were rather
 		than straight down. Each hPa of QNH error is about 27 ft, {(27 / c.feetPerKelvin).toFixed(2)} K here.
 	</p>
-</div>
+</Card>

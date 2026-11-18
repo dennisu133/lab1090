@@ -35,6 +35,7 @@
 	import WindProfile from './WindProfile.svelte';
 	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
+	import Card from './Card.svelte';
 
 	const stream = getStreams().weather;
 
@@ -134,13 +135,8 @@
 
 	<!-- Summary. Fixed heights: nothing below jumps as the values change. -->
 	<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Tropopause"
-				wide
-			>
+		<Card heading="h2" title="Tropopause" class="h-36" wide>
+			{#snippet info()}
 				<p>
 					The top of the weather. Below it (the troposphere) the air is warmed from the ground and
 					cools with height, about 6.5 K per km; above it (the stratosphere) the temperature stops
@@ -157,7 +153,7 @@
 					Over Europe usually FL300–FL390: lower in cold polar air, higher in warm air. The standard
 					atmosphere puts it at 36,089 ft.
 				</p>
-			</InfoTip>
+			{/snippet}
 			{#if top.found}
 				<p class="mt-2 text-2xl text-amber-300">
 					{top.atOrBelow ? '≤ ' : ''}{levelOrFeet(top.level)}
@@ -170,22 +166,17 @@
 				<p class="mt-2 text-2xl text-zinc-500">not found</p>
 				<p class="mt-1 text-xs text-zinc-500">{top.reason}</p>
 			{/if}
-		</div>
+		</Card>
 
-		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Strongest wind"
-				wide
-			>
+		<Card heading="h2" title="Strongest wind" class="h-36" wide>
+			{#snippet info()}
 				<p>
 					The layer with the fastest mean wind. A <strong>jet stream</strong> is a narrow band of
 					fast wind, at least 30 m/s ({Math.round(JET_KT)} kt) by the WMO's definition, usually just below
 					the tropopause, where cold polar air meets warmer air. Over Europe it often reaches 100–200
 					kt in winter.
 				</p>
-			</InfoTip>
+			{/snippet}
 			{#if strongest}
 				<p class="mt-2 font-mono text-2xl text-emerald-300">{windText(strongest.wind)}</p>
 				<p class="mt-1 text-xs text-zinc-500">
@@ -202,16 +193,12 @@
 					No layer with {MIN_SAMPLES} winds from {MIN_AIRCRAFT} aircraft yet.
 				</p>
 			{/if}
-		</div>
+		</Card>
 
-		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Sea-level pressure"
-			>
+		<Card heading="h2" title="Sea-level pressure" class="h-36">
+			{#snippet info()}
 				<p>QNH: the pressure the pilots near the ground set on their altimeters.</p>
-			</InfoTip>
+			{/snippet}
 			<p class="mt-2 text-2xl">{hpa(pressure.hPa)}</p>
 			<p class="mt-1 text-xs text-zinc-500">
 				{pressure.local.length
@@ -220,20 +207,15 @@
 						? `Assumed standard: ${pressure.standard} aircraft reported a setting, all on 1013.`
 						: 'Assumed standard: no aircraft has reported a setting yet.'}
 			</p>
-		</div>
+		</Card>
 
-		<div class="h-36 rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Air column"
-				align="right"
-			>
+		<Card heading="h2" title="Air column" class="h-36" align="right">
+			{#snippet info()}
 				<p>
 					How much warmer or colder than standard the air is on average from the ground up to the
 					level shown, from how far the aircraft's GNSS height is from its pressure altitude.
 				</p>
-			</InfoTip>
+			{/snippet}
 			{#if example}
 				<p class="mt-2 text-2xl text-amber-300">{isaText(example.column.isaDeviation)}</p>
 				<p class="mt-1 text-xs text-zinc-500">
@@ -244,22 +226,18 @@
 				<p class="mt-2 text-2xl text-zinc-500">—</p>
 				<p class="mt-1 text-xs text-zinc-500">No GNSS − baro heard yet.</p>
 			{/if}
-		</div>
+		</Card>
 	</section>
 
 	<!-- The three profiles share the altitude axis. -->
 	<section class="grid gap-4 lg:grid-cols-3">
-		<div class="rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Temperature"
-			>
+		<Card heading="h2" title="Temperature" headClass="mb-2">
+			{#snippet info()}
 				<p>
 					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
 					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
-			</InfoTip>
+			{/snippet}
 			<TemperatureProfile layers={all} tropopause={top} />
 			<div class="mt-2 text-xs text-zinc-400">
 				<InfoTip label="Contrails" class="font-semibold" wide above>
@@ -296,27 +274,18 @@
 					{/each}
 				</p>
 			</div>
-		</div>
-		<div class="rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Wind"
-			>
+		</Card>
+		<Card heading="h2" title="Wind" headClass="mb-2">
+			{#snippet info()}
 				<p>
 					Each layer's mean wind speed, with an arrow pointing where the air goes (up is north: an
 					arrow to the right is a westerly). The dashed line is jet stream strength.
 				</p>
-			</InfoTip>
+			{/snippet}
 			<WindProfile layers={all} {strongest} />
-		</div>
-		<div class="rounded-lg bg-zinc-900 p-4">
-			<InfoTip
-				heading="h2"
-				class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Height − pressure altitude"
-				align="right"
-			>
+		</Card>
+		<Card heading="h2" title="Height − pressure altitude" align="right" headClass="mb-2">
+			{#snippet info()}
 				<p>
 					How far each layer's pressure level really is from where the standard atmosphere puts it
 					(after the geoid and geopotential corrections). The guides show what a column with that
@@ -327,14 +296,14 @@
 					A dot left of the dashed ISA line: the level is lower than standard, the air below colder
 					(or the pressure lower).
 				</p>
-			</InfoTip>
+			{/snippet}
 			<ColumnChart
 				layers={all}
 				{columns}
 				qnh={pressure.hPa}
 				selected={example?.layer.level ?? null}
 			/>
-		</div>
+		</Card>
 	</section>
 
 	<!-- Two columns, each card at its own height: pressure and the column on the left, the

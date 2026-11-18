@@ -3,9 +3,9 @@
 	pressure settings aircraft report on their altimeters (lib/weather/sky.ts).
 -->
 <script lang="ts">
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { hpa, levelOrFeet } from '#lib/describe/format.ts';
 	import { STANDARD_TOLERANCE, type Qnh } from '#lib/weather/sky.ts';
+	import Card from './Card.svelte';
 
 	let { qnh, now }: { qnh: Qnh; now: number } = $props();
 
@@ -15,33 +15,28 @@
 	};
 </script>
 
-<div class="rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Sea-level pressure (QNH)"
-			wide
-		>
-			<p>
-				Below the <strong>transition altitude</strong> (5,000 ft over most of Germany) pilots set
-				their altimeters to the <strong>QNH</strong>, the airfield's pressure reduced to sea level,
-				so they read height above sea level. Higher up everyone uses the standard
-				<strong>1013.25 hPa</strong>, so all aircraft agree on what "FL350" is.
-			</p>
-			<p>
-				Aircraft report their setting in register 4,0 (0.1 hPa steps) and ADS-B TC 29 (0.8 hPa
-				steps). A setting more than {STANDARD_TOLERANCE} hPa from standard is someone's QNH; the median
-				of each aircraft's latest one is used, an average for the area. With none, standard is assumed.
-			</p>
-		</InfoTip>
+<Card title="Sea-level pressure (QNH)" wide>
+	{#snippet info()}
+		<p>
+			Below the <strong>transition altitude</strong> (5,000 ft over most of Germany) pilots set
+			their altimeters to the <strong>QNH</strong>, the airfield's pressure reduced to sea level, so
+			they read height above sea level. Higher up everyone uses the standard
+			<strong>1013.25 hPa</strong>, so all aircraft agree on what "FL350" is.
+		</p>
+		<p>
+			Aircraft report their setting in register 4,0 (0.1 hPa steps) and ADS-B TC 29 (0.8 hPa steps).
+			A setting more than {STANDARD_TOLERANCE} hPa from standard is someone's QNH; the median of each
+			aircraft's latest one is used, an average for the area. With none, standard is assumed.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		<span class="text-lg">{hpa(qnh.hPa)}</span>
 		<span class="text-sm text-zinc-500">
 			{qnh.local.length
 				? `median of ${qnh.local.length} aircraft`
 				: 'standard, assumed: no local setting heard yet'}
 		</span>
-	</div>
+	{/snippet}
 
 	{#if qnh.local.length}
 		<table class="w-full table-fixed text-sm tabular-nums">
@@ -73,4 +68,4 @@
 		{qnh.standard} aircraft on standard (1013.25 hPa). Local settings come from aircraft near the ground:
 		climbing out, or on approach.
 	</p>
-</div>
+</Card>

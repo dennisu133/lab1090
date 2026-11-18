@@ -4,7 +4,6 @@
 	the turns of the last half hour.
 -->
 <script lang="ts">
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { levelOrFeet, n, signed } from '#lib/describe/format.ts';
 	import { windText } from '#lib/describe/weather.ts';
 	import {
@@ -16,6 +15,7 @@
 		type TurnWind
 	} from '#lib/weather/circle.ts';
 	import { WINDOW_MS } from '#lib/weather/sky.ts';
+	import Card from './Card.svelte';
 
 	interface Props {
 		turns: TurnWind[];
@@ -39,34 +39,29 @@
 </script>
 
 <!-- Until the first turn there's nothing to plot: the card is just its title line. -->
-<div class="rounded-lg bg-zinc-900 p-4">
-	<div class={[latest && 'mb-3', 'flex flex-wrap items-baseline gap-x-3 gap-y-1']}>
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Winds from turns"
-			wide
-		>
-			<p>
-				An aircraft turning at a steady airspeed sweeps its air vector (TAS along the heading)
-				around a circle. Its ground vector, which ADS-B broadcasts twice a second, is that plus the
-				wind: so the ground vectors lie on the same circle, <strong>shifted by the wind</strong>.
-				Fit a circle through them: the centre is the wind, the radius the true airspeed.
-			</p>
-			<p class="text-zinc-400">
-				A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
-					60_000} minutes and {n(MAX_CLIMB_FT)} ft. An aircraft slowing down steadily spirals inwards,
-				which the fit allows for; anything else that leaves the points more than {MAX_RESIDUAL_KT}
-				kt rms off the curve doesn't count. Most turns happen near airports: holding patterns, approaches.
-				Cruise traffic on airways rarely turns that far.
-			</p>
-		</InfoTip>
+<Card title="Winds from turns" wide headClass={latest ? 'mb-3' : ''}>
+	{#snippet info()}
+		<p>
+			An aircraft turning at a steady airspeed sweeps its air vector (TAS along the heading) around
+			a circle. Its ground vector, which ADS-B broadcasts twice a second, is that plus the wind: so
+			the ground vectors lie on the same circle, <strong>shifted by the wind</strong>. Fit a circle
+			through them: the centre is the wind, the radius the true airspeed.
+		</p>
+		<p class="text-zinc-400">
+			A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
+				60_000} minutes and {n(MAX_CLIMB_FT)} ft. An aircraft slowing down steadily spirals inwards, which
+			the fit allows for; anything else that leaves the points more than {MAX_RESIDUAL_KT}
+			kt rms off the curve doesn't count. Most turns happen near airports: holding patterns, approaches.
+			Cruise traffic on airways rarely turns that far.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		<span class="text-sm text-zinc-500">
 			{turns.length
 				? `${turns.length} in the last ${WINDOW_MS / 60_000} min`
 				: 'no turn of 90° or more yet'}
 		</span>
-	</div>
+	{/snippet}
 
 	{#if latest}
 		{@const w = latest.wind.vector}
@@ -156,4 +151,4 @@
 			</div>
 		</div>
 	{/if}
-</div>
+</Card>

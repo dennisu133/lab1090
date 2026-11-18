@@ -6,7 +6,6 @@
 	wind along them.
 -->
 <script lang="ts">
-	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { directionText, levelOrFeet } from '#lib/describe/format.ts';
 	import { windText } from '#lib/describe/weather.ts';
 	import {
@@ -16,6 +15,7 @@
 		type Geostrophic
 	} from '#lib/weather/geostrophic.ts';
 	import { directionOf, speedOf, type Wind } from '#lib/weather/wind.ts';
+	import Card from './Card.svelte';
 
 	interface Props {
 		geo: Geostrophic;
@@ -100,46 +100,40 @@
 </script>
 
 <!-- Without a level flight there's nothing to plot: the card is its title and what it needs. -->
-<div class="rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Geostrophic wind"
-			wide
-		>
-			<p>
-				The wind that the <strong>slope of the pressure surfaces</strong> calls for, measured with GNSS
-				− baro alone: no heading, no airspeed, no radar questions.
-			</p>
-			<p>
-				An aircraft in level flight holds its pressure altitude, so it follows a surface of constant
-				pressure. Those surfaces aren't flat: they sag over cold air and low pressure. So along the
-				way its GNSS height rises and falls while its pressure altitude stays put.
-			</p>
-			<p>
-				On the rotating Earth, air doesn't flow down such a slope. The pressure force pushes it
-				downhill, the Coriolis force to the right of its motion, and they balance when it flows
-				<strong>along the height contours</strong>, the low side on its left (in the northern
-				hemisphere): wind = (g / f) × slope, with f = 2Ω · sin(latitude). That's why the wind
-				follows the isobars on a weather map.
-			</p>
-			<p class="text-zinc-400">
-				Each aircraft at each level gets its own offset, so its altimeter's own error drops out.
-				Needs
-				{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, together spread
-				at least {MIN_SPREAD_KM} km (rms) in every direction: along one airway alone, the slope across
-				it is unknown. A balance, not a measurement: around a low the real wind is slower, around a high
-				faster. Against weather balloons: within 2° of their direction, 30 % faster.
-			</p>
-		</InfoTip>
+<Card title="Geostrophic wind" wide>
+	{#snippet info()}
+		<p>
+			The wind that the <strong>slope of the pressure surfaces</strong> calls for, measured with GNSS
+			− baro alone: no heading, no airspeed, no radar questions.
+		</p>
+		<p>
+			An aircraft in level flight holds its pressure altitude, so it follows a surface of constant
+			pressure. Those surfaces aren't flat: they sag over cold air and low pressure. So along the
+			way its GNSS height rises and falls while its pressure altitude stays put.
+		</p>
+		<p>
+			On the rotating Earth, air doesn't flow down such a slope. The pressure force pushes it
+			downhill, the Coriolis force to the right of its motion, and they balance when it flows
+			<strong>along the height contours</strong>, the low side on its left (in the northern
+			hemisphere): wind = (g / f) × slope, with f = 2Ω · sin(latitude). That's why the wind follows
+			the isobars on a weather map.
+		</p>
+		<p class="text-zinc-400">
+			Each aircraft at each level gets its own offset, so its altimeter's own error drops out. Needs
+			{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, together spread at
+			least {MIN_SPREAD_KM} km (rms) in every direction: along one airway alone, the slope across it is
+			unknown. A balance, not a measurement: around a low the real wind is slower, around a high faster.
+			Against weather balloons: within 2° of their direction, 30 % faster.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		{#if geo.found}
 			<span class="font-mono text-lg text-emerald-300">{windText(geo.wind)}</span>
 			{#if geo.uncertainty !== null}
 				<span class="text-sm text-zinc-500">± {Math.round(geo.uncertainty)} kt</span>
 			{/if}
 		{/if}
-	</div>
+	{/snippet}
 
 	{#if points.length === 0 && !geo.found}
 		<p class="text-sm text-zinc-400">{geo.reason}</p>
@@ -237,4 +231,4 @@
 			</div>
 		</div>
 	{/if}
-</div>
+</Card>

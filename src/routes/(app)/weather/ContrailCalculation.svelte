@@ -26,6 +26,7 @@
 	} from '#lib/weather/contrail.ts';
 	import type { Observation } from '#lib/weather/observation.ts';
 	import ContrailChart from './ContrailChart.svelte';
+	import Card from './Card.svelte';
 
 	let { observation: o, tracker }: { observation: Observation; tracker: TrackerContrail | null } =
 		$props();
@@ -45,32 +46,28 @@
 	);
 </script>
 
-<div class="h-86 rounded-lg bg-zinc-900 p-4">
-	<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-		<InfoTip
-			heading="h3"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Contrail"
-		>
-			<p>
-				A contrail is a cloud the engines make. Burning kerosene gives water vapour and heat; behind
-				the engine the hot, wet exhaust mixes with the cold air around it. On the way from one to
-				the other, temperature and water vapour change in step, so in the diagram the mixture moves
-				along a straight line (<span class="text-amber-300">amber</span>). If that line crosses the
-				<span class="text-sky-300">water curve</span>, the mixture is supersaturated for a moment:
-				droplets form and freeze at once. That's the Schmidt–Appleman criterion (Schmidt 1941,
-				Appleman 1953; the form here is Schumann 1996).
-			</p>
-			<p>
-				Air with more water vapour starts higher up, closer to the curve: the more humid, the warmer
-				the air can be. The line drawn just touches the curve; any air on or above it gives a
-				contrail.
-			</p>
-			<p class="text-zinc-400">
-				Humidity at cruise level is almost never in the data (register 4,4 is rarely sent), so the
-				answer is the humidity the air would need. Looking up settles it.
-			</p>
-		</InfoTip>
+<Card title="Contrail" class="h-86" nowrap>
+	{#snippet info()}
+		<p>
+			A contrail is a cloud the engines make. Burning kerosene gives water vapour and heat; behind
+			the engine the hot, wet exhaust mixes with the cold air around it. On the way from one to the
+			other, temperature and water vapour change in step, so in the diagram the mixture moves along
+			a straight line (<span class="text-amber-300">amber</span>). If that line crosses the
+			<span class="text-sky-300">water curve</span>, the mixture is supersaturated for a moment:
+			droplets form and freeze at once. That's the Schmidt–Appleman criterion (Schmidt 1941,
+			Appleman 1953; the form here is Schumann 1996).
+		</p>
+		<p>
+			Air with more water vapour starts higher up, closer to the curve: the more humid, the warmer
+			the air can be. The line drawn just touches the curve; any air on or above it gives a
+			contrail.
+		</p>
+		<p class="text-zinc-400">
+			Humidity at cruise level is almost never in the data (register 4,4 is rarely sent), so the
+			answer is the humidity the air would need. Looking up settles it.
+		</p>
+	{/snippet}
+	{#snippet header()}
 		{#if r}
 			<span class={['text-lg', o.temperatureProblem ? 'text-zinc-500' : 'text-zinc-100']}>
 				{contrailValue(r)}
@@ -84,7 +81,7 @@
 				temperature not used: {o.temperatureProblem}
 			</span>
 		{/if}
-	</div>
+	{/snippet}
 
 	{#if r && kelvin !== null && pressure !== null && feet !== null}
 		{@const t = r.at.thresholds}
@@ -190,4 +187,4 @@
 				: `its own reading, ${celsius(tracker.kelvin)}`}, and says “{contrailValue(tracker.range)}”.
 		</p>
 	{/if}
-</div>
+</Card>

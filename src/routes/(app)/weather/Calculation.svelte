@@ -22,6 +22,7 @@
 	import ContrailCalculation from './ContrailCalculation.svelte';
 	import IsaChart from './IsaChart.svelte';
 	import WindTriangle from './WindTriangle.svelte';
+	import Card from './Card.svelte';
 
 	interface Props {
 		observation: Observation;
@@ -51,33 +52,29 @@
 -->
 <div class="space-y-4">
 	<!-- Wind -->
-	<div class="h-86 rounded-lg bg-zinc-900 p-4">
+	<Card title="Wind" class="h-86" nowrap>
 		<!-- One line, whatever happens: the reason a value isn't used goes here and is cut off
 		     if it doesn't fit (the whole text is in its title), so nothing below moves. -->
-		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-			<InfoTip
-				heading="h3"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Wind"
-			>
-				<p>
-					The aircraft moves through the air (<span class="text-sky-300">air vector</span>: true
-					airspeed, in the direction the nose points), and the air moves over the ground (the
-					<span class="text-emerald-300">wind</span>). Together they make the path over the ground (<span
-						class="text-amber-300">ground vector</span
-					>: ground speed along the track).
-				</p>
-				<p>
-					So <strong>wind = ground − air</strong>. The ground vector comes from GPS, often blended
-					with the inertial reference system; the air vector from the pitot tube (true airspeed) and
-					the inertial reference system (heading). Mostly separate sensors, so their difference is
-					the wind, but an error in the heading goes straight into it.
-				</p>
-				<p class="text-zinc-400">
-					Directions are true (geographic north), clockwise. The wind is given where it blows
-					<em>from</em>, as in any weather report.
-				</p>
-			</InfoTip>
+		{#snippet info()}
+			<p>
+				The aircraft moves through the air (<span class="text-sky-300">air vector</span>: true
+				airspeed, in the direction the nose points), and the air moves over the ground (the
+				<span class="text-emerald-300">wind</span>). Together they make the path over the ground (<span
+					class="text-amber-300">ground vector</span
+				>: ground speed along the track).
+			</p>
+			<p>
+				So <strong>wind = ground − air</strong>. The ground vector comes from GPS, often blended
+				with the inertial reference system; the air vector from the pitot tube (true airspeed) and
+				the inertial reference system (heading). Mostly separate sensors, so their difference is the
+				wind, but an error in the heading goes straight into it.
+			</p>
+			<p class="text-zinc-400">
+				Directions are true (geographic north), clockwise. The wind is given where it blows
+				<em>from</em>, as in any weather report.
+			</p>
+		{/snippet}
+		{#snippet header()}
 			{#if o.wind}
 				<span class={['font-mono text-lg', o.windProblem ? 'text-zinc-500' : 'text-zinc-100']}>
 					{windText(o.wind.wind)}
@@ -88,7 +85,7 @@
 					not used: {o.windProblem}
 				</span>
 			{/if}
-		</div>
+		{/snippet}
 
 		{#if o.wind}
 			{@const w = o.wind}
@@ -187,28 +184,24 @@
 				· {levelOrFeet(o.inputs.altitude.feet)}
 			{/if}
 		</p>
-	</div>
+	</Card>
 
 	<!-- Temperature -->
-	<div class="h-86 rounded-lg bg-zinc-900 p-4">
-		<div class="mb-3 flex items-baseline gap-3 whitespace-nowrap">
-			<InfoTip
-				heading="h3"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Temperature"
-			>
-				<p>
-					Mach is the true airspeed divided by the <strong>speed of sound</strong>, and the speed of
-					sound depends on one thing only: the air's temperature. (Sound is carried by the moving
-					air molecules; warmer molecules move faster.) So TAS and Mach together give the
-					temperature away.
-				</p>
-				<p>
-					It works because the aircraft's air data computer did it the other way round: it measured
-					the temperature with a probe outside, worked out Mach from the pitot and static pressures,
-					and TAS = Mach × speed of sound. 5,0 and 6,0 hand us both results; we undo the last step.
-				</p>
-			</InfoTip>
+	<Card title="Temperature" class="h-86" nowrap>
+		{#snippet info()}
+			<p>
+				Mach is the true airspeed divided by the <strong>speed of sound</strong>, and the speed of
+				sound depends on one thing only: the air's temperature. (Sound is carried by the moving air
+				molecules; warmer molecules move faster.) So TAS and Mach together give the temperature
+				away.
+			</p>
+			<p>
+				It works because the aircraft's air data computer did it the other way round: it measured
+				the temperature with a probe outside, worked out Mach from the pitot and static pressures,
+				and TAS = Mach × speed of sound. 5,0 and 6,0 hand us both results; we undo the last step.
+			</p>
+		{/snippet}
+		{#snippet header()}
 			{#if o.temperature}
 				<span class={['text-lg', o.temperatureProblem ? 'text-zinc-500' : 'text-zinc-100']}>
 					{celsius(o.temperature.kelvin)}
@@ -222,7 +215,7 @@
 					not used: {o.temperatureProblem}
 				</span>
 			{/if}
-		</div>
+		{/snippet}
 
 		{#if o.temperature}
 			{@const t = o.temperature}
@@ -334,7 +327,7 @@
 				</ol>
 			</div>
 		{/if}
-	</div>
+	</Card>
 
 	<ContrailCalculation observation={o} tracker={contrail} />
 </div>
