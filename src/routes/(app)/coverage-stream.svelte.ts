@@ -1,9 +1,9 @@
 import { Coverage, type CoveragePoint, type Sector } from '#lib/coverage/coverage.ts';
 import { CoverageFeed } from '#lib/coverage/feed.ts';
 import { loadTerrain, type Terrain } from '#lib/coverage/terrain.ts';
-import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import type { WireFrame } from '#lib/receiver-types.ts';
+import type { StreamUpdate } from '#lib/receiver-types.ts';
+import type { UpdateListener } from '#lib/stream-connection.ts';
 import type { TrackerStream } from './tracker-stream.svelte';
 
 /** The sectors are published at most this often, ms; the plot's points less often. */
@@ -22,7 +22,7 @@ const POINTS_MS = 5000;
  * The terrain skyline (lib/coverage/terrain.ts) loads when the layer or the panel is first
  * shown: ~30 elevation tiles from AWS.
  */
-export class CoverageStream extends LiveFeed<never> {
+export class CoverageStream implements UpdateListener {
 	sectors = $state.raw<Sector[]>([]);
 	/** Thinned positions for the sky plot, oldest first. */
 	points = $state.raw<CoveragePoint[]>([]);
@@ -43,7 +43,6 @@ export class CoverageStream extends LiveFeed<never> {
 	#dirty = false;
 
 	constructor(tracker: TrackerStream, receiver: () => LatLon) {
-		super(0);
 		this.#tracker = tracker;
 		this.#receiver = receiver;
 	}
@@ -64,7 +63,7 @@ export class CoverageStream extends LiveFeed<never> {
 		);
 	}
 
-	protected reset(): void {
+	reset(): void {
 		this.#coverage = null;
 		this.#feed = new CoverageFeed();
 		this.sectors = [];
@@ -74,12 +73,11 @@ export class CoverageStream extends LiveFeed<never> {
 		this.last = null;
 	}
 
-	protected process(frames: WireFrame[]): never[] {
-		if (frames.length === 0) return [];
+	receive({ frames }: StreamUpdate): void {
+		if (frames.length === 0) return;
 		this.#coverage ??= new Coverage(this.#receiver(), this.terrain?.antennaKm ?? 0);
 		if (this.#feed.add(this.#coverage, this.#tracker.aircraft)) this.#dirty = true;
 		this.#publish(frames.at(-1)!.rx);
-		return [];
 	}
 
 	/**

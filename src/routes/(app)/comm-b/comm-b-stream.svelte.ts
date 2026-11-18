@@ -70,7 +70,8 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		super(MAX_ROWS);
 	}
 
-	protected reset(): void {
+	override reset(): void {
+		super.reset();
 		this.#memory = new AdsbMemory();
 		this.#callsigns.clear();
 		this.#recent = [];

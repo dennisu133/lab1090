@@ -1,6 +1,5 @@
 import type { Field } from '#lib/describe/field.ts';
 import { describe } from '#lib/describe/frame.ts';
-import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { mergeFrames } from '#lib/merge-frames.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import {
@@ -12,6 +11,7 @@ import {
 	typeCodeName
 } from '#lib/modes/frame.ts';
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
+import type { UpdateListener } from '#lib/stream-connection.ts';
 import { Tracker, type TrackedAircraft } from '#lib/tracker/tracker.ts';
 
 /** One message of the selected aircraft, decoded for the detail panel's feed. */
@@ -35,7 +35,7 @@ const MESSAGES = 40;
  * The stream's first update also holds the last 10 minutes of positions (see TrackHistory
  * on the server). Only this view merges them in, so the trails are there right away.
  */
-export class TrackerStream extends LiveFeed<never> {
+export class TrackerStream implements UpdateListener {
 	/** Every aircraft heard in the last minute (Tracker snapshots). */
 	aircraft = $state.raw<TrackedAircraft[]>([]);
 	/** The aircraft whose details are open; null: none. */
@@ -52,7 +52,6 @@ export class TrackerStream extends LiveFeed<never> {
 	#clock: { rx: number; at: number } | null = null;
 
 	constructor(receiver: () => LatLon) {
-		super(0);
 		this.#receiver = receiver;
 		this.#tracker = new Tracker(receiver);
 	}
@@ -77,7 +76,7 @@ export class TrackerStream extends LiveFeed<never> {
 		return icao === null ? null : (this.aircraft.find((a) => a.icao === icao) ?? null);
 	}
 
-	protected reset(): void {
+	reset(): void {
 		this.#tracker = new Tracker(this.#receiver);
 		this.#recent.clear();
 		this.#clock = null;
@@ -85,13 +84,14 @@ export class TrackerStream extends LiveFeed<never> {
 		this.messages = [];
 	}
 
-	protected process(recent: WireFrame[], update: StreamUpdate): never[] {
+	receive(update: StreamUpdate): void {
+		const recent = update.frames;
 		const frames = update.tracks ? mergeFrames(update.tracks, recent) : recent;
 		if (frames.length === 0) {
 			// A quiet sky (or an unreachable receiver) still has to let aircraft go: the
 			// server's clock runs on, so prune by it. Only a change is handed out.
 			if (this.#clock && this.#prune(this.now())) this.aircraft = this.#tracker.list();
-			return [];
+			return;
 		}
 		let selectedHeard = false;
 		for (const f of frames) {
@@ -112,7 +112,6 @@ export class TrackerStream extends LiveFeed<never> {
 		this.aircraft = this.#tracker.list();
 		// Decoding 40 messages 4× a second adds up: only when the selected one sent more.
 		if (selectedHeard) this.#showMessages();
-		return [];
 	}
 
 	/** Drops aircraft not heard for a minute; returns whether any went. */

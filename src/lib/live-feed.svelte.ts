@@ -1,4 +1,5 @@
 import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
+import type { UpdateListener } from '#lib/stream-connection.ts';
 
 /**
  * One page's view of the live stream: keeps a list of recent items (newest first), and can
@@ -12,8 +13,9 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
  * button paused it too.
  *
  * What an item is depends on the page: subclasses turn each batch of frames into items.
+ * Views that aren't a list (the tracker, the radars, the coverage) are plain UpdateListeners.
  */
-export abstract class LiveFeed<T> {
+export abstract class LiveFeed<T> implements UpdateListener {
 	/** Newest first. */
 	items = $state.raw<T[]>([]);
 
@@ -26,8 +28,6 @@ export abstract class LiveFeed<T> {
 
 	#heldItems: T[] = [];
 	#maxItems: number;
-	/** The server run the items come from (StreamUpdate.since). */
-	#since: number | null = null;
 
 	constructor(maxItems: number) {
 		this.#maxItems = maxItems;
@@ -39,8 +39,15 @@ export abstract class LiveFeed<T> {
 	 */
 	protected abstract process(frames: WireFrame[], update: StreamUpdate): T[];
 
-	/** The server restarted (e.g. dev reload): forget whatever depends on its counters. */
-	protected reset(): void {}
+	/**
+	 * The server restarted (e.g. dev reload): the list starts over. Subclasses that keep
+	 * more forget that too, and call this.
+	 */
+	reset(): void {
+		this.items = [];
+		this.#heldItems = [];
+		this.held = 0;
+	}
 
 	get paused(): boolean {
 		return this.pausedByUser || this.scrolledAway;
@@ -68,13 +75,6 @@ export abstract class LiveFeed<T> {
 
 	/** An update from the StreamConnection: every frame once, in arrival order. */
 	receive(update: StreamUpdate): void {
-		if (this.#since !== null && update.since !== this.#since) {
-			this.reset();
-			this.items = [];
-			this.#heldItems = [];
-			this.held = 0;
-		}
-		this.#since = update.since;
 		const fresh = this.process(update.frames, update).reverse();
 		if (fresh.length === 0) return;
 		if (this.paused) {

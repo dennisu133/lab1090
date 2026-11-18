@@ -1,4 +1,5 @@
 import type { ReceiverCounts, StreamUpdate } from '#lib/receiver-types.ts';
+import type { UpdateListener } from '#lib/stream-connection.ts';
 
 export interface Rates {
 	total: number;
@@ -22,7 +23,7 @@ const NO_RATES: Rates = { total: 0, byDf: {}, byTc: {}, byVerdict: {} };
  * the server's, so they're right from the first update and don't depend on which frames this
  * tab saw (after a reconnect it skips the ones it already has).
  */
-export class ReceiverStats {
+export class ReceiverStats implements UpdateListener {
 	counts = $state.raw<ReceiverCounts | null>(null);
 	/** When the server started counting, ms since epoch. */
 	since = $state.raw<number | null>(null);
@@ -31,12 +32,13 @@ export class ReceiverStats {
 
 	#samples: { t: number; counts: ReceiverCounts }[] = [];
 
+	/** A new server run: the totals start over, so does the rate window. */
+	reset(): void {
+		this.#samples = [];
+		this.rates = NO_RATES;
+	}
+
 	receive(update: StreamUpdate): void {
-		if (update.since !== this.since) {
-			// A new server run: the totals start over, so does the rate window.
-			this.#samples = [];
-			this.rates = NO_RATES;
-		}
 		this.since = update.since;
 		this.counts = update.counts;
 

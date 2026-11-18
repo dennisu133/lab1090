@@ -1,7 +1,7 @@
-import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { downlinkFormat, fromHex } from '#lib/modes/frame.ts';
 import { codeName, RadarFinder, type CodeSummary, type Radar } from '#lib/radar/finder.ts';
-import type { WireFrame } from '#lib/receiver-types.ts';
+import type { StreamUpdate } from '#lib/receiver-types.ts';
+import type { UpdateListener } from '#lib/stream-connection.ts';
 import type { TrackerStream } from './tracker-stream.svelte';
 
 /** Beast timestamps count at 12 MHz. */
@@ -24,7 +24,7 @@ const CODES_MS = 5000;
  * found survive a look at /weather. Switched off, it forgets them. Radars appear after a few
  * minutes: the server's history holds only ~20 s of replies.
  */
-export class RadarStream extends LiveFeed<never> {
+export class RadarStream implements UpdateListener {
 	/** The confirmed radars: shown on the map. */
 	radars = $state.raw<Radar[]>([]);
 	/** Found, not confirmed yet: listed, not drawn. */
@@ -43,7 +43,6 @@ export class RadarStream extends LiveFeed<never> {
 	#fed = new Map<string, number>();
 
 	constructor(tracker: TrackerStream) {
-		super(0);
 		this.#tracker = tracker;
 	}
 
@@ -68,7 +67,7 @@ export class RadarStream extends LiveFeed<never> {
 		return id === null ? null : (this.radars.find((r) => r.id === id) ?? null);
 	}
 
-	protected reset(): void {
+	reset(): void {
 		this.#finder = new RadarFinder();
 		this.#fed.clear();
 		this.radars = [];
@@ -77,8 +76,8 @@ export class RadarStream extends LiveFeed<never> {
 		if (this.started !== null) this.started = this.#tracker.now();
 	}
 
-	protected process(frames: WireFrame[]): never[] {
-		if (this.started === null || frames.length === 0) return [];
+	receive({ frames }: StreamUpdate): void {
+		if (this.started === null || frames.length === 0) return;
 		for (const f of frames) {
 			// DF11 names the radar it answers (crc.ts): the finder's input.
 			if (f.addr?.verdict !== 'valid') continue;
@@ -102,6 +101,5 @@ export class RadarStream extends LiveFeed<never> {
 			this.candidates = this.#finder.candidates;
 			this.codes = this.#finder.codes;
 		}
-		return [];
 	}
 }

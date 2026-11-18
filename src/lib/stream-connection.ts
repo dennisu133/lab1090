@@ -3,7 +3,14 @@ import type { StreamUpdate, WireFrame } from '#lib/receiver-types.ts';
 
 /** Anything fed with the stream's updates: the pages' views (LiveFeed), ReceiverStats. */
 export interface UpdateListener {
+	/** An update: every frame once, in arrival order. */
 	receive(update: StreamUpdate): void;
+	/**
+	 * The server restarted (a new run, e.g. a dev reload): forget whatever came from the old
+	 * one. Its frame ids, counts and clocks start over, so mixing them up would be wrong.
+	 * Called on every listener, in order, before the new run's first update.
+	 */
+	reset?(): void;
 }
 
 /**
@@ -21,7 +28,7 @@ export interface UpdateListener {
  * one is opened after RETRY_MS. Either way the server then sends its recent history again, part
  * of which this tab already has. Frame ids only grow within a server run, so frames up to the
  * newest one seen are dropped: every view gets every frame once. If the server restarted
- * (dev reload), the ids start over and `since` changes: the views reset (LiveFeed.receive).
+ * (dev reload), the ids start over and `since` changes: every listener resets (`reset`).
  *
  * Also reports both links (browser ↔ server, server ↔ receiver) to `receiverLink`, for the status
  * in the navigation bar.
@@ -67,6 +74,8 @@ export class StreamConnection {
 		receiverLink.status = update.status;
 		receiverLink.source = update.source;
 		if (update.since !== this.#since) {
+			// The first update of all needs no reset: nothing came before it.
+			if (this.#since !== null) for (const listener of this.#listeners) listener.reset?.();
 			this.#since = update.since;
 			this.#newest = 0;
 		}

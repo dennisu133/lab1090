@@ -107,7 +107,8 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		return this.#reference();
 	}
 
-	protected reset(): void {
+	override reset(): void {
+		super.reset();
 		this.#pipeline = new WeatherPipeline(this.#reference);
 		this.aircraft = [];
 		this.now = 0;
