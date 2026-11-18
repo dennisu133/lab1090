@@ -1,5 +1,5 @@
 /**
- * From raw frames to weather observations: the part of /weather that isn't display, kept
+ * From frames to weather observations: the part of /weather that isn't display, kept
  * here so the tests can run the capture through exactly what the page runs.
  *
  * Which replies count:

@@ -20,7 +20,7 @@
 
 	const links = [
 		{ href: resolve('/(app)'), label: 'Tracker' },
-		{ href: resolve('/(app)/frames'), label: 'Raw frames' },
+		{ href: resolve('/(app)/frames'), label: 'Frames' },
 		{ href: resolve('/(app)/comm-b'), label: 'Comm-B registers' },
 		{ href: resolve('/(app)/weather'), label: 'Weather' },
 		{ href: resolve('/(app)/receiver'), label: 'Receiver' }

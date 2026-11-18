@@ -171,7 +171,7 @@
 	}
 </script>
 
-<PageTitle page="Raw frames" />
+<PageTitle page="Frames" />
 
 <div class="space-y-6">
 	<!-- Counts -->

@@ -1,5 +1,5 @@
 <!--
-	The tracker: live aircraft on a map, decoded in the browser from the raw frames (see
+	The tracker: live aircraft on a map, decoded in the browser from the frames (see
 	tracker-stream.svelte.ts and lib/tracker). Unlike the data pages (/frames, /comm-b: 1024 px
 	and up), this page works on phones too, down to 360 px: the map on top and the panel
 	below it, side by side from `md` on.
