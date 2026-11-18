@@ -4,8 +4,9 @@
 
 	Two ways, side by side: search the address (Nominatim, from this browser: geocode.ts) or
 	enter coordinates (typed, or a map link: coordinates.ts). Either way the spot shows on a
-	map before it's saved, with how exact it is. Saving posts to the server, which writes the
-	config file and sends you to the map; tabs open elsewhere reload with the new position.
+	map before it's saved, with how exact it is. Saving sends it to the server (/api/position),
+	which writes the config file; then the map opens, and tabs open elsewhere reload with the
+	new position.
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
@@ -17,7 +18,7 @@
 	import PositionMap from './PositionMap.svelte';
 	import type { PageProps } from './$types';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
 	/**
 	 * How far off the position may be. Coverage needs ~100 m (the ground height under the
@@ -122,6 +123,33 @@
 
 	const coordinates = (p: LatLon) =>
 		`${Math.abs(p.lat).toFixed(5)}° ${p.lat < 0 ? 'S' : 'N'}, ${Math.abs(p.lon).toFixed(5)}° ${p.lon < 0 ? 'W' : 'E'}`;
+
+	// Saving.
+	let saving = $state(false);
+	let saveError = $state<string | null>(null);
+
+	async function save(position: LatLon) {
+		saving = true;
+		saveError = null;
+		try {
+			const response = await fetch(resolve('/api/position'), {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(position)
+			});
+			if (response.ok) {
+				// A full load, not goto(): a tab that came from the map still has streams decoding
+				// with the old position. The button stays "Saving…" until the map is there.
+				location.assign(resolve('/(app)'));
+				return;
+			}
+			saveError = ((await response.json().catch(() => null))?.message ??
+				`The server answered ${response.status}.`) as string;
+		} catch {
+			saveError = 'The lab1090 server didn’t answer. Is it still running?';
+		}
+		saving = false;
+	}
 
 	const matchLabel = { building: 'Building', street: 'Street only', area: 'Area only' };
 </script>
@@ -326,21 +354,18 @@
 								: 'Use more decimals: four give a few metres.'}
 						</p>
 					{/if}
-					<form method="POST">
-						<input type="hidden" name="lat" value={candidate.position.lat} />
-						<input type="hidden" name="lon" value={candidate.position.lon} />
-						<button
-							type="submit"
-							disabled={tooCoarse}
-							class="w-full rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white hover:bg-sky-500 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto"
-							>Use this position</button
-						>
-					</form>
+					<button
+						type="button"
+						disabled={tooCoarse || saving}
+						onclick={() => save(candidate.position)}
+						class="w-full rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white hover:bg-sky-500 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto"
+						>{saving ? 'Saving…' : 'Use this position'}</button
+					>
 				</section>
 			{/if}
 
-			{#if form?.error}
-				<p class="text-sm text-red-300">{form.error}</p>
+			{#if saveError}
+				<p class="text-sm text-red-300">{saveError}</p>
 			{/if}
 
 			<p class="text-xs text-zinc-500">
