@@ -28,10 +28,13 @@ export const FULL_SCALE = 65535;
  */
 export const ADC_LIMIT = Math.floor((127.5 / 128) * FULL_SCALE);
 
-/** Magnitude of every (I, Q) byte pair, index (I << 8) | Q. Clipped at full scale. */
+/**
+ * Magnitude of every (I, Q) byte pair, index I | (Q << 8): the pair read as one little-endian
+ * 16-bit number, one load instead of two. Clipped at full scale.
+ */
 const MAGNITUDE = Uint16Array.from({ length: 65536 }, (_, index) => {
-	const i = ((index >> 8) - 127.5) / 128;
-	const q = ((index & 0xff) - 127.5) / 128;
+	const i = ((index & 0xff) - 127.5) / 128;
+	const q = ((index >> 8) - 127.5) / 128;
 	return Math.min(FULL_SCALE, Math.round(Math.hypot(i, q) * FULL_SCALE));
 });
 
@@ -45,9 +48,12 @@ export function magnitudes(
 ): void {
 	for (let k = 0; k < count; k++) {
 		const b = from + 2 * k;
-		out[at + k] = MAGNITUDE[(iq[b] << 8) | iq[b + 1]];
+		out[at + k] = MAGNITUDE[iq[b] | (iq[b + 1] << 8)];
 	}
 }
+
+/** Whether this machine stores the low byte first (x86 and ARM do). */
+const LITTLE_ENDIAN = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 
 /**
  * magnitudes() that also returns their sum (for the noise level: one pass over the samples
@@ -61,9 +67,18 @@ export function magnitudesSum(
 	at: number
 ): number {
 	let sum = 0;
+	if (LITTLE_ENDIAN && (iq.byteOffset + from) % 2 === 0) {
+		const pairs = new Uint16Array(iq.buffer, iq.byteOffset + from, count);
+		for (let k = 0; k < count; k++) {
+			const m = MAGNITUDE[pairs[k]];
+			out[at + k] = m;
+			sum += m;
+		}
+		return sum;
+	}
 	for (let k = 0; k < count; k++) {
 		const b = from + 2 * k;
-		const m = MAGNITUDE[(iq[b] << 8) | iq[b + 1]];
+		const m = MAGNITUDE[iq[b] | (iq[b + 1] << 8)];
 		out[at + k] = m;
 		sum += m;
 	}

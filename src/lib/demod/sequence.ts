@@ -16,8 +16,12 @@
  * the cheaper path into each new state; at the end, the cheapest state's path is the answer.
  * (Viterbi 1967; the same algorithm decodes convolutional codes and reads hard disks.)
  *
- * What a sample should be: b + A·Σ pulse(5k − P) over the pulses P that reach it, with the
- * message's amplitude A and the noise floor b fitted to the preamble, whose pulses are known.
+ * What a sample should be: b + A·x, x = Σ pulse(5k − P) over the pulses P that reach it, with
+ * the message's amplitude A and the noise floor b fitted to the preamble, whose pulses are
+ * known. With y = sample − b, the cost of a string is Σ (y − A·x)² = Σ y² − 2A·Σ y·x + A²·Σ x².
+ * Σ y² is the same whatever the string, and A the same for all its bits, so what's compared
+ * is Σ x² − Σ (2y/A)·x: the same choices, for less arithmetic. Σ x² per bit comes from a
+ * table, and Σ y·x splits into one dot product per bit that reaches the samples.
  */
 import { KNOWN_FORMATS, messageBits } from './filter';
 import { PULSE_FROM, PULSE_TO, pulseShape } from './pulse';
@@ -37,6 +41,10 @@ const DATA = 96;
  * is inside the table: 2 bits back, with the shape in pulse.ts.
  */
 const MEMORY = Math.floor((PULSE_TO - US - PULSE_FROM + HALF) / US);
+// The reading below is written out for two (four states, eight words): a pulse shape that
+// rings longer needs it rewritten.
+if (MEMORY !== 2)
+	throw new Error(`sequence.ts is written for MEMORY = 2, the pulse needs ${MEMORY}`);
 /** States: the last MEMORY bits. */
 const STATES = 1 << MEMORY;
 /** Words: a state and the new bit, the bits that decide what bit j's samples look like. */
@@ -44,25 +52,51 @@ const WORDS = STATES << 1;
 /** At most this many samples per bit: the last bit's run to the end of its ringing. */
 const MOST = Math.ceil((US - HALF + PULSE_TO - PULSE_FROM) / SAMPLE) + 1;
 
+/** PART's entries per sample: bit j − m, m = 0 … MEMORY, as a 0 or a 1. */
+const PARTS = 2 * (MEMORY + 1);
+
 /**
- * The expected magnitude (for A = 1, b = 0) of the i-th sample of a bit, by how many earlier
- * bits there are (min(j, MEMORY): bits before the first aren't drawn), the bit start's
- * phase (the first sample lies at d = PULSE_FROM + phase) and the word: bit j − m is
- * (word >> m) & 1. Whole ticks: a few hundred numbers instead of adding up pulse shapes
- * for every sample, state and bit of every message tried.
+ * Each bit's pulse (amplitude 1) at the i-th sample of bit j, by how many earlier bits there
+ * are (min(j, MEMORY): bits before the first aren't drawn), the bit start's phase (the first
+ * sample lies at d = PULSE_FROM + phase) and which bit it is: bit j − m with value v at
+ * index 2m + v. A sample's x is the sum of the three. Whole ticks: a few
+ * hundred numbers instead of adding up pulse shapes for every sample, state and bit of every
+ * message tried.
  */
-const EXPECTED = (() => {
-	const table = new Float64Array((MEMORY + 1) * SAMPLE * MOST * WORDS);
+const PART = (() => {
+	const table = new Float64Array((MEMORY + 1) * SAMPLE * MOST * PARTS);
 	for (let earlier = 0; earlier <= MEMORY; earlier++)
 		for (let phase = 0; phase < SAMPLE; phase++)
 			for (let i = 0; i < MOST; i++)
-				for (let word = 0; word < WORDS; word++) {
-					const d = PULSE_FROM + phase + SAMPLE * i;
+				for (let m = 0; m <= earlier; m++)
+					for (let v = 0; v < 2; v++) {
+						const d = PULSE_FROM + phase + SAMPLE * i;
+						table[((earlier * SAMPLE + phase) * MOST + i) * PARTS + 2 * m + v] = pulseShape(
+							d + US * m - (v ? 0 : HALF)
+						);
+					}
+	return table;
+})();
+
+/**
+ * Σ x² over a bit's first `count` samples (x: the sum of PART for the word), by earlier bits,
+ * phase, count and word: bit j − m is (word >> m) & 1.
+ */
+const SQUARES = (() => {
+	const table = new Float64Array((MEMORY + 1) * SAMPLE * (MOST + 1) * WORDS);
+	for (let earlier = 0; earlier <= MEMORY; earlier++)
+		for (let phase = 0; phase < SAMPLE; phase++)
+			for (let word = 0; word < WORDS; word++) {
+				let sum = 0;
+				for (let count = 0; count <= MOST; count++) {
+					table[((earlier * SAMPLE + phase) * (MOST + 1) + count) * WORDS + word] = sum;
+					if (count === MOST) break;
 					let x = 0;
-					for (let m = 0; m <= earlier; m++)
-						x += pulseShape(d + US * m - ((word >> m) & 1 ? 0 : HALF));
-					table[((earlier * SAMPLE + phase) * MOST + i) * WORDS + word] = x;
+					const at = ((earlier * SAMPLE + phase) * MOST + count) * PARTS;
+					for (let m = 0; m <= MEMORY; m++) x += PART[at + 2 * m + ((word >> m) & 1)];
+					sum += x * x;
 				}
+			}
 	return table;
 })();
 
@@ -82,12 +116,11 @@ const PREAMBLE_X = Array.from({ length: SAMPLE }, (_, phase) => {
 });
 
 export class SequenceReader {
-	/** mag[k] − b for the samples of the current bit. */
-	#y = new Float64Array(MOST);
-	#cost = new Float64Array(STATES);
-	#next = new Float64Array(STATES);
-	/** The best previous state, per bit and state. */
-	#back = new Uint8Array(112 * STATES);
+	/**
+	 * Per bit, which way the best path came into each state: bit `to` set if from the state
+	 * whose oldest bit is 1.
+	 */
+	#back = new Uint8Array(112);
 
 	/**
 	 * Reads the bits of a message whose preamble starts at tick s (sample k = tick 5k of
@@ -116,76 +149,115 @@ export class SequenceReader {
 		const A = (n * sxy - sx * sy) / (n * sxx - sx * sx);
 		if (!(A > 0)) return 0;
 		const b = (sy - A * sx) / n;
+		/** y → 2y/A. */
+		const scale = 2 / A;
 
 		const data0 = s + DATA;
-		let cost = this.#cost;
-		let next = this.#next;
 		const back = this.#back;
-		cost.fill(Infinity);
-		// Before the first bit: "no pulse", state 0. (Bits before 0 aren't drawn below.)
-		cost[0] = 0;
+		// The cost of the best path into each state. Before the first bit: "no pulse", state 0.
+		// (Bits before 0 aren't drawn below.)
+		let c0 = 0;
+		let c1 = Infinity;
+		let c2 = Infinity;
+		let c3 = Infinity;
 		let length = 112;
+		// The samples bit j is the latest to reach: from kFrom, where d = PULSE_FROM + phase, to
+		// the next bit's kFrom (for the last bit: all that are left). A bit is 12 ticks, 2.4
+		// samples: kFrom steps by 2 or 3, without dividing.
+		let kFrom = Math.ceil((data0 + PULSE_FROM) / SAMPLE);
+		let phase = SAMPLE * kFrom - data0 - PULSE_FROM;
 		for (let j = 0; j < length; j++) {
-			// The samples bit j is the latest to reach (for the last bit: all that are left).
-			const t = data0 + US * j;
-			const kFrom = Math.ceil((t + PULSE_FROM) / SAMPLE);
+			const step = phase >= US - 2 * SAMPLE ? 2 : 3;
 			const kTo =
 				j === length - 1
-					? Math.ceil((t + US - HALF + PULSE_TO) / SAMPLE)
-					: Math.ceil((t + US + PULSE_FROM) / SAMPLE);
-			const phase = SAMPLE * kFrom - t - PULSE_FROM;
-			const row = (Math.min(j, MEMORY) * SAMPLE + phase) * MOST * WORDS;
-			const y = this.#y;
+					? Math.ceil((data0 + US * j + US - HALF + PULSE_TO) / SAMPLE)
+					: kFrom + step;
+			const shape = Math.min(j, MEMORY) * SAMPLE + phase;
 			const count = kTo - kFrom;
-			for (let i = 0; i < count; i++) y[i] = mag[kFrom + i] - b;
-			// Into each state (the newest bits) from the two that differ in the oldest: the bit
-			// that falls out. Ties go to the lower state.
-			for (let to = 0; to < STATES; to++) {
-				const bit = to & 1;
-				let best = Infinity;
-				let from = 0;
-				for (let oldest = 0; oldest < 2; oldest++) {
-					const state = (to >> 1) | (oldest << (MEMORY - 1));
-					const word = (state << 1) | bit;
-					let total = cost[state];
-					for (let i = 0, at = row + word; i < count; i++, at += WORDS) {
-						const r = y[i] - A * EXPECTED[at];
-						total += r * r;
-					}
-					if (total < best) {
-						best = total;
-						from = state;
-					}
-				}
-				next[to] = best;
-				back[j * STATES + to] = from;
+			// Σ (2y/A)·x for each bit's pulse: bit j as a 0 (d0) or a 1 (d1), j − 1 (d2, d3) and
+			// j − 2 (d4, d5). Every bit has at least two samples.
+			const p = shape * MOST * PARTS;
+			const ya = (mag[kFrom] - b) * scale;
+			const yb = (mag[kFrom + 1] - b) * scale;
+			let d0 = ya * PART[p] + yb * PART[p + PARTS];
+			let d1 = ya * PART[p + 1] + yb * PART[p + PARTS + 1];
+			let d2 = ya * PART[p + 2] + yb * PART[p + PARTS + 2];
+			let d3 = ya * PART[p + 3] + yb * PART[p + PARTS + 3];
+			let d4 = ya * PART[p + 4] + yb * PART[p + PARTS + 4];
+			let d5 = ya * PART[p + 5] + yb * PART[p + PARTS + 5];
+			for (let i = 2, at = p + 2 * PARTS; i < count; i++, at += PARTS) {
+				const y = (mag[kFrom + i] - b) * scale;
+				d0 += y * PART[at];
+				d1 += y * PART[at + 1];
+				d2 += y * PART[at + 2];
+				d3 += y * PART[at + 3];
+				d4 += y * PART[at + 4];
+				d5 += y * PART[at + 5];
 			}
-			const done = cost;
-			cost = next;
-			next = done;
+			// The cost of each word (bit j − m: (word >> m) & 1), then into each state (the newest
+			// two bits) from the two that differ in the oldest: the bit that falls out. Ties go to
+			// the lower state.
+			const q = (shape * (MOST + 1) + count) * WORDS;
+			const w0 = SQUARES[q] - (d0 + d2 + d4);
+			const w1 = SQUARES[q + 1] - (d1 + d2 + d4);
+			const w2 = SQUARES[q + 2] - (d0 + d3 + d4);
+			const w3 = SQUARES[q + 3] - (d1 + d3 + d4);
+			const w4 = SQUARES[q + 4] - (d0 + d2 + d5);
+			const w5 = SQUARES[q + 5] - (d1 + d2 + d5);
+			const w6 = SQUARES[q + 6] - (d0 + d3 + d5);
+			const w7 = SQUARES[q + 7] - (d1 + d3 + d5);
+			// State = the last two bits, newest lowest; word = state << 1 | the new bit. Into
+			// state 0 from 0 (word 0) or 2 (word 4), and so on.
+			const x0 = c0 + w0;
+			const y0 = c2 + w4;
+			const x1 = c0 + w1;
+			const y1 = c2 + w5;
+			const x2 = c1 + w2;
+			const y2 = c3 + w6;
+			const x3 = c1 + w3;
+			const y3 = c3 + w7;
+			back[j] = +(y0 < x0) | (+(y1 < x1) << 1) | (+(y2 < x2) << 2) | (+(y3 < x3) << 3);
+			c0 = y0 < x0 ? y0 : x0;
+			c1 = y1 < x1 ? y1 : x1;
+			c2 = y2 < x2 ? y2 : x2;
+			c3 = y3 < x3 ? y3 : x3;
+			kFrom += step;
+			phase += SAMPLE * step - US;
 			if (j === 8) {
 				// The format, from the best path so far (the first bits are settled by now): it
 				// says how many bits there are.
-				this.#trace(cost, 8, bits);
+				this.#trace(this.#cheapest(c0, c1, c2, c3), 8, bits);
 				let df = 0;
 				for (let i = 0; i < 5; i++) df = (df << 1) | bits[i];
 				if (!KNOWN_FORMATS.has(Math.min(df, 24))) return 0;
 				length = messageBits(df);
 			}
 		}
-		this.#trace(cost, length - 1, bits);
-		this.#cost = cost;
-		this.#next = next;
+		this.#trace(this.#cheapest(c0, c1, c2, c3), length - 1, bits);
 		return length as 56 | 112;
 	}
 
-	/** Bits 0…last along the path into the cheapest state. */
-	#trace(cost: Float64Array, last: number, bits: Uint8Array): void {
+	/** The state with the lowest cost (the lower one on a tie). */
+	#cheapest(c0: number, c1: number, c2: number, c3: number): number {
 		let state = 0;
-		for (let k = 1; k < STATES; k++) if (cost[k] < cost[state]) state = k;
+		let best = c0;
+		if (c1 < best) {
+			state = 1;
+			best = c1;
+		}
+		if (c2 < best) {
+			state = 2;
+			best = c2;
+		}
+		if (c3 < best) state = 3;
+		return state;
+	}
+
+	/** Bits 0…last along the path into `state`. */
+	#trace(state: number, last: number, bits: Uint8Array): void {
 		for (let i = last; i >= 0; i--) {
 			bits[i] = state & 1;
-			state = this.#back[i * STATES + state];
+			state = (state >> 1) | (((this.#back[i] >> state) & 1) << (MEMORY - 1));
 		}
 	}
 }

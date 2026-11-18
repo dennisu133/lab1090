@@ -24,8 +24,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/** 12 MHz ticks per sample. */
+/** 12 MHz ticks per sample and per µs (a bit). */
 const SAMPLE = 5;
+const US = 12;
 
 /**
  * readsb's preamble threshold, in 32nds: its correlation must reach 58/32 = 1.8 times the sum
@@ -38,18 +39,20 @@ const THRESHOLD = 58;
  *
  * readsb looks at sample p for a preamble starting 0.6 to 1.4 samples after it: at tick
  * 5p + 3 … 5p + 7, its "phases" 3 to 7. So p = n covers our starts 5n + 3 and 5n + 4
- * (readsbLate), and p = n − 1 the others (readsbEarly). For each p: three comparisons first
- * (readsbCheck), then for each group of phases a sum of the samples the pulses fill minus
- * the ones between pulses that the phase leaves empty, against the noise samples.
- * `mag` must hold a sample before n. (The demodulator calls the parts, to do readsbCheck once
- * per sample.)
+ * (LATE), and p = n − 1 the others (EARLY). `mag` must hold a sample before n. (The
+ * demodulator calls the parts, to do each sample's once.)
  */
 export function readsbPreamble(mag: Uint16Array, n: number): boolean {
 	return (
-		(readsbCheck(mag, n) === 1 && readsbLate(mag, n)) ||
-		(n > 0 && readsbCheck(mag, n - 1) === 1 && readsbEarly(mag, n - 1))
+		(readsbCheck(mag, n) === 1 && (readsbPhases(mag, n) & LATE) !== 0) ||
+		(n > 0 && readsbCheck(mag, n - 1) === 1 && (readsbPhases(mag, n - 1) & EARLY) !== 0)
 	);
 }
+
+/** readsbPhases: a start in sample p (readsb's phases 3 and 4)… */
+export const LATE = 1;
+/** …or in sample p + 1 (5, 6 and 7). */
+export const EARLY = 2;
 
 /**
  * readsb's first check at sample p: the 2nd pulse above a gap sample, the 4th above two. 1 or
@@ -62,20 +65,21 @@ export function readsbCheck(mag: Uint16Array, p: number): 0 | 1 {
 		+(mag[p + 12] > mag[p + 15])) as 0 | 1;
 }
 
-/** Phases 3 and 4 at sample p (peaks at samples 1, 3, 9 and 11–12). */
-export function readsbLate(mag: Uint16Array, p: number): boolean {
+/**
+ * Then, at a sample p that passed readsbCheck, for each group of phases: a sum of the samples
+ * the pulses fill minus the ones between pulses that the phase leaves empty, against five
+ * noise samples. LATE and/or EARLY, or 0. Phases 3 and 4 have their peaks at samples 1, 3, 9
+ * and 11–12; 5 and 6 at 1, 3–4, 9–10, 12; 7 at 1–2, 4, 10, 12.
+ */
+export function readsbPhases(mag: Uint16Array, p: number): number {
 	const ref = (noise(mag, p) * THRESHOLD) >> 5;
-	return common(mag, p) - (mag[p + 10] - mag[p + 11]) >= ref;
-}
-
-/** Phases 5 and 6 (peaks at 1, 3–4, 9–10, 12), and 7 (1–2, 4, 10, 12), at sample p. */
-export function readsbEarly(mag: Uint16Array, p: number): boolean {
-	const ref = (noise(mag, p) * THRESHOLD) >> 5;
+	const common = mag[p + 1] + mag[p + 4] - (mag[p + 2] - mag[p + 3]) + mag[p + 9] + mag[p + 12];
 	const d1011 = mag[p + 10] - mag[p + 11];
-	return (
-		common(mag, p) + d1011 >= ref ||
-		mag[p + 1] + mag[p + 4] + 2 * (mag[p + 2] - mag[p + 3]) + d1011 + mag[p + 12] >= ref
-	);
+	const late = +(common - d1011 >= ref);
+	const early =
+		+(common + d1011 >= ref) |
+		+(mag[p + 1] + mag[p + 4] + 2 * (mag[p + 2] - mag[p + 3]) + d1011 + mag[p + 12] >= ref);
+	return late | (early << 1);
 }
 
 /** Five samples that lie between the pulses whatever the phase. */
@@ -83,34 +87,46 @@ function noise(mag: Uint16Array, p: number): number {
 	return mag[p + 5] + mag[p + 8] + mag[p + 16] + mag[p + 17] + mag[p + 18];
 }
 
-/** The part of the correlation phases 3 to 6 share. */
-function common(mag: Uint16Array, p: number): number {
-	return mag[p + 1] + mag[p + 4] - (mag[p + 2] - mag[p + 3]) + mag[p + 9] + mag[p + 12];
-}
-
 /**
- * The bit starting at tick t: 1 if its pulse is in the first half. Sample k = ⌊t/5⌋ is the
- * first the bit reaches; t mod 5 is how far into it the bit starts (in fifths of a sample).
+ * Bits from … to − 1 of a message whose data starts at tick t, into `bits`: 1 if the bit's
+ * pulse is in its first half. Sample k = ⌊t/5⌋ is the first a bit reaches; its phase, t mod 5,
+ * is how far into it the bit starts (in fifths of a sample). A bit is 12 ticks, 2 samples and
+ * 2 ticks: k and the phase step along without dividing.
  */
-export function sliceBit(mag: Uint16Array, t: number): 0 | 1 {
-	const k = (t / SAMPLE) | 0;
-	let v: number;
-	switch (t - k * SAMPLE) {
-		case 0:
-			v = 18 * mag[k] - 15 * mag[k + 1] - 3 * mag[k + 2];
-			break;
-		case 1:
-			v = 14 * mag[k] - 5 * mag[k + 1] - 9 * mag[k + 2];
-			break;
-		case 2:
-			// readsb: "slightly DC unbalanced but better results".
-			v = 16 * mag[k] + 5 * mag[k + 1] - 20 * mag[k + 2];
-			break;
-		case 3:
-			v = 7 * mag[k] + 11 * mag[k + 1] - 18 * mag[k + 2];
-			break;
-		default:
-			v = 4 * mag[k] + 15 * mag[k + 1] - 20 * mag[k + 2] + mag[k + 3];
+export function sliceBits(
+	mag: Uint16Array,
+	t: number,
+	bits: Uint8Array,
+	from: number,
+	to: number
+): void {
+	const at = t + from * US;
+	let k = (at / SAMPLE) | 0;
+	let phase = at - k * SAMPLE;
+	for (let i = from; i < to; i++) {
+		let v: number;
+		switch (phase) {
+			case 0:
+				v = 18 * mag[k] - 15 * mag[k + 1] - 3 * mag[k + 2];
+				break;
+			case 1:
+				v = 14 * mag[k] - 5 * mag[k + 1] - 9 * mag[k + 2];
+				break;
+			case 2:
+				v = 16 * mag[k] + 5 * mag[k + 1] - 20 * mag[k + 2];
+				break;
+			case 3:
+				v = 7 * mag[k] + 11 * mag[k + 1] - 18 * mag[k + 2];
+				break;
+			default:
+				v = 4 * mag[k] + 15 * mag[k + 1] - 20 * mag[k + 2] + mag[k + 3];
+		}
+		bits[i] = +(v > 0);
+		phase += US - 2 * SAMPLE;
+		k += 2;
+		if (phase >= SAMPLE) {
+			phase -= SAMPLE;
+			k++;
+		}
 	}
-	return v > 0 ? 1 : 0;
 }

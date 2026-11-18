@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { modulate } from './modulate';
-import { readsbPreamble, sliceBit } from './readsb';
+import { readsbPreamble, sliceBits } from './readsb';
 import { magnitudes } from './samples';
 
 const hex = (s: string) => Uint8Array.from(s.match(/../g)!.map((b) => parseInt(b, 16)));
@@ -21,8 +21,16 @@ describe("readsb's test and slicer", () => {
 			for (let tick = 0; tick < 5; tick++) {
 				const mag = samples(50 + tick / 5, pulse);
 				expect(readsbPreamble(mag, 50)).toBe(true);
-				for (let i = 0; i < 112; i++)
-					expect(sliceBit(mag, 250 + tick + 96 + 12 * i)).toBe(bitAt(DF17, i));
+				// All at once, and the format first, then the rest (as the demodulator does).
+				const all = new Uint8Array(112);
+				sliceBits(mag, 250 + tick + 96, all, 0, 112);
+				const parts = new Uint8Array(112);
+				sliceBits(mag, 250 + tick + 96, parts, 0, 5);
+				sliceBits(mag, 250 + tick + 96, parts, 5, 112);
+				for (let i = 0; i < 112; i++) {
+					expect(all[i]).toBe(bitAt(DF17, i));
+					expect(parts[i]).toBe(bitAt(DF17, i));
+				}
 			}
 	});
 
