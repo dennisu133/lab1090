@@ -70,16 +70,21 @@ export class RadioHistory {
 		this.#newPoints.push(point);
 	}
 
-	/** The link changed (FrameSource's onStatus). */
-	status(status: SourceStatus, now: number): void {
-		if (status.state === 'connecting' || status.state === 'closed') return;
+	/**
+	 * The link changed (FrameSource's onStatus). Returns the new event, or null when there is
+	 * none: the same state for the same reason as the last one (a retry every 30 s for hours
+	 * is one event, counted), or a passing state (connecting, closed). The console log says
+	 * the new ones only (Receiver), so both agree on what counts as news.
+	 */
+	status(status: SourceStatus, now: number): SourceEvent | null {
+		if (status.state === 'connecting' || status.state === 'closed') return null;
 		const last = this.events.at(-1);
 		const reason = status.state === 'waiting' ? status.reason : undefined;
 		if (last && last.state === status.state && last.reason === reason) {
 			last.count++;
 			last.last = now;
 			this.#changed.add(last);
-			return;
+			return null;
 		}
 		const event: SourceEvent = {
 			id: this.#nextId++,
@@ -92,6 +97,7 @@ export class RadioHistory {
 		this.events.push(event);
 		if (this.events.length > EVENTS) this.events.shift();
 		this.#changed.add(event);
+		return event;
 	}
 
 	/** Everything: for a new subscriber. */

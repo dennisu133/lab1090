@@ -100,11 +100,14 @@ describe('RadioHistory', () => {
 
 	test('the same failure again and again is one event, counted', () => {
 		const history = new RadioHistory(0);
-		history.status({ state: 'connecting' }, 1);
-		history.status({ state: 'connected' }, 2);
+		expect(history.status({ state: 'connecting' }, 1)).toBeNull();
+		expect(history.status({ state: 'connected' }, 2)?.state).toBe('connected');
 		const busy = 'the RTL-SDR is in use by another program';
+		const news = [];
 		for (let t = 3; t < 6; t++)
-			history.status({ state: 'waiting', retryInMs: 1000, retryAt: 0, reason: busy }, t);
+			news.push(history.status({ state: 'waiting', retryInMs: 1000, retryAt: 0, reason: busy }, t));
+		// Only the first is news (and said on the console: Receiver).
+		expect(news.map((e) => e?.reason ?? null)).toEqual([busy, null, null]);
 		expect(history.take(null).events.map((e) => [e.state, e.count])).toEqual([
 			['connected', 1],
 			['waiting', 3]

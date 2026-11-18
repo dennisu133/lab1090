@@ -10,7 +10,7 @@ import { describeSource, type Source } from './settings';
 import type {
 	RadioUpdate,
 	ReceiverCounts,
-	SourceStatus,
+	SourceEvent,
 	StreamUpdate,
 	WireFrame
 } from '#lib/receiver-types.ts';
@@ -43,8 +43,6 @@ export class Receiver {
 	#counts = new FrameCounts();
 	#addresses = new AddressFilter();
 	#nextId = 1;
-	/** The last status said on the console (#log). */
-	#said: string | null = null;
 	/** Recent frames, so a new tab doesn't start with an empty feed. */
 	#history: WireFrame[] = [];
 	#pending: WireFrame[] = [];
@@ -57,29 +55,21 @@ export class Receiver {
 			source,
 			(f) => this.#onFrame(f),
 			(status) => {
-				this.radio.status(status, Date.now());
-				if (log) this.#log(status);
+				const event = this.radio.status(status, Date.now());
+				if (log && event) this.#log(event);
 			}
 		);
 	}
 
 	/**
 	 * Say on the console when the link to the receiver comes up or goes down, and why: on a
-	 * Pi without a screen that's the first place to look. A retry for the same reason is
-	 * said once, not every 30 s.
+	 * Pi without a screen that's the first place to look. Only new events (RadioHistory): a
+	 * retry for the same reason is said once, not every 30 s.
 	 */
-	#log(status: SourceStatus): void {
-		const said =
-			status.state === 'waiting'
-				? status.reason
-				: status.state === 'connecting'
-					? null
-					: status.state;
-		if (said === null || said === this.#said) return;
-		this.#said = said;
-		if (status.state === 'waiting') console.warn(`${this.source}: ${status.reason}, trying again`);
-		else if (status.state === 'connected') console.log(`${this.source}: receiving`);
-		else if (status.state === 'ended') console.log(`${this.source}: the recording has ended`);
+	#log(event: SourceEvent): void {
+		if (event.state === 'waiting') console.warn(`${this.source}: ${event.reason}, trying again`);
+		else if (event.state === 'connected') console.log(`${this.source}: receiving`);
+		else console.log(`${this.source}: the recording has ended`);
 	}
 
 	/** Every frame since the server started (FrameCounts). */
