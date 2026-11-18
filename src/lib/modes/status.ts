@@ -228,7 +228,7 @@ export interface OperationalStatus {
 	sil: number | null;
 	/** SIL is a probability per flight hour (0) or per sample (1). Version 2. */
 	silSupplement: number | null;
-	/** Airborne, version 2: geometric vertical accuracy, 0 unknown, 1 > 150 m, 2 ≤ 150 m, 3 ≤ 45 m. */
+	/** Airborne, version 2: geometric vertical accuracy (95 %), 0 unknown or > 150 m, 1 ≤ 150 m, 2 ≤ 45 m, 3 reserved (DO-260B 2.2.3.2.7.2.8). */
 	gva: number | null;
 	/** Airborne, version 1: barometric altitude quality (unused in practice). */
 	baq: number | null;

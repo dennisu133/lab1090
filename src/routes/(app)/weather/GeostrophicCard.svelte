@@ -134,7 +134,9 @@
 		</InfoTip>
 		{#if geo.found}
 			<span class="font-mono text-lg text-emerald-300">{windText(geo.wind)}</span>
-			<span class="text-sm text-zinc-500">± {Math.round(geo.uncertainty)} kt</span>
+			{#if geo.uncertainty !== null}
+				<span class="text-sm text-zinc-500">± {Math.round(geo.uncertainty)} kt</span>
+			{/if}
 		{/if}
 	</div>
 
@@ -213,9 +215,9 @@
 						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {flightLevel(
 							geo.levels[0]
 						)}–{flightLevel(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS −
-						baro comes in 25 ft steps); leaving out any one aircraft moves the wind by up to {Math.round(
-							geo.uncertainty
-						)} kt.
+						baro comes in 25 ft steps){geo.uncertainty === null
+							? '; too few aircraft keep the spread when one is left out to tell how much the wind depends on any one of them.'
+							: `; leaving out any one aircraft moves the wind by up to ${Math.round(geo.uncertainty)} kt.`}
 					</p>
 					{#if measured}
 						<p>

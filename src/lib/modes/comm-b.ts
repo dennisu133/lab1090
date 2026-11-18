@@ -451,7 +451,18 @@ function compare(
 				return text('callsign', s.callsign, fresh(adsb.callsign, now, 5 * 60_000));
 			if (s.kind === 'airborne-position') {
 				const local = s.cpr && position && decodeLocal(s.cpr, position.value);
-				return [...distance(local), ...numeric('altitude', 'ft', s.altitude.feet, altitude, 100)];
+				// TC 20–22 carry the GNSS height: compare it with baro + (GNSS − baro).
+				const height =
+					s.altitudeSource === 'gnss'
+						? numeric(
+								'GNSS height',
+								'ft',
+								s.altitude.feet,
+								altitude && map(fresh(adsb.gnssMinusBaro, now), (d) => altitude.value + d),
+								100
+							)
+						: numeric('altitude', 'ft', s.altitude.feet, altitude, 100);
+				return [...distance(local), ...height];
 			}
 			if (s.kind === 'velocity') {
 				return [

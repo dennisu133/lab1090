@@ -4,6 +4,14 @@ import type { StreamUpdate } from '#lib/receiver-types.ts';
 import type { RequestHandler } from './$types';
 
 /**
+ * Updates a subscriber may leave unread (4 a second: a minute) before it is dropped. A tab
+ * that is frozen, or a link that died without closing, would otherwise queue updates here
+ * for as long as the kernel keeps the socket. A tab that wakes up reconnects and gets the
+ * recent history again.
+ */
+const MAX_UNREAD = 240;
+
+/**
  * Server-Sent Events: one long-lived HTTP response, one `data: <json>` message per update.
  * The browser's EventSource parses this and reconnects by itself if the stream ends.
  * The first update also holds the last 10 minutes of positions, for the tracker's trails
@@ -20,6 +28,11 @@ export const GET: RequestHandler = () => {
 				if (first) {
 					update = { ...update, reference: settings.position };
 					first = false;
+				}
+				if ((controller.desiredSize ?? 0) < -MAX_UNREAD) {
+					unsubscribe();
+					close();
+					return;
 				}
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(update)}\n\n`));
@@ -44,7 +57,9 @@ export const GET: RequestHandler = () => {
 	return new Response(stream, {
 		headers: {
 			'content-type': 'text/event-stream',
-			'cache-control': 'no-cache'
+			'cache-control': 'no-cache',
+			// nginx buffers responses by default, which holds the updates back.
+			'x-accel-buffering': 'no'
 		}
 	});
 };

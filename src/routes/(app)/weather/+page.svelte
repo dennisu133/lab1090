@@ -215,7 +215,9 @@
 			<p class="mt-1 text-xs text-zinc-500">
 				{pressure.local.length
 					? `Median of ${pressure.local.length} aircraft's local settings.`
-					: `Assumed standard: ${pressure.standard} aircraft reported a setting, all on 1013.`}
+					: pressure.standard
+						? `Assumed standard: ${pressure.standard} aircraft reported a setting, all on 1013.`
+						: 'Assumed standard: no aircraft has reported a setting yet.'}
 			</p>
 		</div>
 

@@ -80,6 +80,7 @@ describe('RtlSdr', () => {
 		expect(statuses[1]).toEqual({
 			state: 'waiting',
 			retryInMs: 10,
+			retryAt: expect.any(Number),
 			reason: 'no RTL-SDR found: is it plugged in?'
 		});
 		expect(statuses[3]).toMatchObject({ state: 'waiting', retryInMs: 20 });

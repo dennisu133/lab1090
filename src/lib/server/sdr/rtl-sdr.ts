@@ -118,7 +118,16 @@ export class RtlSdr implements FrameSource {
 					this.#failures = 0;
 					this.#setStatus({ state: 'connected' });
 				}
-				this.decoder.push(chunk);
+				try {
+					this.decoder.push(chunk);
+				} catch (e) {
+					// A bug in the demodulator, not the dongle: say so, and stop this run
+					// rather than go on with a decoder in an unknown state.
+					console.error('lab1090: the demodulator failed:', e);
+					stalled = 'the demodulator failed (the server log has the error)';
+					process.kill();
+					break;
+				}
 			}
 		} catch {
 			// The output broke off: the exit code and messages say why.
@@ -134,7 +143,7 @@ export class RtlSdr implements FrameSource {
 		const { minBackoffMs, maxBackoffMs } = this.#opts;
 		const retryInMs = Math.min(maxBackoffMs, minBackoffMs * 2 ** this.#failures);
 		this.#failures++;
-		this.#setStatus({ state: 'waiting', retryInMs, reason });
+		this.#setStatus({ state: 'waiting', retryInMs, retryAt: Date.now() + retryInMs, reason });
 		this.#retryTimer = setTimeout(() => void this.#run(), retryInMs);
 	}
 

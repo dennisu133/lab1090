@@ -137,7 +137,7 @@ export class TcpClient {
 		const { minBackoffMs, maxBackoffMs } = this.#opts;
 		const retryInMs = Math.min(maxBackoffMs, minBackoffMs * 2 ** this.#failures);
 		this.#failures++;
-		this.#setStatus({ state: 'waiting', retryInMs, reason });
+		this.#setStatus({ state: 'waiting', retryInMs, retryAt: Date.now() + retryInMs, reason });
 		this.#retryTimer = setTimeout(() => this.#connect(), retryInMs);
 	}
 

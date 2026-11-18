@@ -9,6 +9,7 @@
 -->
 <script lang="ts" module>
 	import type { Unit } from '#lib/map/features.ts';
+	import { RouteJudge } from '#lib/tracker/route.ts';
 
 	/**
 	 * Distances and speeds: nautical miles and knots, aviation's units, or km and km/h as a
@@ -23,12 +24,18 @@
 	 * map. Not stored either: open again on a new visit.
 	 */
 	let listOpen = $state(true);
+	/**
+	 * Does the route fit what the aircraft does (lib/tracker/route.ts)? One that doesn't is
+	 * dismissed (most likely another flight's): not drawn, and "unknown" in the panel. The
+	 * judge remembers that for as long as the tab is open (module state: also across other
+	 * pages), so the route doesn't come back as the aircraft turns.
+	 */
+	const judge = new RouteJudge();
 </script>
 
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { lookupFlight, type DbFlight } from '#lib/aircraft-db.ts';
-	import { RouteJudge } from '#lib/tracker/route.ts';
 	import { layerAt, layers as profileLayers } from '#lib/weather/profile.ts';
 	import AircraftList from './AircraftList.svelte';
 	import AircraftPanel from './AircraftPanel.svelte';
@@ -110,6 +117,11 @@
 		if (stream.selected || focus) listOpen = true;
 	});
 	let radar = $derived(focus?.kind === 'radar' ? radars.get(focus.id) : null);
+	// The open radar was dropped (or the layer switched off): close its panel for good, or it
+	// would open again by itself if a radar with the same id is confirmed later.
+	$effect(() => {
+		if (focus?.kind === 'radar' && !radar) focus = null;
+	});
 	// The terrain (for the sky plot's skyline and the antenna's height) loads on first need.
 	$effect(() => {
 		if (layers.coverage || focus?.kind === 'receiver') untrack(() => coverage.start());
@@ -159,12 +171,6 @@
 		return () => (current = false);
 	});
 
-	/**
-	 * Does the route fit what the aircraft does (lib/tracker/route.ts)? One that doesn't is
-	 * dismissed (most likely another flight's): not drawn, and "unknown" in the panel. The
-	 * judge remembers that, so the route doesn't come back as the aircraft turns.
-	 */
-	const judge = new RouteJudge();
 	let judged = $derived(selected && flight?.route ? judge.judge(selected, flight.route) : null);
 	let route = $derived(judged?.shown ? (flight?.route ?? null) : null);
 </script>

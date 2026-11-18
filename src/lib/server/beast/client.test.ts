@@ -109,6 +109,7 @@ describe('BeastClient', () => {
 		expect(statuses).toContainEqual({
 			state: 'waiting',
 			retryInMs: 20,
+			retryAt: expect.any(Number),
 			reason: 'no data for 0.1 s'
 		});
 	});

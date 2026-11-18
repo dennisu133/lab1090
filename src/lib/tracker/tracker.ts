@@ -53,7 +53,7 @@ import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
 import { flightStatus } from '#lib/modes/header.ts';
 import type { EmitterCategory } from '#lib/modes/identification.ts';
 import { allocation, formatRegistration, nationalityMark } from '#lib/modes/nationality.ts';
-import type { Cpr, Movement } from '#lib/modes/position.ts';
+import { movement, type Cpr, type Movement } from '#lib/modes/position.ts';
 import type { HeadingAndSpeed, TrackAndTurn, VerticalIntention } from '#lib/modes/registers.ts';
 import { replySquawk } from '#lib/modes/squawk.ts';
 import { squitter } from '#lib/modes/squitter.ts';
@@ -76,6 +76,8 @@ const REPLY_PENDING_MS = 30_000;
  * old Gillham code and the time between replies.
  */
 const MAX_FT_PER_MIN = 10_000;
+/** How many rejected positions are kept (a tab stays open for days). */
+const MAX_REJECTIONS = 100;
 const ALTITUDE_SLACK_FT = 500;
 
 /** A trail point takes the altitude if it's at most this old (position messages carry it). */
@@ -272,7 +274,7 @@ export class Tracker {
 	#pending = new Map<string, Timed<string | number>>();
 	/** Reply values that weren't taken (yet): the tests read this. */
 	heldBack = 0;
-	/** Positions that failed the checks: the tests read them, the page may show them later. */
+	/** The latest MAX_REJECTIONS positions that failed the checks: the tests read them. */
 	readonly rejections: { icao: string; outcome: Outcome }[] = [];
 
 	/** `receiver`: the antenna's position, for the range check and surface pairs. */
@@ -282,6 +284,11 @@ export class Tracker {
 
 	get(icao: string): TrackedAircraft | null {
 		return this.#aircraft.get(icao) ?? null;
+	}
+
+	/** How many aircraft are kept (heard within AIRCRAFT_TTL_MS). */
+	get size(): number {
+		return this.#aircraft.size;
 	}
 
 	/** Every aircraft heard within AIRCRAFT_TTL_MS, by address. */
@@ -364,7 +371,12 @@ export class Tracker {
 			case 'surface-position':
 				a.onGround = true;
 				a.positionCode = stamp({ tc: s.tc, nicB: 0 });
-				a.surface = stamp({ movement: s.movement, direction: s.track });
+				// The movement's codes 1–8 changed with version 2: read by the aircraft's own
+				// version once its operational status said it (until then as version 2).
+				a.surface = stamp({
+					movement: movement(s.movement.code, a.operational?.value.version ?? 2),
+					direction: s.track
+				});
 				return this.#position(a, s.cpr, t, true);
 			case 'airborne-position': {
 				a.onGround = false;
@@ -461,6 +473,7 @@ export class Tracker {
 		if (outcome.kind === 'waiting') return a;
 		if (outcome.kind === 'rejected' || outcome.kind === 'restart') {
 			this.rejections.push({ icao: a.icao, outcome });
+			if (this.rejections.length > MAX_REJECTIONS) this.rejections.shift();
 			a.lastRejection = { value: outcome.reason, t, from: 'position check' };
 		}
 		if (outcome.kind === 'rejected') return a;

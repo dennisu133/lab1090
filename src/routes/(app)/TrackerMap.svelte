@@ -838,7 +838,11 @@
 		source(map, 'coverage-points').setData(open ? pointFeatures(coverage.points) : empty);
 		source(map, 'coverage-sector').setData(
 			open && sector !== null
-				? sectorFeature(receiver, sector * SECTOR_DEG, radioHorizon(HORIZON_FT))
+				? sectorFeature(
+						receiver,
+						sector * SECTOR_DEG,
+						radioHorizon(HORIZON_FT, coverage.terrain?.antennaKm ?? 0)
+					)
 				: empty
 		);
 		map.setLayoutProperty('receiver-selected', 'visibility', open ? 'visible' : 'none');

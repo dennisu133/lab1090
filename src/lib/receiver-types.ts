@@ -11,7 +11,8 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 export type SourceStatus =
 	| { state: 'connecting'; attempt: number }
 	| { state: 'connected' }
-	| { state: 'waiting'; retryInMs: number; reason: string }
+	/** `retryInMs`: the backoff; `retryAt`: when the next try starts (server's Date.now()). */
+	| { state: 'waiting'; retryInMs: number; retryAt: number; reason: string }
 	| { state: 'ended' }
 	| { state: 'closed' };
 

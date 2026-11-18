@@ -91,8 +91,9 @@ export type Geostrophic =
 			/**
 			 * How much the wind changes when any one aircraft is left out, kt (jackknife):
 			 * the honest error bar, since an aircraft's samples aren't independent of each other.
+			 * Null when fewer than two of the refits still had the spread to find a slope.
 			 */
-			uncertainty: number;
+			uncertainty: number | null;
 			/** How far the flights reach in their least-covered direction, km rms. */
 			spread: number;
 	  }
@@ -225,14 +226,17 @@ export function geostrophicWind(
 		return rest.spread >= 1 ? balancingWind(rest.slope, f) : null;
 	});
 	const ok = others.filter((v): v is Vector => v !== null);
-	const m = {
-		north: ok.reduce((s, v) => s + v.north, 0) / ok.length,
-		east: ok.reduce((s, v) => s + v.east, 0) / ok.length
-	};
-	const uncertainty = Math.sqrt(
-		((ok.length - 1) / ok.length) *
-			ok.reduce((s, v) => s + (v.north - m.north) ** 2 + (v.east - m.east) ** 2, 0)
-	);
+	let uncertainty: number | null = null;
+	if (ok.length >= 2) {
+		const m = {
+			north: ok.reduce((s, v) => s + v.north, 0) / ok.length,
+			east: ok.reduce((s, v) => s + v.east, 0) / ok.length
+		};
+		uncertainty = Math.sqrt(
+			((ok.length - 1) / ok.length) *
+				ok.reduce((s, v) => s + (v.north - m.north) ** 2 + (v.east - m.east) ** 2, 0)
+		);
+	}
 
 	const levels = segs.map((s) => s.level);
 	return {

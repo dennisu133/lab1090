@@ -104,12 +104,12 @@ describe('RadioHistory', () => {
 		history.status({ state: 'connected' }, 2);
 		const busy = 'the RTL-SDR is in use by another program';
 		for (let t = 3; t < 6; t++)
-			history.status({ state: 'waiting', retryInMs: 1000, reason: busy }, t);
+			history.status({ state: 'waiting', retryInMs: 1000, retryAt: 0, reason: busy }, t);
 		expect(history.take(null).events.map((e) => [e.state, e.count])).toEqual([
 			['connected', 1],
 			['waiting', 3]
 		]);
-		history.status({ state: 'waiting', retryInMs: 1000, reason: busy }, 9);
+		history.status({ state: 'waiting', retryInMs: 1000, retryAt: 0, reason: busy }, 9);
 		// Only what changed goes out with the next batch; a new subscriber gets it all.
 		expect(history.take(null).events).toEqual([
 			{ id: 2, t: 3, last: 9, state: 'waiting', reason: busy, count: 4 }

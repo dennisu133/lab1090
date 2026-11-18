@@ -252,7 +252,9 @@ export async function lookupFlight(callsign: string, get: typeof fetch = fetch):
 	const route = await lookupRoute(callsign, get);
 	if (route?.airline) return { route, airline: route.airline };
 	const designator = airlineDesignator(callsign);
-	return { route, airline: designator ? await lookupAirline(designator, get) : null };
+	// A failed airline lookup mustn't lose the route already found.
+	const airline = designator ? await lookupAirline(designator, get).catch(() => null) : null;
+	return { route, airline };
 }
 
 /** For tests: forget every lookup. */

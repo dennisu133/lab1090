@@ -87,7 +87,13 @@ export class TrackerStream extends LiveFeed<never> {
 
 	protected process(recent: WireFrame[], update: StreamUpdate): never[] {
 		const frames = update.tracks ? mergeFrames(update.tracks, recent) : recent;
-		if (frames.length === 0) return [];
+		if (frames.length === 0) {
+			// A quiet sky (or an unreachable receiver) still has to let aircraft go: the
+			// server's clock runs on, so prune by it. Only a change is handed out.
+			if (this.#clock && this.#prune(this.now())) this.aircraft = this.#tracker.list();
+			return [];
+		}
+		let selectedHeard = false;
 		for (const f of frames) {
 			const data = fromHex(f.hex);
 			if (!this.#tracker.add(data, f.addr, f.rx, signalDbfs(f.sig))) continue;
@@ -96,16 +102,27 @@ export class TrackerStream extends LiveFeed<never> {
 			recent.push(f);
 			if (recent.length > MESSAGES) recent.shift();
 			this.#recent.set(icao, recent);
+			if (icao === this.selected) selectedHeard = true;
 		}
 		const rx = frames.at(-1)!.rx;
 		// Never backwards: aircraft would jump back along their track.
 		const now = Math.max(rx, this.#clock ? this.now() : rx);
 		this.#clock = { rx: now, at: performance.now() };
-		this.#tracker.prune(rx);
-		for (const icao of this.#recent.keys()) if (!this.#tracker.get(icao)) this.#recent.delete(icao);
+		this.#prune(rx);
 		this.aircraft = this.#tracker.list();
-		this.#showMessages();
+		// Decoding 40 messages 4× a second adds up: only when the selected one sent more.
+		if (selectedHeard) this.#showMessages();
 		return [];
+	}
+
+	/** Drops aircraft not heard for a minute; returns whether any went. */
+	#prune(now: number): boolean {
+		const before = this.#tracker.size;
+		this.#tracker.prune(now);
+		for (const icao of this.#recent.keys()) if (!this.#tracker.get(icao)) this.#recent.delete(icao);
+		if (this.selected && !this.#recent.has(this.selected) && this.messages.length)
+			this.#showMessages();
+		return this.#tracker.size !== before;
 	}
 
 	#showMessages(): void {

@@ -33,6 +33,7 @@
 		minute: '2-digit',
 		hour12: false
 	});
+	const retryClock = new Intl.DateTimeFormat(undefined, { timeStyle: 'medium' });
 	const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
 
 	/** "14:34", or "15 Nov 14:34" when the server started on an earlier day. */
@@ -64,7 +65,7 @@
 				<InfoTip label={state.label} align="right">
 					<p>
 						The server can't read from {link.source ?? 'the receiver'}: {state.status.reason}. Next
-						try in {(state.status.retryInMs / 1000).toFixed(0)} s.
+						try at {retryClock.format(state.status.retryAt)}.
 					</p>
 				</InfoTip>
 			{:else}

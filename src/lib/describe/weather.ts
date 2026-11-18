@@ -59,7 +59,11 @@ export const driftText = (drift: number) =>
 /** "1018.4 hPa", but the standard pressure as itself: "1013.25 hPa". */
 export const hpa = (x: number) => `${x.toFixed(Math.round(x * 100) % 10 ? 2 : 1)} hPa`;
 
-/** "FL370" above 18,000 ft (where everyone uses the standard pressure setting), else feet. */
+/**
+ * "FL370" from 18,000 ft, else feet. 18,000 ft is the highest transition altitude (the US);
+ * where it is lower (5,000 ft over most of Germany) an aircraft between the two flies a flight
+ * level too, but feet are never wrong there, so one rule serves everywhere.
+ */
 export function flightLevel(feet: number): string {
 	return feet >= 18_000
 		? `FL${String(Math.round(feet / 100)).padStart(3, '0')}`

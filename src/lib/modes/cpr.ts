@@ -98,8 +98,9 @@ export function decodeGlobal(even: Cpr, odd: Cpr, newer: Cpr['format']): LatLon 
 	const latE = even.lat / SCALE;
 	const latO = odd.lat / SCALE;
 
-	// The latitude zone index: the "vernier" step. 59 even zones and 60 odd zones cover
-	// the same distance, so this difference only fits one zone number.
+	// The latitude zone index: the "vernier" step. 60 even zones and 59 odd zones cover
+	// the same distance (hence the cross-multiplied 59 and 60 here), so this difference
+	// only fits one zone number.
 	const j = Math.floor(59 * latE - 60 * latO + 0.5);
 	const rlatE = wrapLat(latZone('even') * (mod(j, 60) + latE));
 	const rlatO = wrapLat(latZone('odd') * (mod(j, 59) + latO));
