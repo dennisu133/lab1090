@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { ago, directionText, distanceText, n, type Unit } from '#lib/describe/format.ts';
+	import { ago, directionText, distanceText, fixed, n, type Unit } from '#lib/describe/format.ts';
 	import { compass, distanceKm } from '#lib/geo.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { BURST_GAP_MS } from '#lib/radar/bursts.ts';
@@ -63,9 +63,6 @@
 
 	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
 	const km = (x: number) => distanceText(x, unit);
-	/** Fixed decimals, with thousands separators. */
-	const fixed = (x: number, digits: number) =>
-		x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 	const plural = (count: number, word: string) => `${n(count)} ${word}${count === 1 ? '' : 's'}`;
 
 	let seconds = $derived(r.period / 1000);

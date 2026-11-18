@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import { n } from '#lib/describe/format.ts';
 	import { adviseGain, MAX_ROUNDING_DB, ROUNDING_LIMIT_DBFS } from '#lib/radio/gain.ts';
 	import { DIAGNOSIS_MS, summarize } from '#lib/radio/history.ts';
 	import { freeSpaceLevel } from '#lib/radio/path-loss.ts';
@@ -186,9 +187,9 @@
 				</p>
 			</InfoTip>
 			<span class="text-sm text-zinc-400">
-				{signal.points.length.toLocaleString('en')} points from {aircraftCount} aircraft
+				{n(signal.points.length)} points from {aircraftCount} aircraft
 				{#if crossing !== null}
-					· free space reaches the noise at ~{Math.round(crossing).toLocaleString('en')} km
+					· free space reaches the noise at ~{n(crossing)} km
 				{/if}
 			</span>
 		</div>

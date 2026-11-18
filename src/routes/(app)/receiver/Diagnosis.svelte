@@ -8,7 +8,8 @@
 	import { MAX_CLIPPED, MAX_ROUNDING_DB, MIN_MESSAGES, type GainAdvice } from '#lib/radio/gain.ts';
 	import type { Summary } from '#lib/radio/history.ts';
 	import type { DemodReport } from '#lib/receiver-types.ts';
-	import { dbfs, duration, percent, signed, TONE_DOT, type Tone } from './format';
+	import { n, signed } from '#lib/describe/format.ts';
+	import { dbfs, duration, percent, TONE_DOT, type Tone } from './format';
 
 	interface Props {
 		demod: DemodReport;
@@ -140,15 +141,13 @@
 				<span>
 					{percent(advice.clippedShare)}
 					<span class="text-zinc-500">
-						({(summary.clipped ?? 0).toLocaleString('en')} of {(
-							summary.demodulated ?? 0
-						).toLocaleString('en')} messages)</span
+						({n(summary.clipped ?? 0)} of {n(summary.demodulated ?? 0)} messages)</span
 					>
 				</span>
 			{:else}
 				<span class={['size-2 shrink-0 self-center rounded-full', TONE_DOT.none]}></span>
 				<span class="text-zinc-500">
-					{(summary.demodulated ?? 0).toLocaleString('en')} messages in 5 min: too few to say
+					{n(summary.demodulated ?? 0)} messages in 5 min: too few to say
 				</span>
 			{/if}
 		</dd>
@@ -179,9 +178,9 @@
 					{#if demod.gaps === 0}
 						none
 					{:else}
-						{demod.gaps}× since the start, {Math.round(demod.lostMs)} ms in all ({Math.round(
+						{demod.gaps}× since the start, {Math.round(demod.lostMs)} ms in all ({n(
 							demod.lostMs * 2400
-						).toLocaleString('en')} samples)
+						)} samples)
 					{/if}
 				</span>
 			{:else}

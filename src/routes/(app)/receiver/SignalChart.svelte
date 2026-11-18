@@ -6,6 +6,7 @@
 	line, 20 dB down per factor ten.
 -->
 <script lang="ts">
+	import { n } from '#lib/describe/format.ts';
 	import { SIGNAL_BUCKET_DB } from '#lib/modes/frame.ts';
 	import { freeSpace, type SignalPoint } from '#lib/radio/path-loss.ts';
 
@@ -161,9 +162,7 @@
 				height={Math.max(0, y(b.key) - top - 2)}
 				class="fill-zinc-600"
 			>
-				<title
-					>{b.key} to {b.key + SIGNAL_BUCKET_DB} dBFS: {b.count.toLocaleString('en')} messages</title
-				>
+				<title>{b.key} to {b.key + SIGNAL_BUCKET_DB} dBFS: {n(b.count)} messages</title>
 			</rect>
 		{/each}
 		<text x={BARS_LEFT} y={H - BOTTOM + 14} class="fill-zinc-500 text-[10px]">all messages</text>

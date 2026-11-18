@@ -11,12 +11,13 @@ import { KM_PER_NM } from '#lib/units.ts';
 /** Whole numbers with thousands separators: 38,000. */
 export const n = (x: number) => Math.round(x).toLocaleString('en');
 
+/** Fixed decimals with thousands separators: 1,234.5, 0.250. */
+export const fixed = (x: number, digits: number) =>
+	x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
 /** Signed, with a real minus and thousands separators: −0.2, +1,500. No sign when it rounds to 0. */
 export function signed(x: number, digits = 1): string {
-	const text = Math.abs(x).toLocaleString('en', {
-		minimumFractionDigits: digits,
-		maximumFractionDigits: digits
-	});
+	const text = fixed(Math.abs(x), digits);
 	if (Number(Math.abs(x).toFixed(digits)) === 0) return text;
 	return `${x < 0 ? '−' : '+'}${text}`;
 }
