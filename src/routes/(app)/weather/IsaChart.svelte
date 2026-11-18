@@ -6,11 +6,13 @@
 -->
 <script lang="ts">
 	import { flightLevel } from '#lib/describe/format.ts';
-	import { T11, isaTemperature } from '#lib/modes/air-data.ts';
+	import { isaTemperature } from '#lib/modes/air-data.ts';
 	import type { TemperatureResult } from '#lib/weather/observation.ts';
+	import { H_MAX, LEVELS, celsiusTicks, degrees, isaPolyline } from './profile-chart';
 
 	let { result, altitude }: { result: TemperatureResult; altitude: number | null } = $props();
 
+	/** px: max-w-60, so at full size the viewBox is the element's px and labels stay 10 px. */
 	const SIZE = 240;
 	const LEFT = 40;
 	const BOTTOM = 20;
@@ -19,25 +21,14 @@
 	/** Axes: °C and ft. */
 	const T_MIN = -70;
 	const T_MAX = 30;
-	const H_MAX = 45_000;
 
 	const x = (kelvin: number) =>
 		LEFT + ((kelvin - 273.15 - T_MIN) / (T_MAX - T_MIN)) * (SIZE - LEFT - RIGHT);
 	const y = (feet: number) =>
 		SIZE - BOTTOM - (Math.min(feet, H_MAX) / H_MAX) * (SIZE - BOTTOM - TOP);
 
-	/** The standard atmosphere: 15 °C at sea level, −1.98 °C per 1,000 ft, −56.5 °C from 36,089 ft. */
-	const TROPOPAUSE_FT = 36_089;
-	const isa = [
-		[isaTemperature(0), 0],
-		[T11, TROPOPAUSE_FT],
-		[T11, H_MAX]
-	]
-		.map(([t, h]) => `${x(t)},${y(h)}`)
-		.join(' ');
-
-	const temperatures = [-60, -40, -20, 0, 20];
-	const levels = [10_000, 20_000, 30_000, 40_000];
+	const isa = isaPolyline(x, y);
+	const temperatures = celsiusTicks(-60, 20, 20);
 
 	let at = $derived(result.atAltitude);
 	let warmer = $derived((at?.isaDeviation ?? 0) >= 0);
@@ -59,9 +50,9 @@
 				y2={SIZE - BOTTOM}
 				class="stroke-zinc-800"
 			/>
-			<text x={x(c + 273.15)} y={SIZE - 6} text-anchor="middle">{c < 0 ? `−${-c}` : c}°</text>
+			<text x={x(c + 273.15)} y={SIZE - 6} text-anchor="middle">{degrees(c)}</text>
 		{/each}
-		{#each levels as h (h)}
+		{#each LEVELS as h (h)}
 			<line x1={LEFT} y1={y(h)} x2={SIZE - RIGHT} y2={y(h)} class="stroke-zinc-800" />
 			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">{flightLevel(h)}</text>
 		{/each}

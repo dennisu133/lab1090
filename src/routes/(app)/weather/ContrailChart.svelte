@@ -16,9 +16,11 @@
 		saturationOverWater,
 		type Contrail
 	} from '#lib/weather/contrail.ts';
+	import { celsiusTicks, degrees } from './profile-chart';
 
 	let { kelvin, result }: { kelvin: number; result: Contrail } = $props();
 
+	/** px: max-w-60, so at full size the viewBox is the element's px and labels stay 10 px. */
 	const SIZE = 240;
 	const LEFT = 32;
 	const BOTTOM = 20;
@@ -88,7 +90,7 @@
 		result.humidityNeeded === null ? saturated : result.humidityNeeded * saturated
 	);
 
-	let temperatures = $derived(Array.from({ length: (hi - lo) / 5 + 1 }, (_, i) => lo + i * 5));
+	let temperatures = $derived(celsiusTicks(lo, hi, 5));
 	let pressures = $derived(
 		Array.from({ length: Math.floor(eMax / eStep) + 1 }, (_, i) => i * eStep)
 	);
@@ -109,7 +111,7 @@
 				y2={SIZE - BOTTOM}
 				class="stroke-zinc-800"
 			/>
-			<text x={x(c + 273.15)} y={SIZE - 6} text-anchor="middle">{c < 0 ? `−${-c}` : c}°</text>
+			<text x={x(c + 273.15)} y={SIZE - 6} text-anchor="middle">{degrees(c)}</text>
 		{/each}
 		{#each pressures as p (p)}
 			<line x1={LEFT} y1={y(p)} x2={SIZE - RIGHT} y2={y(p)} class="stroke-zinc-800" />
