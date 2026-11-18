@@ -175,6 +175,7 @@ rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 720000000 x.u8                 # 5 min, 1.4 
 readsb --device-type ifile --ifile x.u8 --iformat UC8 > x.readsb    # the Pi has readsb
 bun tools/demod-compare.ts x.u8 x.readsb [--list]
 bun tools/pulse-shape.ts x.u8 x.readsb [every]
+bun tools/demod-bench.ts x.u8 [seconds] [--save x.out | --check x.out]
 ```
 
 Real traffic, not modulate.ts: the point is what the dongle does to the signal.
@@ -187,6 +188,9 @@ Real traffic, not modulate.ts: the point is what the dongle does to the signal.
   readsb found, where ours lost it (quick test, preamble, bits, address not heard yet). DF11
   replies to a radar are counted apart: one wrong bit among their last 7 gives another
   radar's code, and neither side can check which is right.
+- `demod-bench.ts`: how fast the demodulator is on a recording (as a share of one core), and
+  with `--save` / `--check` whether a change meant only to be faster left every message
+  as it was. Builds for the Pi with `bun build --compile --target=bun-linux-arm64`.
 - `pulse-shape.ts`: measures the pulse as the dongle delivers it, by least squares over the
   messages readsb got intact (it knows all their bits): the table in
   `src/lib/demod/pulse.ts`, which the demodulator reads bits with (`sequence.ts`).
@@ -197,4 +201,5 @@ those readsb finds (not counting DF11 radar codes). Before, with bits read one a
 (first half against second) and a preamble ratio of 2, it found 4–5 % fewer than readsb and
 missed 6–8 % of them. The steps in between: bits read as a sequence over the measured pulse
 (+14–19 %, missing 1.7–2.3 %), then readsb's slicer, its quick test and its format repair
-(`src/lib/demod/readsb.ts`, `filter.ts`).
+(`src/lib/demod/readsb.ts`, `filter.ts`). On a Pi 5 that takes 7.9 % of a core at 49.6 dB
+and 9.1 % at 40.2 dB.

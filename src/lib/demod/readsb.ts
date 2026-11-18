@@ -37,30 +37,45 @@ const THRESHOLD = 58;
  * Whether readsb would try a message starting between sample n and n + 1 (ticks 5n … 5n + 4).
  *
  * readsb looks at sample p for a preamble starting 0.6 to 1.4 samples after it: at tick
- * 5p + 3 … 5p + 7, its "phases" 3 to 7. So p = n covers our starts 5n + 3 and 5n + 4, and
- * p = n − 1 the others. For each p: three comparisons first (the 2nd pulse above a gap
- * sample, the 4th above two), then for each group of phases a sum of the samples the pulses
- * fill minus the ones between pulses that the phase leaves empty, against the noise samples.
- * `mag` must hold a sample before n.
+ * 5p + 3 … 5p + 7, its "phases" 3 to 7. So p = n covers our starts 5n + 3 and 5n + 4
+ * (readsbLate), and p = n − 1 the others (readsbEarly). For each p: three comparisons first
+ * (readsbCheck), then for each group of phases a sum of the samples the pulses fill minus
+ * the ones between pulses that the phase leaves empty, against the noise samples.
+ * `mag` must hold a sample before n. (The demodulator calls the parts, to do readsbCheck once
+ * per sample.)
  */
 export function readsbPreamble(mag: Uint16Array, n: number): boolean {
-	// p = n: phases 3 and 4 (peaks at samples 1, 3, 9 and 11–12).
-	let p = n;
-	if (mag[p + 1] > mag[p + 7] && mag[p + 12] > mag[p + 14] && mag[p + 12] > mag[p + 15]) {
-		const ref = (noise(mag, p) * THRESHOLD) >> 5;
-		if (common(mag, p) - (mag[p + 10] - mag[p + 11]) >= ref) return true;
-	}
-	if (n === 0) return false;
-	// p = n − 1: phases 5 and 6 (peaks at 1, 3–4, 9–10, 12), and 7 (1–2, 4, 10, 12).
-	p = n - 1;
-	if (mag[p + 1] > mag[p + 7] && mag[p + 12] > mag[p + 14] && mag[p + 12] > mag[p + 15]) {
-		const ref = (noise(mag, p) * THRESHOLD) >> 5;
-		const d1011 = mag[p + 10] - mag[p + 11];
-		if (common(mag, p) + d1011 >= ref) return true;
-		if (mag[p + 1] + mag[p + 4] + 2 * (mag[p + 2] - mag[p + 3]) + d1011 + mag[p + 12] >= ref)
-			return true;
-	}
-	return false;
+	return (
+		(readsbCheck(mag, n) === 1 && readsbLate(mag, n)) ||
+		(n > 0 && readsbCheck(mag, n - 1) === 1 && readsbEarly(mag, n - 1))
+	);
+}
+
+/**
+ * readsb's first check at sample p: the 2nd pulse above a gap sample, the 4th above two. 1 or
+ * 0, without branches (`+` and `&` instead of `&&`): it passes at random on noise, which a
+ * branch would guess wrong too often, and it runs for every sample.
+ */
+export function readsbCheck(mag: Uint16Array, p: number): 0 | 1 {
+	return (+(mag[p + 1] > mag[p + 7]) &
+		+(mag[p + 12] > mag[p + 14]) &
+		+(mag[p + 12] > mag[p + 15])) as 0 | 1;
+}
+
+/** Phases 3 and 4 at sample p (peaks at samples 1, 3, 9 and 11–12). */
+export function readsbLate(mag: Uint16Array, p: number): boolean {
+	const ref = (noise(mag, p) * THRESHOLD) >> 5;
+	return common(mag, p) - (mag[p + 10] - mag[p + 11]) >= ref;
+}
+
+/** Phases 5 and 6 (peaks at 1, 3–4, 9–10, 12), and 7 (1–2, 4, 10, 12), at sample p. */
+export function readsbEarly(mag: Uint16Array, p: number): boolean {
+	const ref = (noise(mag, p) * THRESHOLD) >> 5;
+	const d1011 = mag[p + 10] - mag[p + 11];
+	return (
+		common(mag, p) + d1011 >= ref ||
+		mag[p + 1] + mag[p + 4] + 2 * (mag[p + 2] - mag[p + 3]) + d1011 + mag[p + 12] >= ref
+	);
 }
 
 /** Five samples that lie between the pulses whatever the phase. */

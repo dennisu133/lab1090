@@ -49,6 +49,27 @@ export function magnitudes(
 	}
 }
 
+/**
+ * magnitudes() that also returns their sum (for the noise level: one pass over the samples
+ * instead of two).
+ */
+export function magnitudesSum(
+	iq: Uint8Array,
+	from: number,
+	count: number,
+	out: Uint16Array,
+	at: number
+): number {
+	let sum = 0;
+	for (let k = 0; k < count; k++) {
+		const b = from + 2 * k;
+		const m = MAGNITUDE[(iq[b] << 8) | iq[b + 1]];
+		out[at + k] = m;
+		sum += m;
+	}
+	return sum;
+}
+
 /** A magnitude as dB below full scale (amplitude: 20·log₁₀). */
 export function magnitudeDbfs(magnitude: number): number {
 	return 20 * Math.log10(magnitude / FULL_SCALE);

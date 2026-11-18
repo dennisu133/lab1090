@@ -11,8 +11,8 @@
  *
  * Energy in a window. Instead of looking at single samples, we add up the magnitude over a
  * stretch of time with fractional ends: a sample half inside the window counts half. (That's
- * the matched filter for a rectangular pulse.) A running sum of the magnitudes makes each
- * window two lookups, whatever its length.
+ * the matched filter for a rectangular pulse.) A half µs is 6 ticks, so it always spans
+ * exactly two samples: two lookups.
  *
  * Per sample n:
  *
@@ -43,8 +43,8 @@
  * chunk is kept for the next.
  */
 import { KNOWN_FORMATS, MessageFilter, messageBits, type Rejection } from './filter';
-import { ADC_LIMIT, FULL_SCALE, magnitudes, SAMPLE_RATE } from './samples';
-import { readsbPreamble, sliceBit } from './readsb';
+import { ADC_LIMIT, FULL_SCALE, magnitudesSum, SAMPLE_RATE } from './samples';
+import { readsbCheck, readsbEarly, readsbLate, sliceBit } from './readsb';
 import { SequenceReader } from './sequence';
 
 /** A message as the server takes it (the same shape as a Beast frame). */
@@ -106,17 +106,11 @@ const SAMPLE = 12e6 / SAMPLE_RATE;
 const US = 12;
 const HALF = US / 2;
 /** The preamble's pulses start at 0, 1, 3.5 and 4.5 µs; the gaps fill the rest of 8 µs. */
-const PULSES = [0, 1, 3.5, 4.5].map((t) => t * US);
-const GAPS: [number, number][] = [
-	[0.5, 1],
-	[1.5, 3.5],
-	[4, 4.5],
-	[5, 8]
-].map(([a, b]) => [a * US, b * US]);
-const PULSE_LENGTH = 4 * HALF;
-const GAP_LENGTH = GAPS.reduce((sum, [a, b]) => sum + b - a, 0);
+const [P1, P2, P3, P4] = [0, 1, 3.5, 4.5].map((t) => t * US);
 /** Data starts 8 µs after the preamble. */
 const DATA = 8 * US;
+const PULSE_LENGTH = 4 * HALF;
+const GAP_LENGTH = DATA - PULSE_LENGTH;
 /**
  * Samples from a preamble's start to the end of a long message, and a few more: the last
  * pulse's ringing (pulse.ts).
@@ -189,8 +183,6 @@ export class Demodulator {
 
 	/** Magnitudes: what's left of the previous chunk, then the new one. */
 	#mag = new Uint16Array(0);
-	/** Running sum: #sum[k] = #mag[0] + … + #mag[k − 1]. */
-	#sum = new Float64Array(0);
 	/** Samples held in #mag. */
 	#length = 0;
 	/** Absolute number of #mag[0], counted from the first sample ever pushed. */
@@ -208,6 +200,9 @@ export class Demodulator {
 	/** The readings already checked at the current start, to skip one that reads the same. */
 	#tried = [new Uint8Array(112), new Uint8Array(112)];
 	#triedCount = 0;
+	/** A reading packed into bytes, for the filter. */
+	#long = new Uint8Array(14);
+	#short = new Uint8Array(7);
 	#sequence = new SequenceReader();
 	#starts: number[] = [];
 	#scores: number[] = [];
@@ -224,13 +219,13 @@ export class Demodulator {
 		this.#odd = bytes.length & 1 ? bytes[bytes.length - 1] : -1;
 
 		this.#grow(this.#length + count);
-		magnitudes(bytes, 0, count, this.#mag, this.#length);
-		const mag = this.#mag;
-		const sum = this.#sum;
-		for (let k = this.#length; k < this.#length + count; k++) {
-			sum[k + 1] = sum[k] + mag[k];
-			this.#blockSum += mag[k];
-			if (++this.#blockFill === LEVEL_BLOCK) {
+		// Block by block, for the level: magnitudes and their sum in one pass.
+		for (let done = 0; done < count;) {
+			const part = Math.min(count - done, LEVEL_BLOCK - this.#blockFill);
+			this.#blockSum += magnitudesSum(bytes, 2 * done, part, this.#mag, this.#length + done);
+			this.#blockFill += part;
+			done += part;
+			if (this.#blockFill === LEVEL_BLOCK) {
 				this.#levels.push(this.#blockSum / LEVEL_BLOCK);
 				this.stats.level = this.#blockSum / LEVEL_BLOCK / FULL_SCALE;
 				this.stats.blocks++;
@@ -255,6 +250,7 @@ export class Demodulator {
 		/** Where the next block of LEVEL_BLOCK samples starts, relative to #mag[0]. */
 		let boundary = -1;
 		let n = this.#next;
+		let checkBefore = n > 0 ? readsbCheck(mag, n - 1) : 0;
 		for (; n < end; n++) {
 			if (n >= boundary) {
 				// The level of the block before this one: it's complete, whatever the chunks.
@@ -264,36 +260,48 @@ export class Demodulator {
 				boundary = (block + 1) * LEVEL_BLOCK - this.#offset;
 			}
 			// 1. Whatever the fraction, these samples overlap a pulse by at least 0.6 of a sample
-			//    (the first and last pulse: one of the two does)…
-			const high = Math.min(
-				Math.max(mag[n], mag[n + 1]),
-				mag[n + 3],
-				mag[n + 9],
-				Math.max(mag[n + 11], mag[n + 12])
-			);
-			// …and these lie in a gap (5–7: between the 2nd and 3rd pulse; 13–18: after the 4th).
-			// Failing that, readsb's test: then only its slicer reads (`weak`).
-			let weak = high <= floor;
-			if (!weak) {
-				const gap =
-					mag[n + 5] +
-					mag[n + 6] +
-					mag[n + 7] +
-					mag[n + 13] +
-					mag[n + 14] +
-					mag[n + 15] +
-					mag[n + 16] +
-					mag[n + 17] +
-					mag[n + 18];
-				weak = high * 9 <= gap * QUICK_RATIO;
+			//    (the first and last pulse: one of the two does), so they must be above the
+			//    floor; readsb's test (readsb.ts) is the other way in. Its first check looks at
+			//    sample n for starts in n and n + 1: this one's is the next one's earlier. Most
+			//    samples fail both, at random: worked out without branches (`+`, `&`), so the
+			//    processor needn't guess, with one branch for all.
+			const second = mag[n + 3];
+			const third = mag[n + 9];
+			const maybeOurs = +(second > floor) & +(third > floor);
+			const checkHere = readsbCheck(mag, n);
+			const before = checkBefore;
+			checkBefore = checkHere;
+			if ((maybeOurs | checkHere | before) === 0) continue;
+			let ours = false;
+			if (maybeOurs) {
+				const first = Math.max(mag[n], mag[n + 1]);
+				const fourth = Math.max(mag[n + 11], mag[n + 12]);
+				if (first > floor && fourth > floor) {
+					// …and stronger than these, which lie in a gap (5–7: between the 2nd and 3rd
+					// pulse; 13–18: after the 4th).
+					const gap =
+						mag[n + 5] +
+						mag[n + 6] +
+						mag[n + 7] +
+						mag[n + 13] +
+						mag[n + 14] +
+						mag[n + 15] +
+						mag[n + 16] +
+						mag[n + 17] +
+						mag[n + 18];
+					ours = Math.min(first, second, third, fourth) * 9 > gap * QUICK_RATIO;
+				}
 			}
-			if (weak && !readsbPreamble(mag, n)) continue;
+			// Failing that, readsb's: then only its slicer reads.
+			if (!ours && !((checkHere && readsbLate(mag, n)) || (before && readsbEarly(mag, n - 1))))
+				continue;
 			this.stats.candidates++;
-			const frame = this.#tryAt(n, weak);
+			const frame = this.#tryAt(n, !ours);
 			if (frame) {
 				frames.push(frame.frame);
 				// Go on after this message; one starting inside it would be garbled anyway.
 				n = Math.floor(frame.end / SAMPLE) - 1;
+				checkBefore = n >= 0 ? readsbCheck(mag, n) : 0;
 			}
 		}
 		this.#next = n;
@@ -309,11 +317,17 @@ export class Demodulator {
 		const scores = this.#scores;
 		starts.length = 0;
 		scores.length = 0;
-		for (let s = n * SAMPLE; s < (n + 1) * SAMPLE; s++) {
-			let pulses = 0;
-			for (const t of PULSES) pulses += this.#energy(s + t, s + t + HALF);
-			let gaps = 0;
-			for (const [a, b] of GAPS) gaps += this.#energy(s + a, s + b);
+		const mag = this.#mag;
+		// The gaps are what the pulses leave of the preamble's 96 ticks. From tick 5n + f, those
+		// are 5 − f ticks of sample n, samples n + 1 … n + 18 whole, and f + 1 ticks of n + 19.
+		let middle = 0;
+		for (let k = n + 1; k <= n + 18; k++) middle += mag[k];
+		for (let f = 0; f < SAMPLE; f++) {
+			const s = n * SAMPLE + f;
+			const pulses =
+				this.#energy(s + P1) + this.#energy(s + P2) + this.#energy(s + P3) + this.#energy(s + P4);
+			const all = (SAMPLE - f) * mag[n] + SAMPLE * middle + (f + 1) * mag[n + 19];
+			const gaps = all - pulses;
 			const pulseMean = pulses / PULSE_LENGTH;
 			const gapMean = gaps / GAP_LENGTH;
 			if (pulseMean <= gapMean * PREAMBLE_RATIO) continue;
@@ -385,26 +399,29 @@ export class Demodulator {
 			if (i === length) return 'parity';
 		}
 		if (this.#triedCount < this.#tried.length) this.#tried[this.#triedCount++].set(bits);
-		let pulses = 0;
-		const data = new Uint8Array(length / 8);
-		for (let i = 0; i < length; i++) {
-			const t = data0 + i * US;
-			if (bits[i]) {
-				data[i >> 3] |= 0x80 >> (i & 7);
-				pulses += this.#energy(t, t + HALF) / SELF_OVERLAP[t % SAMPLE];
-			} else {
-				pulses += this.#energy(t + HALF, t + US) / SELF_OVERLAP[(t + HALF) % SAMPLE];
-			}
+		const data = length === 112 ? this.#long : this.#short;
+		for (let i = 0; i < data.length; i++) {
+			let byte = 0;
+			for (let j = 8 * i; j < 8 * i + 8; j++) byte = (byte << 1) | bits[j];
+			data[i] = byte;
 		}
 		this.stats.decoded++;
 		const timestamp = this.#startTick + this.#offset * SAMPLE + s;
-		const accepted = this.filter.check(data, timestamp / 12e6);
+		const passed = this.filter.check(data, timestamp / 12e6);
 		this.stats.accepted = this.filter.stats.accepted;
 		this.stats.repaired = this.filter.stats.repaired;
-		if (!accepted) return this.filter.rejection ?? 'parity';
+		if (!passed) return this.filter.rejection ?? 'parity';
+		// The filter hands back our buffer, or a repaired copy.
+		const accepted = passed === data ? data.slice() : passed;
+		// The signal level, from the bits as read: each pulse's energy in its window.
+		let pulses = 0;
+		for (let i = 0; i < length; i++) {
+			const t = data0 + i * US + (bits[i] ? 0 : HALF);
+			pulses += this.#energy(t) / SELF_OVERLAP[t % SAMPLE];
+		}
 		const end = data0 + length * US;
 		if (this.#reachesLimit(s, end)) this.stats.clipped++;
-		// #energy counts in ticks: a sample fully inside a window adds its magnitude 5 times.
+		// #energy counts in ticks: a sample fully inside the window adds its magnitude 5 times.
 		const amplitude = pulses / SAMPLE / length / FULL_SCALE;
 		return {
 			frame: {
@@ -431,22 +448,18 @@ export class Demodulator {
 	 */
 	#bitAt(t: number, how: 'slicer' | 'box'): number {
 		if (how === 'slicer') return sliceBit(this.#mag, t);
-		return this.#energy(t, t + HALF) > this.#energy(t + HALF, t + US) ? 1 : 0;
+		return this.#energy(t) > this.#energy(t + HALF) ? 1 : 0;
 	}
 
 	/**
-	 * Magnitude summed over the ticks [a, b) (each tick counts a fifth of its sample: sample k
-	 * stands for ticks 5k to 5k + 4), times 5: whole samples from the running sum, plus the
-	 * ticks at both ends. Whole numbers all the way.
+	 * Magnitude summed over the half µs (6 ticks) from tick a, each tick counting its sample's
+	 * magnitude (sample k stands for ticks 5k to 5k + 4): r = a mod 5 into sample k, that's
+	 * 5 − r ticks of k and 1 + r of k + 1. Whole numbers.
 	 */
-	#energy(a: number, b: number): number {
-		const ia = (a / SAMPLE) | 0;
-		const ib = (b / SAMPLE) | 0;
-		return (
-			SAMPLE * (this.#sum[ib] - this.#sum[ia]) +
-			(b - ib * SAMPLE) * this.#mag[ib] -
-			(a - ia * SAMPLE) * this.#mag[ia]
-		);
+	#energy(a: number): number {
+		const k = (a / SAMPLE) | 0;
+		const r = a - k * SAMPLE;
+		return (SAMPLE - r) * this.#mag[k] + (1 + r) * this.#mag[k + 1];
 	}
 
 	/** Keep the samples from the search position on (and BEFORE): they may start a message. */
@@ -454,8 +467,6 @@ export class Demodulator {
 		const from = Math.max(0, Math.min(this.#next, this.#length) - BEFORE);
 		const keep = this.#length - from;
 		this.#mag.copyWithin(0, from, this.#length);
-		this.#sum[0] = 0;
-		for (let k = 0; k < keep; k++) this.#sum[k + 1] = this.#sum[k] + this.#mag[k];
 		this.#length = keep;
 		this.#offset += from;
 		this.#next -= from;
@@ -471,9 +482,6 @@ export class Demodulator {
 		if (this.#mag.length >= size + 1) return;
 		const mag = new Uint16Array(Math.max(size + 1, this.#mag.length * 2));
 		mag.set(this.#mag.subarray(0, this.#length));
-		const sum = new Float64Array(mag.length + 1);
-		sum.set(this.#sum.subarray(0, this.#length + 1));
 		this.#mag = mag;
-		this.#sum = sum;
 	}
 }

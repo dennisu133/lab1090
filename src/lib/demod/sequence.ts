@@ -66,7 +66,24 @@ const EXPECTED = (() => {
 	return table;
 })();
 
+/**
+ * The preamble drawn with amplitude 1 at each sample the fit looks at, by where it starts
+ * within its sample (s mod 5): from the sample before it to the one its last pulse's ringing
+ * ends in.
+ */
+const PREAMBLE_X = Array.from({ length: SAMPLE }, (_, phase) => {
+	const x: number[] = [];
+	for (let k = -1; k < Math.ceil((phase + 90) / SAMPLE); k++) {
+		let sum = 0;
+		for (const p of PREAMBLE) sum += pulseShape(SAMPLE * k - phase - p);
+		x.push(sum);
+	}
+	return Float64Array.from(x);
+});
+
 export class SequenceReader {
+	/** mag[k] − b for the samples of the current bit. */
+	#y = new Float64Array(MOST);
 	#cost = new Float64Array(STATES);
 	#next = new Float64Array(STATES);
 	/** The best previous state, per bit and state. */
@@ -85,10 +102,11 @@ export class SequenceReader {
 		let sy = 0;
 		let sxx = 0;
 		let sxy = 0;
-		for (let k = Math.floor(s / SAMPLE) - 1; k < Math.ceil((s + 90) / SAMPLE); k++) {
-			let x = 0;
-			for (const p of PREAMBLE) x += pulseShape(SAMPLE * k - s - p);
-			const y = mag[k] ?? 0;
+		const first = Math.floor(s / SAMPLE) - 1;
+		const preamble = PREAMBLE_X[s - (first + 1) * SAMPLE];
+		for (let i = 0; i < preamble.length; i++) {
+			const x = preamble[i];
+			const y = mag[first + i] ?? 0;
 			n++;
 			sx += x;
 			sy += y;
@@ -117,25 +135,34 @@ export class SequenceReader {
 					: Math.ceil((t + US + PULSE_FROM) / SAMPLE);
 			const phase = SAMPLE * kFrom - t - PULSE_FROM;
 			const row = (Math.min(j, MEMORY) * SAMPLE + phase) * MOST * WORDS;
-			next.fill(Infinity);
-			for (let state = 0; state < STATES; state++) {
-				const before = cost[state];
-				if (before === Infinity) continue;
-				for (let bit = 0; bit < 2; bit++) {
+			const y = this.#y;
+			const count = kTo - kFrom;
+			for (let i = 0; i < count; i++) y[i] = mag[kFrom + i] - b;
+			// Into each state (the newest bits) from the two that differ in the oldest: the bit
+			// that falls out. Ties go to the lower state.
+			for (let to = 0; to < STATES; to++) {
+				const bit = to & 1;
+				let best = Infinity;
+				let from = 0;
+				for (let oldest = 0; oldest < 2; oldest++) {
+					const state = (to >> 1) | (oldest << (MEMORY - 1));
 					const word = (state << 1) | bit;
-					let total = before;
-					for (let k = kFrom, at = row + word; k < kTo; k++, at += WORDS) {
-						const r = mag[k] - b - A * EXPECTED[at];
+					let total = cost[state];
+					for (let i = 0, at = row + word; i < count; i++, at += WORDS) {
+						const r = y[i] - A * EXPECTED[at];
 						total += r * r;
 					}
-					const to = word & (STATES - 1);
-					if (total < next[to]) {
-						next[to] = total;
-						back[j * STATES + to] = state;
+					if (total < best) {
+						best = total;
+						from = state;
 					}
 				}
+				next[to] = best;
+				back[j * STATES + to] = from;
 			}
-			[cost, next] = [next, cost];
+			const done = cost;
+			cost = next;
+			next = done;
 			if (j === 8) {
 				// The format, from the best path so far (the first bits are settled by now): it
 				// says how many bits there are.
