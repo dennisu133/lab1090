@@ -9,10 +9,10 @@ import { describe, expect, test } from 'bun:test';
 import { resolutionAdvisory } from './acas';
 import { decodeSurfaceGlobal, decodeSurfaceLocal } from './cpr';
 import { checkParity, isDf17Format } from './crc';
-import { fromHex, payload, typeCode } from './frame';
+import { esFormat, fromHex, payload, typeCode } from './frame';
 import { messageHeader } from './header';
 import { movement, surfacePosition } from './position';
-import { esFormat, extendedSquitter, imf, squitter } from './squitter';
+import { extendedSquitter, imf, squitter } from './squitter';
 import { aircraftSize, antennaOffset, operationalStatus, targetState } from './status';
 import { surfaceOracle, syntheticOracle, type OracleEntry, encodeCpr } from './testing';
 

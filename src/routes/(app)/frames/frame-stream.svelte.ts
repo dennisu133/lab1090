@@ -5,9 +5,15 @@ import {
 	decodeSurfaceLocal,
 	type LatLon
 } from '#lib/modes/cpr.ts';
-import { downlinkFormat, fromHex, payload, signalDbfs, typeCode } from '#lib/modes/frame.ts';
+import {
+	downlinkFormat,
+	esFormat,
+	fromHex,
+	payload,
+	signalDbfs,
+	typeCode
+} from '#lib/modes/frame.ts';
 import { airbornePosition, surfacePosition } from '#lib/modes/position.ts';
-import { esFormat } from '#lib/modes/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import { toSearchParams, type FrameQuery } from '#lib/frame-query.ts';
 import type { FramesResponse, WireFrame } from '#lib/receiver-types.ts';

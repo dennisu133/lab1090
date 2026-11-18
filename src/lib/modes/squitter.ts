@@ -17,8 +17,7 @@
  *
  * Shared by server and browser; no state here.
  */
-import { isDf17Format } from './crc';
-import { bits, downlinkFormat, payload } from './frame';
+import { bits, esFormat, payload } from './frame';
 import { callsign, emitterCategory, type Identification } from './identification';
 import {
 	airbornePosition,
@@ -64,46 +63,11 @@ export interface ReservedSquitter {
 /**
  * The ADS-B payload of a message, decoded. null if the message has no ADS-B payload: not
  * DF17/18/19, or DF18/19 with a control/application field that means a different layout
- * (see esFormat).
+ * (esFormat in frame.ts).
  */
 export function extendedSquitter(data: Uint8Array): Squitter | null {
 	const me = payload(data);
 	return me && esFormat(data) ? squitter(me) : null;
-}
-
-/**
- * Does this message carry a regular ADS-B payload, and if so, what does its address mean?
- *
- * - DF17: always; the address is the transponder's ICAO address.
- * - DF18 (non-transponder devices, and ground stations relaying traffic): the control field
- *   CF decides. Fine TIS-B (CF 2/5) and ADS-R (CF 6) messages have an IMF bit (see imf()).
- *   Coarse TIS-B (CF 3) and management messages (CF 4) have different layouts.
- * - DF19 (military): only if the CRC shows it's laid out like DF17 (see isDf17Format:
- *   what DF19 carries is up to the military, and AF 0's meaning is disputed).
- */
-export function esFormat(data: Uint8Array): {
-	address: 'icao' | 'non-icao' | 'imf';
-	source: 'ads-b' | 'tis-b' | 'ads-r';
-} | null {
-	const df = downlinkFormat(data);
-	const field = bits(data, 6, 3);
-	if (df === 17) return { address: 'icao', source: 'ads-b' };
-	if (df === 19) return isDf17Format(data) ? { address: 'icao', source: 'ads-b' } : null;
-	if (df !== 18) return null;
-	switch (field) {
-		case 0:
-			return { address: 'icao', source: 'ads-b' };
-		case 1:
-			return { address: 'non-icao', source: 'ads-b' };
-		case 2:
-			return { address: 'imf', source: 'tis-b' };
-		case 5:
-			return { address: 'non-icao', source: 'tis-b' };
-		case 6:
-			return { address: 'imf', source: 'ads-r' };
-		default:
-			return null;
-	}
 }
 
 /**

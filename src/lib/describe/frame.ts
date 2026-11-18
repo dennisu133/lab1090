@@ -10,7 +10,7 @@
  */
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { payload } from '#lib/modes/frame.ts';
+import { esFormat, payload } from '#lib/modes/frame.ts';
 import {
 	CAPABILITIES,
 	CONTROL_FIELDS,
@@ -22,7 +22,7 @@ import {
 	type FlightStatus,
 	type Header
 } from '#lib/modes/header.ts';
-import { esFormat, extendedSquitter, imf } from '#lib/modes/squitter.ts';
+import { extendedSquitter, imf } from '#lib/modes/squitter.ts';
 import { advisoryFields, altitudeField, squawkField, type Field } from './field';
 import { n } from './format';
 import { cprFields, squitterFields } from './squitter';

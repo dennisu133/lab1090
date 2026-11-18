@@ -16,15 +16,45 @@ export function downlinkFormat(data: Uint8Array): number {
 /**
  * ADS-B Type Code: the first 5 bits of the 56-bit ME field (byte 4) in DF17/18/19.
  * Decides what the message carries (identification, position, velocity, …).
- * null if the message has no ADS-B payload: DF18 with CF 3/4/7 uses other layouts (see
- * esFormat in squitter.ts), and DF19 only counts if the CRC shows it's laid out like DF17.
+ * null if the message has no ADS-B payload (esFormat).
  */
 export function typeCode(data: Uint8Array): number | null {
+	return esFormat(data) ? data[4] >> 3 : null;
+}
+
+/**
+ * Does this message carry a regular ADS-B payload, and if so, what does its address mean?
+ *
+ * - DF17: always; the address is the transponder's ICAO address.
+ * - DF18 (non-transponder devices, and ground stations relaying traffic): the control field
+ *   CF decides. Fine TIS-B (CF 2/5) and ADS-R (CF 6) messages have an IMF bit (squitter.ts imf).
+ *   Coarse TIS-B (CF 3) and management messages (CF 4) have different layouts.
+ * - DF19 (military): only if the CRC shows it's laid out like DF17 (see isDf17Format:
+ *   what DF19 carries is up to the military, and AF 0's meaning is disputed).
+ */
+export function esFormat(data: Uint8Array): {
+	address: 'icao' | 'non-icao' | 'imf';
+	source: 'ads-b' | 'tis-b' | 'ads-r';
+} | null {
 	const df = downlinkFormat(data);
-	const cf = data[0] & 0b111;
-	if (df === 17 || (df === 18 && ![3, 4, 7].includes(cf)) || isDf17Format(data))
-		return data[4] >> 3;
-	return null;
+	const field = bits(data, 6, 3);
+	if (df === 17) return { address: 'icao', source: 'ads-b' };
+	if (df === 19) return isDf17Format(data) ? { address: 'icao', source: 'ads-b' } : null;
+	if (df !== 18) return null;
+	switch (field) {
+		case 0:
+			return { address: 'icao', source: 'ads-b' };
+		case 1:
+			return { address: 'non-icao', source: 'ads-b' };
+		case 2:
+			return { address: 'imf', source: 'tis-b' };
+		case 5:
+			return { address: 'non-icao', source: 'tis-b' };
+		case 6:
+			return { address: 'imf', source: 'ads-r' };
+		default:
+			return null;
+	}
 }
 
 /**
