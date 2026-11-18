@@ -42,3 +42,19 @@
 	/* the ⓘ button is a black icon: make it light */
 	@apply invert;
 }
+
+/*
+ * InfoTip's last resorts, when lining the tooltip up with an edge of its label doesn't fit in
+ * the window: centred under (or above) the label, and moved inside the window by the browser.
+ * Without the margin that lines it up with the label: its own see-through padding keeps it
+ * off the window's edges. Named rules, as only these can reset the margin; global, as
+ * position-try names are.
+ */
+@position-try --info-below {
+	position-area: block-end;
+	margin: 0;
+}
+@position-try --info-above {
+	position-area: block-start;
+	margin: 0;
+}

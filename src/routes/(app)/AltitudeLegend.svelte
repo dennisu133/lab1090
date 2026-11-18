@@ -33,7 +33,7 @@
 	class="flex items-center gap-2.5 rounded-md bg-zinc-950/80 px-3 py-1.5 text-xs text-zinc-400 backdrop-blur sm:block sm:py-2"
 >
 	<div class="sm:mb-1">
-		<InfoTip label="Altitude" above>
+		<InfoTip label="Altitude">
 			<p>
 				Aircraft and trails are coloured by barometric altitude: warm near the ground (taking off,
 				landing), cool at cruising level.

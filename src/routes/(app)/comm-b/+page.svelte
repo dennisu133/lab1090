@@ -114,7 +114,7 @@
 		</div>
 		<!-- Fixed layout: only Register takes the remaining width, so changing counts never move
 		     the columns. Widths go on <col>: the header's colspan cells can't carry them. -->
-		<div class="overflow-x-auto lg:overflow-visible">
+		<div class="overflow-x-auto">
 			<table class="w-full min-w-xl table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<colgroup>
 					<col class="w-14" />
@@ -196,7 +196,7 @@
 		     so new readings never shift the columns; Content gets the rest and wraps. -->
 		<!-- Scrolls only below lg: from 1024 px the table fits, and a scroll container would cut
 		     off the header tooltips. -->
-		<div class="overflow-x-auto lg:overflow-visible">
+		<div class="overflow-x-auto">
 			<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 				<thead class="text-left text-xs text-zinc-500">
 					<tr>

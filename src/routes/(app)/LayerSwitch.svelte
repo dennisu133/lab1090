@@ -29,6 +29,6 @@
 		{#if !children}<span>{name}</span>{/if}
 	</label>
 	{#if children}
-		<InfoTip label={name} above>{@render children()}</InfoTip>
+		<InfoTip label={name}>{@render children()}</InfoTip>
 	{/if}
 </div>

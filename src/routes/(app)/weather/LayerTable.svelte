@@ -55,7 +55,7 @@
 </script>
 
 <!-- Fixed layout: only the column temperature wraps. Scrolls only below lg (see /comm-b). -->
-<div class="overflow-x-auto lg:overflow-visible">
+<div class="overflow-x-auto">
 	<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
 		<thead class="text-left text-xs text-zinc-500">
 			<tr>

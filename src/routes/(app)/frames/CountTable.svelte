@@ -133,7 +133,7 @@
 	{/if}
 	<!-- Fixed layout: only Name takes the remaining width, so changing counts never move the columns.
 	     min-w-xl leaves Name room for one line; narrower than that, the table scrolls. -->
-	<div class="overflow-x-auto lg:overflow-visible">
+	<div class="overflow-x-auto">
 		<table class="w-full min-w-xl table-fixed text-sm tabular-nums">
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>

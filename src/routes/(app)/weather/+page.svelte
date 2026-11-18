@@ -240,7 +240,7 @@
 			{/snippet}
 			<TemperatureProfile layers={all} tropopause={top} />
 			<div class="mt-2 text-xs text-zinc-400">
-				<InfoTip label="Contrails" class="font-semibold" wide above>
+				<InfoTip label="Contrails" class="font-semibold" wide>
 					<p>
 						A contrail forms when the engines' hot, wet exhaust cools in the cold air until water
 						condenses (the Schmidt–Appleman criterion; Schumann 1996). How cold the air must be
