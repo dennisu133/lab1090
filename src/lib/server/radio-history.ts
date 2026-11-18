@@ -110,10 +110,13 @@ export class RadioHistory {
 		};
 	}
 
-	/** What's new since the last call: for the next batch, to everyone. */
-	take(demod: DemodReport | null): RadioUpdate {
+	/**
+	 * What's new since the last call: for the next batch, to everyone. `demod`: undefined
+	 * leaves it out (RadioUpdate.demod).
+	 */
+	take(demod?: DemodReport | null): RadioUpdate {
 		const update: RadioUpdate = {
-			demod,
+			...(demod !== undefined && { demod }),
 			full: false,
 			points: this.#newPoints,
 			events: [...this.#changed].map((e) => ({ ...e }))

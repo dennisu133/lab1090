@@ -126,8 +126,11 @@ export interface SourceEvent {
 }
 
 export interface RadioUpdate {
-	/** null: a Beast feed (demodulated elsewhere). */
-	demod: DemodReport | null;
+	/**
+	 * null: a Beast feed (demodulated elsewhere). Absent: as before. Only /receiver reads it,
+	 * so it comes once a second (and in a full update), not with every batch.
+	 */
+	demod?: DemodReport | null;
 	/** `full`: the whole history (first update), else the points and events since the last. */
 	full: boolean;
 	points: RadioPoint[];
@@ -137,8 +140,11 @@ export interface RadioUpdate {
 
 export interface StreamUpdate {
 	status: SourceStatus;
-	/** Where the messages come from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource). */
-	source: string;
+	/**
+	 * First update only (it never changes while the server runs): where the messages come
+	 * from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource).
+	 */
+	source?: string;
 	/** When the counting started (server start), ms since epoch. */
 	since: number;
 	counts: ReceiverCounts;

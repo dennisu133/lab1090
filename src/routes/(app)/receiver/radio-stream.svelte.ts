@@ -23,7 +23,8 @@ export class RadioStream implements UpdateListener {
 	#window = new RateWindow<DemodulatorStats>();
 
 	receive({ radio }: StreamUpdate): void {
-		this.demod = radio.demod;
+		// Absent: unchanged (the server sends it once a second).
+		if (radio.demod !== undefined) this.demod = radio.demod;
 		if (radio.full) {
 			this.points = radio.points;
 			this.events = radio.events;
@@ -40,7 +41,7 @@ export class RadioStream implements UpdateListener {
 				this.events = [...kept, ...added];
 			}
 		}
-		this.#rate(radio.demod);
+		if (radio.demod !== undefined) this.#rate(radio.demod);
 	}
 
 	#rate(demod: DemodReport | null): void {

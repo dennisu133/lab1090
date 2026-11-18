@@ -187,3 +187,17 @@ test('everything again when the event id is from another run or too old', async 
 	expect(current.updates[0].frames).toEqual([]);
 	expect(current.updates[0].tracks).toBeUndefined();
 });
+
+test("what doesn't change with every batch isn't sent with every batch", async () => {
+	const r = start(trickle().port);
+	const all = collect(r);
+	await waitFor(() => all.updates.length >= 10, 5000);
+	// The source: once (it never changes while the server runs).
+	expect(all.updates[0].source).toBe(r.source);
+	expect(all.updates.slice(1).every((u) => u.source === undefined)).toBe(true);
+	// The demodulator's report (null: a Beast feed): in the first update, then once a second.
+	expect(all.updates[0].radio.demod).toBeNull();
+	const withDemod = all.updates.slice(1).filter((u) => 'demod' in u.radio).length;
+	expect(withDemod).toBeGreaterThanOrEqual(1);
+	expect(withDemod).toBeLessThanOrEqual(Math.ceil((all.updates.length - 1) / 4));
+});

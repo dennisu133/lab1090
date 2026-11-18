@@ -15,6 +15,8 @@ import type {
 } from '#lib/receiver-types.ts';
 
 const BATCH_MS = 250;
+/** The demodulator's report goes out this often (only /receiver reads it). */
+const DEMOD_MS = 1000;
 const HISTORY = 1000;
 /** Frames kept per downlink format, type code and verdict (see FrameBuffers). */
 const PER_KIND = 200;
@@ -51,6 +53,8 @@ export class Receiver {
 	#pending: WireFrame[] = [];
 	#subscribers = new Set<Subscriber>();
 	#timer: ReturnType<typeof setInterval> | undefined;
+	/** When the demodulator's report last went out with a batch. */
+	#demodSentAt = -Infinity;
 
 	constructor(source: Source, { log = true }: { log?: boolean } = {}) {
 		this.source = describeSource(source);
@@ -126,24 +130,13 @@ export class Receiver {
 		// pending ones are in TrackHistory already.
 		const radio = this.radio.full(this.#client.decoder?.report() ?? null);
 		const after = this.#resumeAfter(lastEventId);
-		if (after !== null) {
-			send(
-				this.#update(
-					this.#history.filter((f) => f.id > after),
-					radio
-				),
-				this.#eventId()
-			);
-		} else {
+		const frames = after === null ? this.#history : this.#history.filter((f) => f.id > after);
+		const update: StreamUpdate = { ...this.#update(frames, radio), source: this.source };
+		if (after === null) {
 			const last = this.#history.at(-1)?.id ?? 0;
-			send(
-				{
-					...this.#update(this.#history, radio),
-					tracks: this.tracks.frames.filter((f) => f.id <= last)
-				},
-				this.#eventId()
-			);
+			update.tracks = this.tracks.frames.filter((f) => f.id <= last);
 		}
+		send(update, this.#eventId());
 		return () => this.#subscribers.delete(subscriber);
 	}
 
@@ -200,7 +193,9 @@ export class Receiver {
 		this.#history = [...this.#history, ...frames].slice(-HISTORY);
 		const demod = this.#client.decoder?.report() ?? null;
 		this.radio.read(now, this.counts.total, demod);
-		const update = this.#update(frames, this.radio.take(demod));
+		const sendDemod = now - this.#demodSentAt >= DEMOD_MS;
+		if (sendDemod) this.#demodSentAt = now;
+		const update = this.#update(frames, this.radio.take(sendDemod ? demod : undefined));
 		const eventId = this.#eventId();
 		for (const s of this.#subscribers) s.send(update, eventId);
 	}
@@ -208,7 +203,6 @@ export class Receiver {
 	#update(frames: WireFrame[], radio: RadioUpdate): StreamUpdate {
 		return {
 			status: this.#client.status,
-			source: this.source,
 			since: this.since,
 			counts: this.counts,
 			radio,

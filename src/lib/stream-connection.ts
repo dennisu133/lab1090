@@ -74,7 +74,7 @@ export class StreamConnection {
 
 	#receive(update: StreamUpdate): void {
 		receiverLink.status = update.status;
-		receiverLink.source = update.source;
+		if (update.source !== undefined) receiverLink.source = update.source; // first update only
 		if (update.since !== this.#since) {
 			// The first update of all needs no reset: nothing came before it.
 			if (this.#since !== null) for (const listener of this.#listeners) listener.reset?.();
