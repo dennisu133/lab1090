@@ -38,6 +38,8 @@ export type PanelField = Omit<Field, 'title'> & {
 	note?: string;
 	/** Every possible value, the one sent marked: a table under the explanation. */
 	choices?: { key: string; text: string; current: boolean }[];
+	/** A flag before the value: ISO 3166-1 alpha-2 code and the State's name. */
+	flag?: { country: string | null; name: string };
 };
 
 export interface Section {
