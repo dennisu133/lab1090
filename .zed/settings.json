@@ -1,0 +1,70 @@
+// Format on save with `bun fmt` (settings in bunfig.toml), not Zed's own Prettier.
+// Only the languages bun fmt handles: it fails on others (e.g. tools/*.py).
+{
+	"languages": {
+		"TypeScript": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"JavaScript": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"Svelte": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"CSS": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"HTML": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"JSON": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"JSONC": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		},
+		"Markdown": {
+			"formatter": {
+				"external": {
+					"command": "bun",
+					"arguments": ["fmt", "--no-script", "--stdin-filepath", "{buffer_path}"]
+				}
+			}
+		}
+	}
+}

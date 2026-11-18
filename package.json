@@ -16,8 +16,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "bun test",
-		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write .",
+		"lint": "bun fmt --check && eslint .",
+		"format": "bun fmt",
 		"test:watch": "bun test --watch"
 	},
 	"devDependencies": {
@@ -35,9 +35,6 @@
 		"flag-icons": "^7.6.0",
 		"globals": "^17.6.0",
 		"maplibre-gl": "^6.18.0",
-		"prettier": "^3.8.3",
-		"prettier-plugin-svelte": "^4.1.0",
-		"prettier-plugin-tailwindcss": "^0.8.0",
 		"svelte": "^5.57.2",
 		"svelte-check": "^4.6.0",
 		"tailwindcss": "^4.3.0",

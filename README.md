@@ -222,16 +222,16 @@ sharing screenshots or running the app where others can see it.
 The project is Bun-native: [Bun](https://bun.sh) installs, runs, tests and builds it.
 Node.js and npm are not needed.
 
-| Command                | What it does                                            |
-| ---------------------- | ------------------------------------------------------- |
-| `bun install`          | Install the dependencies                                |
-| `bun run dev`          | Dev server (Vite, running on Bun); options as above     |
-| `bun test`             | Tests (Bun's test runner)                               |
-| `bun run check`        | Type check (`svelte-check`)                             |
-| `bun run lint`         | Prettier and ESLint                                     |
-| `bun run format`       | Format everything with Prettier                         |
-| `bun run build:binary` | The `lab1090` program for this machine: `build/lab1090` |
-| `bun run build:arm64`  | The same for a 64-bit Raspberry Pi (Linux arm64)        |
+| Command                | What it does                                             |
+| ---------------------- | -------------------------------------------------------- |
+| `bun install`          | Install the dependencies                                 |
+| `bun run dev`          | Dev server (Vite, running on Bun); options as above      |
+| `bun test`             | Tests (Bun's test runner)                                |
+| `bun run check`        | Type check (`svelte-check`)                              |
+| `bun run lint`         | Formatting check (`bun fmt --check`) and ESLint          |
+| `bun run format`       | Format everything (`bun fmt`, settings in `bunfig.toml`) |
+| `bun run build:binary` | The `lab1090` program for this machine: `build/lab1090`  |
+| `bun run build:arm64`  | The same for a 64-bit Raspberry Pi (Linux arm64)         |
 
 Options go after the command. With the dongle on the Pi, run `rtl_tcp -a 0.0.0.0` there
 and `bun run dev --rtl-tcp pi` here. The dev server shares the config file with the
