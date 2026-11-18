@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test } from 'bun:test';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { modulate } from '#lib/demod/modulate.ts';
@@ -21,6 +21,7 @@ const SAMPLES = modulate(
 );
 
 const directory = mkdtempSync(join(tmpdir(), 'lab1090-sdr-'));
+afterAll(() => rmSync(directory, { recursive: true, force: true }));
 const samplesFile = join(directory, 'samples.u8');
 writeFileSync(samplesFile, SAMPLES);
 
