@@ -10,8 +10,8 @@
  * Instead we ask: which bit string, drawn the way the dongle draws pulses, comes closest to
  * the samples we got? "Closest" is least squares: the sum over the samples of (received −
  * expected)². Each sample depends only on the bits whose pulses reach it, at most the last
- * four, so the search doesn't have to try all 2¹¹² strings. The Viterbi algorithm walks
- * through the bits once, keeping for each value of the last three bits (8 "states") the best
+ * three, so the search doesn't have to try all 2¹¹² strings. The Viterbi algorithm walks
+ * through the bits once, keeping for each value of the last two bits (4 "states") the best
  * string ending that way and its cost. Each new bit extends every state both ways and keeps
  * the cheaper path into each new state; at the end, the cheapest state's path is the answer.
  * (Viterbi 1967; the same algorithm decodes convolutional codes and reads hard disks.)
@@ -29,9 +29,42 @@ const HALF = 6;
 /** The preamble's pulses, and where the data starts (ticks after the first pulse). */
 const PREAMBLE = [0, 12, 42, 54];
 const DATA = 96;
-/** States: the last three bits. Older bits don't reach the samples of the newest one. */
-const STATES = 8;
-const MEMORY = 3;
+/**
+ * How many earlier bits reach a bit's samples. Bit j's samples are those that bit j + 1's
+ * pulses don't reach yet: from PULSE_FROM ticks before bit j's start to PULSE_FROM ticks
+ * before bit j + 1's, so their d from bit j's start is below US + PULSE_FROM. Bit j − m's
+ * pulse, at best HALF later than 12m ticks earlier, still reaches them while d + 12m − HALF
+ * is inside the table: 2 bits back, with the shape in pulse.ts.
+ */
+const MEMORY = Math.floor((PULSE_TO - US - PULSE_FROM + HALF) / US);
+/** States: the last MEMORY bits. */
+const STATES = 1 << MEMORY;
+/** Words: a state and the new bit, the bits that decide what bit j's samples look like. */
+const WORDS = STATES << 1;
+/** At most this many samples per bit: the last bit's run to the end of its ringing. */
+const MOST = Math.ceil((US - HALF + PULSE_TO - PULSE_FROM) / SAMPLE) + 1;
+
+/**
+ * The expected magnitude (for A = 1, b = 0) of the i-th sample of a bit, by how many earlier
+ * bits there are (min(j, MEMORY): bits before the first aren't drawn), the bit start's
+ * phase (the first sample lies at d = PULSE_FROM + phase) and the word: bit j − m is
+ * (word >> m) & 1. Whole ticks: a few hundred numbers instead of adding up pulse shapes
+ * for every sample, state and bit of every message tried.
+ */
+const EXPECTED = (() => {
+	const table = new Float64Array((MEMORY + 1) * SAMPLE * MOST * WORDS);
+	for (let earlier = 0; earlier <= MEMORY; earlier++)
+		for (let phase = 0; phase < SAMPLE; phase++)
+			for (let i = 0; i < MOST; i++)
+				for (let word = 0; word < WORDS; word++) {
+					const d = PULSE_FROM + phase + SAMPLE * i;
+					let x = 0;
+					for (let m = 0; m <= earlier; m++)
+						x += pulseShape(d + US * m - ((word >> m) & 1 ? 0 : HALF));
+					table[((earlier * SAMPLE + phase) * MOST + i) * WORDS + word] = x;
+				}
+	return table;
+})();
 
 export class SequenceReader {
 	#cost = new Float64Array(STATES);
@@ -76,26 +109,23 @@ export class SequenceReader {
 		let length = 112;
 		for (let j = 0; j < length; j++) {
 			// The samples bit j is the latest to reach (for the last bit: all that are left).
-			const kFrom = Math.ceil((data0 + US * j + PULSE_FROM) / SAMPLE);
+			const t = data0 + US * j;
+			const kFrom = Math.ceil((t + PULSE_FROM) / SAMPLE);
 			const kTo =
 				j === length - 1
-					? Math.ceil((data0 + US * length - HALF + PULSE_TO) / SAMPLE)
-					: Math.ceil((data0 + US * (j + 1) + PULSE_FROM) / SAMPLE);
+					? Math.ceil((t + US - HALF + PULSE_TO) / SAMPLE)
+					: Math.ceil((t + US + PULSE_FROM) / SAMPLE);
+			const phase = SAMPLE * kFrom - t - PULSE_FROM;
+			const row = (Math.min(j, MEMORY) * SAMPLE + phase) * MOST * WORDS;
 			next.fill(Infinity);
 			for (let state = 0; state < STATES; state++) {
 				const before = cost[state];
 				if (before === Infinity) continue;
 				for (let bit = 0; bit < 2; bit++) {
-					// Bits j, j − 1, … j − MEMORY: bit j − m is (word >> m) & 1.
 					const word = (state << 1) | bit;
 					let total = before;
-					for (let k = kFrom; k < kTo; k++) {
-						let x = 0;
-						for (let m = 0; m <= MEMORY && m <= j; m++) {
-							const pulse = data0 + US * (j - m) + ((word >> m) & 1 ? 0 : HALF);
-							x += pulseShape(SAMPLE * k - pulse);
-						}
-						const r = mag[k] - b - A * x;
+					for (let k = kFrom, at = row + word; k < kTo; k++, at += WORDS) {
+						const r = mag[k] - b - A * EXPECTED[at];
 						total += r * r;
 					}
 					const to = word & (STATES - 1);

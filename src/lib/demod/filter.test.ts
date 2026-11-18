@@ -35,9 +35,19 @@ describe('MessageFilter', () => {
 			expect(filter.check(flip(DF17, bit), 2)).toEqual(DF17);
 		}
 		expect(filter.stats.repaired).toBe(6);
-		// The format bits aren't repaired, nor two wrong bits.
-		expect(filter.check(flip(DF17, 3), 2)).toBeNull();
+		// Not two wrong bits.
 		expect(filter.check(flip(flip(DF17, 40), 41), 2)).toBeNull();
+	});
+
+	test('repairs a wrong bit in the format that turned DF17 into another long format', () => {
+		const filter = new MessageFilter();
+		// 17 = 10001: bit 2 gives 25, 3 gives 21, 4 gives 19, 5 gives 16.
+		for (const bit of [2, 3, 4, 5]) expect(filter.check(flip(DF17, bit), 0)).toBeNull();
+		filter.check(DF17, 1);
+		for (const bit of [2, 3, 4, 5]) expect(filter.check(flip(DF17, bit), 2)).toEqual(DF17);
+		expect(filter.stats.repaired).toBe(4);
+		// Bit 1 gives DF1, a short format: not this rule's.
+		expect(filter.check(flip(DF17, 1), 2)).toBeNull();
 	});
 
 	test('takes DF11 squitters, and replies to a radar from known aircraft only', () => {

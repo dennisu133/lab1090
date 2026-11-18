@@ -19,6 +19,9 @@
  *   syndrome, so a syndrome on that list says which bit to flip back. But noise lands on
  *   one of the 107 entries once in ~150,000 tries, which would be several false messages
  *   an hour. So a repaired message only counts from an aircraft already heard intact.
+ * - A wrong bit in the format of an ADS-B message turns DF17 into 16, 19, 21 or 25, read
+ *   under the wrong rules. If flipping that bit back gives CRC 0, it was DF17 (readsb's
+ *   fixDF does the same). Also only from an aircraft already heard intact.
  * - The same for a DF11 squitter (code 0), with the 51 entries of a 56-bit message. Only
  *   when the syndrome isn't itself a radar's code: a wrong bit among the last 7 turns one
  *   code into another, and nothing tells which was sent. That's also why a DF11 reply's code
@@ -47,7 +50,7 @@ export function messageBits(df: number): 56 | 112 {
  * The syndrome a single wrong bit leaves, for every bit of a message of this many bytes: the
  * CRC is linear, so a flipped bit's syndrome doesn't depend on the rest of the message. Bits
  * 1–5 (the format) are left out: a message whose format is wrong was checked against the
- * wrong rules to begin with.
+ * wrong rules to begin with (but see FROM_17).
  */
 function oneBit(bytes: number): Map<number, number> {
 	const table = new Map<number, number>();
@@ -62,6 +65,20 @@ const ONE_BIT = oneBit(14);
 const ONE_BIT_SHORT = oneBit(7);
 
 /**
+ * The formats DF17 becomes with one wrong bit, and that bit, with the syndrome it leaves in
+ * a long message. (DF1 too, but that's read as 56 bits and never gets here.)
+ */
+const FROM_17 = new Map<number, { bit: number; syndrome: number }>();
+for (let bit = 1; bit <= 5; bit++) {
+	const df = 17 ^ (0x10 >> (bit - 1));
+	if (messageBits(df) === 112) {
+		const data = new Uint8Array(14);
+		data[0] = 0x80 >> (bit - 1);
+		FROM_17.set(df, { bit, syndrome: syndrome(data) });
+	}
+}
+
+/**
  * Why a bit string was turned down. `parity`: the parity bits don't fit the message (no
  * repair either): noise, or a message broken in more than one place. `unheard`: the parity
  * could fit, but only for an aircraft not heard intact within KNOWN_FOR_S, which for AP
@@ -72,7 +89,7 @@ export type Rejection = 'parity' | 'unheard';
 export interface FilterStats {
 	/** Passed with CRC 0 (or a radar's code) as received. */
 	accepted: number;
-	/** ADS-B or a DF11 squitter with one bit repaired. */
+	/** ADS-B or a DF11 squitter with one bit repaired (in ADS-B, the format's too). */
 	repaired: number;
 }
 
@@ -93,6 +110,8 @@ export class MessageFilter {
 		this.rejection = null;
 		const df = Math.min(data[0] >> 3, 24);
 		const s = syndrome(data);
+		const from17 = data.length === 14 ? FROM_17.get(data[0] >> 3) : undefined;
+		if (from17 && s === from17.syndrome) return this.#repair(data, from17.bit, t);
 		if (df === 17 || df === 18 || df === 19) {
 			if (s === 0) {
 				if (df === 17) this.#heard(address(data), t);

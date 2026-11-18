@@ -7,8 +7,9 @@ with "lab" for what this one is: a place to learn how it works.
 
 An independent learning project, not affiliated with dump1090, readsb, tar1090 or any
 other 1090 MHz tool. It stands on their shoulders: readsb is the reference its demodulator
-is compared with and tuned against (on the same recordings, from readsb's output), and [pyModeS](https://github.com/junzis/pyModeS) the one its decoders are
-tested against.
+is compared with and tuned against (on the same recordings, from readsb's output), and lends
+it a few of its tricks; [pyModeS](https://github.com/junzis/pyModeS) is the one its
+decoders are tested against.
 
 ## What this is
 

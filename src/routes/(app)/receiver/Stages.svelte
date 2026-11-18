@@ -71,8 +71,10 @@
 					<InfoTip label="Quick test">
 						<p>
 							Four samples where the preamble's pulses would be, against nine where its gaps would
-							be: the pulses must be 1.5× stronger than the gaps and than the noise level. Whole
-							samples only, so it's cheap. The samples next to a real preamble often pass too.
+							be: the pulses must be 1.5× stronger than the gaps and than the noise level. Failing
+							that, readsb's test, which compares the pulses with the samples right next to them and
+							so lets in weaker messages. Whole samples only, so it's cheap. The samples next to a
+							real preamble often pass too.
 						</p>
 					</InfoTip>
 				</td>
@@ -104,10 +106,12 @@
 					<InfoTip label="Format">
 						<p>
 							The bits are read as the string whose pulses, drawn the way the dongle draws them
-							(rounded, and ringing into the next half bit), best fit the samples; if that fails the
-							parity, bit by bit, first half against second. The first 5 bits are the downlink
-							format (DF). Only 11 of the 25 possible values exist; the others mean noise. The
-							format also says how long the message is: 56 or 112 bits.
+							(rounded, and ringing into the next half bit), best fit the samples. If that fails the
+							parity, bit by bit: with readsb's weights for three samples per bit, then first half
+							against second. What only readsb's test let in is read with its weights alone: it's
+							mostly noise, and a lot of it. The first 5 bits are the downlink format (DF). Only 11
+							of the 25 possible values exist; the others mean noise. The format also says how long
+							the message is: 56 or 112 bits.
 						</p>
 					</InfoTip>
 				</td>

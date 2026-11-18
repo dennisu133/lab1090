@@ -17,23 +17,26 @@
  * Per sample n:
  *
  * 1. A quick test with whole samples: four samples that lie inside the four preamble pulses
- *    whatever the start's fraction, against nine that lie in the quiet gaps between them.
- *    Most samples stop here.
+ *    whatever the start's fraction, against nine that lie in the quiet gaps between them,
+ *    and against the noise level. readsb's test (readsb.ts) is a second way past: it lets
+ *    in weak messages ours stops. Most samples stop here.
  * 2. The five starts n + 0, 0.2 … 0.8: energy in the pulses vs the gaps. Starts whose
  *    pulses are clearly stronger are read, the best first, until one passes the parity.
  *    (With a box-shaped pulse, neighbouring starts can score alike, so the best score is
  *    not always the right start.)
- * 3. Read the bits, two ways. First as a sequence (sequence.ts): the bit string whose
+ * 3. Read the bits, three ways. First as a sequence (sequence.ts): the bit string whose
  *    pulses, drawn as the dongle draws them (pulse.ts), best fit the samples. If that fails
- *    the parity, bit by bit: the energy in each bit's first half vs its second. The two get
- *    different messages wrong, so trying both finds more than either. The first 5 bits are
- *    the format (DF), which says whether 56 or 112 bits follow; unknown formats stop here.
+ *    the parity, bit by bit with readsb's slicer (readsb.ts), then bit by bit with the
+ *    energy in each bit's first half vs its second. Each gets different messages wrong, so
+ *    trying all finds more than any one. What only readsb's test let in is read with the
+ *    slicer alone: it's mostly noise, and eight times as much. The first 5 bits are the
+ *    format (DF), which says whether 56 or 112 bits follow; unknown formats stop here.
  * 4. The parity (filter.ts). A message that passes is passed on, and the search goes on
  *    after its end; otherwise at the next sample.
  *
  * Tuned against readsb on the same recordings (tools/demod-compare.ts): on 12 minutes of
- * afternoon traffic (18 Nov 2026) this finds 14–19 % more messages than readsb, and misses
- * about 2 % of those readsb finds (not counting DF11 replies to a radar, whose last 7 bits
+ * afternoon traffic (18 Nov 2026) this finds 17–22 % more messages than readsb, and misses
+ * 0.3–0.4 % of those readsb finds (not counting DF11 replies to a radar, whose last 7 bits
  * nobody can check: filter.ts).
  *
  * Samples come in chunks of any size; a message can straddle two of them, so the end of one
@@ -41,6 +44,7 @@
  */
 import { KNOWN_FORMATS, MessageFilter, messageBits, type Rejection } from './filter';
 import { ADC_LIMIT, FULL_SCALE, magnitudes, SAMPLE_RATE } from './samples';
+import { readsbPreamble, sliceBit } from './readsb';
 import { SequenceReader } from './sequence';
 
 /** A message as the server takes it (the same shape as a Beast frame). */
@@ -64,8 +68,8 @@ export interface DemodulatedFrame {
 export interface DemodulatorStats {
 	samples: number;
 	/**
-	 * Samples that passed the quick test (1). Not preambles: the samples next to a real one
-	 * often pass too, and so does the middle of a message.
+	 * Samples that passed the quick test, ours or readsb's (1). Not preambles: the samples
+	 * next to a real one often pass too, and so does the middle of a message.
 	 */
 	candidates: number;
 	/** Candidates where none of the five starts scored as a preamble (2). */
@@ -80,7 +84,7 @@ export interface DemodulatorStats {
 	unheard: number;
 	/**
 	 * Bit strings read and checked (3, 4): one candidate can be read at several starts, and
-	 * both ways at each.
+	 * up to three ways at each.
 	 */
 	decoded: number;
 	accepted: number;
@@ -118,7 +122,7 @@ const DATA = 8 * US;
  * pulse's ringing (pulse.ts).
  */
 const SPAN = Math.ceil((DATA + 112 * US) / SAMPLE) + 6;
-/** Samples kept before the search position: the sequence reader looks one back. */
+/** Samples kept before the search position: the sequence reader and readsb's test look back. */
 const BEFORE = 1;
 
 /**
@@ -201,6 +205,9 @@ export class Demodulator {
 	#blockSum = 0;
 	#blockFill = 0;
 	#bits = new Uint8Array(112);
+	/** The readings already checked at the current start, to skip one that reads the same. */
+	#tried = [new Uint8Array(112), new Uint8Array(112)];
+	#triedCount = 0;
 	#sequence = new SequenceReader();
 	#starts: number[] = [];
 	#scores: number[] = [];
@@ -264,21 +271,25 @@ export class Demodulator {
 				mag[n + 9],
 				Math.max(mag[n + 11], mag[n + 12])
 			);
-			if (high <= floor) continue;
 			// …and these lie in a gap (5–7: between the 2nd and 3rd pulse; 13–18: after the 4th).
-			const gap =
-				mag[n + 5] +
-				mag[n + 6] +
-				mag[n + 7] +
-				mag[n + 13] +
-				mag[n + 14] +
-				mag[n + 15] +
-				mag[n + 16] +
-				mag[n + 17] +
-				mag[n + 18];
-			if (high * 9 <= gap * QUICK_RATIO) continue;
+			// Failing that, readsb's test: then only its slicer reads (`weak`).
+			let weak = high <= floor;
+			if (!weak) {
+				const gap =
+					mag[n + 5] +
+					mag[n + 6] +
+					mag[n + 7] +
+					mag[n + 13] +
+					mag[n + 14] +
+					mag[n + 15] +
+					mag[n + 16] +
+					mag[n + 17] +
+					mag[n + 18];
+				weak = high * 9 <= gap * QUICK_RATIO;
+			}
+			if (weak && !readsbPreamble(mag, n)) continue;
 			this.stats.candidates++;
-			const frame = this.#tryAt(n);
+			const frame = this.#tryAt(n, weak);
 			if (frame) {
 				frames.push(frame.frame);
 				// Go on after this message; one starting inside it would be garbled anyway.
@@ -289,8 +300,11 @@ export class Demodulator {
 		return frames;
 	}
 
-	/** Steps 2–4 for the starts n, n + 0.2, … n + 0.8 (in ticks: 5n … 5n + 4). */
-	#tryAt(n: number): { frame: DemodulatedFrame; end: number } | null {
+	/**
+	 * Steps 2–4 for the starts n, n + 0.2, … n + 0.8 (in ticks: 5n … 5n + 4). `weak`: let in
+	 * by readsb's test only, so read with the slicer alone.
+	 */
+	#tryAt(n: number, weak: boolean): { frame: DemodulatedFrame; end: number } | null {
 		const starts = this.#starts;
 		const scores = this.#scores;
 		starts.length = 0;
@@ -318,7 +332,7 @@ export class Demodulator {
 			const s = starts[best];
 			starts.splice(best, 1);
 			scores.splice(best, 1);
-			const found = this.#read(s);
+			const found = this.#read(s, weak);
 			if (typeof found === 'object') return found;
 			if (found !== 'format') rejection ??= found;
 		}
@@ -331,45 +345,46 @@ export class Demodulator {
 	 * Steps 3 and 4: the bits of a message starting at tick s (relative to #mag[0]); if it's
 	 * not a message, where it stopped: an unknown format, or why the parity turned it down.
 	 */
-	#read(s: number): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
+	#read(s: number, weak: boolean): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
+		this.#triedCount = 0;
+		if (weak) return this.#readAs(s, 'slicer');
 		const asSequence = this.#readAs(s, 'sequence');
 		if (typeof asSequence === 'object') return asSequence;
-		const asBits = this.#readAs(s, 'bits');
-		if (typeof asBits === 'object') return asBits;
-		// The one that got further: a parity verdict over an unknown format.
-		return asSequence === 'format' ? asBits : asSequence;
+		const asSlicer = this.#readAs(s, 'slicer');
+		if (typeof asSlicer === 'object') return asSlicer;
+		const asBox = this.#readAs(s, 'box');
+		if (typeof asBox === 'object') return asBox;
+		// The first that got further: a parity verdict over an unknown format.
+		return asSequence !== 'format' ? asSequence : asSlicer !== 'format' ? asSlicer : asBox;
 	}
-
-	/** The sequence's bits, to skip the bit-by-bit reading when it reads the same. */
-	#sequenceBits = new Uint8Array(112);
 
 	#readAs(
 		s: number,
-		how: 'sequence' | 'bits'
+		how: 'sequence' | 'slicer' | 'box'
 	): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
 		const bits = this.#bits;
 		const data0 = s + DATA;
 		let length: 0 | 56 | 112;
 		if (how === 'sequence') {
 			length = this.#sequence.read(this.#mag, s, bits);
-			this.#sequenceBits.set(bits);
-			if (length === 0) return 'format';
 		} else {
 			let df = 0;
 			for (let i = 0; i < 5; i++) {
-				bits[i] = this.#bit(data0 + i * US);
+				bits[i] = this.#bitAt(data0 + i * US, how);
 				df = (df << 1) | bits[i];
 			}
-			if (!KNOWN_FORMATS.has(Math.min(df, 24))) return 'format';
-			length = messageBits(df);
-			let same = true;
-			for (let i = 0; i < length; i++) {
-				if (i >= 5) bits[i] = this.#bit(data0 + i * US);
-				if (bits[i] !== this.#sequenceBits[i]) same = false;
-			}
-			// Already checked (and turned down) as the sequence.
-			if (same) return 'parity';
+			length = KNOWN_FORMATS.has(Math.min(df, 24)) ? messageBits(df) : 0;
+			for (let i = 5; i < length; i++) bits[i] = this.#bitAt(data0 + i * US, how);
 		}
+		if (length === 0) return 'format';
+		// Already checked (and turned down) as an earlier reading.
+		for (let r = 0; r < this.#triedCount; r++) {
+			const tried = this.#tried[r];
+			let i = 0;
+			while (i < length && bits[i] === tried[i]) i++;
+			if (i === length) return 'parity';
+		}
+		if (this.#triedCount < this.#tried.length) this.#tried[this.#triedCount++].set(bits);
 		let pulses = 0;
 		const data = new Uint8Array(length / 8);
 		for (let i = 0; i < length; i++) {
@@ -410,8 +425,12 @@ export class Demodulator {
 		return false;
 	}
 
-	/** 1 if the bit at t has more energy in its first half than in its second. */
-	#bit(t: number): number {
+	/**
+	 * The bit at t: readsb's slicer, or 1 if it has more energy in its first half than in its
+	 * second.
+	 */
+	#bitAt(t: number, how: 'slicer' | 'box'): number {
+		if (how === 'slicer') return sliceBit(this.#mag, t);
 		return this.#energy(t, t + HALF) > this.#energy(t + HALF, t + US) ? 1 : 0;
 	}
 
