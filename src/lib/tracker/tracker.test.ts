@@ -9,7 +9,7 @@ import { build, cprOracle, encodeCpr, registration21, timedMessages } from '#lib
 import { AIRCRAFT_TTL_MS, Tracker, TURN_WINDOW_MS, type TrackedAircraft } from './tracker';
 import { uncertainty } from './uncertainty';
 
-/** Rounded from the capture itself, like the CPR oracle's reference (tools/README.md). */
+/** Rounded from the capture itself, like the CPR oracle's reference (tools/oracle-cpr.py). */
 const receiver = { lat: 52, lon: 14 };
 
 /** The capture through the tracker, keeping each aircraft's last snapshot (no pruning). */

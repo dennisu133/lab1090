@@ -8,8 +8,9 @@
  *
  * Each row of the table is a State and a 24-bit pattern, MSB first, in groups of
  * 4 2 3 3 2 10 bits: 0 and 1 are fixed, a dash is either. The fixed bits are the block's
- * prefix. A long State name wraps onto the next line ("Democratic People's" /
- * "Republic of Korea"); everything else between rows is page furniture.
+ * prefix. A long State name wraps onto the next line ("Democratic People's" / "Republic of
+ * Korea"); everything else between rows is page furniture. Fails if two blocks overlap;
+ * src/lib/modes/nationality.test.ts checks the result.
  */
 const path = process.argv[2];
 if (!path) throw new Error('usage: bun tools/address-blocks.ts annex10-vol3.txt');

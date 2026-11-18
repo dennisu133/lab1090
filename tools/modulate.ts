@@ -7,13 +7,13 @@
  *                         [--noise noise.u8 | --sigma 0.0095] [--gain-db 0]
  *
  *   lab1090 --samples sky.u8                          (or: bun run dev --samples sky.u8)
- *   readsb --device-type ifile --ifile sky.u8 --iformat UC8 --raw
+ *   readsb --device-type ifile --ifile sky.u8 --iformat UC8 > sky.readsb   (demod-compare.ts)
  *
  * Each message goes out at its Beast timestamp and at the level readsb heard it (its signal
- * byte), plus --gain-db. Noise: a recording of the dongle with nothing on air
- * (`rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 72000000 noise.u8`, looped), or Gaussian with
- * standard deviation --sigma (full scale = 1; 0.0095 is about what the Pi's dongle has).
- * 2.4 million samples a second, 2 bytes each: 4.8 MB per second of recording.
+ * byte), plus --gain-db, on a random carrier phase. Noise: a recording of the dongle with
+ * nothing on air (`rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 72000000 noise.u8`, looped), or
+ * Gaussian with standard deviation --sigma (full scale = 1; 0.0095 is about what the Pi's
+ * dongle has). 2.4 million samples a second, 2 bytes each: 4.8 MB per second of recording.
  */
 import { modulate } from '../src/lib/demod/modulate.ts';
 import { SAMPLE_RATE } from '../src/lib/demod/samples.ts';

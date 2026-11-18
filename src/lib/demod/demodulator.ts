@@ -37,7 +37,12 @@
  * Tuned against readsb on the same recordings (tools/demod-compare.ts): on 12 minutes of
  * afternoon traffic (18 Nov 2026) this finds 17–22 % more messages than readsb, and misses
  * 0.3–0.4 % of those readsb finds (not counting DF11 replies to a radar, whose last 7 bits
- * nobody can check: filter.ts). Live, side by side on the same samples for 10 minutes that
+ * nobody can check: filter.ts). Before, with bits read one at a time (first half of each
+ * bit against the second) and a preamble ratio of 2, it found 4–5 % fewer than readsb and
+ * missed 6–8 % of them; reading bits as a sequence over the measured pulse (sequence.ts)
+ * alone gave +14–19 %, missing 1.7–2.3 %; readsb's slicer, its quick test and its format
+ * repair (readsb.ts, filter.ts) did the rest. On a Pi 5 that takes 4.5 % of a core at
+ * 49.6 dB and 5.0 % at 40.2 dB. Live, side by side on the same samples for 10 minutes that
  * evening: +17 % messages, +10 % airborne positions, every aircraft readsb heard and two more,
  * for 7.8 % of a Pi 5 core (the whole lab1090 process) against readsb's 2.8 %.
  *

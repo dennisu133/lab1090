@@ -6,6 +6,10 @@ any aircraft state): once by default, once with the meteorological registers 4,4
 
 Besides the real payloads, each one is also included with 1-3 random bit flips (seeded),
 so the validators get compared near their edges too, not only on clean data.
+
+pyModeS doesn't know 5,1 and 5,2: those are checked against the capture's own ADS-B
+(src/lib/modes/comm-b.test.ts). pyModeS 3 dropped 5,3: hand-made tests from ICAO Doc 9871
+and pyModeS 2 (registers.test.ts).
 """
 
 import json

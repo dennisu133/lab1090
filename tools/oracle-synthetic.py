@@ -5,6 +5,11 @@ coordination replies, and surface positions. Each message gets a random (seeded)
 a correct CRC, so it's well-formed but not necessarily sensible: good for comparing field
 decoding, not for anything physical.
 
+The surface positions lie near 12 references around the world (the date line, the poles,
+the southern hemisphere); every pyModeS decode of our encoder's messages lands within 1 m of
+the true position. What pyModeS doesn't decode (DF18's CF and IMF, TC 29 subtype 0, TC 31's
+capability and mode bits) has hand-made cases in src/lib/modes/synthetic.test.ts instead.
+
 Writes two files (see tools/README.md):
 
   fixtures/oracle/synthetic.jsonl   one message per line, with everything pyModeS.decode()

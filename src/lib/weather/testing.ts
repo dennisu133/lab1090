@@ -25,7 +25,7 @@ let capture: { pipeline: WeatherPipeline; observations: Observation[] } | undefi
 
 /**
  * The capture through the same pipeline as /weather, once per test run. The receiver
- * position is the one the CPR oracle derived from the capture itself (tools/README.md),
+ * position is the one the CPR oracle derived from the capture itself (tools/oracle-cpr.py),
  * in case an aircraft has no ADS-B position.
  */
 export function runCapture() {

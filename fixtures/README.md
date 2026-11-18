@@ -34,7 +34,22 @@ DF0/4/5/16/20/21 belongs to an aircraft that also sent DF11/17 (readsb already f
 Replayed in order through `AddressFilter`, 13 AP messages come out "unknown": they precede
 their aircraft's first DF11/17 in the recording.
 
-`oracle/` holds reference values from pyModeS for the capture's messages; see `tools/README.md`.
+## `oracle/`
+
+pyModeS's answers for the capture's messages (and for synthetic ones covering what the
+capture lacks), which our decoders are tested against. Written by the `tools/oracle*.py`
+scripts, kept exactly as they write them (`bun fmt` skips this folder), so regenerating
+them (`tools/README.md`) and seeing `git status` stay clean proves nothing changed.
+
+| File              | Content                                                             | Tested in                                                |
+| ----------------- | ------------------------------------------------------------------- | -------------------------------------------------------- |
+| `crc.tsv`         | CRC remainder (syndrome) and address of all 7,481 distinct messages | `src/lib/modes/crc.test.ts`                              |
+| `decoded.jsonl`   | Full pyModeS decode of the same messages (1.7 MB)                   | `identification`, `altitude`, `header`, `squitter` tests |
+| `codes.json`      | All 8,192 altitude codes and squawks                                | `src/lib/modes/altitude.test.ts`                         |
+| `cpr.json`        | NL zone boundaries; global and local CPR decodes of all positions   | `src/lib/modes/cpr.test.ts`                              |
+| `commb.jsonl`     | Comm-B registers: validators, decodes, inference (5,467 payloads)   | `src/lib/modes/registers.test.ts`                        |
+| `synthetic.jsonl` | 1,272 synthetic messages: every TC/subtype/version, DF16/18/19      | `src/lib/modes/synthetic.test.ts`                        |
+| `surface.json`    | 288 surface positions: truth, encoded pair, pyModeS's decodes       | `src/lib/modes/synthetic.test.ts`                        |
 
 An hour of the same, for the experiments, is in `local/` (not committed).
 

@@ -14,6 +14,8 @@
  * 16 km, well above where airliners fly), with time, position, pressure, geopotential
  * height, temperature, humidity (as mixing ratio: grams of water vapour per kg of dry air)
  * and wind.
+ *
+ * The archive often answers "server too busy": this tries again for a few minutes.
  */
 const KEEP_EVERY_M = 25;
 const TOP_HPA = 100;
