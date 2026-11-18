@@ -260,3 +260,13 @@ the Bun runtime and the web page inside: copy it to the machine and run it. It r
 64-bit Linux with glibc (Raspberry Pi OS, Debian, Ubuntu); the only other thing it needs
 is the rtl-sdr package, for a dongle on that machine. The Pi's is ~116 MB. On a Pi 5 it
 uses about 7 % of one core (`rtl_sdr` included) and 55 MB of memory.
+
+## License
+
+[GPL](LICENSE), version 3 or (at your option) any later version. You may use, change and
+pass on lab1090; whoever passes it on, changed or not, as source or as the binary, passes on
+its source too, under the same license.
+
+Where code follows readsb's ([wiedehopf/readsb](https://github.com/wiedehopf/readsb):
+Matthias Wirth, Michael Wolf; from dump1090-fa by Oliver Jowett, from dump1090 by Salvatore
+Sanfilippo), also GPL v3 or later, the file says so at the top.
