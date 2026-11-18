@@ -26,7 +26,7 @@ import {
 	squawkField,
 	type Field
 } from './field';
-import { directionText, flightLevel, n, signed } from './format';
+import { directionText, flightLevel, n, signed, upTo } from './format';
 
 export function squitterFields(s: Squitter): Field[] {
 	switch (s.kind) {
@@ -114,7 +114,7 @@ function aircraftStatusFields(s: AircraftStatus): Field[] {
 function surfaceFields(p: SurfacePosition): Field[] {
 	const m = p.movement;
 	const fields: Field[] = [];
-	const kt = (x: number) => x.toLocaleString('en', { maximumFractionDigits: 2 });
+	const kt = (x: number) => upTo(x, 2);
 	fields.push({
 		value:
 			m.speed === null

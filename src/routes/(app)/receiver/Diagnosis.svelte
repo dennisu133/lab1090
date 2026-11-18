@@ -8,8 +8,8 @@
 	import { MAX_CLIPPED, MAX_ROUNDING_DB, MIN_MESSAGES, type GainAdvice } from '#lib/radio/gain.ts';
 	import type { Summary } from '#lib/radio/history.ts';
 	import type { DemodReport } from '#lib/receiver-types.ts';
-	import { n, signed } from '#lib/describe/format.ts';
-	import { dbfs, duration, percent, TONE_DOT, type Tone } from './format';
+	import { dbfs, n, signed } from '#lib/describe/format.ts';
+	import { duration, percent, TONE_DOT, type Tone } from './format';
 
 	interface Props {
 		demod: DemodReport;

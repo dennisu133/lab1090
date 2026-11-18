@@ -25,7 +25,16 @@ import { KM_PER_NM, NM } from '#lib/units.ts';
 import { alertSection, identField } from './alert';
 import { contrailField } from './contrail';
 import { provenanceText, type Field } from './field';
-import { ago, directionText, distanceText, flightLevel, n, signed, type Unit } from './format';
+import {
+	ago,
+	dbfs,
+	directionText,
+	distanceText,
+	flightLevel,
+	n,
+	signed,
+	type Unit
+} from './format';
 import { routeSection } from './route';
 import { weatherHereFields } from './weather';
 
@@ -618,7 +627,7 @@ function receptionFields(a: TrackedAircraft, now: number): PanelField[] {
 	if (a.signal !== null)
 		reception.push({
 			label: 'Signal',
-			value: `${a.signal.toFixed(1)} dBFS`,
+			value: dbfs(a.signal),
 			title:
 				"The latest message's strength, in dB below the receiver's full scale (−6 dB: half the amplitude). Nearer is louder, but transmitters differ in power, and buildings or hills dim what's behind them.",
 			tone: 'minor'

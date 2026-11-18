@@ -8,12 +8,19 @@
  */
 import { KM_PER_NM } from '#lib/units.ts';
 
-/** Whole numbers with thousands separators: 38,000. */
-export const n = (x: number) => Math.round(x).toLocaleString('en');
+/** A real minus for the locale's hyphen, and none on a value that rounds to 0 ("−0.0"). */
+const minus = (text: string) => (/^-[0.,]*$/.test(text) ? text.slice(1) : text.replace(/^-/, '−'));
 
-/** Fixed decimals with thousands separators: 1,234.5, 0.250. */
-export const fixed = (x: number, digits: number) =>
-	x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+/** Whole numbers with thousands separators: 38,000, −500. */
+export const n = (x: number) => minus(Math.round(x).toLocaleString('en'));
+
+/** Fixed decimals with thousands separators: 1,234.5, 0.250, −5.0. */
+export const fixed = (x: number, digits = 1) =>
+	minus(x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+
+/** At most this many decimals, no trailing zeros: 12,450, 0.804, 1.5. */
+export const upTo = (x: number, digits: number) =>
+	minus(x.toLocaleString('en', { maximumFractionDigits: digits }));
 
 /** Signed, with a real minus and thousands separators: −0.2, +1,500. No sign when it rounds to 0. */
 export function signed(x: number, digits = 1): string {
@@ -30,7 +37,7 @@ export const directionText = (x: number) =>
 	`${String(((Math.round(x) % 360) + 360) % 360).padStart(3, '0')}°`;
 
 /** "1.3°", "70°": any other angle (elevation, bank, a spread), as it is. */
-export const angleText = (x: number, digits = 0) => `${x.toFixed(digits)}°`;
+export const angleText = (x: number, digits = 0) => `${fixed(x, digits)}°`;
 
 /**
  * "FL350" for 35,000 ft: the pressure altitude in hundreds of feet, always three digits
@@ -56,6 +63,9 @@ export function celsius(kelvin: number, digits = 1): string {
 	const text = Math.abs(c).toFixed(digits);
 	return `${c < 0 && Number(text) !== 0 ? '−' : ''}${text} °C`;
 }
+
+/** "−27.3 dBFS": a signal level, decibels below the receiver's full scale. */
+export const dbfs = (x: number) => `${fixed(x)} dBFS`;
 
 /** "1018.4 hPa", but the standard pressure as itself: "1013.25 hPa". */
 export const hpa = (x: number) => `${x.toFixed(Math.round(x * 100) % 10 ? 2 : 1)} hPa`;

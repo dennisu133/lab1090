@@ -5,7 +5,13 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { celsius, flightLevel, levelOrFeet, n as whole } from '#lib/describe/format.ts';
+	import {
+		celsius,
+		fixed as n,
+		flightLevel,
+		levelOrFeet,
+		n as whole
+	} from '#lib/describe/format.ts';
 	import { isaText } from '#lib/describe/weather.ts';
 	import { A0, R_AIR, RHO0, T0 } from '#lib/modes/air-data.ts';
 	import { STEP, type Observation } from '#lib/weather/observation.ts';
@@ -16,8 +22,6 @@
 
 	let track = $derived(o.inputs.trackAndTurn.value);
 	let heading = $derived(o.inputs.headingAndSpeed.value);
-
-	const n = (x: number, digits = 1) => x.toFixed(digits);
 </script>
 
 <Card title="Temperature" class="h-86" nowrap>

@@ -99,7 +99,7 @@
 			{#each bins as b (b.key)}
 				<div
 					class="flex h-full flex-1 flex-col justify-end hover:bg-zinc-800/60"
-					title="{b.key} to {b.key + SIGNAL_BUCKET_DB} dBFS: {n(b.count)} messages ({percent(
+					title="{n(b.key)} to {n(b.key + SIGNAL_BUCKET_DB)} dBFS: {n(b.count)} messages ({percent(
 						b.count
 					)} %)"
 				>
@@ -117,7 +117,7 @@
 		<div class="mt-1 flex gap-1 text-xs text-zinc-500 tabular-nums">
 			{#each bins as b (b.key)}
 				<!-- a label every 6 dB is plenty -->
-				<div class="flex-1">{b.key % 6 === 0 ? b.key : ''}</div>
+				<div class="flex-1">{b.key % 6 === 0 ? n(b.key) : ''}</div>
 			{/each}
 			<div class="w-0">0</div>
 		</div>
@@ -126,7 +126,7 @@
 		<dl class="mt-3 flex flex-wrap gap-x-8 gap-y-1 text-sm tabular-nums">
 			<div>
 				<dt class="inline text-zinc-400">Half the messages are below</dt>
-				<dd class="inline">{median ? `${median.key + SIGNAL_BUCKET_DB} dBFS` : '–'}</dd>
+				<dd class="inline">{median ? `${n(median.key + SIGNAL_BUCKET_DB)} dBFS` : '–'}</dd>
 			</div>
 			<div>
 				<dt class="inline text-zinc-400">Strong (≥ −3 dBFS)</dt>

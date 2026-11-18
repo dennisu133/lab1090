@@ -19,6 +19,7 @@
  *
  * Shared by server and browser; no state here.
  */
+import { fixed, n, upTo } from '#lib/describe/format.ts';
 import { resolutionAdvisory, type ResolutionAdvisory as Advisory } from './acas';
 import { bits } from './frame';
 import { callsign, character } from './identification';
@@ -377,9 +378,7 @@ const BDS_5_0: RegisterSpec<TrackAndTurn> = {
 			wrongStatus(mb, 35, 10, 'track rate'),
 			wrongStatus(mb, 46, 10, 'true airspeed'),
 			// An airliner hardly ever banks more than 30°; pyModeS draws the line at 35°.
-			r.roll !== null && Math.abs(r.roll) > 35
-				? `roll ${r.roll.toFixed(1)}° is more than 35°`
-				: null,
+			r.roll !== null && Math.abs(r.roll) > 35 ? `roll ${fixed(r.roll)}° is more than 35°` : null,
 			r.groundSpeed !== null && r.groundSpeed > 600
 				? `ground speed ${r.groundSpeed} kt > 600`
 				: null,
@@ -496,7 +495,7 @@ const BDS_4_4: RegisterSpec<MeteoRoutine> = {
 			wrongStatus(mb, 50, 6, 'humidity'),
 			r.wind && r.wind.speed > 250 ? `wind ${r.wind.speed} kt > 250` : null,
 			r.temperature < -80 || r.temperature > 60
-				? `temperature ${r.temperature} °C beyond −80…+60`
+				? `temperature ${upTo(r.temperature, 2)} °C beyond −80…+60`
 				: null,
 			bits(mb, 6, 9) === 0 && bits(mb, 15, 9) === 0 && bits(mb, 25, 10) === 0
 				? 'wind and temperature are all zero'
@@ -556,7 +555,7 @@ const BDS_4_5: RegisterSpec<MeteoHazard> = {
 			wrongStatus(mb, 27, 11, 'static pressure'),
 			wrongStatus(mb, 39, 12, 'radio height'),
 			r.temperature !== null && (r.temperature < -80 || r.temperature > 60)
-				? `temperature ${r.temperature} °C beyond −80…+60`
+				? `temperature ${upTo(r.temperature, 2)} °C beyond −80…+60`
 				: null
 		);
 	},
@@ -662,7 +661,7 @@ const ALTITUDE_RANGE = [-1000, 60_000];
 
 function altitudeReason(feet: number): string | null {
 	return feet < ALTITUDE_RANGE[0] || feet > ALTITUDE_RANGE[1]
-		? `altitude ${feet.toLocaleString('en')} ft is out of range`
+		? `altitude ${n(feet)} ft is out of range`
 		: null;
 }
 
@@ -673,7 +672,7 @@ const BDS_5_1: RegisterSpec<PositionCoarse> = {
 		const r = BDS_5_1.decode(mb);
 		return firstOf(
 			!flag(mb, 1) ? 'status bit 1 says "no position"' : null,
-			Math.abs(r.lat) > 90 ? `latitude ${r.lat.toFixed(1)}° is beyond ±90°` : null,
+			Math.abs(r.lat) > 90 ? `latitude ${fixed(r.lat)}° is beyond ±90°` : null,
 			altitudeReason(r.altitude)
 		);
 	},

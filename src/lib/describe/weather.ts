@@ -134,7 +134,7 @@ export function checkFields(o: Observation): Field[] {
 	else if (trackRate !== null)
 		fields.push({
 			label: 'turn',
-			value: `${trackRate.toFixed(2)}°/s`,
+			value: `${signed(trackRate, 2)}°/s`,
 			title: '5,0 has no roll angle, so its track rate decides whether the aircraft is turning',
 			tone: o.windProblem?.startsWith('turning') ? 'alert' : 'minor'
 		});

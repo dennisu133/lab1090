@@ -9,7 +9,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { interval, levelOrFeet, signed } from '#lib/describe/format.ts';
+	import { fixed as n, interval, levelOrFeet, signed } from '#lib/describe/format.ts';
 	import { acrossText, alongText, driftText, windText } from '#lib/describe/weather.ts';
 	import { compass } from '#lib/geo.ts';
 	import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
@@ -23,7 +23,6 @@
 	let heading = $derived(o.inputs.headingAndSpeed.value);
 	let position = $derived(o.inputs.position);
 
-	const n = (x: number, digits = 1) => x.toFixed(digits);
 	/** "63.1 kt north" / "12.0 kt south" */
 	const ns = (x: number) => `${n(Math.abs(x))} kt ${x >= 0 ? 'north' : 'south'}`;
 	const ew = (x: number) => `${n(Math.abs(x))} kt ${x >= 0 ? 'east' : 'west'}`;

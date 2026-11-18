@@ -10,6 +10,7 @@
 	stripe is the ±TEMPERATURE_MARGIN the answer allows.
 -->
 <script lang="ts">
+	import { celsius } from '#lib/describe/format.ts';
 	import {
 		TEMPERATURE_MARGIN,
 		saturationOverIce,
@@ -184,8 +185,7 @@
 			x={x(shown) + (kelvin > shown ? -4 : 4)}
 			y={SIZE - BOTTOM - 8}
 			text-anchor={kelvin > shown ? 'end' : 'start'}
-			class="fill-zinc-300 text-[10px]"
-			>{kelvin > shown ? '→' : '←'} {(kelvin - 273.15).toFixed(0)} °C</text
+			class="fill-zinc-300 text-[10px]">{kelvin > shown ? '→' : '←'} {celsius(kelvin, 0)}</text
 		>
 	{/if}
 

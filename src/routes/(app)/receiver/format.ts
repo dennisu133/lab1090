@@ -13,10 +13,6 @@ export function percent(share: number): string {
 	return `${share < 0.1 ? (share * 100).toFixed(1) : Math.round(share * 100)} %`;
 }
 
-export function dbfs(n: number): string {
-	return `${n.toFixed(1).replace('-', '−')} dBFS`;
-}
-
 /** 45 s, 12 min, 3 h 05 min. */
 export function duration(seconds: number): string {
 	if (seconds < 60) return `${Math.round(seconds)} s`;

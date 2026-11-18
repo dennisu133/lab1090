@@ -7,6 +7,7 @@
  * The temperature charts (the profile, the per-aircraft ISA chart, the contrail diagram)
  * share the standard atmosphere's line and the °C grid labels.
  */
+import { n } from '#lib/describe/format.ts';
 import { FT } from '#lib/units.ts';
 import { T11, isaTemperature } from '#lib/modes/air-data.ts';
 
@@ -54,4 +55,4 @@ export const celsiusTicks = (from: number, to: number, step: number) =>
 	Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 
 /** A °C grid label: "−40°", with a real minus, as in print. */
-export const degrees = (c: number) => `${c < 0 ? '−' : ''}${Math.abs(c)}°`;
+export const degrees = (c: number) => `${n(c)}°`;

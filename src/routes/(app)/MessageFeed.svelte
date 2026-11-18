@@ -7,7 +7,7 @@
 	message is open, the list holds still (like /frames when scrolled into), so it can be read.
 -->
 <script lang="ts">
-	import { clockTime } from '#lib/describe/format.ts';
+	import { clockTime, dbfs } from '#lib/describe/format.ts';
 	import type { Message } from './tracker-stream.svelte.ts';
 
 	let { messages }: { messages: Message[] } = $props();
@@ -53,7 +53,7 @@
 						</span>
 					</summary>
 					<div class="space-y-1.5 px-2 pt-1 pb-2">
-						<p class="text-zinc-500">{m.title} · {m.dbfs.toFixed(1)} dBFS</p>
+						<p class="text-zinc-500">{m.title} · {dbfs(m.dbfs)}</p>
 						{#each m.fields as f, i (i)}
 							<p>
 								<span class={f.tone === 'alert' ? 'text-orange-400' : 'text-zinc-200'}>

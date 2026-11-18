@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { n } from '#lib/describe/format.ts';
+	import { dbfs, n } from '#lib/describe/format.ts';
 	import { adviseGain, MAX_ROUNDING_DB, ROUNDING_LIMIT_DBFS } from '#lib/radio/gain.ts';
 	import { DIAGNOSIS_MS, summarize } from '#lib/radio/history.ts';
 	import { freeSpaceLevel } from '#lib/radio/path-loss.ts';
@@ -19,7 +19,7 @@
 	import HistoryChart from './HistoryChart.svelte';
 	import SignalChart from './SignalChart.svelte';
 	import Stages from './Stages.svelte';
-	import { dbfs, perSecond } from './format';
+	import { perSecond } from './format';
 
 	const { radio, signal, stats } = getStreams();
 
@@ -151,7 +151,7 @@
 					min={noiseRange.min}
 					max={noiseRange.max}
 					ticks={noiseRange.ticks}
-					format={(v) => (v < 0 ? `−${-v}` : `${v}`)}
+					format={n}
 					reference={{ value: ROUNDING_LIMIT_DBFS, label: 'rounding > 1 dB below' }}
 					color="stroke-sky-400"
 					label="Noise level over the last hour, dBFS"

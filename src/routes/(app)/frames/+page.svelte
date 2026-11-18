@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { arrivalTime } from '#lib/describe/format.ts';
+	import { arrivalTime, dbfs } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
@@ -160,10 +160,10 @@
 			.slice(0, FEED_ROWS);
 	});
 
-	function signalTitle(dbfs: number) {
-		const amplitude = 10 ** (dbfs / 20) * 100;
-		const power = 10 ** (dbfs / 10) * 100;
-		return `${dbfs.toFixed(1)} dBFS: amplitude ${amplitude.toFixed(1)} %, power ${power.toFixed(2)} % of full scale`;
+	function signalTitle(level: number) {
+		const amplitude = 10 ** (level / 20) * 100;
+		const power = 10 ** (level / 10) * 100;
+		return `${dbfs(level)}: amplitude ${amplitude.toFixed(1)} %, power ${power.toFixed(2)} % of full scale`;
 	}
 
 	function toggle<K extends keyof typeof filter>(key: K, value: (typeof filter)[K]) {
@@ -278,7 +278,7 @@
 						<tr class="border-t border-zinc-900">
 							<td class="py-0.5 text-zinc-400">{arrivalTime(f.rx)}</td>
 							<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
-								{f.dbfs.toFixed(1)} dBFS
+								{dbfs(f.dbfs)}
 							</td>
 							<td class="py-0.5 font-mono" title={DF_NAMES[f.df]}>{f.df}</td>
 							<td class="py-0.5 font-mono" title={f.tc === null ? undefined : typeCodeName(f.tc)}>

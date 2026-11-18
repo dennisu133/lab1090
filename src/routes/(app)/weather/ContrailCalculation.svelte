@@ -8,7 +8,7 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { contrailValue, humidityNeeded, type TrackerContrail } from '#lib/describe/contrail.ts';
-	import { celsius, levelOrFeet, n as whole } from '#lib/describe/format.ts';
+	import { celsius, fixed as n, levelOrFeet, n as whole } from '#lib/describe/format.ts';
 	import { staticPressure } from '#lib/modes/air-data.ts';
 	import {
 		CP,
@@ -32,7 +32,6 @@
 		$props();
 
 	/** With a real minus sign, like celsius(). */
-	const n = (x: number, digits = 1) => x.toFixed(digits).replace('-', '−');
 	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
 
 	let feet = $derived(o.inputs.altitude?.feet ?? null);

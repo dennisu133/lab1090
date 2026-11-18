@@ -21,7 +21,7 @@ import {
 	type Register
 } from '#lib/modes/registers.ts';
 import { advisoryFields, provenanceText, type Field } from './field';
-import { directionText, n, signed } from './format';
+import { directionText, fixed, n, signed, upTo } from './format';
 import { squitterFields } from './squitter';
 
 export const HOW: Record<How, { label: string; title: string }> = {
@@ -244,7 +244,7 @@ export function registerFields(r: Register): Field[] {
 					? [
 							field(
 								'turn',
-								`${r.trackRate.toFixed(2)}°/s`,
+								`${signed(r.trackRate, 2)}°/s`,
 								'Track angle rate: how fast the track changes; positive = turning right',
 								'minor'
 							)
@@ -442,7 +442,7 @@ export function ambiguousFields(candidates: Candidate[]): Field[] {
 function temperatureField(celsius: number): Field {
 	return field(
 		'SAT',
-		`${celsius.toFixed(2)} °C`,
+		`${fixed(celsius, 2)} °C`,
 		'Static air temperature: the temperature of the air around the aircraft (not heated by the speed), 0.25 °C steps',
 		'main'
 	);
@@ -541,7 +541,7 @@ const DIGITS: Record<Unit | 'km', number> = {
 
 /** "12,450 ft", "263°", "0.804" (Mach): the one rule for every number in a comparison. */
 function quantityText(x: number, unit: Unit | 'km'): string {
-	const text = x.toLocaleString('en', { maximumFractionDigits: DIGITS[unit] });
+	const text = upTo(x, DIGITS[unit]);
 	return unit === '' || unit === '°' ? `${text}${unit}` : `${text} ${unit}`;
 }
 

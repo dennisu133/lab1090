@@ -160,8 +160,8 @@
 							{#if avg.isaDeviation !== null}
 								<span
 									class={avg.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
-									title="Mean deviation from the standard atmosphere of {avg.isaCount} trusted temperatures of the last {minute} s: {avg.isaDeviation.toFixed(
-										1
+									title="Mean deviation from the standard atmosphere of {avg.isaCount} trusted temperatures of the last {minute} s: {signed(
+										avg.isaDeviation
 									)} °C"
 								>
 									{signed(avg.isaDeviation, 0)}

@@ -72,7 +72,7 @@
 				<line x1={x(ft)} y1={TOP} x2={x(ft)} y2={H - BOTTOM} class="stroke-zinc-800" />
 				{#if LABELLED.has(ft)}
 					<text x={x(ft)} y={H - BOTTOM + 12} text-anchor="middle">
-						{ft < 0 ? `−${-ft}` : ft > 0 ? `+${ft}` : '0'}
+						{signed(ft, 0)}
 					</text>
 				{/if}
 			{/each}
@@ -118,7 +118,7 @@
 				]}
 			>
 				<title>
-					{`${flightLevel(l.level)}: ${Math.round(c.offset)} ft, column ${signed(c.isaDeviation)} K, ${l.column!.n} samples`}
+					{`${flightLevel(l.level)}: ${signed(c.offset, 0)} ft, column ${signed(c.isaDeviation)} K, ${l.column!.n} samples`}
 				</title>
 			</circle>
 		{/each}

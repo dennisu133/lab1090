@@ -108,7 +108,7 @@
 		{#each DB_TICKS as db (db)}
 			<line x1={LEFT} x2={PLOT_RIGHT} y1={y(db)} y2={y(db)} class="stroke-zinc-800" />
 			<text x={LEFT - 6} y={y(db) + 3} text-anchor="end" class="fill-zinc-500 text-[10px]"
-				>{db === 0 ? '0' : `−${-db}`}</text
+				>{n(db)}</text
 			>
 		{/each}
 		{#each KM_TICKS as km (km)}
@@ -162,7 +162,7 @@
 				height={Math.max(0, y(b.key) - top - 2)}
 				class="fill-zinc-600"
 			>
-				<title>{b.key} to {b.key + SIGNAL_BUCKET_DB} dBFS: {n(b.count)} messages</title>
+				<title>{n(b.key)} to {n(b.key + SIGNAL_BUCKET_DB)} dBFS: {n(b.count)} messages</title>
 			</rect>
 		{/each}
 		<text x={BARS_LEFT} y={H - BOTTOM + 14} class="fill-zinc-500 text-[10px]">all messages</text>
