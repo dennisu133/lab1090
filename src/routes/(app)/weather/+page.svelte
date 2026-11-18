@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { contrailRuns, runLevels } from '#lib/describe/contrail.ts';
+	import { contrailRuns, runText } from '#lib/describe/contrail.ts';
 	import { hpa, levelOrFeet, signed } from '#lib/describe/format.ts';
 	import { isaText, windText } from '#lib/describe/weather.ts';
 	import { column, type HeightReference } from '#lib/weather/column.ts';
@@ -262,12 +262,7 @@
 				<p class="mt-0.5">
 					{#each contrails as run, i (run.from)}
 						{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-sky-300' : ''}
-							>{runLevels(run)}
-							{run.verdict === 'always'
-								? 'in any air'
-								: run.verdict === 'never'
-									? 'too warm'
-									: `needs ${run.needed} humidity`}</span
+							>{runText(run)}</span
 						>
 					{:else}
 						No layer with enough temperatures yet.

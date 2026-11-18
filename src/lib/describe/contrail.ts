@@ -151,8 +151,21 @@ export interface ContrailRun {
 }
 
 /** "FL360–FL370", "FL380" */
-export const runLevels = (r: ContrailRun) =>
+const runLevels = (r: ContrailRun) =>
 	r.from === r.to ? levelOrFeet(r.from) : `${levelOrFeet(r.from)}–${levelOrFeet(r.to)}`;
+
+/**
+ * One run in /weather's summary: "FL360–FL370 in any air", "FL380 too warm", "FL340 needs
+ * 40–90 % humidity". Shorter than contrailValue: the summary lists several in a line.
+ */
+export function runText(r: ContrailRun): string {
+	const verdict = {
+		always: 'in any air',
+		never: 'too warm',
+		humid: `needs ${r.needed} humidity`
+	}[r.verdict];
+	return `${runLevels(r)} ${verdict}`;
+}
 
 /**
  * /weather's summary: the layers with enough temperatures, lowest first, joined into runs

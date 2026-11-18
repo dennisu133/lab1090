@@ -3,7 +3,7 @@ import { staticPressure } from '#lib/modes/air-data.ts';
 import { contrailRange, thresholds } from '#lib/weather/contrail.ts';
 import { LAYER_FT, layers } from '#lib/weather/profile.ts';
 import { runCapture } from '#lib/weather/testing.ts';
-import { contrailField, contrailRuns, humidityNeeded } from './contrail';
+import { contrailField, contrailRuns, humidityNeeded, runText } from './contrail';
 
 describe('humidityNeeded', () => {
 	const p = staticPressure(37_000);
@@ -36,6 +36,11 @@ describe('on the capture', () => {
 			{ verdict: 'humid', from: 36_000, to: 36_000, needed: 'up to 3\u00a0%' },
 			{ verdict: 'always', from: 37_000, to: 37_000, needed: null },
 			{ verdict: 'humid', from: 38_000, to: 38_000, needed: '10–80\u00a0%' }
+		]);
+		expect(contrailRuns(all).map(runText)).toEqual([
+			'FL360 needs up to 3\u00a0% humidity',
+			'FL370 in any air',
+			'FL380 needs 10–80\u00a0% humidity'
 		]);
 	});
 
