@@ -147,8 +147,6 @@ Other ways in:
 - **A recording of samples** (`rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 72000000 sky.u8`, 30 s):
   `--samples sky.u8`.
 
-The Pi: [pi/README.md](pi/README.md).
-
 ## Getting started
 
 lab1090 is one program: it reads the RTL-SDR and serves the web page. Plug in the dongle,
@@ -235,8 +233,9 @@ Node.js and npm are not needed.
 | `bun run build:arm64`  | The same for a 64-bit Raspberry Pi (Linux arm64)         |
 
 Options go after the command. With the dongle on the Pi, run `rtl_tcp -a 0.0.0.0` there
-and `bun run dev --rtl-tcp pi` here. The dev server shares the config file with the
-program, so the position set up once is there for both.
+(stop it with `pkill -9 rtl_tcp`: while it waits for a client it ignores a plain kill and
+keeps the dongle) and `bun run dev --rtl-tcp pi` here. The dev server shares the config
+file with the program, so the position set up once is there for both.
 
 Nothing in the sky (at night, say)? Replay the recording instead, at its original pace,
 either as messages or turned back into samples for the demodulator:

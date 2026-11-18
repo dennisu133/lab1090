@@ -11,7 +11,7 @@ timeout 600 bash -c 'cat < /dev/tcp/pi/30005' > fixtures/capture.beast
 |          |                                                                                     |
 | -------- | ----------------------------------------------------------------------------------- |
 | Recorded | 2026-11-13 16:18:23 CET, 10 min (Beast timestamps span 596.8 s)                     |
-| Receiver | readsb 3.16.21, RTL-SDR v3, autogain, see [`pi/`](../pi)                            |
+| Receiver | readsb 3.16.21, RTL-SDR v3, autogain                                                |
 | Size     | 663,697 bytes                                                                       |
 | Frames   | 33,973: 33,968 Mode S + 5 keepalives (type `'1'`, all zeros) at the start           |
 | Escapes  | 1,889 escaped `1A 1A` pairs (37,751 `0x1A` bytes = 33,973 frame starts + 2 × 1,889) |
