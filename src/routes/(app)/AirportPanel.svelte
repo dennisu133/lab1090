@@ -4,12 +4,12 @@
 	it's the one most people know.
 -->
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import { airportCode, airportSections } from '#lib/describe/airport.ts';
 	import type { Airport } from '#lib/map/airports.ts';
 	import type { Unit } from '#lib/describe/format.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import Details from './Details.svelte';
+	import PanelHeader from './PanelHeader.svelte';
 
 	interface Props {
 		airport: Airport;
@@ -23,16 +23,8 @@
 	let sections = $derived(airportSections(airport, receiver, unit));
 </script>
 
-<header class="flex items-start justify-between gap-4 px-4 py-3">
-	<div class="min-w-0">
-		<h2 class="font-mono text-xl font-semibold">{airportCode(airport)}</h2>
-		<p class="text-sm text-zinc-300">{airport.name}</p>
-	</div>
-	<button
-		type="button"
-		onclick={onclose}
-		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft"><CloseIcon /></button
-	>
-</header>
+<PanelHeader {onclose}>
+	<h2 class="font-mono text-xl font-semibold">{airportCode(airport)}</h2>
+	<p class="text-sm text-zinc-300">{airport.name}</p>
+</PanelHeader>
 <Details {sections} />

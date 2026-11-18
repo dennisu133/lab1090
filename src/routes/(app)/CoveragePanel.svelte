@@ -25,6 +25,7 @@
 	import { BAND_COLOUR_FT } from '#lib/map/coverage.ts';
 	import type { CoverageStream } from './coverage-stream.svelte';
 	import SkyPlot from './SkyPlot.svelte';
+	import PanelHeader from './PanelHeader.svelte';
 
 	interface Props {
 		stream: CoverageStream;
@@ -67,25 +68,17 @@
 	· {km(p.distance)}
 {/snippet}
 
-<header class="flex items-start justify-between gap-4 px-4 py-3">
-	<div class="min-w-0">
-		<h2 class="text-xl font-semibold">Receiver coverage</h2>
-		<p class="text-sm text-zinc-400">
-			{#if stream.positions}
-				{ago(collecting).replace(' ago', '')} of traffic · {n(stream.positions)} positions ·
-				{summary.heard} of {360 / SECTOR_DEG} directions heard
-			{:else}
-				Waiting for positions…
-			{/if}
-		</p>
-	</div>
-	<button
-		type="button"
-		onclick={onclose}
-		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft"><CloseIcon /></button
-	>
-</header>
+<PanelHeader {onclose}>
+	<h2 class="text-xl font-semibold">Receiver coverage</h2>
+	<p class="text-sm text-zinc-400">
+		{#if stream.positions}
+			{ago(collecting).replace(' ago', '')} of traffic · {n(stream.positions)} positions ·
+			{summary.heard} of {360 / SECTOR_DEG} directions heard
+		{:else}
+			Waiting for positions…
+		{/if}
+	</p>
+</PanelHeader>
 
 <p class="px-4 pb-3 text-sm text-zinc-400">
 	Antenna at

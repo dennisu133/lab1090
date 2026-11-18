@@ -5,7 +5,6 @@
 	codes heard are listed at the end.
 -->
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, directionText, distanceText, n, type Unit } from '#lib/describe/format.ts';
 	import { compass, distanceKm } from '#lib/geo.ts';
@@ -29,6 +28,7 @@
 	import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 	import RadarCodes from './RadarCodes.svelte';
 	import RadarList from './RadarList.svelte';
+	import PanelHeader from './PanelHeader.svelte';
 
 	interface Props {
 		radar: Radar;
@@ -109,25 +109,17 @@
 	const AXIS = 14;
 </script>
 
-<header class="flex items-start justify-between gap-4 px-4 py-3">
-	<div class="min-w-0">
-		<h2 class="text-xl font-semibold">
-			Radar <span class="font-mono">{r.id}</span>
-			<span class="text-sm font-normal text-amber-300">experimental</span>
-		</h2>
-		<p class="text-sm text-zinc-400">
-			{fixed(rpm, 1)} rpm · {r.clockwise ? 'clockwise' : 'anticlockwise'}
-			· {km(from.km)}
-			{compass(from.bearing)} of the receiver
-		</p>
-	</div>
-	<button
-		type="button"
-		onclick={onclose}
-		class="-mr-1.5 grid size-8 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-		aria-label="Close and show all aircraft"><CloseIcon /></button
-	>
-</header>
+<PanelHeader {onclose}>
+	<h2 class="text-xl font-semibold">
+		Radar <span class="font-mono">{r.id}</span>
+		<span class="text-sm font-normal text-amber-300">experimental</span>
+	</h2>
+	<p class="text-sm text-zinc-400">
+		{fixed(rpm, 1)} rpm · {r.clockwise ? 'clockwise' : 'anticlockwise'}
+		· {km(from.km)}
+		{compass(from.bearing)} of the receiver
+	</p>
+</PanelHeader>
 
 <div class="space-y-3 px-4 pb-3 text-sm text-zinc-300">
 	<p>
