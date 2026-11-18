@@ -169,41 +169,8 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 	return fields;
 }
 
-export function aircraftSections(
-	a: TrackedAircraft,
-	now: number,
-	receiver: LatLon,
-	unit: Unit,
-	/**
-	 * What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet);
-	 * 'unreachable': the lookup failed (offline, or adsbdb down).
-	 */
-	db: DbAircraft | null | 'unreachable' = null,
-	/** What adsbdb knows about the flight under its callsign; null: nothing (yet). */
-	trip: DbFlight | null = null,
-	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
-	judged: Judged | null = null,
-	/** Every aircraft: for an ACAS advisory's threat. */
-	all: TrackedAircraft[] = [],
-	/**
-	 * Its wind and temperature (lib/weather/tracker.ts), heading check, and the temperature
-	 * layer at its level (lib/weather/profile.ts, for the contrail line); null: none.
-	 */
-	weather: {
-		aircraft: WeatherAircraft;
-		check: HeadingCheck | null;
-		layer: Layer | null;
-	} | null = null
-): Section[] {
-	const sections: Section[] = [];
-	const add = (title: string, fields: Section['fields']) => {
-		if (fields.length) sections.push({ title, fields });
-	};
-
-	// --- alerts, on top: what it means and what happens next -----------------------------
-	for (const x of alertsOf(a, now)) sections.push(alertSection(x, a, all, now, unit));
-
-	// --- identity ------------------------------------------------------------------------
+/** Who it is: callsign, address, the State whose block the address is in, category, squawk. */
+function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 	const identity: Section['fields'] = [];
 	if (a.callsign)
 		identity.push({
@@ -271,19 +238,18 @@ export function aircraftSections(
 		});
 	}
 	if (identing(a, now)) identity.push(identField());
-	add('Identity', identity);
-	const route = trip && routeSection(a, trip, judged, unit);
-	if (route) sections.push(route);
-	if (db === 'unreachable') {
-		sections.push({ title: 'Airframe', source: 'adsbdb', fields: [unreachableField()] });
-	} else if (db) {
-		const fields = airframeFields(a, db);
-		if (fields.length) sections.push({ title: 'Airframe', source: 'adsbdb', fields });
-	}
+	return identity;
+}
 
-	// --- position ------------------------------------------------------------------------
-	const position: Section['fields'] = [];
+/** Where it is, how sure that is, and what the map makes of it. */
+function positionFields(
+	a: TrackedAircraft,
+	now: number,
+	receiver: LatLon,
+	unit: Unit
+): PanelField[] {
 	const p = a.position;
+	const position: Section['fields'] = [];
 	if (p) {
 		const shown = shownPosition(a, now);
 		position.push({
@@ -364,9 +330,12 @@ export function aircraftSections(
 			tone: 'alert'
 		});
 	}
-	add('Position', position);
+	return position;
+}
 
-	// --- altitude and movement -----------------------------------------------------------
+/** Altitude and movement: vertical rate, ground vector, turn, air data, the prediction. */
+function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelField[] {
+	const p = a.position;
 	const flight: Section['fields'] = [];
 	if (p?.surface)
 		flight.push({
@@ -527,9 +496,11 @@ export function aircraftSections(
 			tone: 'main'
 		});
 	}
-	add('Flight', flight);
+	return flight;
+}
 
-	// --- intent --------------------------------------------------------------------------
+/** What the autopilot is set to (TC 29 target state and status). */
+function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 	const intent: Section['fields'] = [];
 	const target = a.target?.value;
 	if (target?.selectedAltitude)
@@ -577,18 +548,11 @@ export function aircraftSections(
 				source(a.target!, now),
 			tone: 'minor'
 		});
-	add('Autopilot', intent);
+	return intent;
+}
 
-	// --- weather, from its Comm-B registers ----------------------------------------------
-	if (weather) {
-		const contrail = contrailField(weather.aircraft, weather.layer);
-		add('Weather where it flies', [
-			...weatherHereFields(weather.aircraft, weather.check, now),
-			...(contrail ? [contrail] : [])
-		]);
-	}
-
-	// --- Comm-B --------------------------------------------------------------------------
+/** Air data radars read from its Comm-B registers 5,0 (track and turn) and 6,0 (heading and speed). */
+function commBFields(a: TrackedAircraft, now: number): PanelField[] {
 	const radar: Section['fields'] = [];
 	const hs = a.commB.headingAndSpeed;
 	const tt = a.commB.trackAndTurn;
@@ -631,9 +595,11 @@ export function aircraftSections(
 				'Roll angle: an aircraft turns by banking; airliners use up to 25–30°.' + source(tt, now),
 			tone: 'main'
 		});
-	add('From radar interrogations (Comm-B)', radar);
+	return radar;
+}
 
-	// --- reception -----------------------------------------------------------------------
+/** How much of it we hear, and how loud. */
+function receptionFields(a: TrackedAircraft, now: number): PanelField[] {
 	const reception: Section['fields'] = [
 		{
 			label: 'Messages',
@@ -654,6 +620,62 @@ export function aircraftSections(
 				"The latest message's strength, in dB below the receiver's full scale (−6 dB: half the amplitude). Nearer is louder, but transmitters differ in power, and buildings or hills dim what's behind them.",
 			tone: 'minor'
 		});
-	add('Reception', reception);
+	return reception;
+}
+
+export function aircraftSections(
+	a: TrackedAircraft,
+	now: number,
+	receiver: LatLon,
+	unit: Unit,
+	/**
+	 * What adsbdb knows about the airframe (lib/aircraft-db.ts); null: nothing (yet);
+	 * 'unreachable': the lookup failed (offline, or adsbdb down).
+	 */
+	db: DbAircraft | null | 'unreachable' = null,
+	/** What adsbdb knows about the flight under its callsign; null: nothing (yet). */
+	trip: DbFlight | null = null,
+	/** The route check for it (tracker/route.ts RouteJudge); null: no route (yet). */
+	judged: Judged | null = null,
+	/** Every aircraft: for an ACAS advisory's threat. */
+	all: TrackedAircraft[] = [],
+	/**
+	 * Its wind and temperature (lib/weather/tracker.ts), heading check, and the temperature
+	 * layer at its level (lib/weather/profile.ts, for the contrail line); null: none.
+	 */
+	weather: {
+		aircraft: WeatherAircraft;
+		check: HeadingCheck | null;
+		layer: Layer | null;
+	} | null = null
+): Section[] {
+	const sections: Section[] = [];
+	const add = (title: string, fields: Section['fields']) => {
+		if (fields.length) sections.push({ title, fields });
+	};
+
+	// Alerts on top: what it means and what happens next.
+	for (const x of alertsOf(a, now)) sections.push(alertSection(x, a, all, now, unit));
+	add('Identity', identityFields(a, now));
+	const route = trip && routeSection(a, trip, judged, unit);
+	if (route) sections.push(route);
+	if (db === 'unreachable') {
+		sections.push({ title: 'Airframe', source: 'adsbdb', fields: [unreachableField()] });
+	} else if (db) {
+		const fields = airframeFields(a, db);
+		if (fields.length) sections.push({ title: 'Airframe', source: 'adsbdb', fields });
+	}
+	add('Position', positionFields(a, now, receiver, unit));
+	add('Flight', flightFields(a, now, receiver));
+	add('Autopilot', autopilotFields(a, now));
+	if (weather) {
+		const contrail = contrailField(weather.aircraft, weather.layer);
+		add('Weather where it flies', [
+			...weatherHereFields(weather.aircraft, weather.check, now),
+			...(contrail ? [contrail] : [])
+		]);
+	}
+	add('From radar interrogations (Comm-B)', commBFields(a, now));
+	add('Reception', receptionFields(a, now));
 	return sections;
 }
