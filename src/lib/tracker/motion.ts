@@ -22,7 +22,7 @@
 import { bearing, destination } from '#lib/geo.ts';
 import { KM_PER_NM } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { decimalYear, magneticField } from '#lib/weather/wmm.ts';
+import { declination } from '#lib/weather/wmm.ts';
 import type { TrackedAircraft } from './tracker';
 
 /** Below this, deg/s, the track counts as straight (in the capture, straight flight measures ≤ 0.04). */
@@ -81,8 +81,7 @@ export function trueHeading(
 	t: number
 ): number {
 	if (reference !== 'magnetic') return heading;
-	const { declination } = magneticField(at.lat, at.lon, 0, decimalYear(t));
-	return (heading + declination + 360) % 360;
+	return (heading + declination(at.lat, at.lon, 0, t) + 360) % 360;
 }
 
 /**
