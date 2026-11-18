@@ -9,9 +9,8 @@
  * builders (Field, altitude, squawk, …) in field.ts.
  */
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
-import { resolutionAdvisory } from '#lib/modes/acas.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
+import { payload } from '#lib/modes/frame.ts';
 import {
 	CAPABILITIES,
 	CONTROL_FIELDS,
@@ -19,10 +18,10 @@ import {
 	RESERVATION_TYPES,
 	downlinkRequestText,
 	messageHeader,
+	type AirAirPayload,
 	type FlightStatus,
 	type Header
 } from '#lib/modes/header.ts';
-import { airbornePosition } from '#lib/modes/position.ts';
 import { esFormat, extendedSquitter, imf } from '#lib/modes/squitter.ts';
 import { advisoryFields, altitudeField, squawkField, type Field } from './field';
 import { n } from './format';
@@ -45,13 +44,12 @@ export function describe(data: Uint8Array, located: Located | null = null): Fiel
 	const header = messageHeader(data);
 	if (header) fields.push(...headerFields(header));
 
-	const df = downlinkFormat(data);
-	if (df === 18 || df === 19) fields.push(...nonTransponderFields(data));
+	if (header?.df === 18 || header?.df === 19) fields.push(...nonTransponderFields(data, header));
 	const squitter = extendedSquitter(data);
 	if (squitter) fields.push(...squitterFields(squitter));
 
-	if (df === 16) fields.push(...mvFields(payload(data)!));
-	if (df === 20 || df === 21) {
+	if (header?.df === 16) fields.push(...mvFields(header.mv));
+	if (header?.df === 20 || header?.df === 21) {
 		fields.push({
 			label: 'MB',
 			value: 'Comm-B',
@@ -229,21 +227,19 @@ function headerFields(h: Header): Field[] {
  * DF18/19: where the message comes from, and anything the regular ADS-B decoders can't read:
  * relayed traffic (TIS-B, ADS-R) and formats with their own layout.
  */
-function nonTransponderFields(data: Uint8Array): Field[] {
+function nonTransponderFields(data: Uint8Array, h: Header & { df: 18 | 19 }): Field[] {
 	const format = esFormat(data);
-	const df = downlinkFormat(data);
 	if (!format) {
-		const field = bits(data, 6, 3);
 		return [
 			{
 				label: 'ME',
 				value: 'not decoded',
 				title:
-					df === 19
+					h.df === 19
 						? 'Military format, layout not public. Not laid out like ADS-B (DF17) either: its last 24 bits are not the CRC of the rest'
-						: field === 3
+						: h.control === 3
 							? 'Coarse TIS-B airborne position and velocity: a compressed layout of its own, only used in the US (not decoded)'
-							: field === 4
+							: h.control === 4
 								? 'TIS-B/ADS-R management message: information about the ground station (not decoded)'
 								: 'Reserved control field: no defined layout',
 				tone: 'minor'
@@ -251,7 +247,7 @@ function nonTransponderFields(data: Uint8Array): Field[] {
 		];
 	}
 	const fields: Field[] = [];
-	if (df === 19) {
+	if (h.df === 19) {
 		fields.push({
 			value: 'decoded as DF17',
 			title:
@@ -328,38 +324,42 @@ function statusFields(h: {
 }
 
 /**
- * DF16: the MV field. VDS 0x30: an ACAS coordination reply, the same resolution advisory
- * as register 3,0. In practice it mostly holds a copy of the position register, asked for
- * air-to-air.
+ * DF16: the MV field (modes/header.ts AirAirPayload). VDS 0x30: an ACAS coordination reply,
+ * the same resolution advisory as register 3,0. In practice it mostly holds a copy of the
+ * position register, asked for air-to-air.
  */
-function mvFields(mv: Uint8Array): Field[] {
-	if (mv[0] === 0x30) {
-		return [
-			{
-				label: 'MV',
-				value: 'ACAS coordination',
-				title:
-					"Payload of a long air-air reply, VDS 0x30: this aircraft's ACAS resolution advisory, as another aircraft's ACAS asked for it to coordinate (same layout as register 3,0)",
-				tone: 'minor'
-			},
-			...advisoryFields(resolutionAdvisory(mv))
-		];
+function mvFields(mv: AirAirPayload): Field[] {
+	switch (mv.kind) {
+		case 'acas':
+			return [
+				{
+					label: 'MV',
+					value: 'ACAS coordination',
+					title:
+						"Payload of a long air-air reply, VDS 0x30: this aircraft's ACAS resolution advisory, as another aircraft's ACAS asked for it to coordinate (same layout as register 3,0)",
+					tone: 'minor'
+				},
+				...advisoryFields(mv.advisory)
+			];
+		case 'position':
+			return [
+				{
+					label: 'MV',
+					value: 'position register',
+					title:
+						'Payload of a long air-air (ACAS) reply. Its first 5 bits read like an ADS-B type code: a copy of the airborne position register (BDS 0,5), requested by another aircraft',
+					tone: 'minor'
+				},
+				...cprFields(mv.position)
+			];
+		case 'other':
+			return [
+				{
+					label: 'MV',
+					value: `VDS ${mv.vds.toString(16)}`,
+					title: 'Payload of a long air-air (ACAS) reply',
+					tone: 'minor'
+				}
+			];
 	}
-	const position = airbornePosition(mv);
-	const title =
-		'Payload of a long air-air (ACAS) reply. Its first 5 bits read like an ADS-B type code: a copy of the airborne position register (BDS 0,5), requested by another aircraft';
-	if (!position || position.tc === 0) {
-		return [
-			{
-				label: 'MV',
-				value: `VDS ${bits(mv, 1, 8).toString(16)}`,
-				title: 'Payload of a long air-air (ACAS) reply',
-				tone: 'minor'
-			}
-		];
-	}
-	return [
-		{ label: 'MV', value: 'position register', title, tone: 'minor' },
-		...cprFields(position)
-	];
 }

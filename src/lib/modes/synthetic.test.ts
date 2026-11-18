@@ -413,6 +413,8 @@ test('DF16 coordination replies: the advisory agrees with pyModeS', () => {
 	expect(replies.length).toBe(64);
 	for (const o of replies) {
 		const ra = resolutionAdvisory(payload(o.data)!);
+		const h = messageHeader(o.data);
+		expect(h?.df === 16 && h.mv).toEqual({ kind: 'acas', advisory: ra });
 		const expected = Object.fromEntries(Object.keys(raFields(ra)).map((k) => [k, o.ra[k]]));
 		expect(raFields(ra) as Record<string, unknown>).toEqual(expected);
 	}

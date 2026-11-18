@@ -45,14 +45,14 @@
  *
  * Shared by server and browser; state is the aircraft heard so far.
  */
-import { inEffect, resolutionAdvisory, type ResolutionAdvisory } from '#lib/modes/acas.ts';
+import { inEffect, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory, type Timed } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
-import { flightStatus } from '#lib/modes/header.ts';
+import { airAirPayload, flightStatus } from '#lib/modes/header.ts';
 import type { EmitterCategory } from '#lib/modes/identification.ts';
 import { allocation, formatRegistration, nationalityMark } from '#lib/modes/nationality.ts';
 import { movement, type Cpr, type Movement } from '#lib/modes/position.ts';
@@ -333,8 +333,8 @@ export class Tracker {
 		if ([4, 5, 20, 21].includes(df))
 			a = this.#ident(a, flightStatus(bits(data, 6, 3)).spi, t, from);
 		// DF16 MV with VDS 0x30: the aircraft's own RA, as its ACAS tells another one's.
-		if (df === 16 && mb && mb[0] === 0x30)
-			a.advisory = this.#advisory(a.advisory, resolutionAdvisory(mb), t, from);
+		const mv = df === 16 && mb ? airAirPayload(mb) : null;
+		if (mv?.kind === 'acas') a.advisory = this.#advisory(a.advisory, mv.advisory, t, from);
 		if ((df === 20 || df === 21) && mb) a = this.#commB(a, data, mb, t);
 		this.#aircraft.set(addr.icao, a);
 		return true;

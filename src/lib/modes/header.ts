@@ -4,7 +4,7 @@
  * squawk, which the surveillance replies carry in bits 20–32.
  *
  *   DF0  (short air-air, ACAS):    VS CC – SL – RI – AC
- *   DF16 (long air-air, ACAS):     VS – SL – RI – AC + MV (56-bit payload)
+ *   DF16 (long air-air, ACAS):     VS – SL – RI – AC + MV (56-bit payload, see AirAirPayload)
  *   DF4/20 (altitude reply):       FS DR UM AC          (+ MB in DF20)
  *   DF5/21 (identity reply):       FS DR UM ID          (+ MB in DF21)
  *   DF11/17 (all-call reply, ES):  CA
@@ -14,12 +14,15 @@
  *
  * Shared by server and browser; no state here.
  */
+import { resolutionAdvisory, type ResolutionAdvisory } from './acas';
 import { replyAltitude, type Altitude } from './altitude';
-import { bits, downlinkFormat, toHex } from './frame';
+import { bits, downlinkFormat, payload, toHex } from './frame';
+import { airbornePosition, type AirbornePosition } from './position';
 import { replySquawk } from './squawk';
 
 export type Header =
-	| ({ df: 0 | 16 } & AirAir)
+	| ({ df: 0 } & AirAir)
+	| ({ df: 16 } & AirAir & { mv: AirAirPayload })
 	| ({ df: 4 | 20 } & ReplyStatus & { altitude: Altitude })
 	| ({ df: 5 | 21 } & ReplyStatus & { squawk: string })
 	| { df: 11 | 17; capability: number }
@@ -53,6 +56,30 @@ export interface AirAir {
 	altitude: Altitude;
 }
 
+/**
+ * DF16's MV field: the 56-bit payload of a long air-air reply. Its first 8 bits are the VDS
+ * (V-definition subfield, ICAO Annex 10 Vol. IV), which says what the other 48 hold:
+ *
+ *   VDS 0x30:  an ACAS coordination reply, this aircraft's resolution advisory as another
+ *              aircraft's ACAS asked for it (same layout as Comm-B register 3,0: acas.ts)
+ *
+ * In practice MV mostly holds a copy of the airborne position register (BDS 0,5), asked for
+ * air-to-air: its first 5 bits then read like an ADS-B type code (9–18, 20–22).
+ */
+export type AirAirPayload =
+	| { kind: 'acas'; advisory: ResolutionAdvisory }
+	| { kind: 'position'; position: AirbornePosition }
+	/** Anything else, or a position copy without a position (TC 0). */
+	| { kind: 'other'; vds: number };
+
+export function airAirPayload(mv: Uint8Array): AirAirPayload {
+	const vds = bits(mv, 1, 8);
+	if (vds === 0x30) return { kind: 'acas', advisory: resolutionAdvisory(mv) };
+	const position = airbornePosition(mv);
+	if (position && position.tc !== 0) return { kind: 'position', position };
+	return { kind: 'other', vds };
+}
+
 /** DF4/5/20/21: replies to a ground radar. */
 export interface ReplyStatus {
 	/** FS */
@@ -77,15 +104,18 @@ export function messageHeader(data: Uint8Array): Header | null {
 	const df = downlinkFormat(data);
 	switch (df) {
 		case 0:
-		case 16:
-			return {
-				df,
+		case 16: {
+			const airAir: AirAir = {
 				onGround: bits(data, 6, 1) === 1,
 				crossLink: df === 0 ? bits(data, 7, 1) === 1 : null,
 				sensitivity: bits(data, 9, 3),
 				replyInfo: bits(data, 14, 4),
 				altitude: replyAltitude(data)
 			};
+			if (df === 0) return { df, ...airAir };
+			const mv = payload(data);
+			return mv ? { df, ...airAir, mv: airAirPayload(mv) } : null;
+		}
 		case 4:
 		case 20:
 			return { df, ...replyStatus(data), altitude: replyAltitude(data) };
