@@ -2,7 +2,7 @@
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
-	import { levelOrFeet } from '#lib/describe/format.ts';
+	import { arrivalTime, levelOrFeet } from '#lib/describe/format.ts';
 	import {
 		checkFields,
 		inputFields,
@@ -71,14 +71,6 @@
 			.slice(0, FEED_ROWS)
 	);
 
-	const time = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		fractionalSecondDigits: 3,
-		hour12: false
-	});
-
 	function select(icao: string) {
 		selected = selected === icao ? null : icao;
 		held = null;
@@ -101,7 +93,7 @@
 							{levelOrFeet(example.observation.inputs.altitude.feet)}
 						</span>
 					{/if}
-					<span class="text-zinc-500">{time.format(example.observation.rx)}</span>
+					<span class="text-zinc-500">{arrivalTime(example.observation.rx)}</span>
 				</span>
 				<button
 					class="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
@@ -173,7 +165,7 @@
 					{#each feed as r (r.id)}
 						{@const o = r.observation}
 						<tr class="border-t border-zinc-900">
-							<td class="py-0.5 text-zinc-400">{time.format(o.rx)}</td>
+							<td class="py-0.5 text-zinc-400">{arrivalTime(o.rx)}</td>
 							<td class="py-0.5 whitespace-nowrap">
 								<button
 									class="font-mono text-amber-300 hover:underline"

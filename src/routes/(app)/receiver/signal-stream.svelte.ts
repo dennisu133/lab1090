@@ -4,10 +4,9 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 import type { SignalPoint } from '#lib/radio/path-loss.ts';
 import type { StreamUpdate } from '#lib/receiver-types.ts';
 import type { UpdateListener } from '#lib/stream-connection.ts';
+import { FT } from '#lib/units.ts';
 import type { TrackerStream } from '../tracker-stream.svelte';
 
-/** Feet to km. */
-const FT_TO_KM = 0.0003048;
 /** One point per aircraft per this many ms… */
 const THIN_MS = 10_000;
 /** …kept this long. */
@@ -32,7 +31,6 @@ export class SignalStream implements UpdateListener {
 	/** When each aircraft's last point was taken. Plain Map: bookkeeping, never rendered. */
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	#last = new Map<string, number>();
-	#since: number | null = null;
 	#publishedAt = -Infinity;
 
 	constructor(tracker: TrackerStream, receiver: () => LatLon) {
@@ -40,13 +38,14 @@ export class SignalStream implements UpdateListener {
 		this.#receiver = receiver;
 	}
 
+	/** A new server run (StreamConnection): its frames start over, so do the points. */
+	reset(): void {
+		this.#all = [];
+		this.#last.clear();
+		this.points = [];
+	}
+
 	receive(update: StreamUpdate): void {
-		if (update.since !== this.#since) {
-			this.#since = update.since;
-			this.#all = [];
-			this.#last.clear();
-			this.points = [];
-		}
 		if (update.frames.length === 0) return;
 		const receiver = this.#receiver();
 		for (const a of this.#tracker.aircraft) {
@@ -63,7 +62,7 @@ export class SignalStream implements UpdateListener {
 				// Along the line of sight: at 10 km, FL350 is 4.6 km (3 dB) farther than the map
 				// distance. (A flat triangle is plenty: the Earth's curve matters only far out,
 				// where the height adds next to nothing.)
-				km: altitude === null ? ground : Math.hypot(ground, altitude * FT_TO_KM),
+				km: altitude === null ? ground : Math.hypot(ground, (altitude * FT) / 1000),
 				dbfs: a.signal,
 				elevation: altitude === null ? null : aircraftElevation(ground, altitude)
 			});

@@ -10,7 +10,7 @@
 	link, its tooltip the reason.
 -->
 <script lang="ts">
-	import { n } from '#lib/describe/format.ts';
+	import { clockTime, dayAndTime, n, shortTime } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { receiverLink as link } from '#lib/receiver-link.svelte.ts';
 	import type { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
@@ -28,20 +28,6 @@
 			return { dot: 'bg-zinc-500', label: 'Recording ended' };
 		return { dot: 'bg-amber-400', label: 'Connecting…' };
 	});
-
-	const clock = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		hour12: false
-	});
-	const retryClock = new Intl.DateTimeFormat(undefined, { timeStyle: 'medium' });
-	const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-
-	/** "14:34", or "15 Nov 14:34" when the server started on an earlier day. */
-	function started(since: number) {
-		const sameDay = new Date(since).toDateString() === new Date().toDateString();
-		return sameDay ? clock.format(since) : `${day.format(since)} ${clock.format(since)}`;
-	}
 </script>
 
 <!-- Two 16 px lines while live: the logo's height. Right-aligned, against the bar's end. -->
@@ -66,7 +52,7 @@
 				<InfoTip label={state.label} align="right">
 					<p>
 						The server can't read from {link.source ?? 'the receiver'}: {state.status.reason}. Next
-						try at {retryClock.format(state.status.retryAt)}.
+						try at {clockTime(state.status.retryAt)}.
 					</p>
 				</InfoTip>
 			{:else}
@@ -77,7 +63,7 @@
 	{#if state.label === 'Live'}
 		<span>
 			{stats.counts && stats.since !== null
-				? `${n(stats.counts.total)} since ${started(stats.since)}`
+				? `${n(stats.counts.total)} since ${dayAndTime(stats.since, shortTime)}`
 				: '–'}
 		</span>
 	{/if}

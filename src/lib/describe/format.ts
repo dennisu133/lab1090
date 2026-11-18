@@ -77,3 +77,37 @@ export function distanceText(km: number, unit: Unit): string {
 	const d = unit === 'NM' ? km / KM_PER_NM : km;
 	return `${d < 10 ? d.toFixed(1) : n(d)} ${unit}`;
 }
+
+// Times: always 24-hour English ("14:03:12.345"), like the numbers. The browser's own locale
+// would write a German fraction with a comma, or a US clock with AM/PM, next to English text.
+// Local time, not UTC: the receiver's own day, as the person at it sees it.
+
+const ARRIVAL = new Intl.DateTimeFormat('en-GB', {
+	hour: '2-digit',
+	minute: '2-digit',
+	second: '2-digit',
+	fractionalSecondDigits: 3,
+	hour12: false
+});
+const CLOCK = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', hour12: false });
+const SHORT = new Intl.DateTimeFormat('en-GB', {
+	hour: '2-digit',
+	minute: '2-digit',
+	hour12: false
+});
+const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+
+/** "14:03:12.345": when a frame arrived, to the millisecond (frames come ms apart). */
+export const arrivalTime = (t: number) => ARRIVAL.format(t);
+
+/** "14:03:12". */
+export const clockTime = (t: number) => CLOCK.format(t);
+
+/** "14:03". */
+export const shortTime = (t: number) => SHORT.format(t);
+
+/** The time, with the day in front if it isn't today: "14:03:12", "15 Nov 14:03:12". */
+export function dayAndTime(t: number, time: (t: number) => string = clockTime): string {
+	const today = new Date(t).toDateString() === new Date().toDateString();
+	return today ? time(t) : `${DAY.format(t)} ${time(t)}`;
+}

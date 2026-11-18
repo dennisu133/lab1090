@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { arrivalTime } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
@@ -158,13 +159,6 @@
 			.slice(0, FEED_ROWS);
 	});
 
-	const time = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		fractionalSecondDigits: 3,
-		hour12: false
-	});
 	function signalTitle(dbfs: number) {
 		const amplitude = 10 ** (dbfs / 20) * 100;
 		const power = 10 ** (dbfs / 10) * 100;
@@ -281,7 +275,7 @@
 				<tbody>
 					{#each feed as f (f.id)}
 						<tr class="border-t border-zinc-900">
-							<td class="py-0.5 text-zinc-400">{time.format(f.rx)}</td>
+							<td class="py-0.5 text-zinc-400">{arrivalTime(f.rx)}</td>
 							<td class="py-0.5 text-right text-zinc-400" title={signalTitle(f.dbfs)}>
 								{f.dbfs.toFixed(1)} dBFS
 							</td>

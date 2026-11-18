@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { n as whole } from '#lib/describe/format.ts';
+	import { arrivalTime, n as whole } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
@@ -52,14 +52,6 @@
 		{ value: 'broadcast', label: 'Broadcast (ADS-B)' },
 		{ value: 'interrogated', label: 'Interrogated (Comm-B)' }
 	];
-
-	const time = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		fractionalSecondDigits: 3,
-		hour12: false
-	});
 
 	/** Registers that start with their own number: the first MB byte. */
 	const NUMBERED = new Set(['1,0', '2,0', '3,0']);
@@ -238,7 +230,7 @@
 					{#each feed as r (r.id)}
 						{@const range = patternRange(r)}
 						<tr class="border-t border-zinc-900">
-							<td class="py-0.5 text-zinc-400">{time.format(r.rx)}</td>
+							<td class="py-0.5 text-zinc-400">{arrivalTime(r.rx)}</td>
 							<td class="py-0.5 whitespace-nowrap">
 								<button
 									class={[

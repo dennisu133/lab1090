@@ -3,6 +3,7 @@
 	settings lab1090 uses, and the history of the link (starts, failures and why).
 -->
 <script lang="ts">
+	import { dayAndTime } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import type { DemodReport, SourceEvent } from '#lib/receiver-types.ts';
 
@@ -15,17 +16,6 @@
 	}
 
 	let { source, demod, events }: Props = $props();
-
-	const time = new Intl.DateTimeFormat('en-GB', {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit'
-	});
-	const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-	const when = (t: number) =>
-		new Date(t).toDateString() === new Date().toDateString()
-			? time.format(t)
-			: `${day.format(t)} ${time.format(t)}`;
 
 	const STATES: Record<SourceEvent['state'], string> = {
 		connected: 'receiving',
@@ -86,14 +76,14 @@
 			<tbody>
 				{#each shown as e (e.id)}
 					<tr class="border-t border-zinc-800 align-baseline">
-						<td class="w-36 py-0.5 text-zinc-400">{when(e.t)}</td>
+						<td class="w-36 py-0.5 text-zinc-400">{dayAndTime(e.t)}</td>
 						<td class={['w-32 py-0.5', e.state === 'waiting' ? 'text-amber-300' : '']}
 							>{STATES[e.state]}</td
 						>
 						<td class="py-0.5 text-zinc-400">
 							{e.reason ?? ''}
 							{#if e.count > 1}
-								<span class="text-zinc-500">({e.count}× until {when(e.last)})</span>
+								<span class="text-zinc-500">({e.count}× until {dayAndTime(e.last)})</span>
 							{/if}
 						</td>
 					</tr>

@@ -7,6 +7,7 @@
 	message is open, the list holds still (like /frames when scrolled into), so it can be read.
 -->
 <script lang="ts">
+	import { clockTime } from '#lib/describe/format.ts';
 	import type { Message } from './tracker-stream.svelte.ts';
 
 	let { messages }: { messages: Message[] } = $props();
@@ -25,8 +26,6 @@
 		if (isOpen) frozen ??= messages;
 		else if (open.length === 0) frozen = null;
 	}
-
-	const clock = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium' });
 </script>
 
 <section class="border-t border-zinc-800 px-4 py-3">
@@ -44,7 +43,7 @@
 					ontoggle={(e) => toggle(m.id, e.currentTarget.open)}
 				>
 					<summary class="flex items-baseline gap-2 px-2 py-1 select-none">
-						<span class="text-zinc-500 tabular-nums">{clock.format(m.rx)}</span>
+						<span class="text-zinc-500 tabular-nums">{clockTime(m.rx)}</span>
 						<span class="font-mono text-zinc-300">{m.kind}</span>
 						<span class="min-w-0 truncate text-zinc-400">
 							{m.fields
