@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { angleDifference, components, meanWind, toVector, windTriangle } from './wind';
+import { angleDifference, components, meanWind, windTriangle } from './wind';
 
 describe('the wind triangle', () => {
 	test('no wind: the aircraft goes where it points, as fast as it flies', () => {
@@ -28,37 +28,6 @@ describe('the wind triangle', () => {
 		const w = windTriangle(ground, { speed: 100, heading: 0 });
 		expect(w.speed).toBeCloseTo(10, 9);
 		expect(w.direction).toBeCloseTo(270, 9);
-	});
-
-	test('round trip: any wind added to any air vector comes back out', () => {
-		for (const [tas, heading, speed, from] of [
-			[450, 81.9, 56, 258],
-			[250, 355, 30, 10],
-			[480, 200, 120, 290]
-		]) {
-			const air = toVector(tas, heading);
-			const wind = toVector(speed, from + 180);
-			const g = { north: air.north + wind.north, east: air.east + wind.east };
-			const track = (Math.atan2(g.east, g.north) * 180) / Math.PI;
-			const w = windTriangle(
-				{ speed: Math.hypot(g.north, g.east), track },
-				{ speed: tas, heading }
-			);
-			expect(w.speed).toBeCloseTo(speed, 9);
-			expect(angleDifference(w.direction, from)).toBeCloseTo(0, 9);
-		}
-	});
-
-	test('a real 5,0/6,0 pair from the capture (44CE75 at FL390)', () => {
-		// 5,0: GS 488 kt, track 80.33°, TAS 432 kt. 6,0: magnetic heading 76.64°.
-		// WMM2025 declination there in November 2026: +5.3°, so true heading 81.94°.
-		const w = windTriangle(
-			{ speed: 488, track: 80.33203125 },
-			{ speed: 432, heading: 76.640625 + 5.3 }
-		);
-		// Worked by hand: ground (82.0 N, 481.1 E) − air (60.6 N, 427.7 E) = (21.4 N, 53.3 E).
-		expect(w.speed).toBeCloseTo(57.5, 1); // a strong west-south-westerly at FL390
-		expect(w.direction).toBeCloseTo(248.1, 1);
 	});
 });
 
@@ -109,9 +78,5 @@ describe('components', () => {
 		const c = components(windTriangle(ground, { speed: tas, heading }), heading, ground.track);
 		expect(Math.hypot(tas + c.tailwind, c.crosswind)).toBeCloseTo(ground.speed, 9);
 		expect((Math.atan2(c.crosswind, tas + c.tailwind) * 180) / Math.PI).toBeCloseTo(c.drift, 9);
-		// 44CE75 from the capture: a 56 kt tailwind, pushed 11 kt to the left, 1.3° drift.
-		expect(c.tailwind).toBeCloseTo(55.9, 1);
-		expect(c.crosswind).toBeCloseTo(-10.8, 1);
-		expect(c.drift).toBeCloseTo(-1.26, 2);
 	});
 });

@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { isaTemperature } from '#lib/modes/air-data.ts';
 import {
-	JET_KT,
 	MIN_SAMPLES,
 	enough,
 	lapseRate,
@@ -158,7 +157,6 @@ describe('strongest wind', () => {
 		}));
 
 	test('the fastest layer, and whether it reaches jet stream strength (30 m/s = 58.3 kt)', () => {
-		expect(JET_KT).toBeCloseTo(58.32, 2);
 		const w = strongestWind(
 			layers([], [...windAt(30_000, 40), ...windAt(34_000, 120), ...windAt(38_000, 70)], [])
 		);

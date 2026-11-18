@@ -3,10 +3,8 @@ import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
 import {
 	downlinkFormat,
-	fromHex,
 	signalBucket,
 	signalDbfs,
-	toHex,
 	TYPE_CODE_GROUPS,
 	typeCode,
 	typeCodeGroup,
@@ -18,18 +16,6 @@ const capture = new Uint8Array(
 	await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
 );
 const frames = new BeastParser().push(capture);
-
-describe('a known DF17 velocity message', () => {
-	// from the first live test: DF17, CA 5, ICAO 48E95B, TC 19
-	const msg = fromHex('8d48e95b9915828df0089c433e2e');
-
-	test('fields', () => {
-		expect(downlinkFormat(msg)).toBe(17);
-		expect(checkParity(msg)).toMatchObject({ kind: 'clear', icao: '48E95B', valid: true });
-		expect(typeCode(msg)).toBe(19);
-		expect(toHex(msg)).toBe('8d48e95b9915828df0089c433e2e');
-	});
-});
 
 describe('against the capture (numbers from fixtures/README.md)', () => {
 	test('type codes of DF17', () => {

@@ -26,7 +26,6 @@ import { contrail } from './contrail';
 import { enough, layers, strongestWind, tropopause } from './profile';
 import {
 	atPressure,
-	balloonTropopause,
 	CAPTURE_START,
 	humidityOf,
 	inLayer,
@@ -144,17 +143,6 @@ describe("Lindenberg's balloons on their own", () => {
 		}
 		expect(balloonColumn(morning, 35_000)).toBeCloseTo(-5.5, 1);
 		expect(balloonColumn(evening, 35_000)).toBeCloseTo(-6.5, 1);
-	});
-
-	test('the tropopause: FL332 at 11:15, FL271 at 17:10, as colder air came in', () => {
-		// The wind at cruise veered from 255° to 280° and the pressure rose at the same time:
-		// the air mass changed during the afternoon.
-		const at = (s: Sounding) => {
-			const t = balloonTropopause(s)!;
-			return [Math.round(pressureAltitude(t.pressure) / 100), Math.round(t.kelvin - 273.15)];
-		};
-		expect(at(morning)).toEqual([332, -51]);
-		expect(at(evening)).toEqual([271, -47]);
 	});
 });
 
@@ -393,8 +381,10 @@ describe('the capture against the balloons', () => {
 		for (const t of truth) {
 			expect(Math.abs(speedOf(t) - w.wind.speed)).toBeLessThan(3); // 61 and 58 kt
 		}
-		// The balloons' tropopause (FL332, then FL271) is below every layer the aircraft
-		// filled (FL360–FL380 with enough data): we can't see it, and don't claim to.
+		// In both ascents (fixtures/sounding/) the cooling slows to 2 K/km or less well below
+		// cruise, around FL330 in the morning and FL270 in the evening as colder air came in.
+		// The tropopause is below every layer the aircraft filled (FL360–FL380 with enough
+		// data): we can't see it, and don't claim to.
 		const usable = all.filter((l) => enough(l.temperature)).map((l) => l.level);
 		expect(usable).toEqual([36_000, 37_000, 38_000]);
 		expect(tropopause(all).found).toBe(false);

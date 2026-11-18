@@ -1,11 +1,26 @@
 import { describe, expect, test } from 'bun:test';
 import { modulate } from './modulate';
-import { readsbPreamble, sliceBits } from './readsb';
+import { EARLY, LATE, readsbCheck, readsbPhases, sliceBits } from './readsb';
 import { magnitudes } from './samples';
 
 const hex = (s: string) => Uint8Array.from(s.match(/../g)!.map((b) => parseInt(b, 16)));
 const DF17 = hex('8D4840D6202CC371C32CE0576098');
 const bitAt = (data: Uint8Array, i: number) => ((data[i >> 3] >> (7 - (i & 7))) & 1) as 0 | 1;
+
+/**
+ * Whether readsb would try a message starting between sample n and n + 1 (ticks 5n … 5n + 4).
+ *
+ * readsb looks at sample p for a preamble starting 0.6 to 1.4 samples after it: at tick
+ * 5p + 3 … 5p + 7, its "phases" 3 to 7. So p = n covers our starts 5n + 3 and 5n + 4
+ * (LATE), and p = n − 1 the others (EARLY). `mag` must hold a sample before n. The
+ * parts put together like demodulator.ts step 1, which works out each sample's only once.
+ */
+function readsbPreamble(mag: Uint16Array, n: number): boolean {
+	return (
+		(readsbCheck(mag, n) === 1 && (readsbPhases(mag, n) & LATE) !== 0) ||
+		(n > 0 && readsbCheck(mag, n - 1) === 1 && (readsbPhases(mag, n - 1) & EARLY) !== 0)
+	);
+}
 
 /** DF17 starting `at` samples in, as magnitudes. */
 function samples(at: number, pulse: 'box' | 'dongle'): Uint16Array {

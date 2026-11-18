@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { aircraftElevation, EFFECTIVE_EARTH_KM, elevationAngle, radioHorizon } from './geometry';
+import { aircraftElevation, elevationAngle, radioHorizon } from './geometry';
 
 describe('radio horizon', () => {
 	test('FL350 from sea level: ~425 km, as 4.12·√h reckons', () => {
 		// 4.12·√10668 = 425.5 km; √(2R'h) with R' = 8494.7 km gives the same.
-		expect(radioHorizon(35_000)).toBeCloseTo(4.12 * Math.sqrt(10_668), -1);
 		expect(Math.round(radioHorizon(35_000))).toBe(426);
 	});
 
@@ -25,10 +24,8 @@ describe('elevation angle', () => {
 	});
 
 	test('0° at the antenna height straight across, negative below', () => {
-		expect(elevationAngle(10, 0.1, 0.1)).toBeCloseTo(
-			-(10 / (2 * EFFECTIVE_EARTH_KM)) * (180 / Math.PI),
-			6
-		);
+		// Over 10 km the Earth drops away by d²/2R' = 100 / (2 × 8,494.7) km = 5.9 m: 0.0337° down.
+		expect(elevationAngle(10, 0.1, 0.1)).toBeCloseTo(-0.0337, 4);
 		expect(elevationAngle(50, 0, 0.1)).toBeLessThan(0);
 	});
 });

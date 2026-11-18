@@ -134,25 +134,6 @@ export function qnhOf(s: Sounding): number {
 }
 
 /**
- * The tropopause by the WMO's definition (profile.ts), applied to the balloon's own levels
- * in real (geopotential) height: the lowest level from 500 hPa up where the lapse rate
- * drops to 2 K/km or less and its average to every level within the next 2 km stays so.
- * Lapse rates over less than 200 m are left out: over 25 m, sensor noise would dominate.
- */
-export function balloonTropopause(s: Sounding): SoundingLevel | null {
-	const ls = s.levels.filter((l) => l.pressure <= 50_000);
-	const km = (a: SoundingLevel, b: SoundingLevel) => ((b.height - a.height) * FT) / 1000;
-	const lapse = (a: SoundingLevel, b: SoundingLevel) => (a.kelvin - b.kelvin) / km(a, b);
-	for (let i = 0; i < ls.length; i++) {
-		const here = ls[i];
-		const above = ls.slice(i + 1).filter((l) => km(here, l) >= 0.2 && km(here, l) <= 2);
-		if (above.length === 0 || km(here, above.at(-1)!) < 1.9) continue;
-		if (above.every((l) => lapse(here, l) <= 2)) return here;
-	}
-	return null;
-}
-
-/**
  * Relative humidity over water (0–1) from a mixing ratio (kg/kg), pressure (Pa), temperature
  * (K): what a radiosonde's humidity means for contrails. Aircraft don't measure humidity, so
  * only the balloon comparison needs it. E.g. 0.01 g/kg at 250 hPa, −50 °C: e = 0.402 Pa of

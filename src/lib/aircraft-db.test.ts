@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
 	airlineDesignator,
-	clearLookups,
 	lookupAircraft,
 	lookupFlight,
 	parseAircraft,
@@ -145,9 +144,9 @@ describe('adsbdb routes and airlines', () => {
 	});
 });
 
+// The cache lasts as long as the module (a tab; here the whole file): each test asks for
+// addresses and callsigns of its own.
 describe('lookups', () => {
-	beforeEach(clearLookups);
-
 	const answering = (status: number, body: unknown) => {
 		const asked: string[] = [];
 		const get = (async (url: string) => {
@@ -174,10 +173,10 @@ describe('lookups', () => {
 
 	test('a failed request is forgotten, so the next look tries again', async () => {
 		const failing = answering(500, {});
-		expect(lookupAircraft('3C64A7', failing.get)).rejects.toThrow('HTTP 500');
+		expect(lookupAircraft('3C6586', failing.get)).rejects.toThrow('HTTP 500');
 		await Bun.sleep(0);
 		const { get, asked } = answering(200, D_AIEG);
-		expect((await lookupAircraft('3C64A7', get))?.owner).toBe('Lufthansa');
+		expect((await lookupAircraft('3C6586', get))?.owner).toBe('Lufthansa');
 		expect(asked.length).toBe(1);
 	});
 

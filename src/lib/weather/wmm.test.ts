@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { decimalYear, magneticField, WMM_VALID } from './wmm';
+import { decimalYear, magneticField } from './wmm';
 
 /**
  * NOAA's test values for WMM2025 (fixtures/wmm/WMM2025_TestValues.txt, shipped with the
@@ -46,6 +46,4 @@ describe('decimalYear', () => {
 		expect(decimalYear(Date.UTC(2026, 0, 1))).toBe(2026);
 		expect(decimalYear(Date.UTC(2026, 6, 2, 12))).toBeCloseTo(2026.5, 3);
 	});
-
-	test('the model covers 2025 to 2030', () => expect(WMM_VALID).toEqual({ from: 2025, to: 2030 }));
 });

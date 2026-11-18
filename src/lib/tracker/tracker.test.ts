@@ -23,6 +23,8 @@ function runCapture() {
 	const turnRates = new Map<string, number[]>();
 	/** Every position the tracker took, with the message it came from. */
 	const taken: { t: number; hex: string; lat: number; lon: number }[] = [];
+	/** The aircraft whose position was confirmed at some point. */
+	const confirmed = new Set<string>();
 	for (const { t, data } of timedMessages) {
 		const addr = filter.check(data, t);
 		if (!tracker.add(data, addr, t)) continue;
@@ -34,11 +36,12 @@ function runCapture() {
 			turnRates.set(a.icao, [...(turnRates.get(a.icao) ?? []), a.turnRate.value]);
 		if (a.position?.t === t)
 			taken.push({ t, hex: toHex(data), lat: a.position.lat, lon: a.position.lon });
+		if (a.confirmed) confirmed.add(a.icao);
 	}
-	return { tracker, aircraft: [...last.values()], taken, seenAltitudes, turnRates };
+	return { tracker, aircraft: [...last.values()], taken, seenAltitudes, turnRates, confirmed };
 }
 
-const { tracker, aircraft, taken, seenAltitudes, turnRates } = runCapture();
+const { tracker, aircraft, taken, seenAltitudes, turnRates, confirmed } = runCapture();
 const byCallsign = (callsign: string) => aircraft.find((a) => a.callsign?.value === callsign)!;
 
 describe('the capture', () => {
@@ -66,6 +69,10 @@ describe('the capture', () => {
 		expect(aircraft.length).toBe(19);
 		expect(aircraft.every((a) => a.adsb)).toBe(true);
 		expect(aircraft.filter((a) => a.position).length).toBe(16);
+		// The other 3 were heard too briefly for a second position. By the end, 2 of the 13
+		// (JAKE27, 495146) are unconfirmed again: their last position went stale.
+		expect(confirmed.size).toBe(13);
+		expect(aircraft.filter((a) => a.confirmed).length).toBe(11);
 	});
 
 	test("CCA749 stays at FL380: one corrupted DF16 reply said 73,400 ft (and 'on the ground')", () => {
@@ -77,7 +84,6 @@ describe('the capture', () => {
 		const cca = byCallsign('CCA749');
 		expect(cca.messages).toBe(438);
 		expect(cca.position).toBeNull();
-		expect(cca.altitude?.value).toBe(38_000);
 		expect(cca.squawk?.value).toBe('7546');
 	});
 

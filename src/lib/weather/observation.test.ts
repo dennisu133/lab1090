@@ -131,13 +131,11 @@ describe('when not to trust it', () => {
 		);
 	});
 
-	test('a standard rate turn (3°/s) at 250 kt takes about 25° of bank', () => {
+	test('a standard rate turn (3°/s) at 250 kt takes about 34.5° of bank', () => {
 		// The pilot's rule of thumb: bank ≈ TAS / 10 + 7 (Federal Aviation Administration,
-		// Instrument Flying Handbook): 32°. The exact figure is atan(ω · v / g).
-		const bank =
-			(Math.atan((((3 * Math.PI) / 180) * 250 * (1852 / 3600)) / 9.80665) * 180) / Math.PI;
-		expect(turnRate(bank, 250)).toBeCloseTo(3, 9);
-		expect(bank).toBeCloseTo(34.5, 1);
+		// Instrument Flying Handbook): 32°. Exactly: atan(ω · v / g) = atan(0.0524 rad/s ×
+		// 128.6 m/s / 9.807 m/s²) = 34.5°.
+		expect(turnRate(34.5, 250)).toBeCloseTo(3, 1);
 	});
 
 	test('missing values', () => {

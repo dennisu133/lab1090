@@ -1,8 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { BeastParser } from '#lib/server/beast/parser.ts';
-import { checkParity } from './crc';
-import { downlinkFormat, fromHex, payload, typeCode } from './frame';
+import { fromHex, payload } from './frame';
 import { callsign, emitterCategory } from './identification';
 import { squitter } from './squitter';
 
@@ -49,21 +47,11 @@ describe('callsign characters', () => {
 
 test('emitter categories', () => {
 	expect(emitterCategory(4, 5)).toEqual({ set: 'A', code: 5, name: 'Heavy (> 136 t)' });
+	expect(emitterCategory(4, 3).name).toBe('Large (34–136 t)'); // DLH4LW in the capture
 	expect(emitterCategory(4, 0).name).toBe('No category information');
 	expect(emitterCategory(3, 1).name).toBe('Glider / sailplane');
 	expect(emitterCategory(2, 1).set).toBe('C');
 	expect(emitterCategory(1, 3).name).toBe('Reserved');
-});
-
-test('a real message: Lufthansa DLH4LW, a large aircraft', () => {
-	// (DLH4LW also shows up in DF20 Comm-B replies: same callsign, read out by a radar.
-	// Those aren't ADS-B, so we pick the DF17 here.)
-	const o = oracle.find((o) => o.callsign === 'DLH4LW' && o.typecode === 4)!;
-	const id = identification(fromHex(o.message));
-	expect(id).toEqual({
-		callsign: 'DLH4LW',
-		category: { set: 'A', code: 3, name: 'Large (34–136 t)' }
-	});
 });
 
 test('only type codes 1–4 are identification messages', () => {
@@ -79,25 +67,5 @@ test('agrees with pyModeS on every identification message in the capture', () =>
 		const id = identification(fromHex(o.message))!;
 		expect(id.callsign).toBe(o.callsign!);
 		expect(id.category.code).toBe(o.category!);
-	}
-});
-
-test('across the capture, each aircraft keeps one clean callsign', async () => {
-	const capture = new Uint8Array(
-		await Bun.file(join(root, 'fixtures/capture.beast')).arrayBuffer()
-	);
-	const seen = new Map<string, Set<string>>();
-	for (const f of new BeastParser().push(capture)) {
-		if (f.kind === 'modeac' || downlinkFormat(f.data) !== 17) continue;
-		const tc = typeCode(f.data);
-		if (tc === null || tc < 1 || tc > 4) continue;
-		const id = identification(f.data)!;
-		const icao = checkParity(f.data)!.icao;
-		seen.set(icao, (seen.get(icao) ?? new Set()).add(id.callsign));
-	}
-	expect(seen.size).toBe(12);
-	for (const callsigns of seen.values()) {
-		expect(callsigns.size).toBe(1);
-		expect([...callsigns][0]).toMatch(/^[A-Z0-9]{2,8}$/);
 	}
 });

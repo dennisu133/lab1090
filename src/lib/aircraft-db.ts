@@ -256,8 +256,3 @@ export async function lookupFlight(callsign: string, get: typeof fetch = fetch):
 	const airline = designator ? await lookupAirline(designator, get).catch(() => null) : null;
 	return { route, airline };
 }
-
-/** For tests: forget every lookup. */
-export function clearLookups(): void {
-	cache.clear();
-}

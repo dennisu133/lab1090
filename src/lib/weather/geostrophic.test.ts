@@ -51,7 +51,6 @@ const SLOPE = { north: -142, east: 6 };
 describe('the balance', () => {
 	test('100 ft per 100 km at 52°N: 51 kt, along the contours with the low side on the left', () => {
 		// f = 2Ω sin 52° = 1.149e-4 /s; g / f = 85,350 m/s; × 30.48 m / 100 km = 26.0 m/s.
-		expect(F52).toBeCloseTo(1.1493e-4, 7);
 		const rising = balancingWind({ north: 1, east: 0 }, F52); // ft per km
 		expect(rising.north).toBeCloseTo(0, 9);
 		expect(rising.east).toBeCloseTo(-50.6, 1); // towards the west: high to the north

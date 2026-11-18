@@ -34,21 +34,6 @@ const US = 12;
  */
 const THRESHOLD = 58;
 
-/**
- * Whether readsb would try a message starting between sample n and n + 1 (ticks 5n … 5n + 4).
- *
- * readsb looks at sample p for a preamble starting 0.6 to 1.4 samples after it: at tick
- * 5p + 3 … 5p + 7, its "phases" 3 to 7. So p = n covers our starts 5n + 3 and 5n + 4
- * (LATE), and p = n − 1 the others (EARLY). `mag` must hold a sample before n. (The
- * demodulator calls the parts, to do each sample's once.)
- */
-export function readsbPreamble(mag: Uint16Array, n: number): boolean {
-	return (
-		(readsbCheck(mag, n) === 1 && (readsbPhases(mag, n) & LATE) !== 0) ||
-		(n > 0 && readsbCheck(mag, n - 1) === 1 && (readsbPhases(mag, n - 1) & EARLY) !== 0)
-	);
-}
-
 /** readsbPhases: a start in sample p (readsb's phases 3 and 4)… */
 export const LATE = 1;
 /** …or in sample p + 1 (5, 6 and 7). */
