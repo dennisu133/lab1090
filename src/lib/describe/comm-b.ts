@@ -22,26 +22,6 @@ import { advisoryFields, type Field } from './field';
 import { directionText, n, signed } from './format';
 import { squitterFields } from './squitter';
 
-/** All register names, including the ADS-B ones that are only seen broadcast here. */
-export const NAMES: Record<string, string> = {
-	...REGISTER_NAMES,
-	'0,5': 'Airborne position',
-	'0,6': 'Surface position',
-	'0,8': 'Identification and category',
-	'0,9': 'Airborne velocity',
-	'6,1': 'Aircraft status (emergency)',
-	'6,2': 'Target state and status',
-	'6,5': 'Operational status'
-};
-
-/** Which register an ADS-B message is a copy of, by its type code. */
-export function broadcastRegister(tc: number): string | null {
-	if (tc >= 1 && tc <= 4) return '0,8';
-	if (tc >= 5 && tc <= 8) return '0,6';
-	if ((tc >= 9 && tc <= 18) || (tc >= 20 && tc <= 22)) return '0,5';
-	return { 19: '0,9', 28: '6,1', 29: '6,2', 31: '6,5' }[tc] ?? null;
-}
-
 export const HOW: Record<How, { label: string; title: string }> = {
 	empty: { label: 'empty', title: 'All 56 bits are zero: the register holds no data.' },
 	fixed: {
@@ -132,7 +112,7 @@ export function registerFields(r: Register): Field[] {
 				},
 				{
 					value: r.supported.join(' '),
-					title: r.supported.map((bds) => `${bds}: ${NAMES[bds] ?? '?'}`).join('\n'),
+					title: r.supported.map((bds) => `${bds}: ${REGISTER_NAMES[bds] ?? '?'}`).join('\n'),
 					tone: 'minor',
 					mono: true
 				}

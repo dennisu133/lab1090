@@ -724,17 +724,34 @@ export interface ExtendedSquitter {
 	squitter: Squitter;
 }
 
-function adsbRegister(
-	bds: ExtendedSquitter['bds'],
-	name: string,
-	kinds: Squitter['kind'][]
-): RegisterSpec {
+/** What each ADS-B register holds: one kind of extended squitter each (the list above). */
+const SQUITTER_KINDS: Record<ExtendedSquitter['bds'], Squitter['kind']> = {
+	'0,5': 'airborne-position',
+	'0,6': 'surface-position',
+	'0,8': 'identification',
+	'0,9': 'velocity',
+	'6,1': 'aircraft-status',
+	'6,2': 'target-state',
+	'6,5': 'operational-status'
+};
+
+/**
+ * Which register an ADS-B message is a copy of, by what it carries (its type code); null for
+ * test messages (TC 23) and reserved type codes.
+ */
+export function adsbRegister(s: Squitter): ExtendedSquitter['bds'] | null {
+	for (const [bds, kind] of Object.entries(SQUITTER_KINDS))
+		if (kind === s.kind) return bds as ExtendedSquitter['bds'];
+	return null;
+}
+
+function squitterSpec(bds: ExtendedSquitter['bds'], name: string): RegisterSpec {
 	return {
 		bds,
 		name,
 		reject(mb) {
 			const s = squitter(mb);
-			if (!kinds.includes(s.kind)) return `type code ${bits(mb, 1, 5)} doesn't fit`;
+			if (adsbRegister(s) !== bds) return `type code ${bits(mb, 1, 5)} doesn't fit`;
 			if (s.kind === 'identification' && s.callsign.includes('#'))
 				return 'a character is not a letter, digit or space';
 			return null;
@@ -754,13 +771,13 @@ export const REGISTERS: RegisterSpec[] = [
 	BDS_6_0,
 	BDS_5_1,
 	BDS_5_2,
-	adsbRegister('0,5', 'Extended squitter airborne position', ['airborne-position']),
-	adsbRegister('0,6', 'Extended squitter surface position', ['surface-position']),
-	adsbRegister('0,8', 'Extended squitter identification', ['identification']),
-	adsbRegister('0,9', 'Extended squitter airborne velocity', ['velocity']),
-	adsbRegister('6,1', 'Extended squitter aircraft status', ['aircraft-status']),
-	adsbRegister('6,2', 'Target state and status', ['target-state']),
-	adsbRegister('6,5', 'Aircraft operational status', ['operational-status']),
+	squitterSpec('0,5', 'Extended squitter airborne position'),
+	squitterSpec('0,6', 'Extended squitter surface position'),
+	squitterSpec('0,8', 'Extended squitter identification'),
+	squitterSpec('0,9', 'Extended squitter airborne velocity'),
+	squitterSpec('6,1', 'Extended squitter aircraft status'),
+	squitterSpec('6,2', 'Target state and status'),
+	squitterSpec('6,5', 'Aircraft operational status'),
 	// Rarely interrogated: only tried when none of the above fits (see comm-b.ts).
 	BDS_4_4,
 	BDS_4_5,
@@ -774,6 +791,7 @@ export const REGISTERS: RegisterSpec[] = [
  */
 export const RARE = new Set(['4,4', '4,5', '5,3', '2,1']);
 
+/** Every register's name, by BDS code: the ADS-B ones too, which /comm-b also sees broadcast. */
 export const REGISTER_NAMES: Record<string, string> = Object.fromEntries(
 	REGISTERS.map((r) => [r.bds, r.name])
 );

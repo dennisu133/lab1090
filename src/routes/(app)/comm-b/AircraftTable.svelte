@@ -7,7 +7,8 @@
 	import { n } from '#lib/describe/format.ts';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { NAMES, registerFields } from '#lib/describe/comm-b.ts';
+	import { registerFields } from '#lib/describe/comm-b.ts';
+	import { REGISTER_NAMES } from '#lib/modes/registers.ts';
 	import type { Field } from '#lib/describe/field.ts';
 	import { GICB_MAP, type Register } from '#lib/modes/registers.ts';
 	import {
@@ -61,7 +62,7 @@
 	};
 
 	function registerTitle(a: CommBAircraft, bds: string, status: RegisterStatus): string {
-		const name = `${bds} ${NAMES[bds] ?? '?'}: ${STATUS[status].text}`;
+		const name = `${bds} ${REGISTER_NAMES[bds] ?? '?'}: ${STATUS[status].text}`;
 		const r = a.registers[bds];
 		return r ? `${name}\n${r.count}×, last ${seconds(r.lastRx)} ago` : name;
 	}

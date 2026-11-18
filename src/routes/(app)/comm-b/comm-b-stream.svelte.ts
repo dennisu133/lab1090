@@ -1,9 +1,4 @@
-import {
-	ambiguousFields,
-	broadcastRegister,
-	comparisonFields,
-	registerFields
-} from '#lib/describe/comm-b.ts';
+import { ambiguousFields, comparisonFields, registerFields } from '#lib/describe/comm-b.ts';
 import type { Field } from '#lib/describe/field.ts';
 import { squitterFields } from '#lib/describe/squitter.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
@@ -13,6 +8,7 @@ import { AdsbMemory } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister, type Inference } from '#lib/modes/comm-b.ts';
 import { downlinkFormat, fromHex, payload } from '#lib/modes/frame.ts';
+import { adsbRegister } from '#lib/modes/registers.ts';
 import { squitter } from '#lib/modes/squitter.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
 import { CommBAircraftList, type CommBAircraft } from './aircraft';
@@ -113,9 +109,9 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 
 		if (df === 17 && addr.verdict === 'valid') {
 			this.#memory.add(addr.icao, mb, f.rx);
-			const key = broadcastRegister(mb[0] >> 3);
 			const s = squitter(mb);
-			if (s?.kind === 'identification') this.#callsigns.set(addr.icao, s.callsign);
+			const key = adsbRegister(s);
+			if (s.kind === 'identification') this.#callsigns.set(addr.icao, s.callsign);
 			if (!key) return null;
 			return {
 				...base,
@@ -123,7 +119,7 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 				source: 'broadcast',
 				key,
 				inference: null,
-				fields: s ? squitterFields(s) : [],
+				fields: squitterFields(s),
 				comparisons: []
 			};
 		}

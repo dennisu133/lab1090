@@ -4,7 +4,8 @@
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { HOW, NAMES, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
+	import { HOW, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
+	import { REGISTER_NAMES } from '#lib/modes/registers.ts';
 	import { DF_NAMES } from '#lib/modes/frame.ts';
 	import AircraftTable from './AircraftTable.svelte';
 	import PageTitle from '../PageTitle.svelte';
@@ -29,7 +30,7 @@
 		Object.entries(stream.counts)
 			.map(([key, count]) => ({
 				key,
-				name: NAMES[key] ?? SPECIAL[key] ?? '?',
+				name: REGISTER_NAMES[key] ?? SPECIAL[key] ?? '?',
 				count,
 				rate: stream.rates[key] ?? { broadcast: 0, interrogated: 0 }
 			}))
@@ -248,7 +249,7 @@
 								class="py-0.5 whitespace-nowrap"
 								title={r.inference
 									? inferenceTitle(r.inference)
-									: `${r.key} ${NAMES[r.key] ?? ''}\nBroadcast (ADS-B)`}
+									: `${r.key} ${REGISTER_NAMES[r.key] ?? ''}\nBroadcast (ADS-B)`}
 							>
 								{#if r.inference?.best || !r.inference}
 									<span class="font-mono">{r.key}</span>
