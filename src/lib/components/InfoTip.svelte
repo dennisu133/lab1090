@@ -1,8 +1,13 @@
 <!--
-	A label with an explanation that appears on hover (mouse) or focus (keyboard, tap).
-	Showing it is pure CSS: the tooltip lives inside the same `group`, so moving the pointer onto it
-	keeps it open. It resets the text styles it would otherwise inherit (e.g. `whitespace-nowrap`
-	from a table header).
+	A label with an explanation that appears on hover (mouse), focus (keyboard) or a tap (touch).
+	The tooltip lives inside the same element as the label, so moving the pointer onto it keeps it
+	open. Escape hides it without moving the pointer or focus (WCAG 1.4.13). It resets the text
+	styles it would otherwise inherit (e.g. `whitespace-nowrap` from a table header).
+
+	For screen readers the label is a button that says whether its explanation is expanded, and
+	the explanation follows it, to be read like the page around it. Not `aria-describedby`: that
+	would read paragraphs and tables as one flat sentence, and some screen readers skip
+	descriptions while reading the page.
 
 	Placing it takes a little JS: `align` says which edge it lines up with, but where a label ends
 	up depends on the window width, so the tooltip is shifted sideways to stay inside the window,
@@ -45,7 +50,69 @@
 		children
 	}: Props = $props();
 
-	const id = $props.id();
+	/**
+	 * Open while the mouse is over the label or the tooltip, while focus is inside, or after a
+	 * tap (touch has no hover: open until a tap elsewhere). Escape closes it until the pointer
+	 * or focus comes back.
+	 */
+	let hovered = $state(false);
+	let focused = $state(false);
+	let tapped = $state(false);
+	let dismissed = $state(false);
+	let open = $derived((hovered || focused || tapped) && !dismissed);
+	/** The label and tooltip together: a tap outside it closes a tapped-open tooltip. */
+	let wrapper: HTMLDivElement | undefined;
+	/** What pressed the button: a click from a mouse or pen is already a hover. */
+	let pressedBy = '';
+
+	/** Hover (not touch: it would end with the tap) and focus on the label or the tooltip. */
+	function follow(node: HTMLDivElement) {
+		wrapper = node;
+		const enter = (event: PointerEvent) => {
+			if (event.pointerType === 'touch') return;
+			hovered = true;
+			dismissed = false;
+		};
+		const leave = (event: PointerEvent) => {
+			if (event.pointerType !== 'touch') hovered = false;
+		};
+		const focusIn = () => {
+			focused = true;
+			dismissed = false;
+		};
+		const focusOut = (event: FocusEvent) => {
+			if (node.contains(event.relatedTarget as Node | null)) return;
+			focused = false;
+			tapped = false;
+		};
+		node.addEventListener('pointerenter', enter);
+		node.addEventListener('pointerleave', leave);
+		node.addEventListener('focusin', focusIn);
+		node.addEventListener('focusout', focusOut);
+		return () => {
+			node.removeEventListener('pointerenter', enter);
+			node.removeEventListener('pointerleave', leave);
+			node.removeEventListener('focusin', focusIn);
+			node.removeEventListener('focusout', focusOut);
+		};
+	}
+
+	$effect(() => {
+		if (!open) return;
+		const escape = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') dismissed = true;
+		};
+		window.addEventListener('keydown', escape);
+		return () => window.removeEventListener('keydown', escape);
+	});
+	$effect(() => {
+		if (!tapped) return;
+		const outside = (event: PointerEvent) => {
+			if (wrapper && !event.composedPath().includes(wrapper)) tapped = false;
+		};
+		window.addEventListener('pointerdown', outside);
+		return () => window.removeEventListener('pointerdown', outside);
+	});
 
 	/** Keep this far from the window's edges, px. */
 	const MARGIN = 8;
@@ -99,11 +166,20 @@
 	}
 </script>
 
-<div class="group relative inline-block" {@attach keepInWindow}>
+<div class="group relative inline-block" {@attach keepInWindow} {@attach follow}>
 	<svelte:element this={heading ?? 'span'} class={labelClass}>
 		<button
 			type="button"
-			aria-describedby={id}
+			aria-expanded={open}
+			onpointerdown={(event) => (pressedBy = event.pointerType)}
+			onclick={() => {
+				// Touch, or Enter/Space (no pointer): show it, like a toggletip.
+				if (pressedBy !== 'mouse' && pressedBy !== 'pen') {
+					tapped = true;
+					dismissed = false;
+				}
+				pressedBy = '';
+			}}
 			class={[
 				'cursor-help [text-transform:inherit] group-hover:text-zinc-200',
 				!heading && 'underline decoration-zinc-600 decoration-dotted underline-offset-4'
@@ -113,12 +189,11 @@
 		</button>
 	</svelte:element>
 	<div
-		{id}
 		role="tooltip"
 		class={[
-			'invisible absolute z-20 opacity-0 transition-opacity',
+			'absolute z-20 transition-opacity',
 			above ? 'bottom-full pb-2' : 'top-full pt-2',
-			'group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100',
+			open ? 'visible opacity-100' : 'invisible opacity-0',
 			wide ? 'w-160' : 'w-96',
 			'max-w-[calc(100vw-1rem)]',
 			align === 'left' ? 'left-0' : 'right-0'
