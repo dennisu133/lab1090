@@ -2,6 +2,10 @@
 	What the demodulator does with 2.4 million samples a second (lib/demod/demodulator.ts),
 	step by step: how many get through each step per second, and why the rest stop there.
 	Rates over the last 10 s; the bars are on a log scale (each step drops orders of magnitude).
+
+	Rows keep their height while the rates change, or the rest of the page would jump: every
+	reason is always there (also at 0/s), on its own line, and the narrow Step column leaves
+	those lines room enough not to wrap at 1280 px, where this panel is half the page.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -46,7 +50,7 @@
 	<table class="w-full table-fixed text-sm tabular-nums">
 		<thead class="text-left text-xs text-zinc-500">
 			<tr>
-				<th class="w-44 py-1 font-normal">Step</th>
+				<th class="w-28 py-1 font-normal">Step</th>
 				<th class="w-24 py-1 text-right font-normal">per second</th>
 				<th class="w-20 py-1 text-right font-normal">of above</th>
 				<th class="py-1 pl-4 font-normal">stopped here</th>
@@ -141,9 +145,9 @@
 				<td class="py-1 pl-4">
 					{@render bar(passed, 'bg-emerald-500')}
 					<div class="mt-0.5 text-xs text-zinc-500">
-						{perSecond(rates.parity)}/s parity wrong · {perSecond(rates.unheard)}/s address not
-						heard
-						{#if rates.repaired > 0}· {perSecond(rates.repaired)}/s passed after a repair{/if}
+						<div>{perSecond(rates.parity)}/s parity wrong</div>
+						<div>{perSecond(rates.unheard)}/s address not heard</div>
+						<div>{perSecond(rates.repaired)}/s passed after a repair</div>
 					</div>
 				</td>
 			</tr>
