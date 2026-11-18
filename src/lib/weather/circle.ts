@@ -27,7 +27,7 @@
  *
  * Runs in the browser; state is the turns in progress.
  */
-import { speedOf, type Vector, type Wind, windOf } from './wind';
+import { angleDifference, directionOf, speedOf, sub, type Vector, type Wind, windOf } from './wind';
 
 /** Degrees of turn (of heading: around the circle) the fit needs. */
 export const MIN_ARC = 90;
@@ -163,10 +163,7 @@ function leastSquares(x: number[][], y: number[]): number[] | null {
 }
 
 /** Track change from a to b, −180 to +180°. */
-const trackChange = (a: Vector, b: Vector) => {
-	const d = (Math.atan2(b.east, b.north) - Math.atan2(a.east, a.north)) * (180 / Math.PI);
-	return ((d + 540) % 360) - 180;
-};
+const trackChange = (a: Vector, b: Vector) => angleDifference(directionOf(a), directionOf(b));
 
 /** A finished turn: the wind if it was long, level and steady enough, else null. */
 export function windFromTurn(icao: string, turn: GroundPoint[]): TurnWind | null {
@@ -185,10 +182,7 @@ export function windFromTurn(icao: string, turn: GroundPoint[]): TurnWind | null
 	// How far the air vector turned: the angle swept around the centre, which is the
 	// heading change. (The ground track turns less with the wind across, more against it.)
 	let arc = 0;
-	const around = points.map((p) => ({
-		north: p.north - circle.centre.north,
-		east: p.east - circle.centre.east
-	}));
+	const around = points.map((p) => sub(p, circle.centre));
 	for (let i = 1; i < around.length; i++) arc += trackChange(around[i - 1], around[i]);
 	if (Math.abs(arc) < MIN_ARC) return null;
 	return {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { applyHeadingChecks, correctedWind, headingChecks, turn } from './headings';
+import { applyHeadingChecks, correctedWind, headingChecks } from './headings';
 import type { WindSample } from './profile';
-import { speedOf, toVector, type Vector } from './wind';
+import { rotate, speedOf, toVector, type Vector } from './wind';
 
 /** The capture's wind at cruise: 55 kt from 266°. */
 const WIND = toVector(55, 266 + 180);
@@ -35,7 +35,7 @@ const off = (v: Vector) => speedOf({ north: v.north - WIND.north, east: v.east -
 
 describe('turning a heading', () => {
 	test('clockwise, like a heading: north turned 90° points east', () => {
-		const v = turn({ north: 1, east: 0 }, 90);
+		const v = rotate({ north: 1, east: 0 }, 90);
 		expect(v.north).toBeCloseTo(0, 12);
 		expect(v.east).toBeCloseTo(1, 12);
 	});

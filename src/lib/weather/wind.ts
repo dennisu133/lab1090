@@ -63,6 +63,32 @@ export function speedOf(v: Vector): number {
 	return Math.hypot(v.north, v.east);
 }
 
+export const add = (a: Vector, b: Vector): Vector => ({
+	north: a.north + b.north,
+	east: a.east + b.east
+});
+
+export const sub = (a: Vector, b: Vector): Vector => ({
+	north: a.north - b.north,
+	east: a.east - b.east
+});
+
+/** Mean of several vectors, component by component; null for none. */
+export function meanVector(vs: Vector[]): Vector | null {
+	if (vs.length === 0) return null;
+	return {
+		north: vs.reduce((s, v) => s + v.north, 0) / vs.length,
+		east: vs.reduce((s, v) => s + v.east, 0) / vs.length
+	};
+}
+
+/** A vector turned clockwise (like a heading) by `degrees`. */
+export function rotate(v: Vector, degrees: number): Vector {
+	const c = Math.cos(degrees * RAD);
+	const s = Math.sin(degrees * RAD);
+	return { north: v.north * c - v.east * s, east: v.north * s + v.east * c };
+}
+
 /**
  * Wind from the ground vector (GS along the true track) and the air vector (TAS along the
  * true heading).
@@ -73,8 +99,7 @@ export function windTriangle(
 ): Wind {
 	const g = toVector(ground.speed, ground.track);
 	const a = toVector(air.speed, air.heading);
-	const vector = { north: g.north - a.north, east: g.east - a.east };
-	return { speed: speedOf(vector), direction: normalise(directionOf(vector) + 180), vector };
+	return windOf(sub(g, a));
 }
 
 /** The wind that moves the air along this vector (kt): reported where it blows from. */
@@ -84,11 +109,8 @@ export function windOf(vector: Vector): Wind {
 
 /** Mean wind of several, as vectors: averaging 350° and 10° must give 0°, not 180°. */
 export function meanWind(winds: Wind[]): Wind | null {
-	if (winds.length === 0) return null;
-	return windOf({
-		north: winds.reduce((s, w) => s + w.vector.north, 0) / winds.length,
-		east: winds.reduce((s, w) => s + w.vector.east, 0) / winds.length
-	});
+	const mean = meanVector(winds.map((w) => w.vector));
+	return mean && windOf(mean);
 }
 
 /**

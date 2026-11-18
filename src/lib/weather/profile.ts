@@ -19,7 +19,7 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 import { FT, KT } from '#lib/units.ts';
 import type { ColumnInputs } from './column';
 import type { LookupPosition } from './observation';
-import { meanWind, speedOf, type Vector, type Wind } from './wind';
+import { meanVector, speedOf, windOf, type Vector, type Wind } from './wind';
 
 export const LAYER_FT = 1000;
 /** Fewer samples than this, and a layer isn't used for the tropopause or the jet stream … */
@@ -153,9 +153,8 @@ export function layers(
 		const cs = c.get(level);
 		let wind: Layer['wind'] = null;
 		if (ws) {
-			const winds = ws.map((s) => ({ vector: s.wind, speed: speedOf(s.wind), direction: 0 }));
-			const m = meanWind(winds)!;
-			wind = { ...count(ws), wind: m, steadiness: m.speed / mean(winds.map((x) => x.speed)) };
+			const m = windOf(meanVector(ws.map((s) => s.wind))!);
+			wind = { ...count(ws), wind: m, steadiness: m.speed / mean(ws.map((s) => speedOf(s.wind))) };
 		}
 		return {
 			level,

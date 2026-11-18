@@ -43,7 +43,7 @@ import { FT, KT } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { column, type HeightReference } from './column';
 import type { ColumnSample } from './profile';
-import { windOf, type Vector, type Wind } from './wind';
+import { meanVector, windOf, type Vector, type Wind } from './wind';
 
 /** The Earth's rotation, rad/s (one turn per sidereal day). */
 const OMEGA = 7.292_115e-5;
@@ -226,11 +226,8 @@ export function geostrophicWind(
 	});
 	const ok = others.filter((v): v is Vector => v !== null);
 	let uncertainty: number | null = null;
-	if (ok.length >= 2) {
-		const m = {
-			north: ok.reduce((s, v) => s + v.north, 0) / ok.length,
-			east: ok.reduce((s, v) => s + v.east, 0) / ok.length
-		};
+	const m = meanVector(ok);
+	if (m && ok.length >= 2) {
 		uncertainty = Math.sqrt(
 			((ok.length - 1) / ok.length) *
 				ok.reduce((s, v) => s + (v.north - m.north) ** 2 + (v.east - m.east) ** 2, 0)

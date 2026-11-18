@@ -13,7 +13,7 @@
  */
 import type { HeadingAndSpeed, TrackAndTurn } from '#lib/modes/registers.ts';
 import { observe, type Inputs, type Observation, type Reading } from './observation';
-import { meanWind, type Vector, type Wind } from './wind';
+import { meanVector, meanWind, type Vector, type Wind } from './wind';
 
 /** Aircraft without a 5,0 or 6,0 for this long are dropped. */
 export const AIRCRAFT_TTL_MS = 60_000;
@@ -27,7 +27,7 @@ export interface Average {
 	/**
 	 * The mean air vector (TAS along the true heading) behind `wind`, kt. A heading
 	 * correction (headings.ts) turns it, and since turning is linear, the corrected mean
-	 * wind is mean ground − turned mean air: wind + air − turn(air).
+	 * wind is mean ground − turned mean air: wind + air − rotate(air).
 	 */
 	air: Vector | null;
 	windCount: number;
@@ -164,12 +164,7 @@ function average(state: State): Average {
 	const deviations = state.kelvins.flatMap((k) => k.isaDeviation ?? []);
 	return {
 		wind: meanWind(state.winds.map((w) => w.wind)),
-		air: state.winds.length
-			? {
-					north: state.winds.reduce((s, w) => s + w.air.north, 0) / state.winds.length,
-					east: state.winds.reduce((s, w) => s + w.air.east, 0) / state.winds.length
-				}
-			: null,
+		air: meanVector(state.winds.map((w) => w.air)),
 		windCount: state.winds.length,
 		kelvin: mean(state.kelvins.map((k) => k.kelvin)),
 		temperatureCount: state.kelvins.length,

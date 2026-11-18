@@ -9,15 +9,15 @@
 import { compass } from '#lib/geo.ts';
 import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
 import {
+	correctedWind,
 	MAX_LEVEL_FT,
 	MAX_TIME_MS,
 	MIN_CORRECTION,
-	turn,
 	type HeadingCheck
 } from '#lib/weather/headings.ts';
 import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
 import { AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
-import { components, normalise, windOf, type Vector, type Wind } from '#lib/weather/wind.ts';
+import { components, normalise, windOf, type Wind } from '#lib/weather/wind.ts';
 import type { Field } from './field';
 import { ago, celsius, directionText, interval, levelOrFeet, n, signed } from './format';
 
@@ -180,28 +180,20 @@ export function weatherHereFields(
 	// --- wind ----------------------------------------------------------------------------
 	const o = w.lastWind;
 	if (o?.wind) {
-		const { wind, trueHeading, declination, speedRange, ground, air } = o.wind;
+		const { wind, trueHeading, declination, speedRange, air } = o.wind;
 		const { groundSpeed, track, tas } = o.inputs.trackAndTurn.value;
 		const heading = o.inputs.headingAndSpeed.value.heading!;
 		// A heading clearly off (headings.ts) is corrected, as on the map and on /weather:
 		// ground − the air vector turned by the correction.
 		const correction = check?.significant ? check.correction : 0;
-		const fix = (g: Vector, a: Vector) => {
-			const turned = turn(a, correction);
-			return windOf({ north: g.north - turned.north, east: g.east - turned.east });
-		};
-		const latest = correction ? fix(ground, air) : wind;
+		const latest = correction
+			? windOf(correctedWind({ wind: wind.vector, air }, correction))
+			: wind;
 		const { average } = w;
 		const mean =
 			average.windCount > 1 && average.wind && average.air
 				? correction
-					? fix(
-							{
-								north: average.wind.vector.north + average.air.north,
-								east: average.wind.vector.east + average.air.east
-							},
-							average.air
-						)
+					? windOf(correctedWind({ wind: average.wind.vector, air: average.air }, correction))
 					: average.wind
 				: null;
 		const shown = mean ?? latest;

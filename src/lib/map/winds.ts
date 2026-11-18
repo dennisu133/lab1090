@@ -31,7 +31,7 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { HeadingCheck } from '#lib/weather/headings.ts';
 import type { WindSample } from '#lib/weather/profile.ts';
 import { WINDOW_MS } from '#lib/weather/sky.ts';
-import { windOf } from '#lib/weather/wind.ts';
+import { meanVector, windOf } from '#lib/weather/wind.ts';
 
 /** One barb per aircraft and this long. */
 export const BARB_BIN_MS = 60_000;
@@ -79,10 +79,7 @@ export function barbFeatures(
 	const features: Feature<Point, BarbProperties>[] = [];
 	for (const [key, samples] of bins) {
 		const n = samples.length;
-		const wind = windOf({
-			north: samples.reduce((s, w) => s + w.wind.north, 0) / n,
-			east: samples.reduce((s, w) => s + w.wind.east, 0) / n
-		});
+		const wind = windOf(meanVector(samples.map((w) => w.wind))!);
 		const middle = samples[Math.floor(n / 2)].at!;
 		const { icao, from } = samples[0];
 		const rx = Math.max(...samples.map((w) => w.rx));

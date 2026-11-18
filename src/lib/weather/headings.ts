@@ -29,7 +29,7 @@
  * Pure, no state here.
  */
 import type { WindSample } from './profile';
-import { speedOf, type Vector } from './wind';
+import { add, meanVector, rotate, speedOf, sub, type Vector } from './wind';
 
 /** Other aircraft count as "nearby" within this many feet … */
 export const MAX_LEVEL_FT = 2000;
@@ -71,19 +71,13 @@ export interface HeadingCheck {
 	significant: boolean;
 }
 
-/** A vector turned clockwise (like a heading) by `degrees`. */
-export function turn(v: Vector, degrees: number): Vector {
-	const c = Math.cos(degrees * RAD);
-	const s = Math.sin(degrees * RAD);
-	return { north: v.north * c - v.east * s, east: v.north * s + v.east * c };
-}
-
-/** The wind with the heading turned by `degrees`: ground − turned air. */
-export function correctedWind(w: WindSample, degrees: number): Vector {
+/**
+ * The wind with the heading turned by `degrees`: ground − turned air, where ground =
+ * wind + air. Takes any wind/air pair (a sample, a 1-min mean, the latest observation).
+ */
+export function correctedWind(w: { wind: Vector; air: Vector | null }, degrees: number): Vector {
 	if (!w.air) return w.wind; // from a turn: no heading in it
-	const ground = { north: w.wind.north + w.air.north, east: w.wind.east + w.air.east };
-	const air = turn(w.air, degrees);
-	return { north: ground.north - air.north, east: ground.east - air.east };
+	return sub(add(w.wind, w.air), rotate(w.air, degrees));
 }
 
 /** Samples are grouped into cells of one layer and TIME_BIN_MS, for finding neighbours fast. */
@@ -132,14 +126,10 @@ function referenceWind(w: WindSample, grid: Cells): { wind: Vector; aircraft: st
 				sums.set(icao, { north: sum.north + c.north, east: sum.east + c.east, n: sum.n + c.n });
 			}
 		}
-	if (sums.size === 0) return null;
-	let north = 0;
-	let east = 0;
-	for (const s of sums.values()) {
-		north += s.north / s.n;
-		east += s.east / s.n;
-	}
-	return { wind: { north: north / sums.size, east: east / sums.size }, aircraft: [...sums.keys()] };
+	const wind = meanVector(
+		[...sums.values()].map((s) => ({ north: s.north / s.n, east: s.east / s.n }))
+	);
+	return wind && { wind, aircraft: [...sums.keys()] };
 }
 
 /** Every aircraft that could be checked, by address. */
@@ -165,10 +155,7 @@ export function headingChecks(winds: WindSample[]): Map<string, HeadingCheck> {
 				if (!reference) continue;
 				for (const o of reference.aircraft) others.add(o);
 				// The air vector the others' wind implies, against the one reported.
-				const implied = {
-					north: w.wind.north + w.air.north - reference.wind.north,
-					east: w.wind.east + w.air.east - reference.wind.east
-				};
+				const implied = sub(add(w.wind, w.air), reference.wind);
 				cos += w.air.north * implied.north + w.air.east * implied.east;
 				sin += w.air.north * implied.east - w.air.east * implied.north;
 				pairs.push({ w, reference: reference.wind });
@@ -178,8 +165,7 @@ export function headingChecks(winds: WindSample[]): Map<string, HeadingCheck> {
 			next.set(icao, correction);
 			const off = (degrees: number) =>
 				pairs.reduce((s, { w, reference }) => {
-					const v = correctedWind(w, degrees);
-					return s + speedOf({ north: v.north - reference.north, east: v.east - reference.east });
+					return s + speedOf(sub(correctedWind(w, degrees), reference));
 				}, 0) / pairs.length;
 			checks.set(icao, {
 				icao,
@@ -207,7 +193,7 @@ export function applyHeadingChecks(
 	return winds.map((w) => {
 		const c = checks.get(w.icao);
 		return c?.significant && w.air
-			? { ...w, wind: correctedWind(w, c.correction), air: turn(w.air, c.correction) }
+			? { ...w, wind: correctedWind(w, c.correction), air: rotate(w.air, c.correction) }
 			: w;
 	});
 }
