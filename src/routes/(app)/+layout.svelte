@@ -47,27 +47,21 @@
 
 	/**
 	 * Below `lg` the links don't fit next to the status (the bar would wrap onto two or
-	 * three rows, a lot of a phone's map), so they fold into a menu at the right end. It
-	 * closes when you pick a page, press Escape or tap anywhere else.
+	 * three rows, a lot of a phone's map), so they fold into a menu at the right end. A native
+	 * popover: the browser closes it on Escape or a tap anywhere else and gives focus back
+	 * to the button. We close it when you pick a page. `menuOpen` only swaps the icon.
 	 */
 	let menuOpen = $state(false);
-	let nav = $state<HTMLElement>();
-	afterNavigate(() => (menuOpen = false));
-	const closeOutside = (event: MouseEvent) => {
-		// The path, not `target`: the menu button's icon is swapped by the time this runs.
-		if (menuOpen && nav && !event.composedPath().includes(nav)) menuOpen = false;
-	};
-	const closeOnEscape = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') menuOpen = false;
-	};
+	let menu = $state<HTMLElement>();
+	afterNavigate(() => {
+		if (menu?.matches(':popover-open')) menu.hidePopover();
+	});
 
 	/** Is the current page this one or one of its sub-pages (the /weather tabs)? */
 	const within = (href: string) =>
 		page.url.pathname === href ||
 		(href !== resolve('/(app)') && page.url.pathname.startsWith(`${href}/`));
 </script>
-
-<svelte:window onclick={closeOutside} onkeydown={closeOnEscape} />
 
 <!-- --alert-banner: other notices (PauseButton) float below the alert banner, not over it. -->
 <div
@@ -78,8 +72,7 @@
 	style:--alert-banner={streams.alerts.top ? '3rem' : null}
 >
 	<nav
-		bind:this={nav}
-		class="relative z-40 flex items-center gap-4 border-b border-zinc-800 px-4 py-3 sm:gap-6 sm:px-6"
+		class="relative z-40 flex items-center gap-4 border-b border-zinc-800 px-4 py-3 [anchor-name:--page-nav] sm:gap-6 sm:px-6"
 	>
 		<!-- lab1090: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
 		     "10 90" under radio waves, on an aircraft. -->
@@ -97,9 +90,8 @@
 			type="button"
 			class="-m-1.5 shrink-0 rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white lg:hidden"
 			aria-label="Pages"
-			aria-expanded={menuOpen}
 			aria-controls="page-menu"
-			onclick={() => (menuOpen = !menuOpen)}
+			popovertarget="page-menu"
 		>
 			<!-- Three bars, or a cross while open. -->
 			<svg viewBox="0 0 20 20" class="size-5" aria-hidden="true">
@@ -112,14 +104,17 @@
 				</g>
 			</svg>
 		</button>
-		{#if menuOpen}
-			<div
-				id="page-menu"
-				class="absolute top-full right-0 left-0 flex flex-col border-b border-zinc-800 bg-zinc-950 px-4 py-2 shadow-xl sm:left-auto sm:w-64 sm:rounded-bl-lg sm:border-l sm:px-6 lg:hidden"
-			>
-				{@render pages('py-2.5 text-base')}
-			</div>
-		{/if}
+		<!-- In the top layer, so placed against the window: right below the bar, by anchor
+		     positioning; browsers without it take the bar's height (57 px) from the top. -->
+		<div
+			bind:this={menu}
+			id="page-menu"
+			popover="auto"
+			ontoggle={(event) => (menuOpen = event.newState === 'open')}
+			class="inset-x-0 top-14.25 bottom-auto w-auto flex-col border-b border-zinc-800 bg-zinc-950 px-4 py-2 text-zinc-100 shadow-xl supports-[top:anchor(--a_bottom)]:top-[anchor(--page-nav_bottom)] max-lg:open:flex sm:left-auto sm:w-64 sm:rounded-bl-lg sm:border-l sm:px-6 lg:hidden"
+		>
+			{@render pages('py-2.5 text-base')}
+		</div>
 	</nav>
 
 	{#snippet pages(size: string)}
