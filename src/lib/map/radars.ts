@@ -18,6 +18,7 @@
  */
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 import { destination } from '#lib/geo.ts';
+import { ellipsePoints, lngLat } from './geometry.ts';
 import { BEAM_FRESH_MS, beamAt, shownSpread, type Radar } from '#lib/radar/finder.ts';
 
 /** The selected radar's tail: this many lines, this many degrees apart, fading. */
@@ -69,7 +70,7 @@ export function radarFeatures(
 			features: radars.map((r) => ({
 				type: 'Feature',
 				properties: props(r),
-				geometry: { type: 'Point', coordinates: [r.position.lon, r.position.lat] }
+				geometry: { type: 'Point', coordinates: lngLat(r.position) }
 			}))
 		},
 		ellipses: {
@@ -86,12 +87,7 @@ export function radarFeatures(
 /** The uncertainty ellipse as a ring of [lon, lat]. */
 export function ellipse(radar: Radar): [number, number][] {
 	const { major, minor, bearing } = shownSpread(radar);
-	return Array.from({ length: ELLIPSE_POINTS + 1 }, (_, i) => {
-		const a = (2 * Math.PI * i) / ELLIPSE_POINTS;
-		const along = destination(radar.position, bearing, major * Math.cos(a));
-		const p = destination(along, bearing + 90, minor * Math.sin(a));
-		return [p.lon, p.lat];
-	});
+	return ellipsePoints(radar.position, major, minor, bearing, ELLIPSE_POINTS);
 }
 
 export interface BeamProperties {
@@ -123,8 +119,7 @@ export function beamFeatures(
 					type: 'LineString',
 					// Along the great circle (the beam's path), not straight on the flat map.
 					coordinates: Array.from({ length: BEAM_SEGMENTS + 1 }, (_, k) => {
-						const p = destination(r.position, towards, (length * k) / BEAM_SEGMENTS);
-						return [p.lon, p.lat];
+						return lngLat(destination(r.position, towards, (length * k) / BEAM_SEGMENTS));
 					})
 				}
 			});

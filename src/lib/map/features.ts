@@ -28,6 +28,7 @@ import { alertsOf, identing, tierOf, type Tier } from '#lib/tracker/alerts.ts';
 import { EXTRAPOLATE_MS, shownPosition } from '#lib/tracker/shown.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
+import { circlePoints, lngLat } from './geometry.ts';
 import { iconFor } from './icons';
 
 /** Drawn faded from this age on: "it was here a while ago". */
@@ -95,7 +96,7 @@ export function aircraftFeatures(
 		features.push({
 			type: 'Feature',
 			id: a.icao,
-			geometry: { type: 'Point', coordinates: [shown.lon, shown.lat] },
+			geometry: { type: 'Point', coordinates: lngLat(shown) },
 			properties: {
 				icao: a.icao,
 				label: label(a),
@@ -131,21 +132,43 @@ function line(
 ): Feature<LineString, TrailProperties> {
 	return {
 		type: 'Feature',
-		geometry: {
-			type: 'LineString',
-			coordinates: [
-				[from.lon, from.lat],
-				[to.lon, to.lat]
-			]
-		},
+		geometry: { type: 'LineString', coordinates: [lngLat(from), lngLat(to)] },
 		properties: { icao, altitude, ground }
 	};
 }
 
 /**
- * Trails as short lines, one per pair of neighbouring points, each in the colour of its
- * altitude: a climbing aircraft leaves a trail that changes colour. Only for aircraft on
- * the map at `now`.
+ * Points → lines, each piece (from one point to the next) styled by the point it ends at, as
+ * if every piece were its own two-point line, but joined: a run of pieces that look the same
+ * (`same` on their end points) becomes one LineString. An aircraft holding its level leaves
+ * one line instead of 150, so MapLibre's worker has a few hundred features to cut into tiles
+ * instead of thousands, four times a second; where the style changes, a new line starts at
+ * the same point as before. `properties` gives a run's style, from its first end point.
+ */
+function runs<P extends LatLon, Props>(
+	points: readonly P[],
+	same: (a: P, b: P) => boolean,
+	properties: (p: P) => Props
+): Feature<LineString, Props>[] {
+	const lines: Feature<LineString, Props>[] = [];
+	let start = 1;
+	for (let i = 1; i <= points.length; i++) {
+		if (i < points.length && (i === start || same(points[start], points[i]))) continue;
+		if (i > start)
+			lines.push({
+				type: 'Feature',
+				geometry: { type: 'LineString', coordinates: points.slice(start - 1, i).map(lngLat) },
+				properties: properties(points[start])
+			});
+		start = i;
+	}
+	return lines;
+}
+
+/**
+ * Trails, each piece between neighbouring points in the colour of the altitude it ends at:
+ * a climbing aircraft leaves a trail that changes colour. Pieces at the same altitude are
+ * joined into one line (`runs`), which looks the same. Only for aircraft on the map at `now`.
  */
 export function trailFeatures(
 	list: TrackedAircraft[],
@@ -154,12 +177,14 @@ export function trailFeatures(
 	const features: Feature<LineString, TrailProperties>[] = [];
 	for (const a of list) {
 		if (!shownPosition(a, now)) continue;
-		for (const segment of a.trail) {
-			for (let i = 1; i < segment.length; i++) {
-				const p = segment[i];
-				features.push(line(a.icao, segment[i - 1], p, p.altitude, p.ground));
-			}
-		}
+		for (const segment of a.trail)
+			features.push(
+				...runs(
+					segment,
+					(x, y) => x.altitude === y.altitude && x.ground === y.ground,
+					(p) => ({ icao: a.icao, altitude: p.altitude, ground: p.ground })
+				)
+			);
 	}
 	return { type: 'FeatureCollection', features };
 }
@@ -190,9 +215,10 @@ export interface PredictionProperties {
 }
 
 /**
- * The predicted path ahead of each aircraft on the map (see the top of this file), as short
- * lines in the colour of the altitude predicted there: a climbing aircraft's line changes
- * colour, and stops changing where it levels off. Only for aircraft that are moved along,
+ * The predicted path ahead of each aircraft on the map (see the top of this file), in pieces
+ * of PREDICT_STEP_S in the colour of the altitude predicted at their end: a climbing
+ * aircraft's line changes colour, and stops changing where it levels off. Level stretches
+ * are joined into one line (`runs`). Only for aircraft that are moved along,
  * and not once they're faded (STALE_MS): an old guess shouldn't look like a fresh one.
  * `minutes` gets a point at every full minute along the selected aircraft's path.
  */
@@ -213,27 +239,20 @@ export function predictionFeatures(
 		const start = advance(a.position!, m, shown.age / 1000);
 		const mine = a.icao === selected;
 		const { points } = path(start, m, mine ? PREDICT_SELECTED_S : PREDICT_S, PREDICT_STEP_S);
-		for (let i = 1; i < points.length; i++) {
-			const [from, to] = [points[i - 1], points[i]];
-			lines.push({
-				type: 'Feature',
-				geometry: {
-					type: 'LineString',
-					coordinates: [
-						[from.lon, from.lat],
-						[to.lon, to.lat]
-					]
-				},
-				properties: { icao: a.icao, altitude: to.altitude, ground: false }
-			});
-			const seconds = i * PREDICT_STEP_S;
-			if (mine && seconds % 60 === 0)
+		lines.push(
+			...runs(
+				points,
+				(x, y) => x.altitude === y.altitude,
+				(p) => ({ icao: a.icao, altitude: p.altitude, ground: false as const })
+			)
+		);
+		if (mine)
+			for (let i = 60 / PREDICT_STEP_S; i < points.length; i += 60 / PREDICT_STEP_S)
 				minutes.push({
 					type: 'Feature',
-					geometry: { type: 'Point', coordinates: [to.lon, to.lat] },
-					properties: { label: `${seconds / 60} min` }
+					geometry: { type: 'Point', coordinates: lngLat(points[i]) },
+					properties: { label: `${(i * PREDICT_STEP_S) / 60} min` }
 				});
-		}
 	}
 	return {
 		lines: { type: 'FeatureCollection', features: lines },
@@ -283,7 +302,7 @@ export function uncertaintyFeatures(
 		const scale = METRES_PER_PIXEL_Z0 * Math.cos((shown.lat * Math.PI) / 180);
 		features.push({
 			type: 'Feature',
-			geometry: { type: 'Point', coordinates: [shown.lon, shown.lat] },
+			geometry: { type: 'Point', coordinates: lngLat(shown) },
 			properties: {
 				icao: a.icao,
 				altitude: a.position!.surface ? null : (a.altitude?.value ?? null),
@@ -319,13 +338,7 @@ export function ringFeatures(
 			features: RINGS[unit].map((d) => ({
 				type: 'Feature',
 				properties: {},
-				geometry: {
-					type: 'LineString',
-					coordinates: Array.from({ length: 129 }, (_, i) => {
-						const p = destination(receiver, (i * 360) / 128, km(d));
-						return [p.lon, p.lat];
-					})
-				}
+				geometry: { type: 'LineString', coordinates: circlePoints(receiver, km(d), 128) }
 			}))
 		},
 		labels: {
@@ -335,7 +348,7 @@ export function ringFeatures(
 				return {
 					type: 'Feature',
 					properties: { label: `${d} ${unit}` },
-					geometry: { type: 'Point', coordinates: [p.lon, p.lat] }
+					geometry: { type: 'Point', coordinates: lngLat(p) }
 				};
 			})
 		}
@@ -383,7 +396,7 @@ export function routeFeatures(route: DbRoute | null): {
 			features: stops.map((a) => ({
 				type: 'Feature',
 				properties: { label: a.iata ?? a.icao },
-				geometry: { type: 'Point', coordinates: [a.lon, a.lat] }
+				geometry: { type: 'Point', coordinates: lngLat(a) }
 			}))
 		}
 	};
@@ -420,10 +433,7 @@ export function alertLinkFeatures(
 				type: 'Feature',
 				geometry: {
 					type: 'LineString',
-					coordinates: [
-						[from.lon, from.lat],
-						[to.lon, to.lat]
-					]
+					coordinates: [lngLat(from), lngLat(to)]
 				},
 				properties: {
 					tier: x.tier,

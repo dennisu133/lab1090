@@ -51,7 +51,7 @@
 <script lang="ts">
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import * as maplibregl from 'maplibre-gl';
-	import type { GeoJSONSource, LngLatLike, MapMouseEvent } from 'maplibre-gl';
+	import type { GeoJSONSource, MapMouseEvent } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	// MapLibre parses tiles in a web worker, which it looks for next to its own file. Vite
 	// bundles the library elsewhere, so tell it where the worker is (`?url`: Vite serves the
@@ -93,6 +93,7 @@
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 	import { mapStyle } from '#lib/map/style.ts';
 	import { watchBaseMap } from '#lib/map/base-map.ts';
+	import { lngLat } from '#lib/map/geometry.ts';
 	import type { CoverageStream } from './coverage-stream.svelte.ts';
 	import type { Layers } from './MapLayers.svelte';
 	import type { RadarStream } from './radar-stream.svelte.ts';
@@ -195,7 +196,6 @@
 		[...new Set(activeAlerts(stream.aircraft, stream.now()).map((x) => x.icao))].sort().join(' ')
 	);
 
-	const toLngLat = (p: LatLon): LngLatLike => [p.lon, p.lat];
 	const source = (m: maplibregl.Map, id: string) => m.getSource(id) as GeoJSONSource;
 	const empty = { type: 'FeatureCollection' as const, features: [] };
 
@@ -209,7 +209,7 @@
 		const m = new maplibregl.Map({
 			container,
 			style: mapStyle(),
-			center: toLngLat(center),
+			center: lngLat(center),
 			zoom: 7,
 			attributionControl: { compact: true },
 			// Rotating the map would make "north up" and the tracks confusing; pinch-zoom stays.
@@ -815,7 +815,7 @@
 		source(map, 'receiver').setData({
 			type: 'Feature',
 			properties: {},
-			geometry: { type: 'Point', coordinates: [receiver.lon, receiver.lat] }
+			geometry: { type: 'Point', coordinates: lngLat(receiver) }
 		});
 	});
 
@@ -855,7 +855,7 @@
 				? {
 						type: 'Feature',
 						properties: {},
-						geometry: { type: 'Point', coordinates: [airport.lon, airport.lat] }
+						geometry: { type: 'Point', coordinates: lngLat(airport) }
 					}
 				: empty
 		);
@@ -891,8 +891,8 @@
 		if (!m || !id) return;
 		untrack(() => {
 			const radar = radars.get(id);
-			if (radar && !m.getBounds().contains(toLngLat(radar.position)))
-				m.easeTo({ center: toLngLat(radar.position) });
+			if (radar && !m.getBounds().contains(lngLat(radar.position)))
+				m.easeTo({ center: lngLat(radar.position) });
 		});
 	});
 
@@ -1057,7 +1057,7 @@
 		untrack(() => {
 			const a = stream.get(icao);
 			const p = a && shownPosition(a, stream.now());
-			if (p && !m.getBounds().contains(toLngLat(p))) m.easeTo({ center: toLngLat(p) });
+			if (p && !m.getBounds().contains(lngLat(p))) m.easeTo({ center: lngLat(p) });
 		});
 	});
 
@@ -1072,7 +1072,7 @@
 		if (points.length === 0) return;
 		fitted = true;
 		const bounds = new maplibregl.LngLatBounds();
-		for (const p of [...points, receiver]) bounds.extend(toLngLat(p));
+		for (const p of [...points, receiver]) bounds.extend(lngLat(p));
 		m.fitBounds(bounds, { padding: 60, maxZoom: 8, duration: 0 });
 	});
 </script>

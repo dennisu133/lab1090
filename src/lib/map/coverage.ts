@@ -14,14 +14,13 @@ import { radioHorizon } from '#lib/coverage/geometry.ts';
 import { flightLevel } from '#lib/describe/format.ts';
 import { destination } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
+import { circlePoints, lngLat } from './geometry.ts';
 
 /** The horizon drawn: the airliners' cruise, most of what is heard here. */
 export const HORIZON_FT = 35_000;
 
 /** A colour for each band's outline: the altitude ramp (altitude.ts) at this altitude. */
 export const BAND_COLOUR_FT = [5_000, 15_000, 25_000, 37_000] as const;
-
-const lonLat = (p: LatLon): [number, number] => [p.lon, p.lat];
 
 /**
  * Polygons, so the map can fill them faintly: an area reads as "heard within", where a bare
@@ -38,7 +37,7 @@ export function outlineFeatures(
 			if (!sectors.some((s) => s.farthest[i])) return [];
 			const ring = sectors.map((s) => {
 				const far = s.farthest[i];
-				return lonLat(
+				return lngLat(
 					far ? destination(receiver, s.from + SECTOR_DEG / 2, far.distance) : receiver
 				);
 			});
@@ -66,13 +65,13 @@ export function horizonFeatures(
 		properties: {},
 		geometry: {
 			type: 'LineString',
-			coordinates: Array.from({ length: 181 }, (_, i) => lonLat(destination(receiver, i * 2, km)))
+			coordinates: circlePoints(receiver, km, 180)
 		}
 	};
 	const label: Feature<Point, { label?: string }> = {
 		type: 'Feature',
 		properties: { label: `Radio horizon, ${flightLevel(altitudeFt)}` },
-		geometry: { type: 'Point', coordinates: lonLat(destination(receiver, 0, km)) }
+		geometry: { type: 'Point', coordinates: lngLat(destination(receiver, 0, km)) }
 	};
 	return { type: 'FeatureCollection', features: [circle, label] };
 }
@@ -85,7 +84,7 @@ export function pointFeatures(
 		features: points.map((p) => ({
 			type: 'Feature',
 			properties: { altitude: p.altitude, ground: false },
-			geometry: { type: 'Point', coordinates: lonLat(p) }
+			geometry: { type: 'Point', coordinates: lngLat(p) }
 		}))
 	};
 }
@@ -96,10 +95,8 @@ export function sectorFeature(
 	from: number,
 	km: number
 ): FeatureCollection<Polygon> {
-	const arc = Array.from({ length: 11 }, (_, i) =>
-		lonLat(destination(receiver, from + (i * SECTOR_DEG) / 10, km))
-	);
-	const ring = [lonLat(receiver), ...arc, lonLat(receiver)];
+	const arc = circlePoints(receiver, km, 10, from, from + SECTOR_DEG);
+	const ring = [lngLat(receiver), ...arc, lngLat(receiver)];
 	return {
 		type: 'FeatureCollection',
 		features: [

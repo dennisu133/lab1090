@@ -183,6 +183,33 @@ describe('features', () => {
 		expect(trailFeatures([aircraft()], SHOW_MS + 1).features).toEqual([]); // off the map
 	});
 
+	test('a trail: pieces at the same altitude are joined, a change starts a new line', () => {
+		const at = (lon: number, altitude: number, ground = false) => ({
+			lat: 52,
+			lon,
+			altitude,
+			ground,
+			t: (lon - 14) * 1e5
+		});
+		const trail = [
+			[at(13.94, 35_000), at(13.95, 35_000), at(13.96, 35_000), at(13.97, 35_100)],
+			[at(13.98, 35_200), at(13.99, 35_200), at(14, 35_200, true)]
+		];
+		const lines = trailFeatures([aircraft({ trail })], 0).features;
+		// As if every piece were its own line in the colour of the point it ends at.
+		expect(
+			lines.map((l) => [l.properties.altitude, l.geometry.coordinates.map(([x]) => x)])
+		).toEqual([
+			[35_000, [13.94, 13.95, 13.96]],
+			[35_100, [13.96, 13.97]],
+			[35_200, [13.98, 13.99]],
+			[35_200, [13.99, 14]]
+		]);
+		expect(lines.map((l) => l.properties.ground)).toEqual([false, false, false, true]);
+		// Level flight: the predicted path is one line.
+		expect(predictionFeatures([aircraft()], 0, null).lines.features).toHaveLength(1);
+	});
+
 	test(`the predicted path: ${PREDICT_S} s in 5 s pieces, ${PREDICT_SELECTED_S} s with minute marks when selected`, () => {
 		const climbing = aircraft({
 			verticalRate: { value: { rate: 1200, source: 'baro' }, t: 0, from: 'TC 19' }
