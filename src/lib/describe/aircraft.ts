@@ -293,9 +293,12 @@ function positionFields(
 			});
 		else {
 			// Always this one row, whatever the age: a row that comes and goes with every
-			// position message makes the whole panel jump.
+			// position message makes the whole panel jump. Its tooltip likewise depends only on
+			// whether the aircraft can be moved on (a ground velocity), not on the position's
+			// age: tied to the age, it came and went with every position message.
 			const age = Math.max(0, now - p.t);
 			const deadReckoning = `Positions come about twice a second, but some get lost. In between, the map moves it on with the ground speed and track (dead reckoning) for up to ${EXTRAPOLATE_MS / 1000} s, along the arc in a turn.`;
+			const moving = motion(a) != null;
 			position.push(
 				!shown
 					? {
@@ -314,11 +317,9 @@ function positionFields(
 						: {
 								label: 'On the map',
 								value: `at the last position (${Math.round(shown.age / 1000)} s)`,
-								// Under a second old and moving: the healthy case, nothing to explain.
-								title:
-									shown.extrapolatedKm > 0
-										? undefined
-										: `Without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol at the last position. ${deadReckoning}`,
+								title: moving
+									? deadReckoning
+									: `Without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol at the last position. ${deadReckoning}`,
 								tone: 'minor'
 							}
 			);
