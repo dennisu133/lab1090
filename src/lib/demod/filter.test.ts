@@ -48,8 +48,22 @@ describe('MessageFilter', () => {
 		expect(filter.check(toRadar, 0)).toBeNull();
 		expect(filter.check(squitter, 0)).toBe(squitter);
 		expect(filter.check(toRadar, 1)).toBe(toRadar);
-		// Not a radar code: the syndrome has bits above the lowest seven.
-		expect(filter.check(short(11, address, 0x80), 1)).toBeNull();
+		// Not a radar code, nor one wrong bit: the syndrome has bits above the lowest seven.
+		expect(filter.check(short(11, address, 0x81), 1)).toBeNull();
+	});
+
+	test('repairs one bit in a DF11 squitter from a known aircraft, but not in a code', () => {
+		const filter = new MessageFilter();
+		const squitter = short(11, [0x48, 0x40, 0xd6], 0);
+		expect(filter.check(flip(squitter, 20), 0)).toBeNull();
+		filter.check(squitter, 0);
+		for (const bit of [6, 20, 33, 49])
+			expect(filter.check(flip(squitter, bit), 1)).toEqual(squitter);
+		expect(filter.stats.repaired).toBe(4);
+		// A wrong bit among the last 7 reads as a radar's code: taken as it is.
+		const toRadar = flip(squitter, 50);
+		expect(filter.check(toRadar, 1)).toBe(toRadar);
+		expect(filter.stats.repaired).toBe(4);
 	});
 
 	test('takes replies with the address in the parity from known aircraft only', () => {

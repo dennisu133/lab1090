@@ -19,6 +19,10 @@
  *   syndrome, so a syndrome on that list says which bit to flip back. But noise lands on
  *   one of the 107 entries once in ~150,000 tries, which would be several false messages
  *   an hour. So a repaired message only counts from an aircraft already heard intact.
+ * - The same for a DF11 squitter (code 0), with the 51 entries of a 56-bit message. Only
+ *   when the syndrome isn't itself a radar's code: a wrong bit among the last 7 turns one
+ *   code into another, and nothing tells which was sent. That's also why a DF11 reply's code
+ *   is less certain than the rest of it: readsb has the same problem.
  *
  * "Already heard" means a DF11 or DF17 with CRC 0 within the last 60 s (like
  * address-filter.ts, which the server still applies to every frame on top of this).
@@ -40,20 +44,22 @@ export function messageBits(df: number): 56 | 112 {
 }
 
 /**
- * The syndrome a single wrong bit leaves, for every bit of a 112-bit message: the CRC is
- * linear, so a flipped bit's syndrome doesn't depend on the rest of the message. Bits 1–5
- * (the format) are left out: a message whose format is wrong was checked against the wrong
- * rules to begin with.
+ * The syndrome a single wrong bit leaves, for every bit of a message of this many bytes: the
+ * CRC is linear, so a flipped bit's syndrome doesn't depend on the rest of the message. Bits
+ * 1–5 (the format) are left out: a message whose format is wrong was checked against the
+ * wrong rules to begin with.
  */
-const ONE_BIT = (() => {
+function oneBit(bytes: number): Map<number, number> {
 	const table = new Map<number, number>();
-	for (let bit = 6; bit <= 112; bit++) {
-		const data = new Uint8Array(14);
+	for (let bit = 6; bit <= bytes * 8; bit++) {
+		const data = new Uint8Array(bytes);
 		data[(bit - 1) >> 3] = 0x80 >> ((bit - 1) & 7);
 		table.set(syndrome(data), bit);
 	}
 	return table;
-})();
+}
+const ONE_BIT = oneBit(14);
+const ONE_BIT_SHORT = oneBit(7);
 
 /**
  * Why a bit string was turned down. `parity`: the parity bits don't fit the message (no
@@ -66,7 +72,7 @@ export type Rejection = 'parity' | 'unheard';
 export interface FilterStats {
 	/** Passed with CRC 0 (or a radar's code) as received. */
 	accepted: number;
-	/** ADS-B with one bit repaired. */
+	/** ADS-B or a DF11 squitter with one bit repaired. */
 	repaired: number;
 }
 
@@ -93,19 +99,17 @@ export class MessageFilter {
 				return this.#accept(data);
 			}
 			if (df === 19) return this.#reject('parity');
-			const bit = ONE_BIT.get(s);
-			if (bit === undefined) return this.#reject('parity');
-			const fixed = data.slice();
-			fixed[(bit - 1) >> 3] ^= 0x80 >> ((bit - 1) & 7);
-			if (!this.#isKnown(address(fixed), t)) return this.#reject('unheard');
-			this.stats.repaired++;
-			return fixed;
+			return this.#repair(data, ONE_BIT.get(s), t);
 		}
 		if (df === 11) {
-			if (s === 0) this.#heard(address(data), t);
-			else if ((s & ~0x7f) !== 0) return this.#reject('parity');
-			else if (!this.#isKnown(address(data), t)) return this.#reject('unheard');
-			return this.#accept(data);
+			if (s === 0) {
+				this.#heard(address(data), t);
+				return this.#accept(data);
+			}
+			// A radar's code, or one wrong bit?
+			if ((s & ~0x7f) === 0)
+				return this.#isKnown(address(data), t) ? this.#accept(data) : this.#reject('unheard');
+			return this.#repair(data, ONE_BIT_SHORT.get(s), t);
 		}
 		if (AP_FORMATS.has(df))
 			return this.#isKnown(s, t) ? this.#accept(data) : this.#reject('unheard');
@@ -115,6 +119,16 @@ export class MessageFilter {
 	/** Addresses heard intact within KNOWN_FOR_S. */
 	get known(): number {
 		return this.#known.size;
+	}
+
+	/** Flip `bit` back, if there is one, and pass it on if the address was heard intact. */
+	#repair(data: Uint8Array, bit: number | undefined, t: number): Uint8Array | null {
+		if (bit === undefined) return this.#reject('parity');
+		const fixed = data.slice();
+		fixed[(bit - 1) >> 3] ^= 0x80 >> ((bit - 1) & 7);
+		if (!this.#isKnown(address(fixed), t)) return this.#reject('unheard');
+		this.stats.repaired++;
+		return fixed;
 	}
 
 	#accept(data: Uint8Array): Uint8Array {

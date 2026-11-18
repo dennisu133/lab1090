@@ -167,10 +167,32 @@ bun run dev --samples sky.u8
   (`--sigma`, full scale = 1; the Pi's dongle has about 0.0095) or a recording of the
   dongle with nothing on air (`--noise`, looped), which is closer to the real thing. 4.8 MB
   per second.
-- **Comparing with readsb**: readsb demodulates the same file with
-  `readsb --device-type ifile --ifile sky.u8 --iformat UC8 --raw` (one message per line).
-  Nov 2026, 30 s of the capture at its own levels on the Pi's noise: readsb 188 messages,
-  lab1090 174, 165 of them the same; each finds about 10 the other misses. Both find
-  nothing in 30 s of noise alone. Most messages are lost to noise in both: the capture's
-  weakest (~−33 dBFS) are only ~4 dB above this noise, and readsb heard them at a quieter
-  moment than the one recorded indoors.
+
+## Tuning the demodulator against readsb
+
+```sh
+rtl_sdr -f 1090M -s 2.4M -g 49.6 -n 720000000 x.u8                 # 5 min, 1.4 GB
+readsb --device-type ifile --ifile x.u8 --iformat UC8 > x.readsb    # the Pi has readsb
+bun tools/demod-compare.ts x.u8 x.readsb [--list]
+bun tools/pulse-shape.ts x.u8 x.readsb [every]
+```
+
+Real traffic, not modulate.ts: the point is what the dongle does to the signal.
+
+- `readsb.ts`: reads readsb's verbose output (without `--raw`), which gives every message
+  its `receiverTime`, counted in samples like our timestamps; the two clocks differ by a
+  constant, found from messages both decoded.
+- `demod-compare.ts`: our Demodulator and readsb on the same file, message by message (by
+  content and time): how many each found, how many only one of them, and for each one only
+  readsb found, where ours lost it (quick test, preamble, bits, address not heard yet). DF11
+  replies to a radar are counted apart: one wrong bit among their last 7 gives another
+  radar's code, and neither side can check which is right.
+- `pulse-shape.ts`: measures the pulse as the dongle delivers it, by least squares over the
+  messages readsb got intact (it knows all their bits): the table in
+  `src/lib/demod/pulse.ts`, which the demodulator reads bits with (`sequence.ts`).
+
+Afternoon of 18 Nov 2026, R820T at 49.6 dB (two 5-minute recordings) and
+40.2 dB (2 minutes): lab1090 finds 14–19 % more messages than readsb and misses 1.7–2.3 % of
+those readsb finds (not counting DF11 radar codes). Before, with bits read one at a time
+(first half against second) and a preamble ratio of 2, it found 4–5 % fewer than readsb and
+missed 6–8 % of them.

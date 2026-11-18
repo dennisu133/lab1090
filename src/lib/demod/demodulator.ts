@@ -23,17 +23,25 @@
  *    pulses are clearly stronger are read, the best first, until one passes the parity.
  *    (With a box-shaped pulse, neighbouring starts can score alike, so the best score is
  *    not always the right start.)
- * 3. Read the bits: per bit, the energy in its first half vs its second half. The first 5
- *    bits are the format (DF), which says whether 56 or 112 bits follow; unknown formats
- *    stop here.
+ * 3. Read the bits, two ways. First as a sequence (sequence.ts): the bit string whose
+ *    pulses, drawn as the dongle draws them (pulse.ts), best fit the samples. If that fails
+ *    the parity, bit by bit: the energy in each bit's first half vs its second. The two get
+ *    different messages wrong, so trying both finds more than either. The first 5 bits are
+ *    the format (DF), which says whether 56 or 112 bits follow; unknown formats stop here.
  * 4. The parity (filter.ts). A message that passes is passed on, and the search goes on
  *    after its end; otherwise at the next sample.
+ *
+ * Tuned against readsb on the same recordings (tools/demod-compare.ts): on 12 minutes of
+ * afternoon traffic (18 Nov 2026) this finds 14–19 % more messages than readsb, and misses
+ * about 2 % of those readsb finds (not counting DF11 replies to a radar, whose last 7 bits
+ * nobody can check: filter.ts).
  *
  * Samples come in chunks of any size; a message can straddle two of them, so the end of one
  * chunk is kept for the next.
  */
 import { KNOWN_FORMATS, MessageFilter, messageBits, type Rejection } from './filter';
 import { ADC_LIMIT, FULL_SCALE, magnitudes, SAMPLE_RATE } from './samples';
+import { SequenceReader } from './sequence';
 
 /** A message as the server takes it (the same shape as a Beast frame). */
 export interface DemodulatedFrame {
@@ -70,7 +78,10 @@ export interface DemodulatorStats {
 	 */
 	parity: number;
 	unheard: number;
-	/** Bit strings read and checked (3, 4): one candidate can be read at several starts. */
+	/**
+	 * Bit strings read and checked (3, 4): one candidate can be read at several starts, and
+	 * both ways at each.
+	 */
 	decoded: number;
 	accepted: number;
 	repaired: number;
@@ -102,8 +113,13 @@ const PULSE_LENGTH = 4 * HALF;
 const GAP_LENGTH = GAPS.reduce((sum, [a, b]) => sum + b - a, 0);
 /** Data starts 8 µs after the preamble. */
 const DATA = 8 * US;
-/** Samples from a preamble's start to the end of a long message, and two to spare. */
-const SPAN = Math.ceil((DATA + 112 * US) / SAMPLE) + 2;
+/**
+ * Samples from a preamble's start to the end of a long message, and a few more: the last
+ * pulse's ringing (pulse.ts).
+ */
+const SPAN = Math.ceil((DATA + 112 * US) / SAMPLE) + 6;
+/** Samples kept before the search position: the sequence reader looks one back. */
+const BEFORE = 1;
 
 /**
  * The signal level: how strong a pulse is. A pulse of amplitude A that starts on a sample
@@ -128,17 +144,20 @@ const SELF_OVERLAP = Array.from({ length: SAMPLE }, (_, start) => {
  * Step 1: the pulses' weakest sample must beat the gaps' mean by this much (amplitude). Low
  * on purpose: it only saves work, the parity decides. 1.5 is 3.5 dB.
  */
-const QUICK_RATIO = 1.5;
+export const QUICK_RATIO = 1.5;
 /**
  * …and be this far above the overall level: the mean magnitude of the previous block of
  * LEVEL_BLOCK samples (27 ms), which is mostly noise. Without it, noise passes the ratio
  * often enough to double the work. Blocks of a fixed size, not per chunk: what's found must
  * not depend on how the samples arrive.
  */
-const QUICK_ABOVE_LEVEL = 1.5;
-const LEVEL_BLOCK = 65536;
-/** Step 2: mean energy in the pulses vs in the gaps. 2 is 6 dB. */
-const PREAMBLE_RATIO = 2;
+export const QUICK_ABOVE_LEVEL = 1.5;
+export const LEVEL_BLOCK = 65536;
+/**
+ * Step 2: mean energy in the pulses vs in the gaps. 1.8 is 5.1 dB. Lower finds more weak
+ * messages, and costs: 2 found 3 % fewer, 1.6 another 0.4 % more for twice the work.
+ */
+export const PREAMBLE_RATIO = 1.8;
 
 export class Demodulator {
 	readonly stats: DemodulatorStats = {
@@ -182,6 +201,7 @@ export class Demodulator {
 	#blockSum = 0;
 	#blockFill = 0;
 	#bits = new Uint8Array(112);
+	#sequence = new SequenceReader();
 	#starts: number[] = [];
 	#scores: number[] = [];
 
@@ -312,26 +332,53 @@ export class Demodulator {
 	 * not a message, where it stopped: an unknown format, or why the parity turned it down.
 	 */
 	#read(s: number): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
+		const asSequence = this.#readAs(s, 'sequence');
+		if (typeof asSequence === 'object') return asSequence;
+		const asBits = this.#readAs(s, 'bits');
+		if (typeof asBits === 'object') return asBits;
+		// The one that got further: a parity verdict over an unknown format.
+		return asSequence === 'format' ? asBits : asSequence;
+	}
+
+	/** The sequence's bits, to skip the bit-by-bit reading when it reads the same. */
+	#sequenceBits = new Uint8Array(112);
+
+	#readAs(
+		s: number,
+		how: 'sequence' | 'bits'
+	): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
 		const bits = this.#bits;
 		const data0 = s + DATA;
-		let df = 0;
-		for (let i = 0; i < 5; i++) {
-			bits[i] = this.#bit(data0 + i * US);
-			df = (df << 1) | bits[i];
+		let length: 0 | 56 | 112;
+		if (how === 'sequence') {
+			length = this.#sequence.read(this.#mag, s, bits);
+			this.#sequenceBits.set(bits);
+			if (length === 0) return 'format';
+		} else {
+			let df = 0;
+			for (let i = 0; i < 5; i++) {
+				bits[i] = this.#bit(data0 + i * US);
+				df = (df << 1) | bits[i];
+			}
+			if (!KNOWN_FORMATS.has(Math.min(df, 24))) return 'format';
+			length = messageBits(df);
+			let same = true;
+			for (let i = 0; i < length; i++) {
+				if (i >= 5) bits[i] = this.#bit(data0 + i * US);
+				if (bits[i] !== this.#sequenceBits[i]) same = false;
+			}
+			// Already checked (and turned down) as the sequence.
+			if (same) return 'parity';
 		}
-		if (!KNOWN_FORMATS.has(Math.min(df, 24))) return 'format';
-		const length = messageBits(df);
 		let pulses = 0;
 		const data = new Uint8Array(length / 8);
 		for (let i = 0; i < length; i++) {
 			const t = data0 + i * US;
-			const first = this.#energy(t, t + HALF);
-			const second = this.#energy(t + HALF, t + US);
-			if (first > second) {
+			if (bits[i]) {
 				data[i >> 3] |= 0x80 >> (i & 7);
-				pulses += first / SELF_OVERLAP[t % SAMPLE];
+				pulses += this.#energy(t, t + HALF) / SELF_OVERLAP[t % SAMPLE];
 			} else {
-				pulses += second / SELF_OVERLAP[(t + HALF) % SAMPLE];
+				pulses += this.#energy(t + HALF, t + US) / SELF_OVERLAP[(t + HALF) % SAMPLE];
 			}
 		}
 		this.stats.decoded++;
@@ -383,9 +430,9 @@ export class Demodulator {
 		);
 	}
 
-	/** Keep the samples from the search position on: they may start a message. */
+	/** Keep the samples from the search position on (and BEFORE): they may start a message. */
 	#keepTail(): void {
-		const from = Math.min(this.#next, this.#length);
+		const from = Math.max(0, Math.min(this.#next, this.#length) - BEFORE);
 		const keep = this.#length - from;
 		this.#mag.copyWithin(0, from, this.#length);
 		this.#sum[0] = 0;

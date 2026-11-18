@@ -85,8 +85,8 @@
 					<InfoTip label="Preamble">
 						<p>
 							Five starts per sample, 0.2 samples (1/12 µs) apart, since a message can start
-							anywhere between two samples. A start counts if the energy in its four pulses is twice
-							that in its gaps (6 dB).
+							anywhere between two samples. A start counts if the energy in its four pulses is 1.8
+							times that in its gaps (5.1 dB).
 						</p>
 					</InfoTip>
 				</td>
@@ -103,9 +103,11 @@
 				<td class="py-1">
 					<InfoTip label="Format">
 						<p>
-							The first 5 bits are the downlink format (DF). Only 11 of the 25 possible values
-							exist; the others mean noise. The format also says how long the message is: 56 or 112
-							bits.
+							The bits are read as the string whose pulses, drawn the way the dongle draws them
+							(rounded, and ringing into the next half bit), best fit the samples; if that fails the
+							parity, bit by bit, first half against second. The first 5 bits are the downlink
+							format (DF). Only 11 of the 25 possible values exist; the others mean noise. The
+							format also says how long the message is: 56 or 112 bits.
 						</p>
 					</InfoTip>
 				</td>
@@ -123,9 +125,10 @@
 					<InfoTip label="Parity" wide>
 						<p>
 							The last 24 bits. ADS-B and DF11 squitters must come out at 0; a single wrong bit in
-							ADS-B can be found and flipped back. Replies to radars carry the aircraft's address in
-							their parity, so any bits "pass" with some address: they only count from an aircraft
-							heard intact within {KNOWN_FOR_S} s. That's where most noise ends: <em>not heard</em>.
+							either can be found and flipped back. Replies to radars carry the aircraft's address
+							in their parity, so any bits "pass" with some address: they only count from an
+							aircraft heard intact within {KNOWN_FOR_S} s. That's where most noise ends:
+							<em>not heard</em>.
 						</p>
 					</InfoTip>
 				</td>

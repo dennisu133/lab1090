@@ -14,13 +14,15 @@
  *   └──── preamble ────┘ 1  0  1  0 …   (bit 2 and 3: a 0 then a 1 make one 1 µs pulse)
  *
  * Each sample stands for the 1/2.4 µs before the next one, and gets the part of a pulse that
- * falls inside it (a sample half covered gets half the amplitude). That's the shape the
- * demodulator assumes; the dongle's filters round the edges a little more. Every message gets
- * its own carrier phase (two messages overlapping add up as waves, not as magnitudes).
+ * falls inside it (a sample half covered gets half the amplitude): box-shaped pulses. Or, with
+ * `pulse: 'dongle'`, the shape a real dongle delivers (pulse.ts): rounder, and ringing into
+ * the neighbouring half bits. Every message gets its own carrier phase (two messages
+ * overlapping add up as waves, not as magnitudes).
  *
  * Noise: Gaussian on I and Q, or a recording of real noise from the dongle added
  * underneath (`background`, UC8 bytes, looped).
  */
+import { PULSE_FROM, PULSE_TO, pulseShape } from './pulse';
 import { SAMPLES_PER_US } from './samples';
 
 export interface Transmission {
@@ -40,6 +42,8 @@ export interface ModulateOptions {
 	background?: Uint8Array;
 	/** For the random phases and the noise: the same seed gives the same samples. */
 	seed?: number;
+	/** Box-shaped pulses (the default), or as the dongle delivers them (pulse.ts). */
+	pulse?: 'box' | 'dongle';
 }
 
 /** Pulse starts and ends of a message, in µs from the first preamble pulse. */
@@ -57,7 +61,7 @@ export function pulses(data: Uint8Array): [number, number][] {
 export function modulate(
 	transmissions: Transmission[],
 	samples: number,
-	{ noise = 0, background, seed = 1 }: ModulateOptions = {}
+	{ noise = 0, background, seed = 1, pulse = 'box' }: ModulateOptions = {}
 ): Uint8Array {
 	const random = mulberry32(seed);
 	const i = new Float32Array(samples);
@@ -69,6 +73,20 @@ export function modulate(
 		for (const [startUs, endUs] of pulses(t.data)) {
 			const a = t.at + startUs * SAMPLES_PER_US;
 			const b = t.at + endUs * SAMPLES_PER_US;
+			if (pulse === 'dongle') {
+				// pulse.ts is in 12 MHz ticks, 5 per sample: between two ticks, interpolated.
+				const p = a * 5;
+				const from = Math.max(0, Math.ceil((p + PULSE_FROM) / 5));
+				const to = Math.min(samples, Math.ceil((p + PULSE_TO) / 5));
+				for (let k = from; k < to; k++) {
+					const d = 5 * k - p;
+					const lo = Math.floor(d);
+					const v = pulseShape(lo) + (d - lo) * (pulseShape(lo + 1) - pulseShape(lo));
+					i[k] += ci * v;
+					q[k] += cq * v;
+				}
+				continue;
+			}
 			for (let k = Math.max(0, Math.floor(a)); k < Math.min(samples, Math.ceil(b)); k++) {
 				const overlap = Math.min(b, k + 1) - Math.max(a, k);
 				i[k] += ci * overlap;
