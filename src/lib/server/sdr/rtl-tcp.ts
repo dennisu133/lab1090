@@ -1,7 +1,6 @@
 import { SAMPLE_RATE } from '#lib/demod/samples.ts';
-import type { SourceStatus } from '#lib/receiver-types.ts';
 import type { FrameHandler, FrameSource } from '../frame-source';
-import { TcpClient } from '../tcp-client';
+import { TcpClient, type TcpClientOptions } from '../tcp-client';
 import { SampleDecoder } from './decoder';
 import { FREQUENCY_HZ } from './rtl-sdr';
 
@@ -23,15 +22,9 @@ import { FREQUENCY_HZ } from './rtl-sdr';
  * so 10 s without any means the link is dead.
  */
 
-export interface RtlTcpOptions {
-	host: string;
-	port: number;
+export interface RtlTcpOptions extends TcpClientOptions {
 	gain: number;
 	onFrame: FrameHandler;
-	onStatus?: (status: SourceStatus) => void;
-	minBackoffMs?: number;
-	maxBackoffMs?: number;
-	idleTimeoutMs?: number;
 }
 
 const HEADER = 12;
@@ -80,45 +73,34 @@ export function setupCommands(gain: number): Uint8Array {
 	return bytes;
 }
 
-export class RtlTcp implements FrameSource {
+export class RtlTcp extends TcpClient implements FrameSource {
 	readonly decoder: SampleDecoder;
-	#tcp: TcpClient;
+	#gain: number;
 
 	constructor({ gain, onFrame, ...options }: RtlTcpOptions) {
+		super({ idleTimeoutMs: 10_000, ...options });
+		this.#gain = gain;
 		this.decoder = new SampleDecoder(onFrame, { gain });
-		this.#tcp = new TcpClient({
-			idleTimeoutMs: 10_000,
-			...options,
-			open: (send, fail) => {
-				send(setupCommands(gain));
-				this.decoder.restart();
-				let header = '';
-				return (data) => {
-					let at = 0;
-					while (header.length < HEADER && at < data.length) {
-						header += String.fromCharCode(data[at++]);
-						if (header.length === MAGIC.length && header !== MAGIC) {
-							fail(`not an rtl_tcp server (it doesn't start with "${MAGIC}")`);
-							return;
-						}
-						if (header.length === HEADER) this.decoder.device.tuner = tunerName(header);
-					}
-					if (at < data.length) this.decoder.push(data.subarray(at));
-				};
+	}
+
+	protected open(
+		send: (bytes: Uint8Array) => void,
+		fail: (reason: string) => void
+	): (data: Uint8Array) => void {
+		send(setupCommands(this.#gain));
+		this.decoder.restart();
+		let header = '';
+		return (data) => {
+			let at = 0;
+			while (header.length < HEADER && at < data.length) {
+				header += String.fromCharCode(data[at++]);
+				if (header.length === MAGIC.length && header !== MAGIC) {
+					fail(`not an rtl_tcp server (it doesn't start with "${MAGIC}")`);
+					return;
+				}
+				if (header.length === HEADER) this.decoder.device.tuner = tunerName(header);
 			}
-		});
-	}
-
-	get status(): SourceStatus {
-		return this.#tcp.status;
-	}
-
-	start(): this {
-		this.#tcp.start();
-		return this;
-	}
-
-	close(): void {
-		this.#tcp.close();
+			if (at < data.length) this.decoder.push(data.subarray(at));
+		};
 	}
 }

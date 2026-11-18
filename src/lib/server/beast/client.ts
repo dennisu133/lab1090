@@ -1,4 +1,3 @@
-import type { SourceStatus } from '#lib/receiver-types.ts';
 import { TcpClient, type TcpClientOptions } from '../tcp-client';
 import { BeastParser, type BeastFrame } from './parser';
 
@@ -9,44 +8,30 @@ import { BeastParser, type BeastFrame } from './parser';
  * means the link is dead.
  */
 
-export interface BeastClientOptions extends Omit<TcpClientOptions, 'open'> {
+export interface BeastClientOptions extends TcpClientOptions {
 	onFrame: (frame: BeastFrame) => void;
 }
 
-export class BeastClient {
-	readonly stats = { connections: 0, frames: 0 };
-	#tcp: TcpClient;
+export class BeastClient extends TcpClient {
+	override readonly stats = { connections: 0, frames: 0 };
+	#onFrame: (frame: BeastFrame) => void;
 
 	constructor({ onFrame, ...options }: BeastClientOptions) {
-		this.#tcp = new TcpClient({
-			...options,
-			open: () => {
-				this.stats.connections++;
-				const parser = new BeastParser();
-				return (data) => {
-					for (const frame of parser.push(data)) {
-						this.stats.frames++;
-						try {
-							onFrame(frame);
-						} catch (error) {
-							console.error('BeastClient: onFrame threw', error);
-						}
-					}
-				};
+		super(options);
+		this.#onFrame = onFrame;
+	}
+
+	protected open(): (data: Uint8Array) => void {
+		const parser = new BeastParser();
+		return (data) => {
+			for (const frame of parser.push(data)) {
+				this.stats.frames++;
+				try {
+					this.#onFrame(frame);
+				} catch (error) {
+					console.error('BeastClient: onFrame threw', error);
+				}
 			}
-		});
-	}
-
-	get status(): SourceStatus {
-		return this.#tcp.status;
-	}
-
-	start(): this {
-		this.#tcp.start();
-		return this;
-	}
-
-	close(): void {
-		this.#tcp.close();
+		};
 	}
 }

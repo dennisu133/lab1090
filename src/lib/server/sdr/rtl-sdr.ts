@@ -1,7 +1,8 @@
 import type { Subprocess } from 'bun';
 import { SAMPLE_RATE } from '#lib/demod/samples.ts';
-import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
+import type { DeviceInfo } from '#lib/receiver-types.ts';
 import type { FrameHandler, FrameSource } from '../frame-source';
+import { SourceBase, type SourceOptions } from '../source-base';
 import { SampleDecoder } from './decoder';
 
 /**
@@ -17,42 +18,42 @@ import { SampleDecoder } from './decoder';
  * messages are made for people who know librtlsdr.
  */
 
-export interface RtlSdrOptions {
+export interface RtlSdrOptions extends SourceOptions {
 	/** Index (0 = the first) or serial number. */
 	device: string;
 	gain: number;
 	onFrame: FrameHandler;
-	onStatus?: (status: SourceStatus) => void;
 	/** The program to run: tests use a stand-in. */
 	command?: string;
-	minBackoffMs?: number;
-	maxBackoffMs?: number;
 	/** rtl_sdr sends 4.8 MB a second: this much silence means it hangs. */
 	idleTimeoutMs?: number;
 }
 
 export const FREQUENCY_HZ = 1_090_000_000;
 
-export class RtlSdr implements FrameSource {
-	status: SourceStatus = { state: 'closed' };
+export class RtlSdr extends SourceBase implements FrameSource {
 	readonly decoder: SampleDecoder;
 
-	#opts: Required<RtlSdrOptions>;
+	#device: string;
+	#gain: number;
+	#command: string;
+	#idleTimeoutMs: number;
 	#process: Subprocess<'ignore', 'pipe', 'pipe'> | null = null;
-	#closed = false;
-	#failures = 0;
-	#retryTimer: ReturnType<typeof setTimeout> | undefined;
 
-	constructor(options: RtlSdrOptions) {
-		this.#opts = {
-			onStatus: () => {},
-			command: 'rtl_sdr',
-			minBackoffMs: 1_000,
-			maxBackoffMs: 30_000,
-			idleTimeoutMs: 10_000,
-			...options
-		};
-		this.decoder = new SampleDecoder(options.onFrame, { gain: options.gain });
+	constructor({
+		device,
+		gain,
+		onFrame,
+		command = 'rtl_sdr',
+		idleTimeoutMs = 10_000,
+		...options
+	}: RtlSdrOptions) {
+		super(options);
+		this.#device = device;
+		this.#gain = gain;
+		this.#command = command;
+		this.#idleTimeoutMs = idleTimeoutMs;
+		this.decoder = new SampleDecoder(onFrame, { gain });
 	}
 
 	start(): this {
@@ -60,18 +61,18 @@ export class RtlSdr implements FrameSource {
 		return this;
 	}
 
-	close(): void {
-		this.#closed = true;
-		clearTimeout(this.#retryTimer);
+	override close(): void {
+		super.close();
 		this.#process?.kill();
 		this.#process = null;
-		this.#setStatus({ state: 'closed' });
 	}
 
 	async #run(): Promise<void> {
-		if (this.#closed) return;
-		const { command, device, gain, idleTimeoutMs } = this.#opts;
-		this.#setStatus({ state: 'connecting' });
+		if (this.closed) return;
+		const command = this.#command;
+		const device = this.#device;
+		const idleTimeoutMs = this.#idleTimeoutMs;
+		this.setStatus({ state: 'connecting' });
 		// -f frequency, -s sample rate, -g gain in dB, -d device; "-": samples to the output.
 		const args = [
 			'-d',
@@ -81,7 +82,7 @@ export class RtlSdr implements FrameSource {
 			'-s',
 			`${SAMPLE_RATE}`,
 			'-g',
-			`${gain}`,
+			`${this.#gain}`,
 			'-'
 		];
 		let process: Subprocess<'ignore', 'pipe', 'pipe'>;
@@ -89,10 +90,11 @@ export class RtlSdr implements FrameSource {
 			process = Bun.spawn([command, ...args], { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' });
 		} catch (error) {
 			const missing = (error as NodeJS.ErrnoException).code === 'ENOENT';
-			this.#retry(
+			this.retry(
 				missing
 					? `${command} isn't installed (apt install rtl-sdr)`
-					: `${command} didn't start: ${(error as Error).message}`
+					: `${command} didn't start: ${(error as Error).message}`,
+				() => void this.#run()
 			);
 			return;
 		}
@@ -114,10 +116,7 @@ export class RtlSdr implements FrameSource {
 		try {
 			for await (const chunk of process.stdout) {
 				lastData = performance.now();
-				if (this.status.state !== 'connected' && !this.#closed) {
-					this.#failures = 0;
-					this.#setStatus({ state: 'connected' });
-				}
+				if (this.status.state !== 'connected' && !this.closed) this.connected();
 				try {
 					this.decoder.push(chunk);
 				} catch (e) {
@@ -135,21 +134,9 @@ export class RtlSdr implements FrameSource {
 		const code = await process.exited;
 		clearInterval(watchdog);
 		if (this.#process === process) this.#process = null;
-		if (this.#closed) return;
-		this.#retry(stalled ?? explain(await messages, code, device));
-	}
-
-	#retry(reason: string): void {
-		const { minBackoffMs, maxBackoffMs } = this.#opts;
-		const retryInMs = Math.min(maxBackoffMs, minBackoffMs * 2 ** this.#failures);
-		this.#failures++;
-		this.#setStatus({ state: 'waiting', retryInMs, retryAt: Date.now() + retryInMs, reason });
-		this.#retryTimer = setTimeout(() => void this.#run(), retryInMs);
-	}
-
-	#setStatus(status: SourceStatus): void {
-		this.status = status;
-		this.#opts.onStatus(status);
+		if (this.closed) return;
+		const reason = stalled ?? explain(await messages, code, device);
+		this.retry(reason, () => void this.#run());
 	}
 }
 

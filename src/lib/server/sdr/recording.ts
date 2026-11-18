@@ -1,6 +1,6 @@
 import { SAMPLE_RATE } from '#lib/demod/samples.ts';
-import type { SourceStatus } from '#lib/receiver-types.ts';
 import type { FrameHandler, FrameSource } from '../frame-source';
+import { SourceBase, type SourceOptions } from '../source-base';
 import { SampleDecoder } from './decoder';
 
 /**
@@ -11,24 +11,23 @@ import { SampleDecoder } from './decoder';
  *   lab1090 --samples sky.u8
  */
 
-export interface RecordingOptions {
+export interface RecordingOptions extends Pick<SourceOptions, 'onStatus'> {
 	file: string;
 	onFrame: FrameHandler;
-	onStatus?: (status: SourceStatus) => void;
 }
 
 /** How often the samples due by then are read and demodulated. */
 const TICK_MS = 50;
 
-export class Recording implements FrameSource {
-	status: SourceStatus = { state: 'closed' };
+/** Played once: when it ends, it says so (`ended`) and isn't started again. */
+export class Recording extends SourceBase implements FrameSource {
 	readonly decoder: SampleDecoder;
-	#opts: Required<RecordingOptions>;
-	#closed = false;
+	#file: string;
 
-	constructor(options: RecordingOptions) {
-		this.#opts = { onStatus: () => {}, ...options };
-		this.decoder = new SampleDecoder(options.onFrame, { live: false });
+	constructor({ file, onFrame, onStatus }: RecordingOptions) {
+		super({ onStatus });
+		this.#file = file;
+		this.decoder = new SampleDecoder(onFrame, { live: false });
 	}
 
 	start(): this {
@@ -36,19 +35,14 @@ export class Recording implements FrameSource {
 		return this;
 	}
 
-	close(): void {
-		this.#closed = true;
-		this.#setStatus({ state: 'closed' });
-	}
-
 	async #play(): Promise<void> {
-		const file = Bun.file(this.#opts.file);
+		const file = Bun.file(this.#file);
 		const size = file.size;
 		this.decoder.restart();
-		this.#setStatus({ state: 'connected' });
+		this.setStatus({ state: 'connected' });
 		const start = performance.now();
 		let at = 0;
-		while (!this.#closed && at < size) {
+		while (!this.closed && at < size) {
 			const due = Math.min(
 				size,
 				2 * Math.floor(((performance.now() - start) / 1000) * SAMPLE_RATE)
@@ -59,11 +53,6 @@ export class Recording implements FrameSource {
 			}
 			await Bun.sleep(TICK_MS);
 		}
-		if (!this.#closed) this.#setStatus({ state: 'ended' });
-	}
-
-	#setStatus(status: SourceStatus): void {
-		this.status = status;
-		this.#opts.onStatus(status);
+		if (!this.closed) this.setStatus({ state: 'ended' });
 	}
 }
