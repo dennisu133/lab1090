@@ -203,3 +203,20 @@ missed 6–8 % of them. The steps in between: bits read as a sequence over the m
 (+14–19 %, missing 1.7–2.3 %), then readsb's slicer, its quick test and its format repair
 (`src/lib/demod/readsb.ts`, `filter.ts`). On a Pi 5 that takes 4.5 % of a core at 49.6 dB
 and 5.0 % at 40.2 dB.
+
+## Choosing the gain
+
+```sh
+rtl_tcp -a 127.0.0.1                                  # on the receiver, dongle free
+bun tools/gain-sweep.ts 127.0.0.1 [--steps 40.2,44.5,48.0,49.6] [--dwell 40] [--rounds 4]
+                        [--settle 2] [--trace]
+```
+
+- `gain-sweep.ts`: messages per second at a handful of gains, live. rtl_tcp changes the
+  gain without a restart, and our Demodulator runs on what comes in. Traffic changes by the
+  minute (one close aircraft is worth more than any gain step), so it goes round the steps
+  several times, up and down in turn, and compares each step with the mean of its own
+  round. Short steps and many rounds (`--dwell 5 --rounds 20`) compare gains more fairly
+  than long ones. `--trace` prints the noise level just after the first changes: it
+  follows within 0.1 s, so a second of `--settle` is plenty. Build it for the Pi like
+  demod-bench.ts and run it there: no network in between.

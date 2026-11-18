@@ -135,10 +135,10 @@ describe('RtlTcp', () => {
 		await waitFor(() => frames.length === 2);
 		expect(frames.map((f) => toHex(f.data))).toEqual(MESSAGES.map(toHex));
 		expect(Array.from(received)).toEqual(Array.from(setupCommands(49.6)));
-		// 2.4 MS/s, 1090 MHz, manual gain, 49.6 dB, no RTL AGC.
+		// 100 MHz, 2.4 MS/s, 1090 MHz, manual gain, 49.6 dB, no RTL AGC.
 		expect(Array.from(setupCommands(49.6))).toEqual([
-			2, 0, 0x24, 0x9f, 0x00, 1, 0x40, 0xf8, 0x14, 0x80, 3, 0, 0, 0, 1, 4, 0, 0, 1, 0xf0, 8, 0, 0,
-			0, 0
+			1, 0x05, 0xf5, 0xe1, 0x00, 2, 0, 0x24, 0x9f, 0x00, 1, 0x40, 0xf8, 0x14, 0x80, 3, 0, 0, 0, 1,
+			4, 0, 0, 1, 0xf0, 8, 0, 0, 0, 0
 		]);
 	});
 

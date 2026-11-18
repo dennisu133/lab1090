@@ -55,9 +55,25 @@ export function tunerName(header: string): string | null {
 	return TUNERS[type] ?? null;
 }
 
-/** The commands that set up the dongle for Mode S. */
+/**
+ * Where rtl_tcp tunes at its start (its default), and where we tune first: see setupCommands.
+ */
+const AWAY_HZ = 100_000_000;
+
+/**
+ * The commands that set up the dongle for Mode S.
+ *
+ * rtl_tcp keeps the dongle as the last client left it. Setting the sample rate while the
+ * R820T is already tuned near 1090 MHz (as it is when we reconnect) leaves it ~1.2 dB less
+ * sensitive than a fresh start, where the rate is set at rtl_tcp's 100 MHz and then tuned
+ * to 1090: signal and noise both lower, twice the spread in candidates, ~9 % fewer messages
+ * (measured 18 Nov 2026, 12 pairs at 49.6 dB). A small retune (1089 MHz) doesn't undo it, a
+ * jump to 100 MHz does. So every connection does what a fresh start does: away, the rate,
+ * then 1090.
+ */
 export function setupCommands(gain: number): Uint8Array {
 	const commands: [number, number][] = [
+		[1, AWAY_HZ],
 		[2, SAMPLE_RATE],
 		[1, FREQUENCY_HZ],
 		[3, 1],
