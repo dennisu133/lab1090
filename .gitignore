@@ -22,9 +22,9 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Local recordings, too big or too revealing to commit (recordings/README.md)
-/recordings/*
-!/recordings/README.md
+# Local recordings, too big or too revealing to commit (fixtures/local/README.md)
+/fixtures/local/*
+!/fixtures/local/README.md
 
 # Python tools (pyModeS oracle)
 tools/.venv

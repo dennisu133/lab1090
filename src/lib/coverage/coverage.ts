@@ -192,7 +192,7 @@ export class Coverage {
 /**
  * A sector is "open" when aircraft were heard this close to the horizon there, degrees.
  * Even fully open directions don't reach 0°: the signal gives out first, at ~200 km here,
- * where FL350 stands 2–3° up. An hour's recording (recordings/capture-1h.beast): open
+ * where FL350 stands 2–3° up. An hour's recording (fixtures/local/capture-1h.beast): open
  * directions bottom out at 1.3–4.1°, a few with little low traffic at 5.1°; blocked ones
  * (the building behind the antenna) at 12–18°, the partly blocked north at 6–8°.
  */

@@ -36,7 +36,7 @@ their aircraft's first DF11/17 in the recording.
 
 `oracle/` holds reference values from pyModeS for the capture's messages; see `tools/README.md`.
 
-An hour of the same, for the experiments, is in `recordings/` (not committed).
+An hour of the same, for the experiments, is in `local/` (not committed).
 
 ## `wmm/`
 

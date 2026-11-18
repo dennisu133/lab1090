@@ -1,8 +1,8 @@
-# Recordings
+# Local recordings
 
 Recordings of the sky that aren't committed: too big for the repository, and an hour of one
 receiver's traffic says a lot about where it stands. Everything here but this file is
-gitignored. The tests don't need any of it (they use `fixtures/`); the tools below do. Make
+gitignored. The tests don't need any of it (they use the files one level up); the tools below do. Make
 your own with the commands given.
 
 ## Samples: `{a,b,c}.u8` and `.readsb`
@@ -31,10 +31,10 @@ readsb --device-type ifile --ifile a.u8 --iformat UC8 > a.readsb  # not --raw: t
 An hour of the Pi's Beast output (readsb, like `fixtures/capture.beast`), during busy
 traffic, for what needs more than 10 minutes: coverage and the radar finder. Through the
 tracker it takes ~5 s, through the radar finder ~50 s: too slow for `bun test`. To watch
-it: `bun tools/replay.ts recordings/capture-1h.beast`.
+it: `bun tools/replay.ts fixtures/local/capture-1h.beast`.
 
 ```bash
-timeout 3600 bash -c 'cat < /dev/tcp/pi/30005' > recordings/capture-1h.beast
+timeout 3600 bash -c 'cat < /dev/tcp/pi/30005' > fixtures/local/capture-1h.beast
 ```
 
 Recorded 2026-11-16 14:34:44 CET (a Monday afternoon), 60 min: 338,893 Mode S frames, 79,218
