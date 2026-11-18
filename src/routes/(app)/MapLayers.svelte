@@ -13,15 +13,12 @@
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
 	page is already right; once used, the choice is remembered.
 -->
-<script lang="ts" module>
-	import { flightLevel } from '#lib/describe/format.ts';
-</script>
-
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { flightLevel } from '#lib/describe/format.ts';
 	import type { Layers } from '#lib/map/layers.ts';
 	import { MediaQuery } from 'svelte/reactivity';
-	import InfoTip from '#lib/components/InfoTip.svelte';
+	import LayerSwitch from './LayerSwitch.svelte';
 	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
@@ -61,14 +58,8 @@
 			open === null ? 'hidden md:block' : !open && 'hidden'
 		]}
 	>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.rings}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the range rings"
-				/>
+		<LayerSwitch bind:checked={layers.rings} label="Show the range rings" name="Rings">
+			{#snippet icon()}
 				<!-- A dashed circle, like on the map. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<circle
@@ -81,22 +72,14 @@
 						stroke-dasharray="2 2"
 					/>
 				</svg>
-			</label>
-			<InfoTip label="Rings" above>
-				<p>
-					Circles at equal distances around the receiver. Nautical miles are aviation's unit: one
-					minute of latitude, 1,852 m.
-				</p>
-			</InfoTip>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.trail}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the trails"
-				/>
+			{/snippet}
+			<p>
+				Circles at equal distances around the receiver. Nautical miles are aviation's unit: one
+				minute of latitude, 1,852 m.
+			</p>
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.trail} label="Show the trails" name="Trail">
+			{#snippet icon()}
 				<!-- A solid line, like on the map. -->
 				<svg viewBox="0 0 20 6" class="hidden h-1.5 w-5 sm:block" aria-hidden="true">
 					<line
@@ -109,75 +92,59 @@
 						stroke-linecap="round"
 					/>
 				</svg>
-				<span>Trail</span>
-			</label>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.prediction}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the predicted paths"
-				/>
+			{/snippet}
+		</LayerSwitch>
+		<LayerSwitch
+			bind:checked={layers.prediction}
+			label="Show the predicted paths"
+			name="Prediction"
+		>
+			{#snippet icon()}
 				<!-- A dotted line, like on the map (from sm on: on phones the two boxes must fit side by side). -->
 				<svg viewBox="0 0 20 6" class="hidden h-1.5 w-5 sm:block" aria-hidden="true">
 					{#each [3, 10, 17] as cx (cx)}
 						<circle {cx} cy="3" r="1.5" fill="currentColor" />
 					{/each}
 				</svg>
-			</label>
-			<InfoTip label="Prediction" above>
-				<p>
-					Where each aircraft gets to in the next {PREDICT_S / 60} min ({PREDICT_SELECTED_S / 60} min
-					with minute marks when selected) if it keeps doing what it does now: the same ground speed,
-					the turn rate measured over the last seconds, climbing or descending to the altitude set on
-					the autopilot.
-				</p>
-				<p>
-					A turn ends at the selected heading if the autopilot steers by heading; following its
-					route (LNAV) the end is unknown, so the line stops after {MAX_OPEN_TURN}°. It can't see a
-					turn or climb coming before it starts.
-				</p>
-			</InfoTip>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.uncertainty}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the position uncertainty circles"
-				/>
+			{/snippet}
+			<p>
+				Where each aircraft gets to in the next {PREDICT_S / 60} min ({PREDICT_SELECTED_S / 60} min with
+				minute marks when selected) if it keeps doing what it does now: the same ground speed, the turn
+				rate measured over the last seconds, climbing or descending to the altitude set on the autopilot.
+			</p>
+			<p>
+				A turn ends at the selected heading if the autopilot steers by heading; following its route
+				(LNAV) the end is unknown, so the line stops after {MAX_OPEN_TURN}°. It can't see a turn or
+				climb coming before it starts.
+			</p>
+		</LayerSwitch>
+		<LayerSwitch
+			bind:checked={layers.uncertainty}
+			label="Show the position uncertainty circles"
+			name="Uncertainty"
+		>
+			{#snippet icon()}
 				<!-- A filled circle (accuracy) inside a ring (containment), like on the map. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<circle cx="10" cy="6" r="3" fill="currentColor" opacity="0.4" />
 					<circle cx="10" cy="6" r="5.25" fill="none" stroke="currentColor" stroke-width="1" />
 				</svg>
-			</label>
-			<InfoTip label="Uncertainty" above>
-				<p>
-					How far off the position may be, as the aircraft states it, to scale. With satellite
-					navigation it's tens of metres, hidden under the symbol unless you zoom in close; large
-					circles mean no satellites (inertial navigation, radio beacons) or jamming.
-				</p>
-				<p>
-					<strong>Filled: accuracy</strong> (NACp), where the true position is 95 % of the time.
-					<strong>Ring: integrity</strong> (NIC), the containment radius air traffic control relies
-					on.
-					<strong class="text-amber-400">Amber ring</strong>, not to scale: it knows neither (NACp
-					0, NIC 0).
-				</p>
-			</InfoTip>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.winds}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the wind barbs"
-				/>
+			{/snippet}
+			<p>
+				How far off the position may be, as the aircraft states it, to scale. With satellite
+				navigation it's tens of metres, hidden under the symbol unless you zoom in close; large
+				circles mean no satellites (inertial navigation, radio beacons) or jamming.
+			</p>
+			<p>
+				<strong>Filled: accuracy</strong> (NACp), where the true position is 95 % of the time.
+				<strong>Ring: integrity</strong> (NIC), the containment radius air traffic control relies
+				on.
+				<strong class="text-amber-400">Amber ring</strong>, not to scale: it knows neither (NACp 0,
+				NIC 0).
+			</p>
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.winds} label="Show the wind barbs" name="Wind">
+			{#snippet icon()}
 				<!-- A barb lying down, like a west wind on the map: staff, two feathers, a dot. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<g stroke="currentColor" stroke-width="1.25" stroke-linecap="round" fill="none">
@@ -187,33 +154,25 @@
 					</g>
 					<circle cx="17" cy="9" r="1.5" fill="currentColor" />
 				</svg>
-			</label>
-			<InfoTip label="Wind" above>
-				<p>
-					The wind the aircraft measured, where they measured it: one barb per aircraft and {BARB_BIN_MS /
-						60_000} min, for the last {BARB_FADE_MS / 60_000} min, fading with age, coloured by altitude.
-				</p>
-				<p>
-					<strong>How to read one:</strong> the staff points from the dot to where the wind comes from.
-					The feathers add up to the speed: a long one 10 kt, a short one 5 kt, a triangle (pennant) 50
-					kt. They sit on the low-pressure side: in the northern hemisphere, on the right looking along
-					the staff from the dot.
-				</p>
-				<p>
-					Nobody sends a wind: it's how the aircraft moves over the ground minus how it moves
-					through the air (registers 5,0 and 6,0, which only some radars ask for). A heading clearly
-					off from the other aircraft's winds (at least {MIN_CORRECTION}°) is corrected first.
-				</p>
-			</InfoTip>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.coverage}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the coverage"
-				/>
+			{/snippet}
+			<p>
+				The wind the aircraft measured, where they measured it: one barb per aircraft and {BARB_BIN_MS /
+					60_000} min, for the last {BARB_FADE_MS / 60_000} min, fading with age, coloured by altitude.
+			</p>
+			<p>
+				<strong>How to read one:</strong> the staff points from the dot to where the wind comes from.
+				The feathers add up to the speed: a long one 10 kt, a short one 5 kt, a triangle (pennant) 50
+				kt. They sit on the low-pressure side: in the northern hemisphere, on the right looking along
+				the staff from the dot.
+			</p>
+			<p>
+				Nobody sends a wind: it's how the aircraft moves over the ground minus how it moves through
+				the air (registers 5,0 and 6,0, which only some radars ask for). A heading clearly off from
+				the other aircraft's winds (at least {MIN_CORRECTION}°) is corrected first.
+			</p>
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.coverage} label="Show the coverage" name="Coverage">
+			{#snippet icon()}
 				<!-- A jagged outline around a dot, like the coverage on the map. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<path
@@ -225,26 +184,18 @@
 					/>
 					<circle cx="10" cy="6.5" r="1.25" fill="currentColor" />
 				</svg>
-			</label>
-			<InfoTip label="Coverage" above>
-				<p>
-					How far this antenna hears in every direction: one outline per altitude band ({BANDS.map(
-						(b) => b.name
-					).join(', ')}), out to the farthest position heard in it. The dashed amber circle is the
-					radio horizon at {flightLevel(HORIZON_FT)}: how far a line of sight reaches over a smooth
-					Earth. An outline well short of it: a building or a hill in the way, or the signal gives
-					out first.
-				</p>
-			</InfoTip>
-		</div>
-		<div class="flex items-center gap-2 border-t border-zinc-800 pt-1.5">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.roads}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the roads"
-				/>
+			{/snippet}
+			<p>
+				How far this antenna hears in every direction: one outline per altitude band ({BANDS.map(
+					(b) => b.name
+				).join(', ')}), out to the farthest position heard in it. The dashed amber circle is the
+				radio horizon at {flightLevel(HORIZON_FT)}: how far a line of sight reaches over a smooth
+				Earth. An outline well short of it: a building or a hill in the way, or the signal gives out
+				first.
+			</p>
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.roads} label="Show the roads" name="Roads" divided>
+			{#snippet icon()}
 				<!-- Two lanes, like a motorway on the map. -->
 				<svg viewBox="0 0 20 6" class="hidden h-1.5 w-5 sm:block" aria-hidden="true">
 					<g stroke="currentColor" stroke-width="1" stroke-linecap="round">
@@ -252,17 +203,10 @@
 						<line x1="2" y1="4.5" x2="18" y2="4.5" />
 					</g>
 				</svg>
-				<span>Roads</span>
-			</label>
-		</div>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.places}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Show the place names"
-				/>
+			{/snippet}
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.places} label="Show the place names" name="Place names">
+			{#snippet icon()}
 				<!-- A letter, like a label on the map. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<text
@@ -274,22 +218,19 @@
 						fill="currentColor">Aa</text
 					>
 				</svg>
-				<span>Place names</span>
-			</label>
-		</div>
+			{/snippet}
+		</LayerSwitch>
 		<p
 			class="border-t border-zinc-800 pt-1.5 text-[10px] tracking-wide text-amber-300/80 uppercase"
 		>
 			Experimental
 		</p>
-		<div class="flex items-center gap-2">
-			<label class="flex items-center gap-2 py-0.5">
-				<input
-					type="checkbox"
-					bind:checked={layers.radars}
-					class="size-3.5 accent-zinc-300"
-					aria-label="Search for the ground radars and show them"
-				/>
+		<LayerSwitch
+			bind:checked={layers.radars}
+			label="Search for the ground radars and show them"
+			name="Radars"
+		>
+			{#snippet icon()}
 				<!-- A radar dish on its mast, like the symbol on the map. -->
 				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
 					<g stroke="currentColor" stroke-width="1.25" stroke-linecap="round" fill="none">
@@ -298,25 +239,23 @@
 						<line x1="7" y1="11" x2="13" y2="11" />
 					</g>
 				</svg>
-			</label>
-			<InfoTip label="Radars" above>
-				<p>
-					The ground radars asking the aircraft we hear, found from the answers alone: we never hear
-					a radar itself (it asks on 1030 MHz, we listen on 1090). Each all-call reply names its
-					radar, and a turning radar only asks while its beam points at the aircraft: the reply
-					times give how fast it turns, and when the beam passed aircraft whose positions we know,
-					where it stands.
-				</p>
-				<p>
-					The dashed ellipse: how sure the fit is (at least {MIN_ELLIPSE_KM} km either way); the sweeping
-					line: where the beam points now.
-				</p>
-				<p>
-					It costs about a minute of CPU an hour when the sky is busy; switched off, it stops and
-					forgets.
-				</p>
-			</InfoTip>
-		</div>
+			{/snippet}
+			<p>
+				The ground radars asking the aircraft we hear, found from the answers alone: we never hear a
+				radar itself (it asks on 1030 MHz, we listen on 1090). Each all-call reply names its radar,
+				and a turning radar only asks while its beam points at the aircraft: the reply times give
+				how fast it turns, and when the beam passed aircraft whose positions we know, where it
+				stands.
+			</p>
+			<p>
+				The dashed ellipse: how sure the fit is (at least {MIN_ELLIPSE_KM} km either way); the sweeping
+				line: where the beam points now.
+			</p>
+			<p>
+				It costs about a minute of CPU an hour when the sky is busy; switched off, it stops and
+				forgets.
+			</p>
+		</LayerSwitch>
 	</div>
 	<button
 		type="button"
