@@ -19,7 +19,11 @@ const HISTORY = 1000;
 /** Frames kept per downlink format, type code and verdict (see FrameBuffers). */
 const PER_KIND = 200;
 
-type Subscriber = { send: (update: StreamUpdate) => void; close: () => void };
+/**
+ * `eventId`: what the update brings the subscriber up to, for the SSE `id:` line (see
+ * subscribe). The same for every subscriber.
+ */
+type Subscriber = { send: (update: StreamUpdate, eventId: string) => void; close: () => void };
 
 /**
  * The app's single source of messages (frame-source.ts: the RTL-SDR, rtl_tcp, a Beast feed,
@@ -101,19 +105,69 @@ export class Receiver {
 	 * Get an update right away, then one every 250 ms. The first holds the recent history,
 	 * and the position history (TrackHistory) in its own field: the browser merges that in
 	 * for the tracker alone (StreamUpdate.tracks).
+	 *
+	 * Unless it picks up where an earlier subscription of this tab left off: `lastEventId`,
+	 * the id of the last update it got (EventSource sends it as Last-Event-ID when it
+	 * reconnects by itself). If that names this run and the history still reaches back to it,
+	 * the first update holds only the frames since, and no positions: the tab has the rest.
+	 * A reconnect after a dropped Wi-Fi then costs a few frames, not 1,000 frames and 10
+	 * minutes of positions. Otherwise (a new tab, a restarted server, a tab that was away
+	 * too long) it gets everything, and the browser drops what it already has (by id).
 	 */
-	subscribe(send: Subscriber['send'], close: Subscriber['close']): () => void {
+	subscribe(
+		send: Subscriber['send'],
+		close: Subscriber['close'],
+		lastEventId: string | null = null
+	): () => void {
 		const subscriber = { send, close };
 		this.#subscribers.add(subscriber);
 		// History only: frames still pending go out with the next batch, to everyone.
 		// (Sending them here too would deliver them twice.) The same for position frames:
 		// pending ones are in TrackHistory already.
-		const last = this.#history.at(-1)?.id ?? 0;
-		send({
-			...this.#update(this.#history, this.radio.full(this.#client.decoder?.report() ?? null)),
-			tracks: this.tracks.frames.filter((f) => f.id <= last)
-		});
+		const radio = this.radio.full(this.#client.decoder?.report() ?? null);
+		const after = this.#resumeAfter(lastEventId);
+		if (after !== null) {
+			send(
+				this.#update(
+					this.#history.filter((f) => f.id > after),
+					radio
+				),
+				this.#eventId()
+			);
+		} else {
+			const last = this.#history.at(-1)?.id ?? 0;
+			send(
+				{
+					...this.#update(this.#history, radio),
+					tracks: this.tracks.frames.filter((f) => f.id <= last)
+				},
+				this.#eventId()
+			);
+		}
 		return () => this.#subscribers.delete(subscriber);
+	}
+
+	/**
+	 * An update's event id: this run and the newest frame sent so far, "1795000000000-4711".
+	 * Every subscriber has every frame up to there once the update arrives: the history
+	 * and then every batch.
+	 */
+	#eventId(): string {
+		return `${this.since}-${this.#history.at(-1)?.id ?? 0}`;
+	}
+
+	/**
+	 * The frame id to go on after, from an event id (#eventId); null: start from scratch.
+	 * The id must be from this run (after a restart the ids start over) and the history
+	 * must still hold every frame after it (it keeps the last HISTORY).
+	 */
+	#resumeAfter(eventId: string | null): number | null {
+		const m = eventId?.match(/^(\d+)-(\d+)$/);
+		if (!m || Number(m[1]) !== this.since) return null;
+		const after = Number(m[2]);
+		const first = this.#history[0]?.id ?? 1;
+		const last = this.#history.at(-1)?.id ?? 0;
+		return after >= first - 1 && after <= last ? after : null;
 	}
 
 	#onFrame(f: ModeSFrame): void {
@@ -147,7 +201,8 @@ export class Receiver {
 		const demod = this.#client.decoder?.report() ?? null;
 		this.radio.read(now, this.counts.total, demod);
 		const update = this.#update(frames, this.radio.take(demod));
-		for (const s of this.#subscribers) s.send(update);
+		const eventId = this.#eventId();
+		for (const s of this.#subscribers) s.send(update, eventId);
 	}
 
 	#update(frames: WireFrame[], radio: RadioUpdate): StreamUpdate {

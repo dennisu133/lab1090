@@ -129,3 +129,61 @@ test('the first update holds the position history too, in its own field', async 
 	await waitFor(() => late.updates.length > 1, 1000);
 	expect(late.updates.slice(1).every((u) => u.tracks === undefined)).toBe(true);
 });
+
+/** A subscriber that keeps the event ids too, optionally going on from an earlier one. */
+function resume(r: Receiver, lastEventId: string | null) {
+	const updates: StreamUpdate[] = [];
+	const eventIds: string[] = [];
+	r.subscribe(
+		(u, id) => {
+			updates.push(u);
+			eventIds.push(id);
+		},
+		() => {},
+		lastEventId
+	);
+	return { updates, eventIds, ids: () => updates.flatMap((u) => u.frames.map((f) => f.id)) };
+}
+
+test('each event id names the run and the newest frame sent so far', async () => {
+	const r = start(trickle().port);
+	const all = resume(r, null);
+	await waitFor(() => all.ids().at(-1) === TOTAL, 5000);
+	let newest = 0;
+	all.updates.forEach((u, i) => {
+		newest = u.frames.at(-1)?.id ?? newest;
+		expect(all.eventIds[i]).toBe(`${r.since}-${newest}`);
+	});
+});
+
+test('a reconnect with Last-Event-ID goes on from there: no frame lost or repeated', async () => {
+	const r = start(trickle().port);
+	const first = resume(r, null);
+	// Drop off mid-stream, then come back a little later (frames pending meanwhile).
+	await waitFor(() => first.ids().length > 1000 && first.ids().length < TOTAL - 5000, 5000);
+	const lastEventId = first.eventIds.at(-1)!;
+	const seen = first.ids().length;
+	await Bun.sleep(100);
+
+	const again = resume(r, lastEventId);
+	expect(again.updates[0].tracks).toBeUndefined();
+	expect(again.updates[0].frames[0]?.id ?? seen + 1).toBe(seen + 1);
+	await waitFor(() => again.ids().at(-1) === TOTAL, 5000);
+	const ids = [...first.ids().slice(0, seen), ...again.ids()];
+	expect(ids).toEqual(Array.from({ length: TOTAL }, (_, i) => i + 1));
+});
+
+test('everything again when the event id is from another run or too old', async () => {
+	const r = start(trickle().port);
+	const all = resume(r, null);
+	await waitFor(() => all.ids().at(-1) === TOTAL, 5000);
+	for (const lastEventId of [`${r.since - 1}-${TOTAL}`, `${r.since}-5`, 'nonsense']) {
+		const late = resume(r, lastEventId);
+		expect(late.updates[0].frames.length).toBe(1000);
+		expect(late.updates[0].tracks?.length).toBeGreaterThan(0);
+	}
+	// Up to date: nothing to send but the receiver's numbers.
+	const current = resume(r, all.eventIds.at(-1)!);
+	expect(current.updates[0].frames).toEqual([]);
+	expect(current.updates[0].tracks).toBeUndefined();
+});

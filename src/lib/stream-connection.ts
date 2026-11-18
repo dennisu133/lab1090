@@ -23,11 +23,13 @@ export interface UpdateListener {
  * minutes; with a connection per page all of that started over on every page switch. A
  * reload or a new tab still starts over: the server only keeps a little history (Receiver).
  *
- * EventSource reconnects by itself after a network error, but gives up for good when the
- * server answers with an HTTP error (a reverse proxy's 502 while lab1090 restarts): then a new
- * one is opened after RETRY_MS. Either way the server then sends its recent history again, part
- * of which this tab already has. Frame ids only grow within a server run, so frames up to the
- * newest one seen are dropped: every view gets every frame once. If the server restarted
+ * EventSource reconnects by itself after a network error, saying which update it got last
+ * (Last-Event-ID), and the server goes on from there (Receiver.subscribe). It gives up for
+ * good when the server answers with an HTTP error (a reverse proxy's 502 while lab1090
+ * restarts): then a new one is opened after RETRY_MS, which starts afresh, and the server
+ * sends its recent history again, part of which this tab already has. So does a reconnect
+ * after the history has moved on. Frame ids only grow within a server run, so frames up to
+ * the newest one seen are dropped: every view gets every frame once. If the server restarted
  * (dev reload), the ids start over and `since` changes: every listener resets (`reset`).
  *
  * Also reports both links (browser ↔ server, server ↔ receiver) to `receiverLink`, for the status
