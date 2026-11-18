@@ -15,8 +15,8 @@
  *
  * The sea-level pressure isn't in the capture (every aircraft was on standard), so it's
  * taken from Berlin Brandenburg airport's weather report at 15:20 UTC,
- * "EDDB 131520Z AUTO 28016KT 9999 SCT041 08/01 Q1007" (Iowa Environmental
- * Mesonet's METAR archive). Q1007: QNH 1007 hPa.
+ * "EDDB 131520Z AUTO 28016KT 9999 SCT041 08/01 Q1007" (Iowa Environmental Mesonet's METAR
+ * archive). Q1007: QNH 1007 hPa.
  */
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { FT, KT } from '#lib/units.ts';

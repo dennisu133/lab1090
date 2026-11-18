@@ -12,7 +12,7 @@
  * The skyline separates two things the distance mixes up. An aircraft at FL380 first heard
  * 30 km away looks like short range, but it stood 20° above the horizon: something
  * blocked it, not the distance. (The capture: towards the north-east nothing below 14–20°,
- * towards the west down to 2–3°.)
+ * towards the west down to 2–3°: the antenna's own building stands to its east.)
  *
  * Only airborne positions with a known altitude count, and only confirmed ones (a trail
  * segment's first point once the second agreed: tracker/positions.ts). Kept per tab, like
@@ -192,7 +192,7 @@ export class Coverage {
 /**
  * A sector is "open" when aircraft were heard this close to the horizon there, degrees.
  * Even fully open directions don't reach 0°: the signal gives out first, at ~200 km here,
- * where FL350 stands 2–3° up. The hour's recording (fixtures/capture-1h.beast): open
+ * where FL350 stands 2–3° up. An hour's recording (recordings/capture-1h.beast): open
  * directions bottom out at 1.3–4.1°, a few with little low traffic at 5.1°; blocked ones
  * (the building behind the antenna) at 12–18°, the partly blocked north at 6–8°.
  */

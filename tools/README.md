@@ -195,8 +195,8 @@ Real traffic, not modulate.ts: the point is what the dongle does to the signal.
   messages readsb got intact (it knows all their bits): the table in
   `src/lib/demod/pulse.ts`, which the demodulator reads bits with (`sequence.ts`).
 
-Afternoon of 18 Nov 2026, R820T at 49.6 dB (two 5-minute recordings) and
-40.2 dB (2 minutes): lab1090 finds 17–22 % more messages than readsb and misses 0.3–0.4 % of
+Afternoon of 18 Nov 2026, R820T at 49.6 dB (two 5-minute recordings) and 40.2 dB (2
+minutes, all three in `recordings/`): lab1090 finds 17–22 % more messages than readsb and misses 0.3–0.4 % of
 those readsb finds (not counting DF11 radar codes). Before, with bits read one at a time
 (first half against second) and a preamble ratio of 2, it found 4–5 % fewer than readsb and
 missed 6–8 % of them. The steps in between: bits read as a sequence over the measured pulse

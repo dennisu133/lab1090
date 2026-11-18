@@ -13,7 +13,7 @@
  *
  * TODO: check it against real traffic. Does the line fit? Aircraft high overhead should sit
  * below it. Is the distance where it meets the noise plausible next to the farthest aircraft
- * heard (266 km in fixtures/capture-1h.beast)? Our signal is pulse amplitude, 3 dB above
+ * heard (266 km in recordings/capture-1h.beast)? Our signal is pulse amplitude, 3 dB above
  * readsb's for the same message.
  */
 

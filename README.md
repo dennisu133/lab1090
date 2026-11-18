@@ -249,9 +249,9 @@ bun run dev --samples sky.u8
 ```
 
 The tests run against a 10-minute recording from the receiver
-([fixtures/](fixtures/README.md); there's an hour too, for the experiments, and to replay)
-and reference values from pyModeS, which are committed:
-Python is only needed to regenerate them ([tools/](tools/README.md)).
+([fixtures/](fixtures/README.md); an hour for the experiments and to replay is in
+[recordings/](recordings/README.md), not committed) and reference values from pyModeS,
+which are committed: Python is only needed to regenerate them ([tools/](tools/README.md)).
 
 ## Deployment
 

@@ -36,39 +36,7 @@ their aircraft's first DF11/17 in the recording.
 
 `oracle/` holds reference values from pyModeS for the capture's messages; see `tools/README.md`.
 
-## `capture-1h.beast`
-
-An hour of the same, recorded during busy traffic (a Monday afternoon) for the experiments
-that need more than 10 minutes: coverage and the radar finder.
-
-```bash
-timeout 3600 bash -c 'cat < /dev/tcp/pi/30005' > fixtures/capture-1h.beast
-```
-
-|          |                                                                                    |
-| -------- | ---------------------------------------------------------------------------------- |
-| Recorded | 2026-11-16 14:34:44 CET, 60 min (Beast timestamps span 3,599.9 s)                  |
-| Receiver | as above                                                                           |
-| Size     | 6,629,179 bytes                                                                    |
-| Frames   | 338,893 Mode S (170,008 short, 168,885 long), no keepalives                        |
-| Escapes  | 24,643 escaped `1A 1A` pairs; the last frame is cut off (`timeout` stopped it)     |
-
-Downlink formats:
-
-| DF     | 0      | 4      | 5      | 11     | 16    | 17     | 18  | 20     | 21     |
-| ------ | ------ | ------ | ------ | ------ | ----- | ------ | --- | ------ | ------ |
-| Frames | 22,820 | 63,916 | 14,762 | 68,510 | 2,120 | 79,218 | 1   | 60,372 | 27,174 |
-
-DF17 came from 96 distinct aircraft, 84 of them with positions the tracker confirmed. Type
-codes: 0 (436), 4 (2,904), 7 (5), 11 (24,423), 12 (4,062), 18 (232), 19 (29,013), 28
-(1,528), 29 (11,118), 31 (5,497).
-
-Not used by `bun test`: running it through the tracker takes ~5 s, through the radar finder
-~50 s. The tests stay on `capture.beast`. What the hour showed: coverage open from 170° to
-350° down to 1.3–4.1° elevation, farthest 266 km (62 % of the radio horizon), the south-east
-and east blocked up to 12–18° by the building although traffic flies there, terrain ≤ 0.2°;
-the radar finder confirmed 9 radars, all near known sites, no phantoms (~44 s CPU). To
-watch it: `bun tools/replay.ts fixtures/capture-1h.beast`.
+An hour of the same, for the experiments, is in `recordings/` (not committed).
 
 ## `wmm/`
 
