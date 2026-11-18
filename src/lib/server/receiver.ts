@@ -1,4 +1,5 @@
 import { openSource, type FrameSource, type ModeSFrame } from './frame-source';
+import { BeastServer } from './beast/server';
 import { FrameBuffers } from './frame-buffers';
 import { FrameCounts } from './frame-counts';
 import { RadioHistory } from './radio-history';
@@ -33,6 +34,7 @@ type Subscriber = { send: (update: StreamUpdate, eventId: string) => void; close
  * and goes to the counts (FrameCounts), the per-kind buffers (FrameBuffers), the trail
  * history (TrackHistory) and the next batch. Batches fan out to any number of subscribers
  * (browser tabs) every 250 ms: one update with ~12 frames instead of ~12 separate events.
+ * With `beastOut`, every frame also goes out at once as Beast on that port (BeastServer).
  */
 export class Receiver {
 	readonly source: string;
@@ -45,6 +47,7 @@ export class Receiver {
 	readonly radio = new RadioHistory(this.since);
 
 	#client: FrameSource;
+	#beast: BeastServer | null;
 	#counts = new FrameCounts();
 	#addresses = new AddressFilter();
 	#nextId = 1;
@@ -56,8 +59,12 @@ export class Receiver {
 	/** When the demodulator's report last went out with a batch. */
 	#demodSentAt = -Infinity;
 
-	constructor(source: Source, { log = true }: { log?: boolean } = {}) {
+	constructor(
+		source: Source,
+		{ log = true, beastOut = null }: { log?: boolean; beastOut?: number | null } = {}
+	) {
 		this.source = describeSource(source);
+		this.#beast = beastOut === null ? null : new BeastServer({ port: beastOut });
 		this.#client = openSource(
 			source,
 			(f) => this.#onFrame(f),
@@ -85,6 +92,12 @@ export class Receiver {
 	}
 
 	start(): this {
+		try {
+			this.#beast?.start();
+		} catch (error) {
+			// The page still works without it; say so where a Pi's owner looks.
+			console.error(`Beast output on port ${this.#beast?.port}: ${(error as Error).message}`);
+		}
 		this.#client.start();
 		this.#timer = setInterval(() => this.#flush(), BATCH_MS);
 		return this;
@@ -93,6 +106,7 @@ export class Receiver {
 	stop(): void {
 		clearInterval(this.#timer);
 		this.#client.close();
+		this.#beast?.stop();
 		this.disconnectAll();
 	}
 
@@ -164,6 +178,7 @@ export class Receiver {
 	}
 
 	#onFrame(f: ModeSFrame): void {
+		this.#beast?.add(f);
 		const now = Date.now();
 		const df = downlinkFormat(f.data);
 		const tc = typeCode(f.data);

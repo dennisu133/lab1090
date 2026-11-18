@@ -2,7 +2,8 @@ import { TcpClient, type TcpClientOptions } from '../tcp-client';
 import { BeastParser, type BeastFrame } from './parser';
 
 /**
- * A Beast feed (readsb or dump1090, TCP port 30005): messages demodulated elsewhere. The
+ * A Beast feed (another lab1090's --beast-out, readsb or dump1090, TCP port 30005): messages
+ * demodulated elsewhere. The
  * connection never gives up (TcpClient: backoff, watchdog); each connection gets a fresh
  * BeastParser. readsb sends a keepalive every 60 s (`--net-heartbeat 60`), so 90 s of silence
  * means the link is dead.

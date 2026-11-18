@@ -109,7 +109,8 @@ test('flags win over the file, the file over the defaults', () => {
 		position: null,
 		positionFrom: null,
 		port: DEFAULT_PORT,
-		bind: null
+		bind: null,
+		beastOut: null
 	});
 	expect(resolveSettings(parseFlags([]), file)).toMatchObject({
 		source: { kind: 'beast', endpoint: { host: 'pi', port: BEAST_PORT } },
@@ -159,6 +160,18 @@ test('a new position keeps the rest of the file, rounded to ~0.1 m', () => {
 		connect: 'pi',
 		position: { lat: 52.123457, lon: 13.987654 }
 	});
+});
+
+test('a Beast output: a port, from a flag or the file', () => {
+	expect(parseFlags(['--beast-out', '30005']).beastOut).toBe(30005);
+	expect(() => parseFlags(['--beast-out', 'pi:30005'])).toThrow('--beast-out: expected a TCP port');
+	expect(
+		resolveSettings(parseFlags([]), parseConfig('{"beast-out": 30005}', 'c.json')).beastOut
+	).toBe(30005);
+	expect(
+		resolveSettings(parseFlags(['--beast-out', '30105']), { 'beast-out': 30005 }).beastOut
+	).toBe(30105);
+	expect(() => parseConfig('{"beast-out": "x"}', 'c.json')).toThrow('c.json: "beast-out"');
 });
 
 test('config path follows XDG', () => {

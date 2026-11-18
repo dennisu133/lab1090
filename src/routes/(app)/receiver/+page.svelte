@@ -107,9 +107,9 @@
 		<section class="rounded-lg bg-zinc-900 p-4 text-sm text-zinc-300">
 			<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Diagnosis</h2>
 			<p>
-				Messages come from a Beast feed ({receiverLink.source}): demodulated by readsb or dump1090
-				on that machine. The samples, the gain, the noise and the CPU are its business; its own
-				statistics have them. Here: the message rate and the signal levels.
+				Messages come from a Beast feed ({receiverLink.source}): demodulated on that machine, by
+				readsb, dump1090 or another lab1090. The samples, the gain, the noise and the CPU are its
+				business; its own statistics have them. Here: the message rate and the signal levels.
 			</p>
 		</section>
 	{/if}

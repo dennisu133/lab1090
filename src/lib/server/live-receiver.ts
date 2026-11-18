@@ -15,7 +15,7 @@ const g = globalThis as typeof globalThis & { __lab1090Receiver?: Receiver };
 
 if (!building) {
 	g.__lab1090Receiver?.stop();
-	g.__lab1090Receiver = new Receiver(settings.source).start();
+	g.__lab1090Receiver = new Receiver(settings.source, { beastOut: settings.beastOut }).start();
 }
 
 export function receiver(): Receiver {

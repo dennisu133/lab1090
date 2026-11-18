@@ -16,6 +16,10 @@
  * ones are a mistake.
  *
  * The position has no default: without one, every page sends you to /setup.
+ *
+ * `--beast-out` serves what this receiver hears as Beast (beast/server.ts), for another
+ * lab1090 or readsb to `--connect` to, on every address of the machine: `--bind` is the web
+ * page's alone.
  */
 import { parseArgs } from 'node:util';
 import { parseLatLon } from '#lib/geo.ts';
@@ -33,7 +37,7 @@ export type Source =
 	| { kind: 'rtlsdr'; device: string; gain: number }
 	/** An RTL-SDR on another machine, through its `rtl_tcp` server; we demodulate. */
 	| { kind: 'rtl-tcp'; endpoint: Endpoint; gain: number }
-	/** Messages demodulated elsewhere: readsb's or dump1090's Beast output, `tools/replay.ts`. */
+	/** Demodulated elsewhere: Beast from another lab1090, readsb, dump1090, tools/replay.ts. */
 	| { kind: 'beast'; endpoint: Endpoint }
 	/** Samples recorded with rtl_sdr, played at their own pace. */
 	| { kind: 'samples'; file: string };
@@ -48,9 +52,11 @@ export interface Settings {
 	port: number;
 	/** Listen on this address only; null: all of them. */
 	bind: string | null;
+	/** Serve the messages as Beast on this port; null: don't. */
+	beastOut: number | null;
 }
 
-/** readsb and dump1090 serve Beast on 30005 by default. */
+/** readsb and dump1090 serve Beast on 30005 by default (lab1090 only with --beast-out). */
 export const BEAST_PORT = 30005;
 /** rtl_tcp's default port. */
 export const RTL_TCP_PORT = 1234;
@@ -75,10 +81,15 @@ Where the messages come from (default: the first RTL-SDR on this machine):
                             signals near an airport overload it
   --rtl-tcp <host[:port]>   an RTL-SDR on another machine, through rtl_tcp there
                             (port ${RTL_TCP_PORT} by default)
-  --connect <host[:port]>   messages demodulated by readsb or dump1090: their Beast
-                            output (port ${BEAST_PORT} by default)
+  --connect <host[:port]>   messages demodulated by another lab1090 (its --beast-out),
+                            readsb or dump1090: their Beast output (port ${BEAST_PORT} by default)
   --samples <file>          a recording made with rtl_sdr -f 1090M -s 2.4M, played at its
                             own pace
+
+Passing them on:
+  --beast-out <port>        serve every message as Beast on this port, on every address of
+                            this machine, like readsb's --net-bo-port (usually ${BEAST_PORT}): for
+                            another lab1090's --connect, tar1090 or a feeder (default: off)
 
 The web page:
   --position <lat,lon>      the antenna, in decimal degrees, e.g. 52.5163,13.3777
@@ -109,6 +120,7 @@ export interface Flags {
 	position?: LatLon;
 	port?: number;
 	bind?: string;
+	beastOut?: number;
 }
 
 export function parseFlags(args: string[]): Flags {
@@ -127,6 +139,7 @@ export function parseFlags(args: string[]): Flags {
 				position: { type: 'string' },
 				port: { type: 'string' },
 				bind: { type: 'string' },
+				'beast-out': { type: 'string' },
 				config: { type: 'string' },
 				help: { type: 'boolean', short: 'h' }
 			}
@@ -159,6 +172,9 @@ export function parseFlags(args: string[]): Flags {
 		flags.position = field('--position', parseLatLon, parsed.position);
 	if (parsed.port !== undefined) flags.port = field('--port', parsePort, parsed.port);
 	if (parsed.bind !== undefined) flags.bind = field('--bind', parseBind, parsed.bind);
+	if (parsed['beast-out'] !== undefined) {
+		flags.beastOut = field('--beast-out', parsePort, parsed['beast-out']);
+	}
 	return flags;
 }
 
@@ -171,9 +187,19 @@ export interface ConfigFile {
 	position?: LatLon;
 	port?: number;
 	bind?: string;
+	'beast-out'?: number;
 }
 
-const CONFIG_KEYS = ['device', 'gain', 'rtl-tcp', 'connect', 'position', 'port', 'bind'];
+const CONFIG_KEYS = [
+	'device',
+	'gain',
+	'rtl-tcp',
+	'connect',
+	'position',
+	'port',
+	'bind',
+	'beast-out'
+];
 
 /** Check a config file's text. `path` is only for the messages. */
 export function parseConfig(text: string, path: string): ConfigFile {
@@ -221,6 +247,9 @@ export function parseConfig(text: string, path: string): ConfigFile {
 		config.port = field(at('port'), (v) => parsePort(String(v)), raw.port);
 	if (raw.bind !== undefined)
 		config.bind = field(at('bind'), (v) => parseBind(asString(v)), raw.bind);
+	if (raw['beast-out'] !== undefined) {
+		config['beast-out'] = field(at('beast-out'), (v) => parsePort(String(v)), raw['beast-out']);
+	}
 	const sources = (['device', 'rtl-tcp', 'connect'] as const).filter((k) => k in config);
 	if (sources.length > 1) {
 		throw new SettingsError(
@@ -238,7 +267,8 @@ export function resolveSettings(flags: Flags, file: ConfigFile): Settings {
 		position,
 		positionFrom: flags.position ? 'flag' : file.position ? 'file' : null,
 		port: flags.port ?? file.port ?? DEFAULT_PORT,
-		bind: flags.bind ?? file.bind ?? null
+		bind: flags.bind ?? file.bind ?? null,
+		beastOut: flags.beastOut ?? file['beast-out'] ?? null
 	};
 }
 

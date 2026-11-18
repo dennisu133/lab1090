@@ -11,7 +11,7 @@ import type { Source } from './settings';
  * (reconnects, restarts) until closed, and reports how it's doing for the status bar.
  *
  * Messages from an RTL-SDR (directly, through rtl_tcp or recorded) are demodulated here
- * (lib/demod); a Beast feed brings them demodulated by readsb or dump1090.
+ * (lib/demod); a Beast feed brings them demodulated by another lab1090, readsb or dump1090.
  */
 export interface FrameSource {
 	readonly status: SourceStatus;

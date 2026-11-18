@@ -37,8 +37,9 @@ The dongle can also be on another machine:
   `lab1090 --rtl-tcp <host>`. It sends the raw samples, 38 Mbit/s: fine over Ethernet, too
   much for weak Wi-Fi. While it waits for a client it ignores a plain kill: stop it with
   `pkill -9 rtl_tcp`.
-- **readsb or dump1090** there, then `lab1090 --connect <host>`: their Beast output, already
-  demodulated. A receiver that feeds a flight tracking site can be used as it is.
+- **lab1090** there with `--beast-out 30005`, or **readsb or dump1090**, then
+  `lab1090 --connect <host>`: their Beast output, already demodulated, about 20 KB/s. A
+  receiver that feeds a flight tracking site can be used as it is.
 
 `lab1090 --help` lists every option (gain, which dongle, port, …); the config file takes the
 same settings. The page is plain HTTP: browsers only show system notifications (for alerts)
@@ -56,7 +57,8 @@ bun run check    # type check
 bun run lint     # formatting and ESLint (bun run format fixes the formatting)
 ```
 
-Nothing in the sky? `bun tools/replay.ts --loop` plays the recorded capture on
+Receiver on another machine? Run lab1090 there with `--beast-out 30005` and develop with
+`bun run dev --connect <host>`. Nothing in the sky? `bun tools/replay.ts --loop` plays the recorded capture on
 127.0.0.1:30105, for `bun run dev --connect 127.0.0.1:30105`. The tests run on recordings
 and on reference values from pyModeS: [fixtures/](fixtures/README.md) and
 [tools/](tools/README.md) say more.
