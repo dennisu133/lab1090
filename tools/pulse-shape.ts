@@ -128,7 +128,7 @@ function solve(m: Float64Array[], y: Float64Array): Float64Array {
 
 const intact = theirs.filter((t, i) => t.fixed === 0 && i % every === 0);
 let g: (d: number) => number = box;
-let shape = new Float64Array(NG);
+let shape: Float64Array = new Float64Array(NG);
 for (let round = 1; round <= 3; round++) {
 	const placed = intact.flatMap((t) => place(t.hex, toOurs(t.tick), g) ?? []);
 	// Messages that fit (not two overlapping) and aren't clipped.

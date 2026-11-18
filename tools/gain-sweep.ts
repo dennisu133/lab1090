@@ -2,13 +2,18 @@
  * Which gain hears the most: messages per second at a handful of gains, live.
  *
  *   bun tools/gain-sweep.ts host[:port] [--steps 36.4,40.2,…] [--dwell 40] [--rounds 4]
+ *                           [--settle 2] [--trace]
  *
  * Talks to rtl_tcp (`rtl_tcp -a 0.0.0.0` on the receiver), which can change the gain while
- * the samples flow (command 4), and runs our Demodulator on what comes in. Traffic changes by
- * the minute, so one pass through the gains would compare traffic, not gains: it goes round
- * the steps several times, up and down in turn, and compares each step with the mean of its
- * own round. After a change it waits SETTLE seconds before counting: rtl_tcp has samples
- * from the old gain in its buffers, and the noise level takes a block to follow.
+ * the samples flow (command 4), and runs our Demodulator on what comes in. Traffic changes
+ * by the minute, so one pass through the gains would compare traffic, not gains: it goes
+ * round the steps several times, up and down in turn, and compares each step with the mean
+ * of its own round. After a change it waits SETTLE seconds before counting: rtl_tcp has
+ * samples from the old gain in its buffers, and the noise level takes a block to follow.
+ * --trace prints the noise every 0.1 s after the first changes: it follows within 0.1 s, so
+ * a second of --settle is plenty. Short steps and many rounds (--dwell 5 --rounds 20)
+ * compare gains more fairly than long ones. Best built for the Pi like demod-bench.ts and
+ * run there, against `rtl_tcp -a 127.0.0.1`: no network in between.
  *
  * Per step: messages/s, DF17/s, aircraft heard (distinct DF11/DF17 addresses), noise (dBFS,
  * the mean magnitude), the share of messages that reached the ADC's limit, the strongest
@@ -228,7 +233,7 @@ socket = await Bun.connect({
 				}
 			}
 			// An odd byte left over would shift I and Q: keep it for the next packet.
-			let iq = data.subarray(at);
+			let iq: Uint8Array = data.subarray(at);
 			if (carry !== null) {
 				const joined = new Uint8Array(iq.length + 1);
 				joined[0] = carry;
