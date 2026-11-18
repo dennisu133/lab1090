@@ -12,7 +12,9 @@
 	import type { Observation } from '#lib/weather/observation.ts';
 	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import AircraftTable from '../AircraftTable.svelte';
-	import Calculation from '../Calculation.svelte';
+	import ContrailCalculation from '../ContrailCalculation.svelte';
+	import TemperatureCalculation from '../TemperatureCalculation.svelte';
+	import WindCalculation from '../WindCalculation.svelte';
 	import PageTitle from '../../PageTitle.svelte';
 	import { getStreams } from '../../streams';
 
@@ -110,7 +112,14 @@
 			{/if}
 		</div>
 		{#if example}
-			<Calculation observation={example.observation} {contrail} />
+			<!-- One card under the other, each a drawing with the steps beside it: side by side,
+			     the steps would be squeezed into a narrow column and the cards would get very
+			     tall. Each one checkable with a calculator. -->
+			<div class="space-y-4">
+				<WindCalculation observation={example.observation} />
+				<TemperatureCalculation observation={example.observation} />
+				<ContrailCalculation observation={example.observation} tracker={contrail} />
+			</div>
 		{:else}
 			<!-- As tall as the three cards will be, so nothing jumps when the first pair arrives. -->
 			<p class="h-266 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
