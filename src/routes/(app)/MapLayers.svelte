@@ -14,6 +14,7 @@
 	page is already right; once used, the choice is remembered.
 -->
 <script lang="ts" module>
+	import { flightLevel } from '#lib/describe/format.ts';
 	export interface Layers {
 		rings: boolean;
 		trail: boolean;
@@ -244,7 +245,7 @@
 					How far this antenna hears in every direction: one outline per altitude band ({BANDS.map(
 						(b) => b.name
 					).join(', ')}), out to the farthest position heard in it. The dashed amber circle is the
-					radio horizon at FL{HORIZON_FT / 100}: how far a line of sight reaches over a smooth
+					radio horizon at {flightLevel(HORIZON_FT)}: how far a line of sight reaches over a smooth
 					Earth. An outline well short of it: a building or a hill in the way, or the signal gives
 					out first.
 				</p>

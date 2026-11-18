@@ -5,7 +5,8 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { flightLevel, signed, windText } from '#lib/describe/weather.ts';
+	import { levelOrFeet, n, signed } from '#lib/describe/format.ts';
+	import { windText } from '#lib/describe/weather.ts';
 	import {
 		MAX_CLIMB_FT,
 		MAX_RESIDUAL_KT,
@@ -14,6 +15,7 @@
 		TURN_RATE,
 		type TurnWind
 	} from '#lib/weather/circle.ts';
+	import { WINDOW_MS } from '#lib/weather/sky.ts';
 
 	interface Props {
 		turns: TurnWind[];
@@ -53,14 +55,16 @@
 			</p>
 			<p class="text-zinc-400">
 				A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
-					60_000} minutes and {MAX_CLIMB_FT.toLocaleString()} ft. An aircraft slowing down steadily spirals
-				inwards, which the fit allows for; anything else that leaves the points more than {MAX_RESIDUAL_KT}
+					60_000} minutes and {n(MAX_CLIMB_FT)} ft. An aircraft slowing down steadily spirals inwards,
+				which the fit allows for; anything else that leaves the points more than {MAX_RESIDUAL_KT}
 				kt rms off the curve doesn't count. Most turns happen near airports: holding patterns, approaches.
 				Cruise traffic on airways rarely turns that far.
 			</p>
 		</InfoTip>
 		<span class="text-sm text-zinc-500">
-			{turns.length ? `${turns.length} in the last 30 min` : 'no turn of 90° or more yet'}
+			{turns.length
+				? `${turns.length} in the last ${WINDOW_MS / 60_000} min`
+				: 'no turn of 90° or more yet'}
 		</span>
 	</div>
 
@@ -115,7 +119,7 @@
 				<p>
 					<span class="font-mono text-amber-300">{latest.icao}</span>
 					<span class="text-zinc-500">{callsigns.get(latest.icao) ?? ''}</span>
-					turned {Math.abs(latest.arc).toFixed(0)}° {latest.arc > 0 ? 'right' : 'left'} at {flightLevel(
+					turned {Math.abs(latest.arc).toFixed(0)}° {latest.arc > 0 ? 'right' : 'left'} at {levelOrFeet(
 						Math.round(latest.altitude / 100) * 100
 					)}, in {Math.round((latest.end - latest.start) / 1000)} s.
 				</p>
@@ -136,7 +140,7 @@
 								<tr class="h-6 border-t border-zinc-800">
 									<td class="w-16 font-mono text-amber-300">{t.icao}</td>
 									<td class="w-16 text-zinc-400"
-										>{flightLevel(Math.round(t.altitude / 100) * 100)}</td
+										>{levelOrFeet(Math.round(t.altitude / 100) * 100)}</td
 									>
 									<td class="font-mono text-emerald-300">{windText(t.wind)}</td>
 									<td class="w-12 text-zinc-500">{Math.abs(t.arc).toFixed(0)}°</td>

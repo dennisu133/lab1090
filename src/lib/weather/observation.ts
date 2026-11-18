@@ -33,17 +33,20 @@
  * (tailwind, crosswind, drift), and with the pressure altitude, the temperature compared
  * with the standard atmosphere, the air density and the density altitude (air-data.ts).
  *
- * Shared by server and browser; no state here (pairing replies is tracker.ts's job).
+ * Pure, no state here (pairing replies is tracker.ts's job).
  */
 import {
 	airDensity,
 	densityAltitude,
+	G0,
 	isaTemperature,
 	staticPressure,
 	temperatureFromMach,
 	totalTemperature
 } from '#lib/modes/air-data.ts';
+import type { LatLon } from '#lib/modes/cpr.ts';
 import type { HeadingAndSpeed, TrackAndTurn } from '#lib/modes/registers.ts';
+import { KT } from '#lib/units.ts';
 import { declination } from './wmm';
 import {
 	angleDifference,
@@ -68,12 +71,9 @@ export const STEP = {
 	mach: 2.048 / 512
 };
 
-const G = 9.806_65; // m/s²
-const KT = 1852 / 3600; // m/s per kt
-
 /** Turn rate of a coordinated turn, °/s: g · tan(roll) / speed. */
 export function turnRate(rollDegrees: number, tasKt: number): number {
-	return ((G * Math.tan((rollDegrees * Math.PI) / 180)) / (tasKt * KT)) * (180 / Math.PI);
+	return ((G0 * Math.tan((rollDegrees * Math.PI) / 180)) / (tasKt * KT)) * (180 / Math.PI);
 }
 
 export interface Reading<T> {
@@ -84,13 +84,22 @@ export interface Reading<T> {
 	t: number;
 }
 
+/**
+ * Where something about an aircraft is looked up (the magnetic declination, the geoid): its
+ * own ADS-B position if it sent one, else the receiver's. Both vary slowly with place, so the
+ * receiver's is close enough within range (pipeline.ts #position).
+ */
+export interface LookupPosition extends LatLon {
+	from: 'ADS-B' | 'receiver';
+}
+
 export interface Inputs {
 	trackAndTurn: Reading<TrackAndTurn>;
 	headingAndSpeed: Reading<HeadingAndSpeed>;
 	/** Pressure altitude, ft, and where it was heard. */
 	altitude: { feet: number; from: string } | null;
 	/** Where the declination is looked up: the aircraft's own ADS-B position, else the receiver's. */
-	position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' };
+	position: LookupPosition;
 }
 
 export interface WindResult {

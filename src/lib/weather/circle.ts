@@ -25,7 +25,7 @@
  *
  * Gliders and drones use the same trick to find the wind without an airspeed sensor.
  *
- * Shared by server and browser; state is the turns in progress.
+ * Runs in the browser; state is the turns in progress.
  */
 import { speedOf, type Vector, type Wind, windOf } from './wind';
 

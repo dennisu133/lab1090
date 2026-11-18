@@ -100,7 +100,7 @@ describe('RadioHistory', () => {
 
 	test('the same failure again and again is one event, counted', () => {
 		const history = new RadioHistory(0);
-		history.status({ state: 'connecting', attempt: 1 }, 1);
+		history.status({ state: 'connecting' }, 1);
 		history.status({ state: 'connected' }, 2);
 		const busy = 'the RTL-SDR is in use by another program';
 		for (let t = 3; t < 6; t++)

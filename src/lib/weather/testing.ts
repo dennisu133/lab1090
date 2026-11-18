@@ -6,12 +6,13 @@ import { join } from 'node:path';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { pressureAltitude, staticPressure } from '#lib/modes/air-data.ts';
 import { timedMessages } from '#lib/modes/testing.ts';
+import { FT, KT } from '#lib/units.ts';
+import { EPSILON, saturationOverWater } from './contrail';
 import type { Observation } from './observation';
 import { WeatherPipeline } from './pipeline';
 import { toVector, type Vector } from './wind';
 
 const root = join(import.meta.dir, '../../..');
-const FT = 0.3048;
 
 /**
  * When the capture was recorded (fixtures/README.md: 13 Nov 2026, 16:18:23 CET). The
@@ -83,7 +84,7 @@ export async function loadSounding(name: string): Promise<Sounding> {
 				kelvin: Number(celsius) + 273.15,
 				mixingRatio: Number(mixing) / 1000,
 				// Reported where it blows from, in m/s.
-				wind: toVector(Number(ms) / (1852 / 3600), Number(from) + 180)
+				wind: toVector(Number(ms) / KT, Number(from) + 180)
 			};
 		});
 	return { launched: levels[0].time, levels };
@@ -149,4 +150,15 @@ export function balloonTropopause(s: Sounding): SoundingLevel | null {
 		if (above.every((l) => lapse(here, l) <= 2)) return here;
 	}
 	return null;
+}
+
+/**
+ * Relative humidity over water (0–1) from a mixing ratio (kg/kg), pressure (Pa), temperature
+ * (K): what a radiosonde's humidity means for contrails. Aircraft don't measure humidity, so
+ * only the balloon comparison needs it. E.g. 0.01 g/kg at 250 hPa, −50 °C: e = 0.402 Pa of
+ * 6.44 Pa saturated, 6 %.
+ */
+export function humidityOf(mixingRatio: number, pressure: number, kelvin: number): number {
+	const e = (mixingRatio * pressure) / (EPSILON + mixingRatio);
+	return e / saturationOverWater(kelvin);
 }

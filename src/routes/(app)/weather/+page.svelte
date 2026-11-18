@@ -8,7 +8,8 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { contrailRuns, runLevels } from '#lib/describe/contrail.ts';
-	import { flightLevel, hpa, isaText, signed, windText } from '#lib/describe/weather.ts';
+	import { hpa, levelOrFeet, signed } from '#lib/describe/format.ts';
+	import { isaText, windText } from '#lib/describe/weather.ts';
 	import { column, type HeightReference } from '#lib/weather/column.ts';
 	import { ETA, ETA_MODERN, TEMPERATURE_MARGIN } from '#lib/weather/contrail.ts';
 	import {
@@ -159,10 +160,10 @@
 			</InfoTip>
 			{#if top.found}
 				<p class="mt-2 text-2xl text-amber-300">
-					{top.atOrBelow ? '≤ ' : ''}{flightLevel(top.level)}
+					{top.atOrBelow ? '≤ ' : ''}{levelOrFeet(top.level)}
 				</p>
 				<p class="mt-1 text-xs text-zinc-500">
-					{signed(top.lapse)} K/km to the next layer, checked up to {flightLevel(top.checkedTo)}.
+					{signed(top.lapse)} K/km to the next layer, checked up to {levelOrFeet(top.checkedTo)}.
 					{top.atOrBelow ? 'Already the lowest layer with enough data: may be lower.' : ''}
 				</p>
 			{:else}
@@ -188,7 +189,7 @@
 			{#if strongest}
 				<p class="mt-2 font-mono text-2xl text-emerald-300">{windText(strongest.wind)}</p>
 				<p class="mt-1 text-xs text-zinc-500">
-					at {flightLevel(strongest.level)}{strongest.jet ? ': jet stream strength' : ''}.
+					at {levelOrFeet(strongest.level)}{strongest.jet ? ': jet stream strength' : ''}.
 					{strongest.atTop
 						? 'The highest layer with data: it may be stronger above.'
 						: strongest.atBottom
@@ -236,7 +237,7 @@
 			{#if example}
 				<p class="mt-2 text-2xl text-amber-300">{isaText(example.column.isaDeviation)}</p>
 				<p class="mt-1 text-xs text-zinc-500">
-					Mean of the air below {flightLevel(example.layer.level)}, from {example.layer.column!.n}
+					Mean of the air below {levelOrFeet(example.layer.level)}, from {example.layer.column!.n}
 					samples.
 				</p>
 			{:else}

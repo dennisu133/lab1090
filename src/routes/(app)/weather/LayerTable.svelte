@@ -13,7 +13,7 @@
 		layerTemperatureFields,
 		layerWindFields
 	} from '#lib/describe/sky.ts';
-	import { flightLevel } from '#lib/describe/weather.ts';
+	import { levelOrFeet, n } from '#lib/describe/format.ts';
 	import type { Column } from '#lib/weather/column.ts';
 	import {
 		LAYER_FT,
@@ -62,9 +62,9 @@
 				<th class="w-36 py-1 font-normal">
 					<InfoTip label="Layer">
 						<p>
-							{LAYER_FT.toLocaleString()} ft of pressure altitude, centred on the level shown (FL350:
-							34,500–35,500 ft). Transponders always report pressure altitude against 1013.25 hPa, whatever
-							the pilots set.
+							{n(LAYER_FT)} ft of pressure altitude, centred on the level shown (FL350: 34,500–35,500
+							ft). Transponders always report pressure altitude against 1013.25 hPa, whatever the pilots
+							set.
 						</p>
 					</InfoTip>
 				</th>
@@ -117,10 +117,10 @@
 						{#if r.layer.column}
 							<button
 								class={['hover:underline', selected === level && 'text-amber-300']}
-								onclick={() => onselect(level)}>{flightLevel(level)}</button
+								onclick={() => onselect(level)}>{levelOrFeet(level)}</button
 							>
 						{:else}
-							<span>{flightLevel(level)}</span>
+							<span>{levelOrFeet(level)}</span>
 						{/if}
 						{#if tropopause.found && tropopause.level === level}
 							<span class="ml-1 text-xs text-amber-300">tropopause</span>

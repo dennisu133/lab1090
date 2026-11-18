@@ -167,17 +167,17 @@ status bar say so, and it keeps trying.
 
 Everything is optional; `lab1090 --help` lists it too.
 
-| Option                    | Default                         | What it is                                               |
-| ------------------------- | ------------------------------- | -------------------------------------------------------- |
-| `--device <index/serial>` | `0`, the first RTL-SDR          | Which RTL-SDR, if there are several                      |
-| `--gain <dB>`             | `49.6`, the most                | The RTL-SDR's gain; less if strong signals overload it   |
-| `--rtl-tcp <host[:port]>` |                                 | An RTL-SDR on another machine, via rtl_tcp (port 1234)   |
-| `--connect <host[:port]>` |                                 | readsb's or dump1090's Beast output (port 30005)         |
-| `--samples <file>`        |                                 | A recording of samples, played at its own pace           |
-| `--position <lat,lon>`    | from the config file            | Where the antenna is, decimal degrees (below)            |
-| `--port <port>`           | `1090`                          | The web page's port                                      |
-| `--bind <address>`        | all                             | Listen on this address only (`127.0.0.1` behind a proxy) |
-| `--config <file>`         | `~/.config/lab1090/config.json` | The config file                                          |
+| Option                    | Default                         | What it is                                                |
+| ------------------------- | ------------------------------- | --------------------------------------------------------- |
+| `--device <index/serial>` | `0`, the first RTL-SDR          | Which RTL-SDR, if there are several                       |
+| `--gain <dB>`             | `49.6`, the most                | The RTL-SDR's gain; less if strong signals overload it    |
+| `--rtl-tcp <host[:port]>` |                                 | An RTL-SDR on another machine, via rtl_tcp (port 1234)    |
+| `--connect <host[:port]>` |                                 | readsb's or dump1090's Beast output (port 30005)          |
+| `--samples <file>`        |                                 | A recording of samples, played at its own pace            |
+| `--position <lat,lon>`    | from the config file            | Where the antenna is, decimal degrees (below)             |
+| `--port <port>`           | `1090`                          | The web page's port                                       |
+| `--bind <address>`        | all                             | Listen on this address only (`127.0.0.1` behind a proxy)  |
+| `--config <file>`         | `~/.config/lab1090/config.json` | The config file (under `$XDG_CONFIG_HOME` if that is set) |
 
 `--rtl-tcp`, `--connect` and `--samples` replace the RTL-SDR on this machine: one source
 at a time.

@@ -13,6 +13,7 @@
  * The map only labels airports with an ICAO code (style.ts), so every tappable one has one.
  */
 import type { LatLon } from '#lib/modes/cpr.ts';
+import { FT } from '#lib/units.ts';
 
 export interface Airport extends LatLon {
 	/** English name if the map has one, else the local one. */
@@ -24,8 +25,6 @@ export interface Airport extends LatLon {
 	/** Above mean sea level; null if the map doesn't say. */
 	elevation: { feet: number; metres: number } | null;
 }
-
-const FT = 0.3048;
 
 const text = (p: Record<string, unknown>, key: string) => {
 	const v = p[key];

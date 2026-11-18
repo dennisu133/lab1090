@@ -71,7 +71,7 @@ export class RtlSdr implements FrameSource {
 	async #run(): Promise<void> {
 		if (this.#closed) return;
 		const { command, device, gain, idleTimeoutMs } = this.#opts;
-		this.#setStatus({ state: 'connecting', attempt: this.#failures + 1 });
+		this.#setStatus({ state: 'connecting' });
 		// -f frequency, -s sample rate, -g gain in dB, -d device; "-": samples to the output.
 		const args = [
 			'-d',

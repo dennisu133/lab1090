@@ -23,8 +23,9 @@
  * Source: NOAA/BGS, "The US/UK World Magnetic Model for 2025–2030: Technical Report"
  * (equations 4–19). Tested against NOAA's published test values (fixtures/wmm/).
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
+import { FT } from '#lib/units.ts';
 import { WMM_COF } from './wmm2025';
 
 /** The model's reference radius, km (not the Earth's: it's just where the series is written). */
@@ -176,5 +177,5 @@ export function magneticField(
 
 /** Declination at a place and time, degrees east. Height in feet (above the ellipsoid). */
 export function declination(lat: number, lon: number, heightFt: number, ms: number): number {
-	return magneticField(lat, lon, heightFt * 0.0003048, decimalYear(ms)).declination;
+	return magneticField(lat, lon, (heightFt * FT) / 1000, decimalYear(ms)).declination;
 }

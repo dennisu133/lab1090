@@ -21,13 +21,12 @@ import type { Velocity } from '#lib/modes/velocity.ts';
 import {
 	advisoryFields,
 	altitudeField,
-	degrees,
-	n,
 	nacPField,
 	silField,
 	squawkField,
 	type Field
 } from './field';
+import { directionText, flightLevel, n, signed } from './format';
 
 export function squitterFields(s: Squitter): Field[] {
 	switch (s.kind) {
@@ -115,7 +114,7 @@ function aircraftStatusFields(s: AircraftStatus): Field[] {
 function surfaceFields(p: SurfacePosition): Field[] {
 	const m = p.movement;
 	const fields: Field[] = [];
-	const kt = (x: number) => x.toLocaleString(undefined, { maximumFractionDigits: 2 });
+	const kt = (x: number) => x.toLocaleString('en', { maximumFractionDigits: 2 });
 	fields.push({
 		value:
 			m.speed === null
@@ -132,7 +131,7 @@ function surfaceFields(p: SurfacePosition): Field[] {
 		p.track === null
 			? { label: 'trk', value: 'n/a', title: 'Ground track not available', tone: 'minor' }
 			: {
-					value: degrees(p.track),
+					value: directionText(p.track),
 					title: 'Ground track or heading (the operational status says which, TAH), 2.8° steps',
 					tone: 'main'
 				},
@@ -196,7 +195,7 @@ function velocityFields(v: Velocity): Field[] {
 		fields.push(
 			{ value: `${Math.round(v.ground.speed)} kt`, title: 'Ground speed', tone: 'main' },
 			{
-				value: degrees(v.ground.track),
+				value: directionText(v.ground.track),
 				title: 'Track: direction of movement over the ground, from true north',
 				tone: 'main'
 			}
@@ -211,7 +210,7 @@ function velocityFields(v: Velocity): Field[] {
 			},
 			{
 				label: 'hdg',
-				value: v.air.heading === null ? 'n/a' : degrees(v.air.heading),
+				value: v.air.heading === null ? 'n/a' : directionText(v.air.heading),
 				title: 'Heading: where the nose points (differs from the track by the wind)',
 				tone: 'main'
 			}
@@ -230,7 +229,7 @@ function velocityFields(v: Velocity): Field[] {
 	if (v.gnssMinusBaro !== null) {
 		fields.push({
 			label: 'GNSS−baro',
-			value: `${v.gnssMinusBaro > 0 ? '+' : ''}${n(v.gnssMinusBaro)} ft`,
+			value: `${signed(v.gnssMinusBaro, 0)} ft`,
 			title:
 				'GNSS height minus barometric altitude. Barometric altitude assumes the standard atmosphere, so the difference grows with warmer air and higher surface pressure, plus the geoid height (GNSS heights are above the WGS84 ellipsoid)',
 			tone: 'minor'
@@ -307,7 +306,7 @@ function targetStateFields(t: TargetState): Field[] {
 	if (t.selectedHeading !== null) {
 		fields.push({
 			label: 'sel hdg',
-			value: degrees(t.selectedHeading),
+			value: directionText(t.selectedHeading),
 			title:
 				'Heading set on the autopilot panel. Flown only in heading mode, not while following the route (LNAV). True or magnetic, as HRD in TC 31 says',
 			tone: 'main'
@@ -364,7 +363,7 @@ function targetStateV1Fields(t: Extract<TargetState, { subtype: 0 }>): Field[] {
 	if (v) {
 		fields.push({
 			label: 'target',
-			value: v.type === 'flight level' ? `FL${n(v.altitude / 100)}` : `${n(v.altitude)} ft`,
+			value: v.type === 'flight level' ? flightLevel(v.altitude) : `${n(v.altitude)} ft`,
 			title: `Target altitude, from ${v.source} (${MODE_TEXT[v.mode]}), ${v.type === 'flight level' ? 'a flight level (pressure altitude)' : 'above mean sea level'}. 100 ft steps`,
 			tone: 'main'
 		});
@@ -373,7 +372,7 @@ function targetStateV1Fields(t: Extract<TargetState, { subtype: 0 }>): Field[] {
 	if (h) {
 		fields.push({
 			label: `target ${h.type === 'track' ? 'trk' : 'hdg'}`,
-			value: degrees(h.angle),
+			value: directionText(h.angle),
 			title: `Target ${h.type}, from ${h.source} (${MODE_TEXT[h.mode]})`,
 			tone: 'main'
 		});

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { bearing, distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, distanceKm } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import { resolutionAdvisory } from '#lib/modes/acas.ts';
 import { advisoryField } from '#lib/tracker/alert-scenario.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
@@ -8,19 +9,17 @@ import {
 	PULSE_MS,
 	PULSES,
 	aircraftFeatures,
-	EXTRAPOLATE_MS,
-	flightLevel,
 	headFeatures,
 	PREDICT_S,
 	PREDICT_SELECTED_S,
 	predictionFeatures,
 	ringFeatures,
 	routeFeatures,
-	SHOW_MS,
 	uncertaintyFeatures,
-	shownPosition,
 	trailFeatures
 } from './features';
+import { flightLevel } from '#lib/describe/format.ts';
+import { EXTRAPOLATE_MS, SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
 
 /** An aircraft at 52°N 14°E at t = 0, eastbound at 480 kt, FL350. */
 function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {

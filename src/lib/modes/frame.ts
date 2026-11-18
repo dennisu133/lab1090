@@ -28,17 +28,6 @@ export function typeCode(data: Uint8Array): number | null {
 }
 
 /**
- * The 24-bit ICAO aircraft address, where it's sent in the clear (AA field, bytes 1–3).
- * In the other formats (DF0/4/5/16/20/21) the address is XORed into the parity (AP field)
- * and can only be recovered via the CRC.
- */
-export function icaoAddress(data: Uint8Array): string | null {
-	const df = downlinkFormat(data);
-	if (df !== 11 && df !== 17 && df !== 18) return null;
-	return toHex(data.subarray(1, 4)).toUpperCase();
-}
-
-/**
  * Read `count` bits starting at bit `first`, counted from 1 like in the specs: bit 1 is the
  * most significant bit of the first byte. So `bits(data, 1, 5)` is the DF, and for an ADS-B
  * payload `bits(me, 1, 5)` is the type code. Up to 53 bits (plain numbers, no BigInt).
@@ -57,14 +46,20 @@ export function payload(data: Uint8Array): Uint8Array | null {
 }
 
 /**
- * Beast signal byte -> dBFS. readsb sends sqrt(power) * 255, with power relative to full
- * scale (0–1), so power = (s / 255)² and dBFS = 20·log10(s / 255).
+ * Signal byte -> dBFS. It's an amplitude, 255 = full scale, so dBFS = 20·log10(s / 255).
+ * Our demodulator (lib/demod/) sends the PULSE amplitude: 0 dBFS = pulses at the ADC's full
+ * scale. readsb (only with --connect) sends sqrt(power) · 255 with the power averaged over
+ * pulses and gaps alike: about 3 dB lower for the same message.
  */
 export function signalDbfs(signal: number): number {
 	return signal === 0 ? -Infinity : 20 * Math.log10(signal / 255);
 }
 
-/** readsb counts messages above this as "strong signals" (and auto-gain backs off). */
+/**
+ * Messages above this count as "strong signals": close to the ADC's limit. The value is
+ * readsb's (its auto-gain backs off above it), chosen for readsb's scale; on our
+ * demodulator's pulse-amplitude scale the same message reads about 3 dB higher.
+ */
 export const STRONG_SIGNAL_DBFS = -3;
 
 /** Width of the signal histogram buckets, in dB. */

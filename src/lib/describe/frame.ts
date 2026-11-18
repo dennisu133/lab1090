@@ -24,7 +24,8 @@ import {
 } from '#lib/modes/header.ts';
 import { airbornePosition } from '#lib/modes/position.ts';
 import { esFormat, extendedSquitter, imf } from '#lib/modes/squitter.ts';
-import { advisoryFields, altitudeField, n, squawkField, type Field } from './field';
+import { advisoryFields, altitudeField, squawkField, type Field } from './field';
+import { n } from './format';
 import { cprFields, squitterFields } from './squitter';
 
 export interface Located {

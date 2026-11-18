@@ -7,10 +7,8 @@
 <script lang="ts">
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { ago, distanceText } from '#lib/describe/aircraft.ts';
-	import { n } from '#lib/describe/field.ts';
+	import { ago, directionText, distanceText, n, type Unit } from '#lib/describe/format.ts';
 	import { compass, distanceKm } from '#lib/geo.ts';
-	import type { Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { BURST_GAP_MS } from '#lib/radar/bursts.ts';
 	import {
@@ -63,12 +61,11 @@
 		onclose
 	}: Props = $props();
 
-	const deg = (x: number) => `${String(Math.round(x) % 360).padStart(3, '0')}°`;
 	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
 	const km = (x: number) => distanceText(x, unit);
-	/** Fixed decimals, in the reader's locale. */
+	/** Fixed decimals, with thousands separators. */
 	const fixed = (x: number, digits: number) =>
-		x.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+		x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 	const plural = (count: number, word: string) => `${n(count)} ${word}${count === 1 ? '' : 's'}`;
 
 	let seconds = $derived(r.period / 1000);
@@ -337,7 +334,7 @@
 		</p>
 	</InfoTip>
 	<p>
-		The ellipse is {km(r.spread.major)} along {deg(r.spread.bearing)}/{deg(
+		The ellipse is {km(r.spread.major)} along {directionText(r.spread.bearing)}/{directionText(
 			(r.spread.bearing + 180) % 360
 		)}
 		and {km(r.spread.minor)} across{#if shown.major !== r.spread.major || shown.minor !== r.spread.minor}

@@ -66,10 +66,6 @@ export class SampleDecoder {
 		}
 	}
 
-	get stats(): DemodulatorStats {
-		return this.#demodulator.stats;
-	}
-
 	report(): DemodReport {
 		const clock = this.#clock?.report(performance.now()) ?? null;
 		return {

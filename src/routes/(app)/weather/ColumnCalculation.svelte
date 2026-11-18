@@ -5,7 +5,9 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { celsius, flightLevel, hpa, isaText, signed } from '#lib/describe/weather.ts';
+	import { FT } from '#lib/units.ts';
+	import { celsius, hpa, levelOrFeet, n, signed } from '#lib/describe/format.ts';
+	import { isaText } from '#lib/describe/weather.ts';
 	import { R_OVER_G_FT, type Column, type HeightReference } from '#lib/weather/column.ts';
 	import type { Layer } from '#lib/weather/profile.ts';
 	import type { Qnh } from '#lib/weather/sky.ts';
@@ -20,9 +22,8 @@
 	let { layer, column: c, qnh, heights = $bindable() }: Props = $props();
 
 	let col = $derived(layer.column!);
-	const ft = (x: number) => `${Math.round(x).toLocaleString()} ft`;
+	const ft = (x: number) => `${n(x)} ft`;
 	const sft = (x: number) => `${signed(x, 0)} ft`;
-	const FT = 0.3048;
 
 	const REFERENCES: { value: HeightReference; label: string }[] = [
 		{ value: 'ellipsoid', label: 'above the ellipsoid' },
@@ -35,7 +36,7 @@
 		<InfoTip
 			heading="h3"
 			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="The column below {flightLevel(layer.level)}"
+			label="The column below {levelOrFeet(layer.level)}"
 			wide
 		>
 			<p>
@@ -138,7 +139,7 @@
 				: 'colder'} than standard.
 			{#if layer.temperature}
 				The air <em>at</em>
-				{flightLevel(layer.level)} itself is {celsius(layer.temperature.kelvin)},
+				{levelOrFeet(layer.level)} itself is {celsius(layer.temperature.kelvin)},
 				{isaText(layer.temperature.isaDeviation)} (5,0/6,0){Math.sign(
 					layer.temperature.isaDeviation
 				) !== Math.sign(c.isaDeviation)

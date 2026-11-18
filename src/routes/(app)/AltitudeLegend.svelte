@@ -11,6 +11,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import { FT } from '#lib/units.ts';
 	import {
 		altitudeCss,
 		altitudeGradient,
@@ -18,9 +19,9 @@
 		GROUND_COLOUR,
 		UNKNOWN_COLOUR
 	} from '#lib/map/altitude.ts';
-	import { flightLevel, STALE_MS, STALE_OPACITY } from '#lib/map/features.ts';
+	import { flightLevel, n } from '#lib/describe/format.ts';
+	import { STALE_MS, STALE_OPACITY } from '#lib/map/features.ts';
 
-	const FT = 0.3048;
 	/** The legend's ticks above 0: every 10,000 ft. */
 	const TICKS = [10_000, 20_000, 30_000, 40_000];
 	/** The faded sample: an aircraft at cruise level. */
@@ -43,7 +44,7 @@
 					{#each TICKS as feet (feet)}
 						<tr>
 							<td class="pr-2">{@render swatch(altitudeCss(feet))}</td>
-							<td class="pr-3 text-right">{feet.toLocaleString('en')} ft</td>
+							<td class="pr-3 text-right">{n(feet)} ft</td>
 							<td class="pr-3">{flightLevel(feet)}</td>
 							<td class="text-right">{((feet * FT) / 1000).toFixed(1)} km</td>
 							<td class="w-full"></td>

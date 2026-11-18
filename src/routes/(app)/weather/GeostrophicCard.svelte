@@ -7,7 +7,8 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { degrees, flightLevel, windText } from '#lib/describe/weather.ts';
+	import { directionText, levelOrFeet } from '#lib/describe/format.ts';
+	import { windText } from '#lib/describe/weather.ts';
 	import {
 		MIN_GEOSTROPHIC_AIRCRAFT,
 		MIN_SEGMENT_KM,
@@ -203,7 +204,7 @@
 			<div class="space-y-2 text-sm">
 				{#if geo.found}
 					<p>
-						The pressure surfaces rise towards {degrees(contours?.uphill ?? 0)}, by
+						The pressure surfaces rise towards {directionText(contours?.uphill ?? 0)}, by
 						{speedOf(geo.slope).toFixed(0)} ft per 100 km
 						{#if contours}(contours every {contours.step} ft){/if}.
 					</p>
@@ -212,9 +213,9 @@
 						along the contours is {Math.round(geo.wind.speed)} kt.
 					</p>
 					<p class="text-zinc-400">
-						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {flightLevel(
+						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {levelOrFeet(
 							geo.levels[0]
-						)}–{flightLevel(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS −
+						)}–{levelOrFeet(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS −
 						baro comes in 25 ft steps){geo.uncertainty === null
 							? '; too few aircraft keep the spread when one is left out to tell how much the wind depends on any one of them.'
 							: `; leaving out any one aircraft moves the wind by up to ${Math.round(geo.uncertainty)} kt.`}

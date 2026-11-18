@@ -128,7 +128,7 @@ export class Receiver {
 	}
 
 	#onFrame(f: BeastFrame): void {
-		if (f.kind === 'modeac') return; // only Mode S here (readsb doesn't send Mode A/C unless asked)
+		if (f.kind === 'modeac') return; // Mode S only: a Beast feed may carry Mode A/C (readsb --modeac)
 		const now = Date.now();
 		const df = downlinkFormat(f.data);
 		const tc = typeCode(f.data);

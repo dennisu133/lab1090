@@ -13,8 +13,10 @@ import {
 	type Layer
 } from '#lib/weather/profile.ts';
 import { SAMPLE_EVERY_MS } from '#lib/weather/sky.ts';
+import { FT } from '#lib/units.ts';
 import type { Field } from './field';
-import { celsius, flightLevel, isaText, signed, windText } from './weather';
+import { celsius, levelOrFeet, signed } from './format';
+import { isaText, windText } from './weather';
 
 /** "12 from 3 aircraft" */
 const samplesText = (n: number, aircraft: number) =>
@@ -71,7 +73,7 @@ export function layerTemperatureFields(layer: Layer): Field[] {
 		},
 		{
 			value: isaText(t.isaDeviation),
-			title: `The standard atmosphere has ${celsius(isa)} at ${flightLevel(layer.level)}; each sample is compared at its own altitude, then averaged: ${signed(t.isaDeviation)} K, ${t.isaDeviation >= 0 ? 'warmer' : 'colder'} than standard.`,
+			title: `The standard atmosphere has ${celsius(isa)} at ${levelOrFeet(layer.level)}; each sample is compared at its own altitude, then averaged: ${signed(t.isaDeviation)} K, ${t.isaDeviation >= 0 ? 'warmer' : 'colder'} than standard.`,
 			tone: 'minor'
 		},
 		countField(t.n, t.aircraft, 'temperature')
@@ -89,13 +91,13 @@ export function lapseField(
 ): Field[] {
 	if (!upper || lapse === null)
 		return [{ value: '—', title: 'No temperature further up', tone: 'minor' }];
-	const km = ((upper.level - lower.level) * 0.3048) / 1000;
+	const km = ((upper.level - lower.level) * FT) / 1000;
 	const noisy = !enough(lower) || !enough(upper);
 	return [
 		{
 			value: `${signed(lapse)} K/km`,
 			title: [
-				`From ${flightLevel(lower.level)} to ${flightLevel(upper.level)} (${km.toFixed(2)} km): ${celsius(lower.kelvin)} → ${celsius(upper.kelvin)}, ${lapse >= 0 ? 'colder' : 'warmer'} by ${Math.abs(lapse * km).toFixed(1)} K.`,
+				`From ${levelOrFeet(lower.level)} to ${levelOrFeet(upper.level)} (${km.toFixed(2)} km): ${celsius(lower.kelvin)} → ${celsius(upper.kelvin)}, ${lapse >= 0 ? 'colder' : 'warmer'} by ${Math.abs(lapse * km).toFixed(1)} K.`,
 				'',
 				'The standard atmosphere cools by 6.5 K/km up to the tropopause, then not at all. Real air can cool faster or slower; an inversion is negative (warmer above).',
 				`At ${TROPOPAUSE_LAPSE} K/km or less, staying so for 2 km, the WMO calls it the tropopause.`,

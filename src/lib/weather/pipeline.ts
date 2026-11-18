@@ -25,9 +25,10 @@
  * the wind with its ADS-B ground speed and track (10 s at 450 kt is 2.3 km; the 60 s the
  * declination may use would be 14 km).
  *
- * Shared by server and browser; state is the aircraft heard so far.
+ * Runs in the browser; state is the aircraft heard so far.
  */
-import { destination, KM_PER_NM } from '#lib/geo.ts';
+import { destination } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory } from '#lib/modes/adsb-memory.ts';
 import { replyAltitude } from '#lib/modes/altitude.ts';
@@ -139,7 +140,7 @@ export class WeatherPipeline {
 		const a = this.#memory.get(icao)!;
 		if (a.gnssMinusBaro?.t === rx && a.altitude && rx - a.altitude.t <= COLUMN_ALTITUDE_MS) {
 			const position = this.#position(icao, rx);
-			if (position) this.sky.addColumn(icao, rx, a.altitude.value, a.gnssMinusBaro.value, position);
+			this.sky.addColumn(icao, rx, a.altitude.value, a.gnssMinusBaro.value, position);
 		}
 		if (a.ground?.t === rx) {
 			const altitude =

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
+import { FT } from '#lib/units.ts';
 import { balancingWind, geostrophicWind, segments } from './geostrophic';
 import type { ColumnSample } from './profile';
 
-const FT = 0.3048;
 const R = 6_356_766; // the ISA's Earth radius, m (column.ts)
 const ORIGIN = { lat: 52, lon: 14 };
 const F52 = 2 * 7.292_115e-5 * Math.sin(52 * (Math.PI / 180));

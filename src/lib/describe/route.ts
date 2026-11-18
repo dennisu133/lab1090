@@ -7,8 +7,7 @@
  */
 import type { DbAirline, DbAirport, DbFlight, DbRoute } from '#lib/aircraft-db.ts';
 import { airlineDesignator } from '#lib/aircraft-db.ts';
-import { KM_PER_NM } from '#lib/geo.ts';
-import type { Unit } from '#lib/map/features.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import {
 	type Judged,
 	MAX_DETOUR,
@@ -20,8 +19,8 @@ import {
 } from '#lib/tracker/route.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import type { Section } from './aircraft';
+import { n, type Unit } from './format';
 
-const n = (x: number) => Math.round(x).toLocaleString('en');
 const dist = (km: number, unit: Unit) => `${n(unit === 'NM' ? km / KM_PER_NM : km)} ${unit}`;
 
 /** Opens every check tooltip: why a route needs checking at all. */

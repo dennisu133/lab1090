@@ -10,6 +10,7 @@
 	link, its tooltip the reason.
 -->
 <script lang="ts">
+	import { n } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { receiverLink as link } from '#lib/receiver-link.svelte.ts';
 	import type { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
@@ -76,7 +77,7 @@
 	{#if state.label === 'Live'}
 		<span>
 			{stats.counts && stats.since !== null
-				? `${stats.counts.total.toLocaleString()} since ${started(stats.since)}`
+				? `${n(stats.counts.total)} since ${started(stats.since)}`
 				: '–'}
 		</span>
 	{/if}

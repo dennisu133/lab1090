@@ -4,7 +4,7 @@
  * works on phones too, so the panel shows these explanations as tappable InfoTips, not as
  * hover titles: every field here has a `label`.
  */
-import { bearing, compass, distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import { airlineDesignator, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
 import type { Timed } from '#lib/modes/adsb-memory.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
@@ -20,16 +20,12 @@ import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import type { HeadingCheck } from '#lib/weather/headings.ts';
 import type { Layer } from '#lib/weather/profile.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
-import {
-	EXTRAPOLATE_MS,
-	flightLevel,
-	SHOW_MS,
-	shownPosition,
-	type Unit
-} from '#lib/map/features.ts';
+import { EXTRAPOLATE_MS, SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
+import { KM_PER_NM, NM } from '#lib/units.ts';
 import { alertSection, identField } from './alert';
 import { contrailField } from './contrail';
 import type { Field } from './field';
+import { ago, directionText, distanceText, flightLevel, n, signed, type Unit } from './format';
 import { routeSection } from './route';
 import { weatherHereFields } from './weather';
 
@@ -53,16 +49,6 @@ export interface Section {
 	tier?: Tier;
 }
 
-const n = (x: number) => Math.round(x).toLocaleString('en');
-const signed = (x: number) => (x > 0 ? `+${n(x)}` : x < 0 ? `−${n(-x)}` : '0');
-const deg = (x: number) => `${String(Math.round(x) % 360).padStart(3, '0')}°`;
-
-/** "4 s ago", "2 min ago". */
-export function ago(ms: number): string {
-	const s = Math.max(0, Math.round(ms / 1000));
-	return s < 120 ? `${s} s ago` : `${Math.round(s / 60)} min ago`;
-}
-
 /** Where a value came from, for the end of a tooltip. */
 function source<T>(v: Timed<T>, now: number): string {
 	const what =
@@ -76,16 +62,10 @@ function source<T>(v: Timed<T>, now: number): string {
 	return ` From ${what}, ${ago(now - v.t)}.`;
 }
 
-/** Whole units, or one decimal below 10 (dead reckoning moves aircraft by fractions of a mile). */
-export function distanceText(km: number, unit: Unit): string {
-	const d = unit === 'NM' ? km / KM_PER_NM : km;
-	return `${d < 10 ? d.toFixed(1) : n(d)} ${unit}`;
-}
-
 /** "30 m", "0.3 NM (556 m)": metres up to 100, then nautical miles as well. */
 function radius(metres: number): string {
 	if (metres < 100) return `${n(metres)} m`;
-	const nm = metres / 1852;
+	const nm = metres / NM;
 	const m = metres < 10_000 ? `${n(metres)} m` : `${n(metres / 1000)} km`;
 	return `${nm < 1 ? Number(nm.toFixed(2)) : n(nm)} NM (${m})`;
 }
@@ -101,7 +81,7 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 			label: 'Accuracy',
 			value: u.accuracy === null ? 'unknown (NACp 0)' : `< ${radius(u.accuracy)} (NACp ${u.nacP})`,
 			title: `The navigation system's estimate of its own error: the true position is within this distance 95 % of the time (NACp, 0–11). Satellite navigation gives NACp 8–10 (93 m down to 10 m); larger means inertial navigation (drifts about 1 NM an hour), radio beacons, or a disturbed receiver, e.g. jamming.${u.accuracy === null ? " Unknown: it can't say, usually without a satellite fix." : ''}${source(a.nacP, now)}`,
-			tone: u.accuracy === null || u.accuracy > 0.3 * 1852 ? 'alert' : 'main'
+			tone: u.accuracy === null || u.accuracy > 0.3 * NM ? 'alert' : 'main'
 		});
 	const c = u.containment;
 	if (c && a.positionCode) {
@@ -118,7 +98,7 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 					? 'as the horizontal protection limit (ADS-B version 0 has no NIC).'
 					: 'refined by the NIC supplement bits (TC 31 and the position message).'
 			}${c.assumed ? ' A supplement bit is still missing, so this is the larger possible radius.' : ''}${source(a.positionCode, now)}`,
-			tone: c.rc === null || c.rc > 1852 ? 'alert' : 'main'
+			tone: c.rc === null || c.rc > NM ? 'alert' : 'main'
 		});
 	}
 	return fields;
@@ -321,7 +301,7 @@ export function aircraftSections(
 		const b = bearing(receiver, p);
 		position.push({
 			label: 'From receiver',
-			value: `${distanceText(km, unit)} ${compass(b)} (${deg(b)})`,
+			value: `${distanceText(km, unit)} ${compass(b)} (${directionText(b)})`,
 			tone: 'main'
 		});
 		position.push(...uncertaintyFields(a, now));
@@ -418,7 +398,7 @@ export function aircraftSections(
 		const r = a.verticalRate.value;
 		flight.push({
 			label: 'Vertical rate',
-			value: Math.abs(r.rate) < 100 ? 'level' : `${signed(r.rate)} ft/min`,
+			value: Math.abs(r.rate) < 100 ? 'level' : `${signed(r.rate, 0)} ft/min`,
 			title: `From ${r.source === 'GNSS' ? 'satellite navigation' : 'the change in air pressure'}. Airliners climb at 1,000–3,000 ft/min and descend at 1,000–2,000; under 100 counts as level here (the message's step is 64).${source(a.verticalRate, now)}`,
 			tone: 'main'
 		});
@@ -436,7 +416,7 @@ export function aircraftSections(
 			},
 			{
 				label: 'Track',
-				value: `${deg(g.track)} ${compass(g.track)}`,
+				value: `${directionText(g.track)} ${compass(g.track)}`,
 				title:
 					'Where it moves over the ground, from true north. The nose (the heading) points a little off it in a crosswind: the drift angle.' +
 					source(a.ground, now),
@@ -479,9 +459,9 @@ export function aircraftSections(
 			flight.push({
 				label: 'Heading',
 				value:
-					ref === 'magnetic' && at
-						? `${deg(heading)} magnetic (${deg(asTrue)} true)`
-						: `${deg(heading)}${ref ? ` ${ref}` : ''}`,
+					ref === 'magnetic'
+						? `${directionText(heading)} magnetic (${directionText(asTrue)} true)`
+						: `${directionText(heading)}${ref ? ` ${ref}` : ''}`,
 				title: `Where the nose points. ${
 					ref === null
 						? 'True or magnetic: its operational status (TC 31) will say.'
@@ -510,7 +490,7 @@ export function aircraftSections(
 			m.turnRate === 0 || m.turnLeft === 0
 				? 'straight on'
 				: m.rollOut !== null
-					? `turning ${m.turnRate > 0 ? 'right' : 'left'} to ${deg(m.rollOut)}`
+					? `turning ${m.turnRate > 0 ? 'right' : 'left'} to ${directionText(m.rollOut)}`
 					: `turning ${m.turnRate > 0 ? 'right' : 'left'}, end unknown`;
 		const vertical =
 			m.verticalRate === 0
@@ -539,7 +519,7 @@ export function aircraftSections(
 			value: movement.stopped
 				? 'stopped'
 				: speed
-					? `${speed.min}–${speed.max ?? '…'} kt${direction === null ? '' : `, ${deg(direction)}`}`
+					? `${speed.min}–${speed.max ?? '…'} kt${direction === null ? '' : `, ${directionText(direction)}`}`
 					: 'unknown',
 			title:
 				'On the ground the speed is a step on a non-linear scale: from 1/8 kt steps when barely moving to 5 kt steps above 100 kt. The direction is the ground track or the heading; the operational status says which.' +
@@ -564,7 +544,7 @@ export function aircraftSections(
 	if (target?.selectedHeading !== null && target?.selectedHeading !== undefined)
 		intent.push({
 			label: 'Selected heading',
-			value: deg(target.selectedHeading),
+			value: directionText(target.selectedHeading),
 			title:
 				"Only flown in heading mode; in LNAV the flight management system steers along the route, and this is just what's dialled in." +
 				source(a.target!, now),
@@ -615,7 +595,7 @@ export function aircraftSections(
 	if (hs?.value.heading !== null && hs?.value.heading !== undefined)
 		radar.push({
 			label: 'Heading',
-			value: `${deg(hs.value.heading)} magnetic`,
+			value: `${directionText(hs.value.heading)} magnetic`,
 			title: 'Where the nose points, from magnetic north.' + source(hs, now),
 			tone: 'main'
 		});

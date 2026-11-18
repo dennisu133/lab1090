@@ -74,7 +74,7 @@ export class TcpClient {
 
 	async #connect(): Promise<void> {
 		if (this.#closed) return;
-		this.#setStatus({ state: 'connecting', attempt: this.#failures + 1 });
+		this.#setStatus({ state: 'connecting' });
 		try {
 			await Bun.connect({
 				hostname: this.#opts.host,

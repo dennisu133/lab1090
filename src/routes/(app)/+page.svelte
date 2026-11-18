@@ -8,7 +8,7 @@
 	the receiver (its coverage), a ground radar (experimental) or an airport. One at a time.
 -->
 <script lang="ts" module>
-	import type { Unit } from '#lib/map/features.ts';
+	import type { Unit } from '#lib/describe/format.ts';
 	import { RouteJudge } from '#lib/tracker/route.ts';
 
 	/**

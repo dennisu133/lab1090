@@ -6,14 +6,8 @@
 <script lang="ts">
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import {
-		celsius,
-		flightLevel,
-		signed,
-		temperatureFields,
-		windFields,
-		windText
-	} from '#lib/describe/weather.ts';
+	import { celsius, levelOrFeet, n, signed } from '#lib/describe/format.ts';
+	import { temperatureFields, windFields, windText } from '#lib/describe/weather.ts';
 	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import { AIRCRAFT_TTL_MS, AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
 
@@ -138,7 +132,7 @@
 							<span class="text-xs text-zinc-500">{a.callsign ?? ''}</span>
 						</td>
 						<td class="py-0.5">
-							{a.latest.inputs.altitude ? flightLevel(a.latest.inputs.altitude.feet) : ''}
+							{a.latest.inputs.altitude ? levelOrFeet(a.latest.inputs.altitude.feet) : ''}
 						</td>
 						<td class="py-0.5">
 							{#if a.lastWind}<Fields fields={windFields(a.lastWind)} />{/if}
@@ -175,7 +169,7 @@
 							{/if}
 						</td>
 						<td class="py-0.5 text-right text-zinc-400">
-							{a.trustedWinds.toLocaleString()}/{a.observations.toLocaleString()}
+							{n(a.trustedWinds)}/{n(a.observations)}
 						</td>
 						<td class="truncate py-0.5 text-xs" title={problem ?? undefined}>
 							<span class="text-zinc-500">{seconds(a.latest.rx)}</span>

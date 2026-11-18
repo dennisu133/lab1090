@@ -26,8 +26,7 @@
  *
  * Shared by server and browser; no state here.
  */
-
-const NM = 1852;
+import { NM } from '#lib/units.ts';
 
 /** NACp → the 95 % accuracy bound (EPU), metres; null for 0, unknown. DO-260B, as pyModeS. */
 export const NAC_P_METRES: (number | null)[] = [

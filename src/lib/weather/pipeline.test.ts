@@ -3,7 +3,8 @@ import { column } from './column';
 import { layers, strongestWind } from './profile';
 import { qnh } from './sky';
 import { runCapture } from './testing';
-import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { distanceKm } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import { angleDifference, speedOf } from './wind';
 
 /** The capture, through the same pipeline as /weather (testing.ts). */

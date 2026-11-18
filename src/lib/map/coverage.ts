@@ -11,6 +11,7 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 import { BANDS, SECTOR_DEG, type CoveragePoint, type Sector } from '#lib/coverage/coverage.ts';
 import { radioHorizon } from '#lib/coverage/geometry.ts';
+import { flightLevel } from '#lib/describe/format.ts';
 import { destination } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 
@@ -70,7 +71,7 @@ export function horizonFeatures(
 	};
 	const label: Feature<Point, { label?: string }> = {
 		type: 'Feature',
-		properties: { label: `Radio horizon, FL${Math.round(altitudeFt / 100)}` },
+		properties: { label: `Radio horizon, ${flightLevel(altitudeFt)}` },
 		geometry: { type: 'Point', coordinates: lonLat(destination(receiver, 0, km)) }
 	};
 	return { type: 'FeatureCollection', features: [circle, label] };

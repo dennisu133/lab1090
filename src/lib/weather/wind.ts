@@ -21,7 +21,7 @@
  * point where things move *to*; wind direction is reported where it blows *from*, as
  * in every weather report (a westerly wind, 270°, blows towards the east).
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
 
 /** A velocity as north and east components, kt. */

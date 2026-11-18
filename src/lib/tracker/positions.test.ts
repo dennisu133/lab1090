@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { KM_PER_NM } from '#lib/units.ts';
 import { distanceKm } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { encodeCpr } from '#lib/modes/testing.ts';
@@ -15,7 +16,7 @@ const receiver: LatLon = { lat: 52, lon: 14 };
 
 /** Where an aircraft flying from `start` at `kt` on `track` (degrees) is after `ms` (flat Earth: fine over a few km). */
 function along(start: LatLon, track: number, kt: number, ms: number): LatLon {
-	const km = (kt * 1.852 * ms) / 3_600_000;
+	const km = (kt * KM_PER_NM * ms) / 3_600_000;
 	const rad = (track * Math.PI) / 180;
 	return {
 		lat: start.lat + (km * Math.cos(rad)) / 111.2,
@@ -45,7 +46,7 @@ function fly(
 describe('speed and range checks', () => {
 	const from = { lat: 52, lon: 14, t: 0, from: 'pair' as const };
 	/** `km` east of `from`, at time `t`. */
-	const east = (km: number, t: number) => ({ ...along(from, 90, km / 1.852, 3_600_000), t });
+	const east = (km: number, t: number) => ({ ...along(from, 90, km / KM_PER_NM, 3_600_000), t });
 
 	test('with a ground speed: that plus 200 kt, plus 2 km', () => {
 		// 650 kt for 10 s is 3.34 km; with the slack, 5.34 km.

@@ -15,7 +15,7 @@
  *   A site can't take a permission back either, which is why ours exists.
  *
  * Browsers only allow notifications in a secure context: HTTPS, or `localhost`. Opened from
- * another machine over plain HTTP (http://pi:3000), the switch can't work, and says so.
+ * another machine over plain HTTP (http://pi:1090), the switch can't work, and says so.
  */
 
 /** What the browser allows: its permission, or why there's none to ask for. */

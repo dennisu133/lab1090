@@ -5,6 +5,7 @@
 	from one aircraft only.
 -->
 <script lang="ts">
+	import { directionText, flightLevel } from '#lib/describe/format.ts';
 	import { JET_KT, enough, type Layer, type StrongestWind } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
 
@@ -48,7 +49,7 @@
 		{/each}
 		{#each LEVELS as h (h)}
 			<line x1={LEFT} y1={y(h)} x2={W - RIGHT} y2={y(h)} class="stroke-zinc-800" />
-			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">FL{h / 100}</text>
+			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">{flightLevel(h)}</text>
 		{/each}
 		<text x={(LEFT + W - RIGHT) / 2} y={H - 4} text-anchor="middle">wind speed, kt</text>
 	</g>
@@ -88,7 +89,7 @@
 				: 'fill-zinc-950 stroke-emerald-300'}
 		>
 			<title>
-				{`FL${l.level / 100}: from ${Math.round(w.wind.direction)}° at ${Math.round(w.wind.speed)} kt, ${w.n} samples`}
+				{`${flightLevel(l.level)}: from ${directionText(w.wind.direction)} at ${Math.round(w.wind.speed)} kt, ${w.n} samples`}
 			</title>
 		</circle>
 	{/each}

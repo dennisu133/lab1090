@@ -8,7 +8,7 @@
 	import { resolve } from '$app/paths';
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { ago, distanceText } from '#lib/describe/aircraft.ts';
+	import { ago, angleText, distanceText, flightLevel, n, type Unit } from '#lib/describe/format.ts';
 	import {
 		BANDS,
 		OPEN_DEG,
@@ -21,7 +21,6 @@
 	import { compass } from '#lib/geo.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
-	import type { Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { BAND_COLOUR_FT } from '#lib/map/coverage.ts';
 	import type { CoverageStream } from './coverage-stream.svelte';
@@ -40,8 +39,7 @@
 	let { stream, receiver, unit, selected, onselect, onclose }: Props = $props();
 
 	const km = (x: number) => distanceText(x, unit);
-	const deg = (x: number) => `${x.toFixed(1)}°`;
-	const fl = (ft: number) => `FL${Math.round(ft / 100)}`;
+	const deg = (x: number) => angleText(x, 1);
 	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
 	const antennaKm = $derived(stream.terrain?.antennaKm ?? 0);
 	const horizon = (ft: number) => radioHorizon(ft, antennaKm);
@@ -65,7 +63,7 @@
 
 {#snippet who(p: CoveragePoint)}
 	<span class="font-mono">{p.icao}</span>
-	<span style:color={altitudeCss(p.altitude)}>{fl(p.altitude)}</span>
+	<span style:color={altitudeCss(p.altitude)}>{flightLevel(p.altitude)}</span>
 	· {km(p.distance)}
 {/snippet}
 
@@ -74,8 +72,7 @@
 		<h2 class="text-xl font-semibold">Receiver coverage</h2>
 		<p class="text-sm text-zinc-400">
 			{#if stream.positions}
-				{ago(collecting).replace(' ago', '')} of traffic · {stream.positions.toLocaleString('en')} positions
-				·
+				{ago(collecting).replace(' ago', '')} of traffic · {n(stream.positions)} positions ·
 				{summary.heard} of {360 / SECTOR_DEG} directions heard
 			{:else}
 				Waiting for positions…
@@ -115,7 +112,9 @@
 				>{i < BANDS.length - 1 ? ', ' : ''}{/each}.
 		</li>
 		<li>
-			<span class="text-amber-300">Dashed amber</span>: the radio horizon at {fl(HORIZON_FT)},
+			<span class="text-amber-300">Dashed amber</span>: the radio horizon at {flightLevel(
+				HORIZON_FT
+			)},
 			{km(horizon(HORIZON_FT))} out.
 		</li>
 		<li>Dots: the positions behind it, as on the plot below (only while this panel is open).</li>
@@ -190,7 +189,7 @@
 						<dd>{deg(terrain)}</dd>
 					{/if}
 					<dt>Traffic</dt>
-					<dd>{sector.positions.toLocaleString('en')} from {sector.aircraft} aircraft</dd>
+					<dd>{n(sector.positions)} from {sector.aircraft} aircraft</dd>
 				</dl>
 				<h5 class="mt-3 mb-1 text-xs text-zinc-500 uppercase">
 					<InfoTip label="Farthest per altitude band">

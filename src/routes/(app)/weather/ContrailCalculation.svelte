@@ -8,7 +8,7 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { contrailValue, humidityNeeded, type TrackerContrail } from '#lib/describe/contrail.ts';
-	import { celsius, flightLevel } from '#lib/describe/weather.ts';
+	import { celsius, levelOrFeet, n as whole } from '#lib/describe/format.ts';
 	import { staticPressure } from '#lib/modes/air-data.ts';
 	import {
 		CP,
@@ -94,7 +94,7 @@
 			<ContrailChart {kelvin} result={r.at} />
 			<ol class="list-decimal space-y-1.5 pl-5 text-sm text-zinc-300">
 				<li>
-					<strong>Pressure</strong>: {flightLevel(feet)} is wherever the pressure is {n(
+					<strong>Pressure</strong>: {levelOrFeet(feet)} is wherever the pressure is {n(
 						pressure / 100
 					)} hPa (pressure altitude).
 				</li>
@@ -114,9 +114,8 @@
 							here. We can't tell the engine, so one value for all.
 						</p>
 					</InfoTip>
-					= {EI_H2O} × {CP} × {Math.round(pressure).toLocaleString('en')} / ({EPSILON} × {Q.toLocaleString(
-						'en'
-					)} × {n(1 - ETA)}) = <strong>{n(t.slope, 2)} Pa/K</strong>.
+					= {EI_H2O} × {CP} × {whole(pressure)} / ({EPSILON} × {whole(Q)} × {n(1 - ETA)}) =
+					<strong>{n(t.slope, 2)} Pa/K</strong>.
 				</li>
 				<li>
 					<strong>Saturated air</strong> (100 %): the line touches the water curve where the curve
@@ -187,7 +186,7 @@
 	{#if tracker}
 		<p class="mt-2 truncate text-xs text-zinc-500">
 			The tracker's panel uses {tracker.layer
-				? `${flightLevel(tracker.layer.level)}'s mean, ${celsius(tracker.kelvin)} from ${tracker.layer.aircraft} aircraft`
+				? `${levelOrFeet(tracker.layer.level)}'s mean, ${celsius(tracker.kelvin)} from ${tracker.layer.aircraft} aircraft`
 				: `its own reading, ${celsius(tracker.kelvin)}`}, and says “{contrailValue(tracker.range)}”.
 		</p>
 	{/if}

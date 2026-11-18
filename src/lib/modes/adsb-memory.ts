@@ -1,7 +1,7 @@
 /**
  * What each aircraft last broadcast via ADS-B: callsign, altitude, position, speeds, the
  * autopilot settings. Comm-B replies get compared with it (see comm-b.ts), and the tracker
- * on the home page will need the same picture.
+ * and /weather (weather/pipeline.ts) build their picture of each aircraft on it.
  *
  * Feed it only DF17 messages whose CRC checked out: anything else could put one aircraft's
  * values under another one's address.
@@ -74,7 +74,6 @@ export class AdsbMemory {
 		a.recent.set(toHex(me), t);
 
 		const s = squitter(me);
-		if (!s) return;
 		const tc = me[0] >> 3;
 		const from = `TC ${tc}`;
 		const stamp = <T>(value: T): Timed<T> => ({ value, t, from });

@@ -25,9 +25,6 @@ export function bearing(a: LatLon, b: LatLon): number {
 	return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-/** Kilometres per nautical mile (exact, by definition: 1 NM = 1,852 m). */
-export const KM_PER_NM = 1.852;
-
 /**
  * Where you get to from `start`, going `km` along a great circle with the initial
  * direction `bearingDeg` (clockwise from true north). The "direct problem" on a sphere:

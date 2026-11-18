@@ -13,11 +13,12 @@
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { distanceText } from '#lib/describe/aircraft.ts';
 	import { badge } from '#lib/describe/alert.ts';
-	import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
+	import { distanceKm } from '#lib/geo.ts';
+	import { KM_PER_NM } from '#lib/units.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
-	import { flightLevel, shownPosition, type Unit } from '#lib/map/features.ts';
+	import { distanceText, flightLevel, type Unit } from '#lib/describe/format.ts';
+	import { shownPosition } from '#lib/tracker/shown.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { allocation } from '#lib/modes/nationality.ts';
 	import { alertsOf, identing } from '#lib/tracker/alerts.ts';

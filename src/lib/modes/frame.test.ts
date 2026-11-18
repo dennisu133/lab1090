@@ -5,7 +5,6 @@ import {
 	containmentRadius,
 	downlinkFormat,
 	fromHex,
-	icaoAddress,
 	signalBucket,
 	signalDbfs,
 	toHex,
@@ -14,6 +13,7 @@ import {
 	typeCodeGroup,
 	typeCodeName
 } from './frame';
+import { checkParity } from './crc';
 
 const capture = new Uint8Array(
 	await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
@@ -26,7 +26,7 @@ describe('a known DF17 velocity message', () => {
 
 	test('fields', () => {
 		expect(downlinkFormat(msg)).toBe(17);
-		expect(icaoAddress(msg)).toBe('48E95B');
+		expect(checkParity(msg)).toMatchObject({ kind: 'clear', icao: '48E95B', valid: true });
 		expect(typeCode(msg)).toBe(19);
 		expect(toHex(msg)).toBe('8d48e95b9915828df0089c433e2e');
 	});
@@ -54,15 +54,15 @@ describe('against the capture (numbers from fixtures/README.md)', () => {
 
 	test('19 distinct aircraft send DF17', () => {
 		const icaos = new Set(
-			frames.filter((f) => downlinkFormat(f.data) === 17).map((f) => icaoAddress(f.data))
+			frames.filter((f) => downlinkFormat(f.data) === 17).map((f) => checkParity(f.data)!.icao)
 		);
 		expect(icaos.size).toBe(19);
 	});
 
-	test('no ICAO address for formats that hide it in the parity', () => {
+	test('the address is in the clear only in DF11/17/18; the others hide it in the parity', () => {
 		for (const f of frames) {
 			const df = downlinkFormat(f.data);
-			expect(icaoAddress(f.data) === null).toBe(![11, 17, 18].includes(df));
+			expect(checkParity(f.data)?.kind === 'clear').toBe([11, 17, 18].includes(df));
 		}
 	});
 });

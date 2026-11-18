@@ -39,7 +39,7 @@ their aircraft's first DF11/17 in the recording.
 ## `capture-1h.beast`
 
 An hour of the same, recorded during busy traffic (a Monday afternoon) for the experiments
-that need more than 10 minutes: coverage and the radar finder (ROADMAP.md, phase 4).
+that need more than 10 minutes: coverage and the radar finder.
 
 ```bash
 timeout 3600 bash -c 'cat < /dev/tcp/pi/30005' > fixtures/capture-1h.beast
@@ -64,8 +64,11 @@ codes: 0 (436), 4 (2,904), 7 (5), 11 (24,423), 12 (4,062), 18 (232), 19 (29,013)
 (1,528), 29 (11,118), 31 (5,497).
 
 Not used by `bun test`: running it through the tracker takes ~5 s, through the radar finder
-~50 s. The tests stay on `capture.beast`; what the hour showed is in ROADMAP.md. To watch
-it: `bun tools/replay.ts fixtures/capture-1h.beast`.
+~50 s. The tests stay on `capture.beast`. What the hour showed: coverage open from 170° to
+350° down to 1.3–4.1° elevation, farthest 266 km (62 % of the radio horizon), the south-east
+and east blocked up to 12–18° by the building although traffic flies there, terrain ≤ 0.2°;
+the radar finder confirmed 9 radars, all near known sites, no phantoms (~44 s CPU). To
+watch it: `bun tools/replay.ts fixtures/capture-1h.beast`.
 
 ## `wmm/`
 

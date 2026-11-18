@@ -12,11 +12,13 @@
  * layers between FL300 and FL410. Layers are by pressure altitude: transponders always
  * report it against 1013.25 hPa, whatever the pilots set on their altimeters.
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
 import { isaTemperature } from '#lib/modes/air-data.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
+import { FT, KT } from '#lib/units.ts';
 import type { ColumnInputs } from './column';
+import type { LookupPosition } from './observation';
 import { meanWind, speedOf, type Vector, type Wind } from './wind';
 
 export const LAYER_FT = 1000;
@@ -32,9 +34,9 @@ export const MIN_AIRCRAFT = 2;
 /** WMO: the tropopause is where the lapse rate drops to 2 K/km or less … */
 export const TROPOPAUSE_LAPSE = 2;
 /** … and stays there on average for the next 2 km. */
-export const TROPOPAUSE_DEPTH_FT = 2000 / 0.3048;
+export const TROPOPAUSE_DEPTH_FT = 2000 / FT;
 /** WMO: a jet stream has at least 30 m/s along its axis. */
-export const JET_KT = 30 / (1852 / 3600);
+export const JET_KT = 30 / KT;
 
 export interface TemperatureSample {
 	icao: string;
@@ -67,7 +69,7 @@ export interface ColumnSample extends ColumnInputs {
 	icao: string;
 	rx: number;
 	/** Where the geoid was looked up: the aircraft's ADS-B position, or the receiver's. */
-	position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' };
+	position: LookupPosition;
 }
 
 export interface Count {
@@ -184,7 +186,7 @@ export function lapseRate(
 	lower: { level: number; kelvin: number },
 	upper: { level: number; kelvin: number }
 ): number {
-	return (lower.kelvin - upper.kelvin) / (((upper.level - lower.level) * 0.3048) / 1000);
+	return (lower.kelvin - upper.kelvin) / (((upper.level - lower.level) * FT) / 1000);
 }
 
 export type Tropopause =

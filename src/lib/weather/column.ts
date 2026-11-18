@@ -54,11 +54,11 @@
  * theirs within 0.8 K at every cruise level, given the real QNH. Leaving out humidity costs
  * 0.1–0.2 K there.
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
 import { G0, R_AIR, pressureAltitude, staticPressure } from '#lib/modes/air-data.ts';
+import { FT } from '#lib/units.ts';
 
-const FT = 0.3048;
 /** R / g₀, ft per kelvin per unit of ln p: 96.03 ft. */
 export const R_OVER_G_FT = R_AIR / G0 / FT;
 /** The Earth radius the ISA's geopotential heights use, m (ICAO Doc 7488). */

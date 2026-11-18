@@ -30,7 +30,7 @@
  * Whether the contrail *persists* is another question: its ice crystals survive only where
  * the air is saturated over ice. The air we can't see into, so we say so.
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
 
 /** Water vapour per kg of kerosene burnt, kg/kg (Schumann 1996). */
@@ -151,12 +151,6 @@ export function contrail(kelvin: number, pressure: number, eta = ETA): Contrail 
 	return needed <= 0
 		? { verdict: 'always', thresholds: t, humidityNeeded: 0, iceSaturation }
 		: { verdict: 'humid', thresholds: t, humidityNeeded: needed, iceSaturation };
-}
-
-/** Relative humidity over water (0–1) from a mixing ratio (kg/kg), pressure (Pa), temperature (K). */
-export function humidityOf(mixingRatio: number, pressure: number, kelvin: number): number {
-	const e = (mixingRatio * pressure) / (EPSILON + mixingRatio);
-	return e / saturationOverWater(kelvin);
 }
 
 /**

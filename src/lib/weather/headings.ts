@@ -26,9 +26,9 @@
  * and MAX_TIME_MS, up to 200 km apart; near a jet stream it isn't quite, and that shows
  * up as a heading error. And it can't see an error everyone shares.
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
-import { MIN_SAMPLES, type WindSample } from './profile';
+import type { WindSample } from './profile';
 import { speedOf, type Vector } from './wind';
 
 /** Other aircraft count as "nearby" within this many feet … */
@@ -37,6 +37,13 @@ export const MAX_LEVEL_FT = 2000;
 export const MAX_TIME_MS = 15 * 60_000;
 /** At least this many other aircraft to compare with. */
 export const MIN_OTHERS = 2;
+/**
+ * At least this many of its own winds, each with others to compare with: a single one can
+ * be off by the registers' rounding or a gust; five (about a minute of flight at one per
+ * 10 s, sky.ts) average that out. Same value as profile.ts's MIN_SAMPLES, but its own
+ * choice: one can change without the other.
+ */
+export const MIN_CHECK_SAMPLES = 5;
 /**
  * Corrections smaller than this, degrees, aren't applied: the method can't tell them from
  * the others' own errors and the wind changing from place to place. Against the capture's
@@ -148,7 +155,7 @@ export function headingChecks(winds: WindSample[]): Map<string, HeadingCheck> {
 		for (const [icao, all] of byAircraft) {
 			// Winds from turns have no heading to check, but they're good references.
 			const own = all.filter((w): w is WindSample & { air: Vector } => w.air !== null);
-			if (own.length < MIN_SAMPLES) continue;
+			if (own.length < MIN_CHECK_SAMPLES) continue;
 			const others = new Set<string>();
 			let cos = 0;
 			let sin = 0;
@@ -166,7 +173,7 @@ export function headingChecks(winds: WindSample[]): Map<string, HeadingCheck> {
 				sin += w.air.north * implied.east - w.air.east * implied.north;
 				pairs.push({ w, reference: reference.wind });
 			}
-			if (others.size < MIN_OTHERS || pairs.length < MIN_SAMPLES) continue;
+			if (others.size < MIN_OTHERS || pairs.length < MIN_CHECK_SAMPLES) continue;
 			const correction = Math.atan2(sin, cos) / RAD;
 			next.set(icao, correction);
 			const off = (degrees: number) =>

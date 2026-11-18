@@ -1,10 +1,18 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { BeastParser } from '#lib/server/beast/parser.ts';
-import { fromHex, icaoAddress } from './frame';
-import { callsign, emitterCategory, identification } from './identification';
+import { checkParity } from './crc';
+import { downlinkFormat, fromHex, payload, typeCode } from './frame';
+import { callsign, emitterCategory } from './identification';
+import { squitter } from './squitter';
 
 const root = join(import.meta.dir, '../../..');
+
+/** A DF17 identification as the tracker reads it: squitter() on the ME field. */
+function identification(data: Uint8Array) {
+	const s = squitter(payload(data)!);
+	return s.kind === 'identification' ? { callsign: s.callsign, category: s.category } : null;
+}
 
 /** pyModeS's full decode of every distinct message in the capture (see tools/README.md). */
 const oracle: { message: string; typecode?: number; callsign?: string; category?: number }[] = (
@@ -60,7 +68,6 @@ test('a real message: Lufthansa DLH4LW, a large aircraft', () => {
 
 test('only type codes 1–4 are identification messages', () => {
 	expect(identification(fromHex('8d48e95b9915828df0089c433e2e'))).toBeNull(); // TC 19
-	expect(identification(fromHex('200017180d1091'))).toBeNull(); // DF4
 });
 
 test('agrees with pyModeS on every identification message in the capture', () => {
@@ -81,10 +88,11 @@ test('across the capture, each aircraft keeps one clean callsign', async () => {
 	);
 	const seen = new Map<string, Set<string>>();
 	for (const f of new BeastParser().push(capture)) {
-		if (f.kind === 'modeac') continue;
-		const id = identification(f.data);
-		if (!id) continue;
-		const icao = icaoAddress(f.data)!;
+		if (f.kind === 'modeac' || downlinkFormat(f.data) !== 17) continue;
+		const tc = typeCode(f.data);
+		if (tc === null || tc < 1 || tc > 4) continue;
+		const id = identification(f.data)!;
+		const icao = checkParity(f.data)!.icao;
 		seen.set(icao, (seen.get(icao) ?? new Set()).add(id.callsign));
 	}
 	expect(seen.size).toBe(12);

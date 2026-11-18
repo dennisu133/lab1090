@@ -6,6 +6,7 @@
 	between the −5 and −10 guides means the air below is 5–10 K colder than standard.
 -->
 <script lang="ts">
+	import { flightLevel, signed } from '#lib/describe/format.ts';
 	import { expectedOffset, type Column } from '#lib/weather/column.ts';
 	import { enough, type Layer } from '#lib/weather/profile.ts';
 	import { BOTTOM, H, H_MAX, LEFT, LEVELS, RIGHT, TOP, W, xAxis, y } from './profile-chart';
@@ -61,7 +62,7 @@
 		{/each}
 		{#each LEVELS as h (h)}
 			<line x1={LEFT} y1={y(h)} x2={W - RIGHT} y2={y(h)} class="stroke-zinc-800" />
-			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">FL{h / 100}</text>
+			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">{flightLevel(h)}</text>
 		{/each}
 		<text x={(LEFT + W - RIGHT) / 2} y={H - 4} text-anchor="middle">
 			height − pressure altitude, ft
@@ -101,7 +102,7 @@
 			]}
 		>
 			<title>
-				{`FL${l.level / 100}: ${Math.round(c.offset)} ft, column ${c.isaDeviation >= 0 ? '+' : '−'}${Math.abs(c.isaDeviation).toFixed(1)} K, ${l.column!.n} samples`}
+				{`${flightLevel(l.level)}: ${Math.round(c.offset)} ft, column ${signed(c.isaDeviation)} K, ${l.column!.n} samples`}
 			</title>
 		</circle>
 	{/each}

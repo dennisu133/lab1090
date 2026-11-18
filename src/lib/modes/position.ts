@@ -47,7 +47,8 @@ export function airbornePosition(me: Uint8Array): AirbornePosition | null {
 		surveillanceStatus: bits(me, 6, 2),
 		nicB: bits(me, 8, 1),
 		altitude: gnss
-			? // GNSS height: a plain number of metres (above the WGS84 ellipsoid).
+			? // GNSS height: a plain number of metres (above the WGS84 ellipsoid). 3.28084 ft/m is
+				// 1/FT (units.ts) rounded, as pyModeS has it: the oracle tests compare against it.
 				ac12 === 0
 				? { feet: null, encoding: 'none' }
 				: { feet: Math.round(ac12 * 3.28084), encoding: 'GNSS' }

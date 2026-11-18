@@ -14,7 +14,7 @@ import type { StreamUpdate } from '#lib/receiver-types.ts';
 export const receiverLink = $state<{
 	/** Is the browser ↔ server stream open? null until it opens or fails the first time. */
 	online: boolean | null;
-	/** Server ↔ Pi, from the latest update; null before the first one. */
+	/** Server ↔ receiver, from the latest update; null before the first one. */
 	status: StreamUpdate['status'] | null;
 	/** Where the messages come from, e.g. "RTL-SDR 0" or "pi:30005". */
 	source: string | null;

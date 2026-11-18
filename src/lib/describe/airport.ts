@@ -5,12 +5,9 @@
  */
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import type { Airport } from '#lib/map/airports.ts';
-import type { Unit } from '#lib/map/features.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { distanceText, type PanelField, type Section } from './aircraft.ts';
-
-const n = (x: number) => Math.round(x).toLocaleString('en');
-const deg = (x: number) => `${String(Math.round(x) % 360).padStart(3, '0')}°`;
+import type { PanelField, Section } from './aircraft.ts';
+import { directionText, distanceText, n, type Unit } from './format.ts';
 
 /** The headline: the code people know from tickets (BER), else the ICAO one. */
 export const airportCode = (a: Airport) => a.iata ?? a.icao;
@@ -44,7 +41,7 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 	const b = bearing(receiver, a);
 	fields.push({
 		label: 'From receiver',
-		value: `${distanceText(distanceKm(receiver, a), unit)} ${compass(b)} (${deg(b)})`,
+		value: `${distanceText(distanceKm(receiver, a), unit)} ${compass(b)} (${directionText(b)})`,
 		tone: 'main'
 	});
 	return [{ title: 'Airport', source: 'OpenStreetMap', fields }];

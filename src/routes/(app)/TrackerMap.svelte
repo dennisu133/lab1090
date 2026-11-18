@@ -6,7 +6,7 @@
 	draws with WebGL from GeoJSON sources; this component keeps those sources up to date with
 	the tracker. Aircraft, the pieces of trail up to them and the predictions move every
 	animation frame (dead
-	reckoning, lib/map/features.ts); trails only change with new positions.
+	reckoning, lib/tracker/shown.ts); trails only change with new positions.
 
 	The selected aircraft's route, if adsbdb knows it: a dashed great circle from origin to
 	destination, with the airports' codes.
@@ -67,17 +67,16 @@
 	import {
 		aircraftFeatures,
 		alertLinkFeatures,
-		flightLevel,
 		headFeatures,
 		predictionFeatures,
 		ringFeatures,
 		routeFeatures,
-		shownPosition,
 		STALE_OPACITY,
 		trailFeatures,
-		uncertaintyFeatures,
-		type Unit
+		uncertaintyFeatures
 	} from '#lib/map/features.ts';
+	import { directionText, flightLevel, type Unit } from '#lib/describe/format.ts';
+	import { shownPosition } from '#lib/tracker/shown.ts';
 	import { barbImage, iconImages } from '#lib/map/icons.ts';
 	import { SECTOR_DEG } from '#lib/coverage/coverage.ts';
 	import { radioHorizon } from '#lib/coverage/geometry.ts';
@@ -91,7 +90,6 @@
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
 	import { BARB_BELOW, barbFeatures, type BarbProperties } from '#lib/map/winds.ts';
 	import { compass } from '#lib/geo.ts';
-	import { degrees } from '#lib/describe/weather.ts';
 	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 	import { mapStyle } from '#lib/map/style.ts';
 	import { watchBaseMap } from '#lib/map/base-map.ts';
@@ -1109,7 +1107,7 @@
 			<div class="flex items-start justify-between gap-2">
 				<p class="text-sm font-semibold text-zinc-100 tabular-nums">
 					{compass(b.direction)}
-					{degrees(b.direction)} · {Math.round(b.speed)} kt
+					{directionText(b.direction)} · {Math.round(b.speed)} kt
 					<span class="font-normal text-zinc-400">at {flightLevel(b.altitude)}</span>
 				</p>
 				<button

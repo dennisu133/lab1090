@@ -6,17 +6,16 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import {
-		acrossText,
-		alongText,
 		celsius,
-		driftText,
 		flightLevel,
-		isaText,
-		signed,
-		windText
-	} from '#lib/describe/weather.ts';
+		interval,
+		levelOrFeet,
+		n as whole,
+		signed
+	} from '#lib/describe/format.ts';
+	import { acrossText, alongText, driftText, isaText, windText } from '#lib/describe/weather.ts';
 	import { compass } from '#lib/geo.ts';
-	import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
+	import { A0, R_AIR, RHO0, T0 } from '#lib/modes/air-data.ts';
 	import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
 	import { WMM_VALID } from '#lib/weather/wmm.ts';
 	import type { TrackerContrail } from '#lib/describe/contrail.ts';
@@ -99,9 +98,9 @@
 					<li>
 						<strong>True heading.</strong> 6,0 says the nose points to {n(heading.heading!)}°
 						<em>magnetic</em>. The declination at
-						<InfoTip label={position?.from === 'ADS-B' ? 'the aircraft' : 'the receiver'}>
+						<InfoTip label={position.from === 'ADS-B' ? 'the aircraft' : 'the receiver'}>
 							<p>
-								{latLon(position!)}: {position?.from === 'ADS-B'
+								{latLon(position)}: {position.from === 'ADS-B'
 									? "the aircraft's last ADS-B position."
 									: 'the receiver: this aircraft sent no ADS-B position. The declination can be up to about a degree off at the edge of the range.'}
 							</p>
@@ -174,8 +173,7 @@
 
 		<p class="mt-2 truncate text-xs text-zinc-500">
 			<span class={o.skewMs > MAX_SKEW_MS ? 'text-orange-400' : ''}>
-				5,0 and 6,0 {o.skewMs < 1000 ? `${Math.round(o.skewMs)} ms` : `${n(o.skewMs / 1000)} s`} apart
-				(at most {MAX_SKEW_MS / 1000} s)</span
+				5,0 and 6,0 {interval(o.skewMs)} apart (at most {MAX_SKEW_MS / 1000} s)</span
 			>
 			·
 			{#if track.roll !== null}
@@ -186,7 +184,7 @@
 				no roll angle{track.trackRate !== null ? `, track rate ${n(track.trackRate, 2)}°/s` : ''}
 			{/if}
 			{#if o.inputs.altitude}
-				· {flightLevel(o.inputs.altitude.feet)}
+				· {levelOrFeet(o.inputs.altitude.feet)}
 			{/if}
 		</p>
 	</div>
@@ -274,7 +272,7 @@
 									the Now tab turns that into the temperature of the column below.
 								</p>
 							</InfoTip>
-							at {flightLevel(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is
+							at {levelOrFeet(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is
 							<span class={at.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
 								>{n(Math.abs(at.isaDeviation))} °C {at.isaDeviation >= 0
 									? 'warmer'
@@ -298,17 +296,15 @@
 					</li>
 					{#if at}
 						<li>
-							<strong>Air density</strong> ρ = p / (R·T) = {Math.round(
-								at.pressure
-							).toLocaleString()} Pa / (287.05 × {n(t.kelvin)} K) = {at.density.toFixed(3)} kg/m³, {n(
-								(at.density / RHO0) * 100,
-								0
-							)} % of sea level. Standard air is this thin at
-							<InfoTip label="{Math.round(at.densityAltitude).toLocaleString()} ft">
+							<strong>Air density</strong> ρ = p / (R·T) = {whole(at.pressure)} Pa / ({R_AIR} × {n(
+								t.kelvin
+							)} K) = {at.density.toFixed(3)} kg/m³, {n((at.density / RHO0) * 100, 0)} % of sea level.
+							Standard air is this thin at
+							<InfoTip label="{whole(at.densityAltitude)} ft">
 								<p>
 									The <strong>density altitude</strong>: where the standard atmosphere has this
-									density. The pressure p comes from the pressure altitude (that's what it means: FL{Math.round(
-										o.inputs.altitude!.feet / 100
+									density. The pressure p comes from the pressure altitude (that's what it means: {flightLevel(
+										o.inputs.altitude!.feet
 									)} is wherever the pressure is {n(at.pressure / 100)} hPa).
 								</p>
 								<p>
@@ -323,9 +319,9 @@
 						<InfoTip label="Rounding">
 							<p>
 								TAS comes in {STEP.speed} kt steps and Mach in steps of {STEP.mach} (2.048/512). The coldest
-								the air can be is with the slowest TAS and the highest Mach in those steps ({(track.tas ??
-									0) - 1} kt, {(heading.mach! + STEP.mach / 2).toFixed(3)}), the warmest the other
-								way round.
+								the air can be is with the slowest TAS and the highest Mach in those steps ({track.tas! -
+									STEP.speed / 2} kt, {(heading.mach! + STEP.mach / 2).toFixed(3)}), the warmest the
+								other way round.
 							</p>
 							<p class="text-zinc-400">
 								That's why one aircraft's temperature jumps by a degree or two between readings: a

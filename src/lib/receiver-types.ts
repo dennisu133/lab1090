@@ -9,7 +9,7 @@ import type { LatLon } from '#lib/modes/cpr.ts';
  * the status in the navigation bar. `ended`: a recording (--samples) has played to its end.
  */
 export type SourceStatus =
-	| { state: 'connecting'; attempt: number }
+	| { state: 'connecting' }
 	| { state: 'connected' }
 	/** `retryInMs`: the backoff; `retryAt`: when the next try starts (server's Date.now()). */
 	| { state: 'waiting'; retryInMs: number; retryAt: number; reason: string }

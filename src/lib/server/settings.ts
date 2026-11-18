@@ -86,7 +86,8 @@ The web page:
   --port <port>             the web page's port (default: ${DEFAULT_PORT})
   --bind <address>          listen on this address only, e.g. 127.0.0.1 behind a reverse
                             proxy (default: every address of this machine)
-  --config <file>           the config file (default: ~/.config/lab1090/config.json)
+  --config <file>           the config file (default: ~/.config/lab1090/config.json,
+                            or $XDG_CONFIG_HOME/lab1090/config.json if that is set)
   -h, --help                show this text
 
 The config file takes the same settings as JSON (not --samples), e.g.

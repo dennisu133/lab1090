@@ -7,6 +7,7 @@
 	of it, colder, engines leave them even in dry air; right of it, warmer, never.
 -->
 <script lang="ts">
+	import { flightLevel } from '#lib/describe/format.ts';
 	import { T11, isaTemperature, staticPressure } from '#lib/modes/air-data.ts';
 	import { thresholds } from '#lib/weather/contrail.ts';
 	import { enough, type Layer, type Tropopause } from '#lib/weather/profile.ts';
@@ -63,7 +64,7 @@
 		{/each}
 		{#each LEVELS as h (h)}
 			<line x1={LEFT} y1={y(h)} x2={W - RIGHT} y2={y(h)} class="stroke-zinc-800" />
-			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">FL{h / 100}</text>
+			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">{flightLevel(h)}</text>
 		{/each}
 		<text x={(LEFT + W - RIGHT) / 2} y={H - 4} text-anchor="middle">temperature, °C</text>
 	</g>
@@ -124,7 +125,9 @@
 			r="3"
 			class={enough(t) ? 'fill-rose-300' : 'fill-zinc-950 stroke-rose-300'}
 		>
-			<title>{`FL${l.level / 100}: ${(t.kelvin - 273.15).toFixed(1)} °C, ${t.n} samples`}</title>
+			<title
+				>{`${flightLevel(l.level)}: ${(t.kelvin - 273.15).toFixed(1)} °C, ${t.n} samples`}</title
+			>
 		</circle>
 	{/each}
 

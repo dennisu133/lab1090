@@ -8,7 +8,7 @@ import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import type { Trail } from '#lib/tracker/trail.ts';
 
 // Tests use 52,14, never the real antenna position. The capture's wedge (open to the west,
-// blocked to the east) only shows from where the antenna really stands; ROADMAP.md has it.
+// blocked to the east) only shows from where the antenna really stands.
 const RECEIVER = { lat: 52, lon: 14 };
 
 const aircraft = (icao: string, trail: Trail) => ({ icao, trail }) as unknown as TrackedAircraft;

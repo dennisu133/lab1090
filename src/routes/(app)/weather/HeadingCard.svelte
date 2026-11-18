@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { signed } from '#lib/describe/weather.ts';
+	import { n, signed } from '#lib/describe/format.ts';
 	import {
 		MAX_LEVEL_FT,
 		MAX_TIME_MS,
@@ -54,7 +54,7 @@
 				calibration) adds a crosswind that isn't there: 8 kt per degree at 450 kt.
 			</p>
 			<p>
-				So each aircraft's wind is compared with the other aircraft's within {MAX_LEVEL_FT.toLocaleString()}
+				So each aircraft's wind is compared with the other aircraft's within {n(MAX_LEVEL_FT)}
 				ft and {MAX_TIME_MS / 60_000} minutes. Its ground vector minus their wind is the air vector it
 				should have flown; the angle from its own to that one is its heading error. Each other aircraft
 				counts once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?

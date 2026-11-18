@@ -11,14 +11,14 @@ import { Receiver } from './receiver';
  * instance lives on globalThis, which survives reloads: stop the old one, start a new one
  * running the new code. Open browser tabs get disconnected and reconnect by themselves.
  */
-const g = globalThis as typeof globalThis & { __adsbReceiver?: Receiver };
+const g = globalThis as typeof globalThis & { __lab1090Receiver?: Receiver };
 
 if (!building) {
-	g.__adsbReceiver?.stop();
-	g.__adsbReceiver = new Receiver(settings.source).start();
+	g.__lab1090Receiver?.stop();
+	g.__lab1090Receiver = new Receiver(settings.source).start();
 }
 
 export function receiver(): Receiver {
-	if (!g.__adsbReceiver) throw new Error('Receiver is not running (are we building?)');
-	return g.__adsbReceiver;
+	if (!g.__lab1090Receiver) throw new Error('Receiver is not running (are we building?)');
+	return g.__lab1090Receiver;
 }

@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { flightLevel, hpa } from '#lib/describe/weather.ts';
+	import { hpa, levelOrFeet } from '#lib/describe/format.ts';
 	import { STANDARD_TOLERANCE, type Qnh } from '#lib/weather/sky.ts';
 
 	let { qnh, now }: { qnh: Qnh; now: number } = $props();
@@ -60,7 +60,7 @@
 						<td class="py-0.5 font-mono text-amber-300">{s.icao}</td>
 						<td class="py-0.5">{s.hPa.toFixed(1)}</td>
 						<td class="py-0.5 text-zinc-400"
-							>{s.altitude === null ? '—' : flightLevel(s.altitude)}</td
+							>{s.altitude === null ? '—' : levelOrFeet(s.altitude)}</td
 						>
 						<td class="py-0.5 text-zinc-400">{s.from}</td>
 						<td class="py-0.5 text-zinc-500">{age(s.rx)}</td>

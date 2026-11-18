@@ -5,6 +5,7 @@
 	air being stopped in front of it.
 -->
 <script lang="ts">
+	import { flightLevel } from '#lib/describe/format.ts';
 	import { T11, isaTemperature } from '#lib/modes/air-data.ts';
 	import type { TemperatureResult } from '#lib/weather/observation.ts';
 
@@ -62,7 +63,7 @@
 		{/each}
 		{#each levels as h (h)}
 			<line x1={LEFT} y1={y(h)} x2={SIZE - RIGHT} y2={y(h)} class="stroke-zinc-800" />
-			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">FL{h / 100}</text>
+			<text x={LEFT - 4} y={y(h) + 3} text-anchor="end">{flightLevel(h)}</text>
 		{/each}
 	</g>
 

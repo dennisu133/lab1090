@@ -1,6 +1,6 @@
 /**
  * What /comm-b shows: register contents, comparisons with ADS-B, and how the register was
- * inferred, as Fields (see frame.ts) and tooltip text.
+ * inferred, as Fields (field.ts) and tooltip text.
  */
 import {
 	mismatch,
@@ -19,6 +19,7 @@ import {
 	type Register
 } from '#lib/modes/registers.ts';
 import { advisoryFields, type Field } from './field';
+import { directionText, n, signed } from './format';
 import { squitterFields } from './squitter';
 
 /** All register names, including the ADS-B ones that are only seen broadcast here. */
@@ -78,9 +79,7 @@ export function inferenceTitle(inference: Inference): string {
 
 // --- register contents -------------------------------------------------------------------
 
-const n = (x: number) => x.toLocaleString();
-const deg = (x: number) => `${Math.round(x) % 360}°`;
-const signedRate = (x: number) => `${x > 0 ? '+' : ''}${n(x)} ft/min`;
+const signedRate = (x: number) => `${signed(x, 0)} ft/min`;
 
 export function registerFields(r: Register): Field[] {
 	switch (r.bds) {
@@ -222,7 +221,7 @@ export function registerFields(r: Register): Field[] {
 					? [
 							field(
 								'TRK',
-								deg(r.track),
+								directionText(r.track),
 								`True track over the ground: ${r.track.toFixed(1)}°`,
 								'main'
 							)
@@ -258,7 +257,7 @@ export function registerFields(r: Register): Field[] {
 					? [
 							field(
 								'HDG',
-								deg(r.heading),
+								directionText(r.heading),
 								`Magnetic heading, where the nose points: ${r.heading.toFixed(1)}°`,
 								'main'
 							)
@@ -349,7 +348,7 @@ export function registerFields(r: Register): Field[] {
 					? [
 							field(
 								'HDG',
-								deg(r.heading),
+								directionText(r.heading),
 								`Magnetic heading, where the nose points: ${r.heading.toFixed(1)}°`,
 								'main'
 							)
@@ -473,7 +472,7 @@ function meteoRoutineFields(r: MeteoRoutine): Field[] {
 		fields.push(
 			field(
 				'wind',
-				`${deg(r.wind.direction)} ${r.wind.speed} kt`,
+				`${directionText(r.wind.direction)} ${r.wind.speed} kt`,
 				`Wind from ${r.wind.direction.toFixed(1)}° (true north, where it blows from), ${r.wind.speed} kt. Measured by the aircraft`,
 				'main'
 			)
@@ -532,7 +531,7 @@ function field(label: string, value: string, title: string, tone: Field['tone'])
 function format(value: number | string, c: Comparison): string {
 	if (typeof value === 'string') return value;
 	const digits = c.unit === '' ? 3 : c.unit === 'hPa' ? 1 : 0;
-	const text = value.toLocaleString(undefined, { maximumFractionDigits: digits });
+	const text = value.toLocaleString('en', { maximumFractionDigits: digits });
 	return c.unit === '' || c.unit === '°' ? `${text}${c.unit}` : `${text} ${c.unit}`;
 }
 

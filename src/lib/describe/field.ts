@@ -7,6 +7,7 @@ import { inEffect, splitAdvisory, type ResolutionAdvisory } from '#lib/modes/aca
 import type { Altitude } from '#lib/modes/altitude.ts';
 import { SPECIAL_SQUAWKS } from '#lib/modes/squawk.ts';
 import { NAC_P, SIL } from '#lib/modes/status.ts';
+import { n } from './format';
 
 export interface Field {
 	/** Short label before the value, e.g. "SL". */
@@ -20,8 +21,6 @@ export interface Field {
 	/** A flag before the value: ISO 3166-1 alpha-2 code and the State's name. */
 	flag?: { country: string | null; name: string };
 }
-
-export const n = (x: number) => x.toLocaleString();
 
 export function altitudeField(altitude: Altitude, what = 'Barometric altitude'): Field {
 	const title = {
@@ -77,8 +76,6 @@ export function silField(sil: number, supplement: number | null = null): Field {
 		tone: 'minor'
 	};
 }
-
-export const degrees = (x: number) => `${Math.round(x) % 360}°`;
 
 // --- ACAS --------------------------------------------------------------------------------
 

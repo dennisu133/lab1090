@@ -19,14 +19,16 @@
  * Mesonet's METAR archive). Q1007: QNH 1007 hPa.
  */
 import { beforeAll, describe, expect, test } from 'bun:test';
+import { FT, KT } from '#lib/units.ts';
 import { isaTemperature, pressureAltitude, staticPressure } from '#lib/modes/air-data.ts';
 import { R_OVER_G_FT, column, feetPerKelvin, pressurePart } from './column';
-import { contrail, humidityOf } from './contrail';
+import { contrail } from './contrail';
 import { enough, layers, strongestWind, tropopause } from './profile';
 import {
 	atPressure,
 	balloonTropopause,
 	CAPTURE_START,
+	humidityOf,
 	inLayer,
 	loadSounding,
 	qnhOf,
@@ -47,7 +49,6 @@ import {
 } from './wind';
 
 const QNH = 1007;
-const FT = 0.3048;
 
 let morning: Sounding;
 let evening: Sounding;
@@ -215,8 +216,8 @@ describe('the capture against the balloons', () => {
 		const g = 9.80665;
 		const slope = { north: (b * FT) / 100_000, east: (c * FT) / 100_000 }; // m per m
 		const geostrophic: Vector = {
-			north: ((g / f) * slope.east) / (1852 / 3600),
-			east: (-(g / f) * slope.north) / (1852 / 3600)
+			north: ((g / f) * slope.east) / KT,
+			east: (-(g / f) * slope.north) / KT
 		};
 		const from = (directionOf(geostrophic) + 180) % 360;
 		expect(from).toBeGreaterThan(270);

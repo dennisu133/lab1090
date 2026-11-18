@@ -5,9 +5,8 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { distanceText } from '#lib/describe/aircraft.ts';
+	import { distanceText, type Unit } from '#lib/describe/format.ts';
 	import { compass } from '#lib/geo.ts';
-	import type { Unit } from '#lib/map/features.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { CONFIRM_MS, MAX_MISSES, seenFrom, shownSpread, type Radar } from '#lib/radar/finder.ts';
 

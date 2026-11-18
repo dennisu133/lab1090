@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { n } from '#lib/describe/field.ts';
+	import { n } from '#lib/describe/format.ts';
 	import { WINDOW_MS, type CodeSummary } from '#lib/radar/finder.ts';
 
 	interface Props {

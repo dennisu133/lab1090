@@ -228,7 +228,15 @@
 					no radar can have, a bit error the CRC can't catch (the address is still right).
 				</p>
 				<p class="text-zinc-400">
-					readsb drops corrupted frames on the Pi, so that row stays at 0.
+					The demodulator already drops frames whose CRC fails (readsb does too, with --connect), so <span
+						class={VERDICTS.invalid.color}>invalid</span
+					>
+					stays at 0. And it passes an address-in-parity reply only if that address was heard in a checked
+					message within 60 s: noise turns a reply's parity into a random address, a made-up aircraft.
+					So
+					<span class={VERDICTS.unknown.color}>unknown</span> stays near 0 as well: the demodulator keeps
+					its own list of addresses (on the sample clock), so the two can disagree for a moment at the
+					60 s edge.
 				</p>
 			{/snippet}
 		</CountTable>

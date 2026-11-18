@@ -9,7 +9,7 @@
 	import { lookupAircraft, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
 	import { aircraftSections } from '#lib/describe/aircraft.ts';
 	import { routeText } from '#lib/describe/route.ts';
-	import type { Unit } from '#lib/map/features.ts';
+	import type { Unit } from '#lib/describe/format.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import Flag from '#lib/components/Flag.svelte';
 	import { allocation } from '#lib/modes/nationality.ts';

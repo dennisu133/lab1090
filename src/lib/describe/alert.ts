@@ -7,14 +7,14 @@
  * (PANS-OPS) Vol I on responding to an RA, SERA.14083 (radio failure in Europe), Annex 6
  * Part I (minimum fuel), DO-260B (TC 28’s emergency states).
  */
-import { distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { distanceKm } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import { ADVISORY_MS, type Alert, type Cause } from '#lib/tracker/alerts.ts';
 import type { Streak, TrackedAircraft } from '#lib/tracker/tracker.ts';
-import { shownPosition, type Unit } from '#lib/map/features.ts';
+import { shownPosition } from '#lib/tracker/shown.ts';
 import type { Section } from './aircraft';
 import { advisoryInstruction } from './field';
-
-const n = (x: number) => Math.round(x).toLocaleString('en');
+import { n, type Unit } from './format';
 
 /** The callsign, or the address while there's none. */
 export const nameOf = (a: TrackedAircraft | null, icao: string) => a?.callsign?.value ?? icao;

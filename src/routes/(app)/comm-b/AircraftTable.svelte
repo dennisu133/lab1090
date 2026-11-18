@@ -4,6 +4,7 @@
 	the transponder has. Clicking a row selects the aircraft (the page filters its feed).
 -->
 <script lang="ts">
+	import { n } from '#lib/describe/format.ts';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { NAMES, registerFields } from '#lib/describe/comm-b.ts';
@@ -152,7 +153,7 @@
 							</button>
 							<span class="text-xs text-zinc-500">{a.callsign ?? ''}</span>
 						</td>
-						<td class="py-0.5 text-right">{a.replies.toLocaleString()}</td>
+						<td class="py-0.5 text-right">{n(a.replies)}</td>
 						<td class="py-0.5 text-right text-zinc-400">{seconds(a.lastRx)}</td>
 						{#each [a.intention, a.trackAndTurn, a.headingAndSpeed] as reading, i (i)}
 							<td class={['py-0.5', isStale(reading) && 'opacity-40']}>

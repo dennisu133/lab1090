@@ -6,10 +6,10 @@
  *
  *   TC (5) | CA (3) | C1 (6) | C2 (6) | … | C8 (6)
  *
+ * The decoding itself is squitter.ts's (TC 1–4); here are the pieces it and Comm-B 2,0 share.
+ *
  * Shared by server and browser; no state here.
  */
-import { typeCode } from './frame';
-
 export interface Identification {
 	/** Up to 8 characters, padding removed, e.g. "DLH4LW". May contain '#' for invalid characters. */
 	callsign: string;
@@ -22,15 +22,6 @@ export interface EmitterCategory {
 	/** The CA field, 0–7. 0 always means "no information". */
 	code: number;
 	name: string;
-}
-
-export function identification(data: Uint8Array): Identification | null {
-	const tc = typeCode(data);
-	if (tc === null || tc < 1 || tc > 4) return null;
-	return {
-		callsign: callsign(data.subarray(5, 11)),
-		category: emitterCategory(tc, data[4] & 0b111)
-	};
 }
 
 /**

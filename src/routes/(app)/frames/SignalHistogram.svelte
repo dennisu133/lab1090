@@ -3,6 +3,7 @@
 	next to a short guide on reading dBFS.
 -->
 <script lang="ts">
+	import { n } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { SIGNAL_BUCKET_DB, STRONG_SIGNAL_DBFS } from '#lib/modes/frame.ts';
 
@@ -98,8 +99,9 @@
 			{#each bins as b (b.key)}
 				<div
 					class="flex h-full flex-1 flex-col justify-end hover:bg-zinc-800/60"
-					title="{b.key} to {b.key +
-						SIGNAL_BUCKET_DB} dBFS: {b.count.toLocaleString()} messages ({percent(b.count)} %)"
+					title="{b.key} to {b.key + SIGNAL_BUCKET_DB} dBFS: {n(b.count)} messages ({percent(
+						b.count
+					)} %)"
 				>
 					<div
 						class={[
@@ -128,7 +130,7 @@
 			</div>
 			<div>
 				<dt class="inline text-zinc-400">Strong (≥ −3 dBFS)</dt>
-				<dd class="inline">{strong.toLocaleString()} ({percent(strong)} %)</dd>
+				<dd class="inline">{n(strong)} ({percent(strong)} %)</dd>
 			</div>
 		</dl>
 	</div>

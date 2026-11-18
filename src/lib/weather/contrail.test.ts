@@ -4,7 +4,6 @@ import {
 	contrail,
 	contrailRange,
 	ETA_MODERN,
-	humidityOf,
 	mixingLineSlope,
 	saturationOverIce,
 	saturationOverWater,
@@ -78,11 +77,6 @@ describe('the Schmidt–Appleman thresholds', () => {
 			expect(c.humidityNeeded!).toBeGreaterThan(last);
 			last = c.humidityNeeded!;
 		}
-	});
-
-	test('the humidity of a mixing ratio', () => {
-		// 0.01 g/kg at 250 hPa, −50 °C: e = 0.402 Pa of 6.44 Pa saturated, 6 %.
-		expect(humidityOf(0.01e-3, 25_000, C - 50)).toBeCloseTo(0.062, 3);
 	});
 
 	test('a yes or no only if it holds 2 K either way', () => {

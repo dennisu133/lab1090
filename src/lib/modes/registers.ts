@@ -661,7 +661,7 @@ const ALTITUDE_RANGE = [-1000, 60_000];
 
 function altitudeReason(feet: number): string | null {
 	return feet < ALTITUDE_RANGE[0] || feet > ALTITUDE_RANGE[1]
-		? `altitude ${feet.toLocaleString()} ft is out of range`
+		? `altitude ${feet.toLocaleString('en')} ft is out of range`
 		: null;
 }
 
@@ -724,18 +724,22 @@ export interface ExtendedSquitter {
 	squitter: Squitter;
 }
 
-function adsbRegister(bds: ExtendedSquitter['bds'], name: string, kinds: string[]): RegisterSpec {
+function adsbRegister(
+	bds: ExtendedSquitter['bds'],
+	name: string,
+	kinds: Squitter['kind'][]
+): RegisterSpec {
 	return {
 		bds,
 		name,
 		reject(mb) {
 			const s = squitter(mb);
-			if (!s || !kinds.includes(s.kind)) return `type code ${bits(mb, 1, 5)} doesn't fit`;
+			if (!kinds.includes(s.kind)) return `type code ${bits(mb, 1, 5)} doesn't fit`;
 			if (s.kind === 'identification' && s.callsign.includes('#'))
 				return 'a character is not a letter, digit or space';
 			return null;
 		},
-		decode: (mb) => ({ bds, squitter: squitter(mb)! })
+		decode: (mb) => ({ bds, squitter: squitter(mb) })
 	};
 }
 

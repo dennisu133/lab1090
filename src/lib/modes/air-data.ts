@@ -12,6 +12,7 @@
  *
  * Shared by server and browser; no state here.
  */
+import { FT } from '#lib/units.ts';
 
 /**
  * The International Standard Atmosphere (ISA, ICAO Doc 7488): an agreed, average
@@ -36,7 +37,6 @@ const EXPONENT = G0 / (LAPSE * R_AIR);
 /** Above the tropopause pressure and density fall by e every R·T/g = 6,341.6 m. */
 const SCALE_HEIGHT = (R_AIR * T11) / G0;
 const RHO11 = RHO0 * (T11 / T0) ** (EXPONENT - 1);
-const FT = 0.3048;
 
 /** ISA temperature at a pressure altitude, K. */
 export function isaTemperature(altitudeFt: number): number {

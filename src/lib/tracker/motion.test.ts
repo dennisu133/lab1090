@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { bearing, distanceKm, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, distanceKm } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import { decimalYear, magneticField } from '#lib/weather/wmm.ts';
 import { advance, MAX_OPEN_TURN, motion, path, trueHeading, type Motion } from './motion';
 import type { TrackedAircraft } from './tracker';
@@ -132,7 +133,6 @@ describe('sideways', () => {
 		const v0 = aircraft({ ...a, operational: op(0, null) });
 		expect(motion(v0)!.rollOut).toBeCloseTo(120 + declination, 9);
 		expect(trueHeading(120, 'true', start, 0)).toBe(120);
-		expect(trueHeading(120, 'magnetic', null, 0)).toBe(120); // no place: as given
 	});
 
 	test('LNAV steers along a route we can see nothing of: the end stays unknown', () => {

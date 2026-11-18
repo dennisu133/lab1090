@@ -1,6 +1,6 @@
 /**
  * Coverage: where this antenna hears aircraft, collected from the positions the tracker
- * believes (ROADMAP.md phase 4).
+ * believes.
  *
  * Two views of the same positions:
  * - per direction (SECTOR_DEG wide), the LOWEST elevation angle an aircraft was heard at:

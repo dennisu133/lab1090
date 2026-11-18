@@ -2,9 +2,9 @@
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
+	import { levelOrFeet } from '#lib/describe/format.ts';
 	import {
 		checkFields,
-		flightLevel,
 		inputFields,
 		temperatureFields,
 		windFields
@@ -103,7 +103,7 @@
 					<span class="text-zinc-500">{example.callsign ?? ''}</span>
 					{#if example.observation.inputs.altitude}
 						<span class="text-zinc-400">
-							{flightLevel(example.observation.inputs.altitude.feet)}
+							{levelOrFeet(example.observation.inputs.altitude.feet)}
 						</span>
 					{/if}
 					<span class="text-zinc-500">{time.format(example.observation.rx)}</span>
@@ -182,7 +182,7 @@
 								<span class="text-xs text-zinc-500">{r.callsign ?? ''}</span>
 							</td>
 							<td class="py-0.5 text-zinc-400">
-								{o.inputs.altitude ? flightLevel(o.inputs.altitude.feet) : ''}
+								{o.inputs.altitude ? levelOrFeet(o.inputs.altitude.feet) : ''}
 							</td>
 							<td class="py-0.5"><Fields fields={checkFields(o)} /></td>
 							<td class="py-0.5"><Fields fields={windFields(o)} /></td>

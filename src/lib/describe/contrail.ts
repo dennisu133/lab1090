@@ -14,7 +14,7 @@ import {
 import { LAYER_FT, MIN_AIRCRAFT, enough, type Layer } from '#lib/weather/profile.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 import type { Field } from './field';
-import { celsius, flightLevel } from './weather';
+import { celsius, levelOrFeet } from './format';
 
 const percent = (x: number) => `${Math.round(x * 100)} %`;
 
@@ -101,7 +101,7 @@ export function trackerContrail(w: WeatherAircraft, layer: Layer | null): Tracke
 export function temperatureSource(c: TrackerContrail): string {
 	const { kelvin, own, layer } = c;
 	return layer
-		? `The air at ${flightLevel(layer.level)}: ${celsius(kelvin)}, the mean of ${layer.n} samples from ${layer.aircraft} aircraft (its own reading: ${celsius(own)}${
+		? `The air at ${levelOrFeet(layer.level)}: ${celsius(kelvin)}, the mean of ${layer.n} samples from ${layer.aircraft} aircraft (its own reading: ${celsius(own)}${
 				Math.abs(own - kelvin) > TEMPERATURE_MARGIN
 					? `, ${Math.abs(own - kelvin).toFixed(1)} K ${own < kelvin ? 'colder' : 'warmer'} than the mean: rounding, or a probe that's off, its own or another's; the data can't tell which`
 					: ''
@@ -152,7 +152,7 @@ export interface ContrailRun {
 
 /** "FL360–FL370", "FL380" */
 export const runLevels = (r: ContrailRun) =>
-	r.from === r.to ? flightLevel(r.from) : `${flightLevel(r.from)}–${flightLevel(r.to)}`;
+	r.from === r.to ? levelOrFeet(r.from) : `${levelOrFeet(r.from)}–${levelOrFeet(r.to)}`;
 
 /**
  * /weather's summary: the layers with enough temperatures, lowest first, joined into runs

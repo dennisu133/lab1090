@@ -4,7 +4,7 @@ const TYPE_BYTE: Record<BeastFrameKind, number> = { modeac: 0x31, short: 0x32, l
 
 /**
  * Encode a frame in Beast wire format: the inverse of BeastParser.
- * Used by tests (round-trip against the capture, hand-made frames) and, later, a fake receiver.
+ * Used by tests (round-trip against the capture, hand-made frames) and tools/replay.ts.
  */
 export function encodeFrame(f: BeastFrame): Uint8Array {
 	const body = [...uint48(f.timestamp), f.signal, ...f.data];

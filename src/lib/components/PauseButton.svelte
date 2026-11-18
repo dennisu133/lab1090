@@ -12,6 +12,7 @@
 	scrolls back up to the list's heading.
 -->
 <script lang="ts">
+	import { n } from '#lib/describe/format.ts';
 	import type { Attachment } from 'svelte/attachments';
 	import type { LiveFeed } from '#lib/live-feed.svelte.ts';
 	import Notice from './Notice.svelte';
@@ -52,7 +53,7 @@
 	onclick={() => feed.togglePause()}
 	{@attach watchScroll}
 >
-	{feed.paused ? `Resume (${feed.held.toLocaleString()} new)` : 'Pause'}
+	{feed.paused ? `Resume (${n(feed.held)} new)` : 'Pause'}
 </button>
 
 {#if feed.scrolledAway && !feed.pausedByUser}
@@ -63,7 +64,7 @@
 				class="px-4 py-1.5 hover:bg-sky-900"
 				onclick={() => button?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
 			>
-				Live {noun} paused while you scroll: {feed.held.toLocaleString()} new
+				Live {noun} paused while you scroll: {n(feed.held)} new
 				<span class="ml-2 text-sky-300">↑ Back to live</span>
 			</button>
 		</Notice>

@@ -7,7 +7,7 @@
 	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import { airportCode, airportSections } from '#lib/describe/airport.ts';
 	import type { Airport } from '#lib/map/airports.ts';
-	import type { Unit } from '#lib/map/features.ts';
+	import type { Unit } from '#lib/describe/format.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import Details from './Details.svelte';
 

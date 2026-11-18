@@ -167,9 +167,7 @@ export function mismatch(c: Comparison): string {
 	const suffix = c.unit === '' || c.unit === '°' ? c.unit : ` ${c.unit}`;
 	const digits = c.unit === '' ? 3 : 1; // Mach: 0.804
 	const f = (x: number | string) =>
-		typeof x === 'number'
-			? x.toLocaleString(undefined, { maximumFractionDigits: digits }) + suffix
-			: x;
+		typeof x === 'number' ? x.toLocaleString('en', { maximumFractionDigits: digits }) + suffix : x;
 	return `${c.quantity} ${f(c.commB)} vs ${f(c.other)}`;
 }
 

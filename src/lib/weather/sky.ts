@@ -8,12 +8,12 @@
  * busiest aircraft would decide every layer's average. Ten seconds is 300 ft of climb at
  * 2,000 ft/min, well inside a 1,000 ft layer.
  *
- * Shared by server and browser; state is the samples of the last half hour.
+ * Runs in the browser; state is the samples of the last half hour.
  */
 import type { LatLon } from '#lib/modes/cpr.ts';
 import type { TurnWind } from './circle';
 import { geoidUndulation } from './geoid';
-import type { Observation } from './observation';
+import type { LookupPosition, Observation } from './observation';
 import type { ColumnSample, TemperatureSample, WindSample } from './profile';
 
 export const WINDOW_MS = 30 * 60_000;
@@ -76,7 +76,7 @@ export class Sky {
 		rx: number,
 		altitude: number,
 		gnssMinusBaro: number,
-		position: { lat: number; lon: number; from: 'ADS-B' | 'receiver' }
+		position: LookupPosition
 	): void {
 		if (!this.#due('c', icao, rx)) return;
 		this.#push('columns', {

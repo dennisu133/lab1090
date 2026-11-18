@@ -19,11 +19,12 @@
  * follows the pressure, so it can be a few hundred feet off in warm or cold air), which moves
  * the elevation by less than 0.1° beyond 50 km: well below what the coverage can show.
  */
+import { FT } from '#lib/units.ts';
 
 /** The 4/3 Earth's radius, km: the real mean radius 6371 km × 4/3. */
 export const EFFECTIVE_EARTH_KM = (6371 * 4) / 3;
 
-const FT_TO_KM = 0.0003048;
+const FT_TO_KM = FT / 1000;
 const DEG = 180 / Math.PI;
 
 /**
@@ -51,22 +52,4 @@ function reach(heightKm: number): number {
  */
 export function radioHorizon(altitudeFt: number, antennaKm = 0): number {
 	return reach(altitudeFt * FT_TO_KM) + reach(antennaKm);
-}
-
-/**
- * The distance at which an aircraft at `altitudeFt` is seen `elevation` degrees above the
- * horizontal: the inverse of aircraftElevation. So a shadow up to `elevation` hides
- * aircraft at that altitude beyond this distance. Solves h − a − d²/2R' = d·tan(e) for d:
- * one solution when the aircraft is above the antenna, null when it isn't.
- */
-export function distanceAtElevation(
-	elevation: number,
-	altitudeFt: number,
-	antennaKm = 0
-): number | null {
-	const h = altitudeFt * FT_TO_KM - antennaKm;
-	if (h <= 0) return null;
-	// d²/2R' + d·tan(e) − h = 0 → d = R'(−tan e + √(tan² e + 2h/R')).
-	const t = Math.tan(elevation / DEG);
-	return EFFECTIVE_EARTH_KM * (-t + Math.sqrt(t * t + (2 * h) / EFFECTIVE_EARTH_KM));
 }

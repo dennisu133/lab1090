@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { n as whole } from '#lib/describe/format.ts';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -70,7 +71,7 @@
 		return null;
 	}
 
-	const n = (x: number) => (x === 0 ? '' : x.toLocaleString());
+	const n = (x: number) => (x === 0 ? '' : whole(x));
 	const rate = (x: number) => (x === 0 ? '' : `${x.toFixed(1)}/s`);
 </script>
 

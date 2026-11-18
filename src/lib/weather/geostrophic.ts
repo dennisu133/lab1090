@@ -36,16 +36,15 @@
  * low (or near the ground, with friction) the real wind is slower; around a high, faster.
  * It's also an average over every level in the fit and the whole area the aircraft cover.
  *
- * Shared by server and browser; no state here.
+ * Pure, no state here.
  */
 import { G0 } from '#lib/modes/air-data.ts';
+import { FT, KT } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { column, type HeightReference } from './column';
 import type { ColumnSample } from './profile';
 import { windOf, type Vector, type Wind } from './wind';
 
-const FT = 0.3048;
-const KT = 1852 / 3600; // m/s
 /** The Earth's rotation, rad/s (one turn per sidereal day). */
 const OMEGA = 7.292_115e-5;
 /** km per degree of latitude (and of longitude at the equator). */
@@ -183,7 +182,7 @@ function fit(segs: Segment[]) {
 
 /** The wind (kt, vector) that balances a slope (ft per km) at Coriolis parameter f. */
 export function balancingWind(slope: Vector, f: number): Vector {
-	// ft per km → m per m: × 0.3048 / 1000.
+	// ft per km → m per m: × FT / 1000.
 	const perMetre = { north: (slope.north * FT) / 1000, east: (slope.east * FT) / 1000 };
 	return {
 		north: ((G0 / f) * perMetre.east) / KT,

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { FT } from '#lib/units.ts';
 import {
 	G0,
 	R_AIR,
@@ -8,7 +9,6 @@ import {
 } from '#lib/modes/air-data.ts';
 import { column, expectedOffset, feetPerKelvin, geopotential } from './column';
 
-const FT = 0.3048;
 const EARTH_RADIUS = 6_356_766;
 
 /**

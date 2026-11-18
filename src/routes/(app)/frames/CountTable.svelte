@@ -4,6 +4,7 @@
 	in a row selects it.
 -->
 <script lang="ts" generics="K extends number | string">
+	import { n } from '#lib/describe/format.ts';
 	import type { Snippet } from 'svelte';
 	import type { ClassValue } from 'svelte/elements';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -98,7 +99,7 @@
 				{row.label}
 			{/if}
 		</td>
-		<td class="py-1 text-right">{row.count.toLocaleString()}</td>
+		<td class="py-1 text-right">{n(row.count)}</td>
 		<td class="py-1 pl-4">
 			<div class="flex items-center gap-2">
 				<div class="h-2 flex-1 rounded-sm bg-zinc-800">

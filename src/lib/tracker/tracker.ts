@@ -12,10 +12,11 @@
  *   and the squawk (DF5/21), and DF20/21 the Comm-B registers: the callsign (2,0), and the
  *   EHS registers (4,0, 5,0, 6,0) if nothing the aircraft broadcast contradicts them.
  * - Values from radar replies need a second opinion before they replace what we have (see
- *   #fromReply). The address check above is weaker than it looks, because readsb forwards
- *   such replies only if their address matches an aircraft it knows: of the many replies
- *   that noise corrupted, the few whose garbled checksum happens to give a known address
- *   are exactly the ones that get through. In the capture, one DF16 reply put CCA749 at
+ *   #fromReply). The address check above is weaker than it looks, because the demodulator
+ *   passes such replies only if their address matches an aircraft it knows (demod/filter.ts;
+ *   readsb does the same with --connect): of the many replies that noise corrupted, the few
+ *   whose garbled checksum happens to give a known address are exactly the ones that get
+ *   through. In the capture, one DF16 reply put CCA749 at
  *   73,400 ft, on the ground (it was cruising at FL380). ADS-B has its own checksum (CRC)
  *   and needs no second opinion.
  * - DF18 is left out for now: it comes from devices without a transponder, or from ground
@@ -36,7 +37,8 @@
  * two, so one message can't raise one (see alerts.ts for why).
  *
  * Turns: the tracker measures how fast each aircraft's ground track changes (TURN_WINDOW_MS,
- * see #turn), for dead reckoning along the arc and the predicted path (lib/map/prediction.ts).
+ * see #turn), for dead reckoning along the arc and the predicted path (motion.ts, drawn by
+ * lib/map/features.ts).
  *
  * Immutable snapshots, like /comm-b's aircraft list: every change makes a new object, so a
  * page holding the list in $state.raw re-renders only what changed.

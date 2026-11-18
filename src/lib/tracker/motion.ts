@@ -19,7 +19,8 @@
  *
  * Shared by server and browser; no state here.
  */
-import { bearing, destination, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, destination } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { decimalYear, magneticField } from '#lib/weather/wmm.ts';
 import type { TrackedAircraft } from './tracker';
@@ -70,16 +71,16 @@ export function headingReference(a: TrackedAircraft): 'true' | 'magnetic' | null
 }
 
 /**
- * A heading relative to true north: magnetic + the declination there (the World Magnetic
- * Model; about +5° in Germany now). Without a place, or if the reference is unknown, as given.
+ * A heading relative to true north: magnetic + the declination at `at` (the World Magnetic
+ * Model; about +5° in Germany now). If the reference is unknown, as given.
  */
 export function trueHeading(
 	heading: number,
 	reference: 'true' | 'magnetic' | null,
-	at: LatLon | null,
+	at: LatLon,
 	t: number
 ): number {
-	if (reference !== 'magnetic' || !at) return heading;
+	if (reference !== 'magnetic') return heading;
 	const { declination } = magneticField(at.lat, at.lon, 0, decimalYear(t));
 	return (heading + declination + 360) % 360;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { DbAirport, DbRoute } from '#lib/aircraft-db.ts';
-import { bearing, destination, distanceKm, intermediate, KM_PER_NM } from '#lib/geo.ts';
+import { bearing, destination, distanceKm, intermediate } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { checkRoute, MIN_DETOUR_KM, RouteJudge } from './route';
 import type { TrackedAircraft } from './tracker';

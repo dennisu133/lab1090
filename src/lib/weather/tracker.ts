@@ -5,7 +5,7 @@
  *
  * Every new 5,0 is paired with the aircraft's latest 6,0 and vice versa, so one reply can
  * take part in several observations. Feed it only replies whose address is verified and
- * whose register is certain (see the /weather page): a 6,0 put under the wrong aircraft,
+ * whose register is certain (pipeline.ts decides which to trust): a 6,0 put under the wrong aircraft,
  * or a 5,0 mistaken for a 6,0, would make up a wind.
  *
  * Immutable snapshots, like /comm-b's aircraft list: every change makes a new object, so

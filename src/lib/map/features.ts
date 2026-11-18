@@ -2,17 +2,14 @@
  * What the map draws, as GeoJSON: aircraft, their trails, the range rings. Pure functions
  * of the tracker's snapshots and the time, so the map component only hands them to MapLibre.
  *
- * Dead reckoning: a position is up to half a second old when it arrives, and the next one
- * may be a few seconds away (missed messages). Drawn as is, planes would jump. So each one is
- * moved along from its last position with its ground speed and track, like a navigator
- * without GPS ("deduced reckoning"): distance = speed × time since the position. In a turn
- * it follows the arc at the measured turn rate (lib/tracker/motion.ts). It's still a
- * guess, so it stops after EXTRAPOLATE_MS.
+ * Aircraft are drawn where lib/tracker/shown.ts puts them: moved along from their last
+ * position by dead reckoning for up to EXTRAPOLATE_MS, gone after SHOW_MS.
  *
- * The predicted path goes on from there, with the same model: a dotted line ahead of each
- * aircraft (PREDICT_S), longer with minute marks for the selected one (PREDICT_SELECTED_S).
- * Radar screens in air traffic control draw the same thing, straight, as a "speed vector"
- * or "velocity leader": where the aircraft will be in a minute or two.
+ * The predicted path goes on from there, with the same model (lib/tracker/motion.ts): a
+ * dotted line ahead of each aircraft (PREDICT_S), longer with minute marks for the selected
+ * one (PREDICT_SELECTED_S). Radar screens in air traffic control draw the same thing,
+ * straight, as a "speed vector" or "velocity leader": where the aircraft will be in a
+ * minute or two.
  *
  * Alerts (lib/tracker/alerts.ts) mark the aircraft: a ring in the alert's colour, a badge
  * above the label ("7700", "RA ↑"), a few rings pulsing out when it starts, and a line
@@ -21,23 +18,22 @@
  */
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { DbAirport, DbRoute } from '#lib/aircraft-db.ts';
-import { destination, distanceKm, intermediate, KM_PER_NM } from '#lib/geo.ts';
+import { destination, distanceKm, intermediate } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
-import { advance, headingReference, motion, path, trueHeading } from '#lib/tracker/motion.ts';
+import { advance, motion, path } from '#lib/tracker/motion.ts';
 import { badge as alertBadge } from '#lib/describe/alert.ts';
-import { alertsOf, identing, type Tier } from '#lib/tracker/alerts.ts';
+import { flightLevel, n, type Unit } from '#lib/describe/format.ts';
+import { alertsOf, identing, tierOf, type Tier } from '#lib/tracker/alerts.ts';
+import { EXTRAPOLATE_MS, shownPosition } from '#lib/tracker/shown.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import { iconFor } from './icons';
 
-/** A position older than this isn't drawn: the aircraft is out of reach, or stopped sending. */
-export const SHOW_MS = 30_000;
 /** Drawn faded from this age on: "it was here a while ago". */
 export const STALE_MS = 10_000;
 /** How faded: the aircraft's icon and label (TrackerMap), and the legend's sample. */
 export const STALE_OPACITY = 0.45;
-/** Moved along for at most this long; then it waits where the guess ended. */
-export const EXTRAPOLATE_MS = 15_000;
 /** How far ahead the dotted line goes, s: for every aircraft, and for the selected one. */
 export const PREDICT_S = 60;
 export const PREDICT_SELECTED_S = 180;
@@ -49,58 +45,6 @@ const BLINK_MS = 500;
 
 /** The predicted path is drawn in pieces of this many seconds, each in its altitude's colour. */
 const PREDICT_STEP_S = 5;
-
-export type Unit = 'NM' | 'km';
-
-export interface Shown extends LatLon {
-	/** ms since the last real position. */
-	age: number;
-	/** How far it was moved along, km (0: not at all). */
-	extrapolatedKm: number;
-	/** Where it points: the ground track (turned along in a turn), else see direction(). */
-	track: number;
-}
-
-/** Where to draw an aircraft now; null if not at all (no confirmed position, or too old). */
-export function shownPosition(a: TrackedAircraft, now: number): Shown | null {
-	const p = a.position;
-	if (!p || !a.confirmed) return null;
-	const age = Math.max(0, now - p.t);
-	if (age > SHOW_MS) return null;
-	// On the ground: no ADS-B velocity, and taxiing is too slow to matter.
-	const m = motion(a);
-	if (!m) return { lat: p.lat, lon: p.lon, age, extrapolatedKm: 0, track: direction(a) };
-	const seconds = Math.min(age, EXTRAPOLATE_MS) / 1000;
-	const s = advance(p, m, seconds);
-	return {
-		lat: s.lat,
-		lon: s.lon,
-		age,
-		extrapolatedKm: distance(m.speed, seconds),
-		track: s.track
-	};
-}
-
-/** km covered at `kt` in `seconds`. */
-const distance = (kt: number, seconds: number) => (kt * KM_PER_NM * seconds) / 3600;
-
-/**
- * Where the symbol points without a ground velocity: on the ground the surface direction;
- * in the air the heading (TC 19 subtypes 3/4: where the nose points, a few degrees off the
- * track), else the track a radar read from register 5,0.
- */
-function direction(a: TrackedAircraft): number {
-	if (a.position?.surface) return a.surface?.value.direction ?? 0;
-	if (a.ground) return a.ground.value.track;
-	const heading = a.air?.value.heading;
-	if (heading != null) return trueHeading(heading, headingReference(a), a.position, a.air!.t);
-	return a.commB.trackAndTurn?.value.track ?? 0;
-}
-
-/** "FL350" for 35,000 ft: the altitude in hundreds of feet, as ATC says it (see describe/aircraft.ts). */
-export function flightLevel(feet: number): string {
-	return `FL${String(Math.round(feet / 100)).padStart(3, '0')}`;
-}
 
 /** Callsign (or address) and flight level, for the label under the symbol. */
 function label(a: TrackedAircraft): string {
@@ -143,11 +87,7 @@ export function aircraftFeatures(
 		if (!shown) continue;
 		const { icon, size } = iconFor(a.category?.value ?? null);
 		const alerts = alertsOf(a, now);
-		const tier = alerts.some((x) => x.tier === 'emergency')
-			? 'emergency'
-			: alerts.length
-				? 'caution'
-				: '';
+		const tier = tierOf(a, now) ?? '';
 		const ident = identing(a, now);
 		const onset = alerts.length ? now - Math.max(...alerts.map((x) => x.since)) : Infinity;
 		const pulse =
@@ -487,7 +427,7 @@ export function alertLinkFeatures(
 				},
 				properties: {
 					tier: x.tier,
-					label: feet === null ? '' : `${Math.round(feet).toLocaleString('en')} ft`
+					label: feet === null ? '' : `${n(feet)} ft`
 				}
 			});
 		}

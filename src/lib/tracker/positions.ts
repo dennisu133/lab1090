@@ -38,6 +38,7 @@
  * Shared by server and browser; state is the positions so far.
  */
 import { distanceKm } from '#lib/geo.ts';
+import { KM_PER_NM } from '#lib/units.ts';
 import {
 	CprPairs,
 	decodeLocal,
@@ -97,8 +98,6 @@ const PAIR_MS = 10_000;
  * surface grid, and taxiing at 30 kt for 25 s is 0.4 km.
  */
 const SURFACE_PAIR_MS = 25_000;
-
-const KM_PER_NM = 1.852;
 
 /** Why `to` can't follow `from` (null if it can). `groundSpeed`: the latest, in kt, if recent. */
 export function speedProblem(
