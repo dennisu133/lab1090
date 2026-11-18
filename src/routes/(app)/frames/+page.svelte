@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
@@ -249,12 +250,7 @@
 			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Live frames</h2>
 			<PauseButton feed={stream} noun="frames" />
 			{#each chips as chip (chip.key)}
-				<button
-					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
-					onclick={() => (filter[chip.key] = null)}
-				>
-					{chip.label} only ✕
-				</button>
+				<FilterChip label={chip.label} onclear={() => (filter[chip.key] = null)} />
 			{/each}
 			<div class="ml-auto flex gap-3 font-mono text-xs">
 				<span class={PART_COLORS.header}>DF + control</span>

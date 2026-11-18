@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { n as whole } from '#lib/describe/format.ts';
+	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseButton from '#lib/components/PauseButton.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -188,20 +189,13 @@
 				{/each}
 			</div>
 			{#if register !== null}
-				<button
-					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
-					onclick={() => (register = null)}
-				>
-					{register in SPECIAL ? SPECIAL[register] : `BDS ${register}`} only ✕
-				</button>
+				<FilterChip
+					label={register in SPECIAL ? SPECIAL[register] : `BDS ${register}`}
+					onclear={() => (register = null)}
+				/>
 			{/if}
 			{#if aircraft !== null}
-				<button
-					class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800"
-					onclick={() => (aircraft = null)}
-				>
-					{aircraft} only ✕
-				</button>
+				<FilterChip label={aircraft} onclear={() => (aircraft = null)} />
 			{/if}
 		</div>
 
