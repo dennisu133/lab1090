@@ -1,12 +1,12 @@
 <!--
-	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft
-	the dotted predicted paths ahead of them and the circles of their position uncertainty
-	(rings, trails, predictions, circles, wind barbs, and the base map's roads and place names
-	can be switched off: MapLayers.svelte). MapLibre
-	draws with WebGL from GeoJSON sources; this component keeps those sources up to date with
-	the tracker. Aircraft, the pieces of trail up to them and the predictions move every
-	animation frame (dead
-	reckoning, lib/tracker/shown.ts); trails only change with new positions.
+	The map: base map (lib/map/style.ts), range rings around the receiver, trails, aircraft, the
+	dotted predicted paths ahead of them and the circles of their position uncertainty (rings,
+	trails, predictions, circles, wind barbs, and the base map's roads and place names can be
+	switched off: MapLayers.svelte). MapLibre draws with WebGL from GeoJSON sources
+	(lib/map/layers.ts: the sources, and the layers that draw them); this component keeps those
+	sources up to date with the tracker. Aircraft, the pieces of trail up to them and the
+	predictions move every animation frame (dead reckoning, lib/tracker/shown.ts); trails only
+	change with new positions.
 
 	The selected aircraft's route, if adsbdb knows it: a dashed great circle from origin to
 	destination, with the airports' codes.
@@ -49,9 +49,8 @@
 </script>
 
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
 	import * as maplibregl from 'maplibre-gl';
-	import type { GeoJSONSource, MapMouseEvent } from 'maplibre-gl';
+	import type { GeoJSONSource } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	// MapLibre parses tiles in a web worker, which it looks for next to its own file. Vite
 	// bundles the library elsewhere, so tell it where the worker is (`?url`: Vite serves the
@@ -61,9 +60,6 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { DbRoute } from '#lib/aircraft-db.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
-	import { airportFrom } from '#lib/map/airports.ts';
-	import { altitudeColour } from '#lib/map/altitude.ts';
-	import { activeAlerts } from '#lib/tracker/alerts.ts';
 	import {
 		aircraftFeatures,
 		alertLinkFeatures,
@@ -71,11 +67,10 @@
 		predictionFeatures,
 		ringFeatures,
 		routeFeatures,
-		STALE_OPACITY,
 		trailFeatures,
 		uncertaintyFeatures
 	} from '#lib/map/features.ts';
-	import { directionText, flightLevel, type Unit } from '#lib/describe/format.ts';
+	import type { Unit } from '#lib/describe/format.ts';
 	import { shownPosition } from '#lib/tracker/shown.ts';
 	import { barbImage, iconImages } from '#lib/map/icons.ts';
 	import { SECTOR_DEG } from '#lib/coverage/coverage.ts';
@@ -88,16 +83,24 @@
 		sectorFeature
 	} from '#lib/map/coverage.ts';
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
-	import { BARB_BELOW, barbFeatures, type BarbProperties } from '#lib/map/winds.ts';
-	import { compass } from '#lib/geo.ts';
-	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
+	import { barbFeatures } from '#lib/map/winds.ts';
 	import { mapStyle } from '#lib/map/style.ts';
-	import { watchBaseMap } from '#lib/map/base-map.ts';
+	import { foldCredits, watchBaseMap } from '#lib/map/base-map.ts';
 	import { lngLat } from '#lib/map/geometry.ts';
+	import {
+		aircraftOpacity,
+		LAYER_IDS,
+		mapLayers,
+		SOURCES,
+		type Layers,
+		type SourceId
+	} from '#lib/map/layers.ts';
+	import { pick, PICKABLE, type PickedBarb } from '#lib/map/pick.ts';
+	import type { AlertCenter } from './alerts.svelte.ts';
 	import type { CoverageStream } from './coverage-stream.svelte.ts';
-	import type { Layers } from './MapLayers.svelte';
 	import type { RadarStream } from './radar-stream.svelte.ts';
 	import type { TrackerStream } from './tracker-stream.svelte.ts';
+	import WindCard from './WindCard.svelte';
 	import type { WeatherStream } from './weather/weather-stream.svelte.ts';
 
 	interface Props {
@@ -113,6 +116,8 @@
 		coverage: CoverageStream;
 		/** The ground radars (experimental). */
 		radars: RadarStream;
+		/** The alerts in force: those aircraft keep their trails with the trail switch off. */
+		alerts: AlertCenter;
 		/** The receiver's or a radar's panel is open. */
 		focus: Focus;
 		/** The sector picked on the receiver panel's sky plot; null: none. */
@@ -130,24 +135,11 @@
 		route,
 		coverage,
 		radars,
+		alerts,
 		focus,
 		sector,
 		onfocus
 	}: Props = $props();
-
-	/** The map layers each switch shows or hides. The trail switch filters instead (below). */
-	const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
-		prediction: ['prediction', 'prediction-ticks', 'prediction-minutes'],
-		uncertainty: ['accuracy', 'containment', 'uncertainty-unknown'],
-		rings: ['rings', 'ring-labels'],
-		winds: ['winds'],
-		// Also shown while the receiver's panel is open (see the switches' effect).
-		coverage: ['coverage-horizon', 'coverage-horizon-label', 'coverage-fill', 'coverage-outline'],
-		radars: ['radar-ellipse-fill', 'radar-ellipses', 'radar-beams', 'radar-sites'],
-		// The base map's own layers (lib/map/style.ts). Borders, terrain and airports always stay.
-		roads: ['roads', 'motorways'],
-		places: ['places']
-	};
 
 	/** Barbs further than this from the selected aircraft's altitude are dimmed, ft. */
 	const LEVEL_BAND_FT = 2000;
@@ -155,54 +147,33 @@
 	const BARB_REFRESH_MS = 10_000;
 	/** Redraw the radar sites at least this often: one no longer heard dims. */
 	const SITES_MS = 10_000;
-	/** The horizon's amber (amber-300), as on the sky plot. */
-	const HORIZON_COLOUR = '#fcd34d';
-
-	/** The barb tapped last, and where on the map it is; its card shows its numbers. */
-	let picked = $state<{ barb: BarbProperties; lon: number; lat: number } | null>(null);
-	/** Where the card's point is on screen, px; follows the map as it moves. */
-	let pickedAt = $state<{ x: number; y: number; width: number } | null>(null);
 
 	/** Set once the style has loaded and our sources and layers exist. */
 	let map = $state<maplibregl.Map | null>(null);
 	/** The base map's tiles don't load (lib/map/base-map.ts): no internet on this device? */
 	let baseMapDown = $state(false);
 
+	/**
+	 * The wind barb tapped last: its card shows its numbers (WindCard). Derived from the wind
+	 * switch, so switching the barbs off (or on) closes the card; a tap sets it.
+	 */
+	let picked = $derived.by((): PickedBarb | null => {
+		void layers.winds;
+		return null;
+	});
+
 	/** Redraw moving aircraft at most this often: smooth enough, and cheap. */
 	const FRAME_MS = 50;
-	const FONT = ['Noto Sans Regular'];
-	const HALO = '#09090b';
-	/** Alert colours: red-500 for emergencies, amber-400 for cautions (as the banner). */
-	const TIER_COLOUR: maplibregl.ExpressionSpecification = [
-		'match',
-		['get', 'tier'],
-		'emergency',
-		'#ef4444',
-		'#fbbf24'
-	];
-	/** The label's colour: the alert's, or the normal one. */
-	const LABEL_COLOUR: maplibregl.ExpressionSpecification = [
-		'match',
-		['get', 'tier'],
-		'',
-		'#f4f4f5',
-		TIER_COLOUR
-	];
 
 	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce');
 
 	/** The aircraft with alerts, as one string: the trail filter only changes when it does. */
-	let alerting = $derived(
-		[...new Set(activeAlerts(stream.aircraft, stream.now()).map((x) => x.icao))].sort().join(' ')
-	);
+	let alerting = $derived([...new Set(alerts.alerts.map((x) => x.icao))].sort().join(' '));
 
-	const source = (m: maplibregl.Map, id: string) => m.getSource(id) as GeoJSONSource;
+	const source = (m: maplibregl.Map, id: SourceId) => m.getSource(id) as GeoJSONSource;
 	const empty = { type: 'FeatureCollection' as const, features: [] };
 
 	maplibregl.setWorkerUrl(workerUrl);
-
-	/** How long the credits stay open on a narrow map: OSMF's guidelines allow five seconds. */
-	const CREDITS_MS = 5000;
 
 	function create(container: HTMLDivElement) {
 		const center = untrack(() => receiver);
@@ -222,7 +193,7 @@
 			fadeDuration: 0
 		});
 		m.touchZoomRotate.disableRotation();
-		let creditsTimer: ReturnType<typeof setTimeout> | undefined;
+		let unfold = () => {};
 		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));
 
 		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
@@ -233,573 +204,45 @@
 			if (barb && !m.hasImage(id))
 				m.addImage(id, barb.image, { sdf: true, pixelRatio: barb.pixelRatio });
 		});
-		m.on('move', placeCard);
 
 		m.on('load', () => {
 			for (const { name, image, pixelRatio } of iconImages())
 				m.addImage(name, image, { sdf: true, pixelRatio });
 
-			for (const id of [
-				'rings',
-				'ring-labels',
-				'route',
-				'route-airports',
-				'trails',
-				'heads',
-				'prediction',
-				'prediction-minutes',
-				'uncertainty',
-				'alert-links',
-				'aircraft',
-				'receiver',
-				'airport-selected',
-				'winds',
-				'coverage-outline',
-				'coverage-horizon',
-				'coverage-points',
-				'coverage-sector',
-				'radar-sites',
-				'radar-ellipses',
-				'radar-beams'
-			])
-				m.addSource(id, { type: 'geojson', data: empty });
+			for (const id of SOURCES) m.addSource(id, { type: 'geojson', data: empty });
 
-			m.addLayer({
-				id: 'rings',
-				type: 'line',
-				source: 'rings',
-				paint: { 'line-color': '#52525b', 'line-width': 1, 'line-dasharray': [4, 4] }
-			});
-			m.addLayer({
-				id: 'ring-labels',
-				type: 'symbol',
-				source: 'ring-labels',
-				layout: {
-					'text-field': ['get', 'label'],
-					'text-font': FONT,
-					'text-size': 10,
-					'text-anchor': 'bottom',
-					'text-offset': [0, -0.2]
-				},
-				paint: { 'text-color': '#71717a', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
-			});
-			// Coverage: background, like the rings. The sector picked on the sky plot as a faint
-			// wedge, the horizon dashed amber, the outlines in their band's colour.
-			m.addLayer({
-				id: 'coverage-sector',
-				type: 'fill',
-				source: 'coverage-sector',
-				paint: { 'fill-color': '#f4f4f5', 'fill-opacity': 0.08 }
-			});
-			m.addLayer({
-				id: 'coverage-horizon',
-				type: 'line',
-				source: 'coverage-horizon',
-				filter: ['==', ['geometry-type'], 'LineString'],
-				paint: {
-					'line-color': HORIZON_COLOUR,
-					'line-opacity': 0.6,
-					'line-width': 1,
-					'line-dasharray': [3, 2]
-				}
-			});
-			m.addLayer({
-				id: 'coverage-horizon-label',
-				type: 'symbol',
-				source: 'coverage-horizon',
-				filter: ['==', ['geometry-type'], 'Point'],
-				layout: {
-					'text-field': ['get', 'label'],
-					'text-font': FONT,
-					'text-size': 10,
-					'text-anchor': 'bottom',
-					'text-offset': [0, -0.2]
-				},
-				paint: { 'text-color': HORIZON_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 1.5 }
-			});
-			m.addLayer({
-				id: 'coverage-fill',
-				type: 'fill',
-				source: 'coverage-outline',
-				paint: { 'fill-color': altitudeColour(), 'fill-opacity': 0.05 }
-			});
-			m.addLayer({
-				id: 'coverage-outline',
-				type: 'line',
-				source: 'coverage-outline',
-				layout: { 'line-join': 'round' },
-				paint: { 'line-color': altitudeColour(), 'line-width': 1, 'line-opacity': 0.6 }
-			});
-			m.addLayer({
-				id: 'coverage-points',
-				type: 'circle',
-				source: 'coverage-points',
-				paint: {
-					'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 9, 2.5],
-					'circle-color': altitudeColour(),
-					'circle-opacity': 0.5
-				}
-			});
-			// Radars: the ellipses and beams faint, under the aircraft and their trails.
-			m.addLayer({
-				id: 'radar-ellipse-fill',
-				type: 'fill',
-				source: 'radar-ellipses',
-				paint: {
-					'fill-color': '#e4e4e7', // zinc-200
-					'fill-opacity': ['case', ['get', 'selected'], 0.12, 0.05]
-				}
-			});
-			m.addLayer({
-				id: 'radar-ellipses',
-				type: 'line',
-				source: 'radar-ellipses',
-				paint: {
-					'line-color': '#d4d4d8', // zinc-300
-					'line-width': ['case', ['get', 'selected'], 1.5, 1],
-					'line-opacity': ['case', ['get', 'selected'], 0.8, 0.4],
-					'line-dasharray': [2, 2]
-				}
-			});
-			m.addLayer({
-				id: 'radar-beams',
-				type: 'line',
-				source: 'radar-beams',
-				layout: { 'line-cap': 'round' },
-				paint: {
-					'line-color': '#f4f4f5', // zinc-100
-					'line-width': ['case', ['get', 'selected'], 2, 1],
-					'line-opacity': ['*', ['get', 'opacity'], ['case', ['get', 'selected'], 0.55, 0.3]]
-				}
-			});
-			// The route: under everything the aircraft draw, faint, so it reads as background.
-			// Dash-dot, unlike the dashed range rings and the dotted predictions.
-			m.addLayer({
-				id: 'route',
-				type: 'line',
-				source: 'route',
-				paint: {
-					'line-color': '#a1a1aa', // zinc-400
-					'line-width': 1.5,
-					'line-opacity': 0.8,
-					'line-dasharray': [6, 3, 1, 3]
-				}
-			});
-			m.addLayer({
-				id: 'route-airport-dots',
-				type: 'circle',
-				source: 'route-airports',
-				paint: {
-					'circle-radius': 3.5,
-					'circle-color': '#a1a1aa',
-					'circle-stroke-color': HALO,
-					'circle-stroke-width': 1.5
-				}
-			});
-			m.addLayer({
-				id: 'route-airports',
-				type: 'symbol',
-				source: 'route-airports',
-				layout: {
-					'text-field': ['get', 'label'],
-					'text-font': FONT,
-					'text-size': 11,
-					'text-anchor': 'bottom',
-					'text-offset': [0, -0.5],
-					'text-allow-overlap': true
-				},
-				paint: { 'text-color': '#e4e4e7', 'text-halo-color': HALO, 'text-halo-width': 2 }
-			});
-			for (const id of ['trails', 'heads'])
-				m.addLayer({
-					id,
-					type: 'line',
-					source: id,
-					layout: { 'line-cap': 'round' },
-					paint: {
-						'line-color': altitudeColour(),
-						// The selected aircraft's trail stands out (see the selection effect).
-						'line-width': 1.5,
-						'line-opacity': 0.7
-					}
-				});
-			// Wind barbs: over the trails they were measured on, under everything else. They give
-			// way to each other (the newest stays) and to the aircraft labels.
-			m.addLayer({
-				id: 'winds',
-				type: 'symbol',
-				source: 'winds',
-				layout: {
-					'icon-image': ['get', 'icon'],
-					'icon-rotate': ['get', 'direction'],
-					'icon-rotation-alignment': 'map',
-					// Turned around the station (the dot), which sits on the point.
-					'icon-anchor': 'bottom',
-					'icon-offset': [0, BARB_BELOW / 2],
-					'icon-size': 0.9,
-					'icon-padding': 0,
-					'symbol-sort-key': ['get', 'sort']
-				},
-				paint: {
-					'icon-color': altitudeColour(),
-					'icon-halo-color': HALO,
-					'icon-halo-width': 1.5,
-					'icon-opacity': ['get', 'opacity']
-				}
-			});
-			// Uncertainty, to scale: the radii are pixels at zoom 0 (features.ts), doubling with
-			// every zoom level. Accuracy filled, containment as a ring.
-			const toScale = (key: string): maplibregl.ExpressionSpecification => [
-				'interpolate',
-				['exponential', 2],
-				['zoom'],
-				0,
-				['get', key],
-				24,
-				['*', ['get', key], 2 ** 24]
-			];
-			m.addLayer({
-				id: 'accuracy',
-				type: 'circle',
-				source: 'uncertainty',
-				filter: ['has', 'accuracy'],
-				paint: {
-					'circle-radius': toScale('accuracy'),
-					'circle-color': altitudeColour(),
-					'circle-opacity': 0.15
-				}
-			});
-			m.addLayer({
-				id: 'containment',
-				type: 'circle',
-				source: 'uncertainty',
-				filter: ['has', 'containment'],
-				paint: {
-					'circle-radius': toScale('containment'),
-					'circle-color': 'rgba(0,0,0,0)',
-					'circle-stroke-color': altitudeColour(),
-					'circle-stroke-width': 1,
-					'circle-stroke-opacity': 0.6
-				}
-			});
-			// Neither accuracy nor integrity known: a fixed-size amber ring, a warning.
-			m.addLayer({
-				id: 'uncertainty-unknown',
-				type: 'circle',
-				source: 'uncertainty',
-				filter: ['==', ['get', 'unknown'], true],
-				paint: {
-					'circle-radius': 13,
-					'circle-color': 'rgba(0,0,0,0)',
-					'circle-stroke-color': '#fbbf24', // amber-400
-					'circle-stroke-width': 1.5,
-					'circle-stroke-opacity': 0.8
-				}
-			});
-			// Dots: zero-length dashes with round caps, a gap of 2.5 line widths between them.
-			m.addLayer({
-				id: 'prediction',
-				type: 'line',
-				source: 'prediction',
-				layout: { 'line-cap': 'round' },
-				paint: {
-					'line-color': altitudeColour(),
-					'line-width': 1.5,
-					'line-opacity': 0.75,
-					'line-dasharray': [0, 2.5]
-				}
-			});
-			m.addLayer({
-				id: 'prediction-minutes',
-				type: 'symbol',
-				source: 'prediction-minutes',
-				layout: {
-					'text-field': ['get', 'label'],
-					'text-font': FONT,
-					'text-size': 10,
-					'text-anchor': 'left',
-					'text-offset': [0.6, 0],
-					'text-allow-overlap': true
-				},
-				paint: { 'text-color': '#a1a1aa', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
-			});
-			m.addLayer({
-				id: 'prediction-ticks',
-				type: 'circle',
-				source: 'prediction-minutes',
-				paint: {
-					'circle-radius': 2.5,
-					'circle-color': '#f4f4f5',
-					'circle-stroke-color': HALO,
-					'circle-stroke-width': 1
-				}
-			});
-			// The airport whose panel is open: a ring round its label (centred on the point;
-			// 22 px clears a four-letter code).
-			m.addLayer({
-				id: 'airport-selected',
-				type: 'circle',
-				source: 'airport-selected',
-				paint: {
-					'circle-radius': 22,
-					'circle-color': 'rgba(244,244,245,0.05)',
-					'circle-stroke-color': '#f4f4f5',
-					'circle-stroke-width': 1.5
-				}
-			});
-			// The receiver; ringed like a selected aircraft while its panel is open.
-			m.addLayer({
-				id: 'receiver-selected',
-				type: 'circle',
-				source: 'receiver',
-				layout: { visibility: 'none' },
-				paint: {
-					'circle-radius': 11,
-					'circle-color': 'rgba(244,244,245,0.08)',
-					'circle-stroke-color': '#f4f4f5',
-					'circle-stroke-width': 1.5
-				}
-			});
-			m.addLayer({
-				id: 'receiver',
-				type: 'circle',
-				source: 'receiver',
-				paint: {
-					'circle-radius': 4,
-					'circle-color': '#f4f4f5',
-					'circle-stroke-color': HALO,
-					'circle-stroke-width': 2
-				}
-			});
-			// Radar sites: over the receiver, under the aircraft, whose labels go first. Radars
-			// near each other (SI 1 and SI 28 near Bratislava, 20–30 km apart) would hide each
-			// other's label at the bottom, so it may move to any side.
-			m.addLayer({
-				id: 'radar-sites',
-				type: 'symbol',
-				source: 'radar-sites',
-				layout: {
-					'icon-image': 'radar',
-					'icon-size': ['case', ['get', 'selected'], 0.6, 0.45],
-					'icon-allow-overlap': true,
-					'icon-ignore-placement': true,
-					'text-field': ['step', ['zoom'], '', 5, ['get', 'label']],
-					'text-font': FONT,
-					'text-size': 10,
-					'text-variable-anchor': ['top', 'bottom', 'right', 'left'],
-					'text-radial-offset': 1.1,
-					'text-optional': true
-				},
-				paint: {
-					'icon-color': '#e4e4e7', // zinc-200
-					'icon-halo-color': HALO,
-					'icon-halo-width': 2,
-					// Not heard for a while: dimmer (and no beam).
-					'icon-opacity': ['case', ['get', 'heard'], 1, 0.5],
-					'text-color': '#a1a1aa', // zinc-400
-					'text-halo-color': HALO,
-					'text-halo-width': 1.5
-				}
-			});
-			// ACAS advisories: the two aircraft joined by a line, with how far apart vertically.
-			m.addLayer({
-				id: 'alert-links',
-				type: 'line',
-				source: 'alert-links',
-				paint: { 'line-color': TIER_COLOUR, 'line-width': 2, 'line-dasharray': [2, 1.5] }
-			});
-			m.addLayer({
-				id: 'alert-link-labels',
-				type: 'symbol',
-				source: 'alert-links',
-				layout: {
-					'symbol-placement': 'line-center',
-					'text-field': ['get', 'label'],
-					'text-font': FONT,
-					'text-size': 11,
-					'text-offset': [0, -0.8],
-					'text-allow-overlap': true
-				},
-				paint: { 'text-color': TIER_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 2 }
-			});
-			// When an alert starts: rings pulsing out from the symbol (features.ts PULSES).
-			m.addLayer({
-				id: 'alert-pulse',
-				type: 'circle',
-				source: 'aircraft',
-				filter: ['>=', ['get', 'pulse'], 0],
-				paint: {
-					'circle-radius': ['+', 18, ['*', 40, ['get', 'pulse']]],
-					'circle-color': 'rgba(0,0,0,0)',
-					'circle-stroke-color': TIER_COLOUR,
-					'circle-stroke-width': 2,
-					'circle-stroke-opacity': ['-', 1, ['get', 'pulse']]
-				}
-			});
-			// Larger and bolder than the amber "integrity unknown" ring (13 px, thin), and
-			// outside the selection ring (17 px), so all three can be told apart.
-			m.addLayer({
-				id: 'alert-ring',
-				type: 'circle',
-				source: 'aircraft',
-				filter: ['!=', ['get', 'tier'], ''],
-				paint: {
-					'circle-radius': 21,
-					'circle-color': TIER_COLOUR,
-					'circle-opacity': 0.12,
-					'circle-stroke-color': TIER_COLOUR,
-					'circle-stroke-width': 2.5
-				}
-			});
-			m.addLayer({
-				id: 'selected',
-				type: 'circle',
-				source: 'aircraft',
-				filter: ['==', ['get', 'icao'], ''],
-				paint: {
-					'circle-radius': 17,
-					'circle-color': 'rgba(244,244,245,0.08)',
-					'circle-stroke-color': '#f4f4f5',
-					'circle-stroke-width': 1.5
-				}
-			});
-			m.addLayer({
-				id: 'aircraft',
-				type: 'symbol',
-				source: 'aircraft',
-				layout: {
-					'icon-image': ['get', 'icon'],
-					'icon-size': ['get', 'size'],
-					'icon-rotate': ['get', 'track'],
-					// Rotated relative to north on the map, not to the screen.
-					'icon-rotation-alignment': 'map',
-					'icon-allow-overlap': true,
-					'icon-ignore-placement': true,
-					// Labels only when zoomed in enough to have room; they give way to each other.
-					// An alert's badge goes above, at any zoom, and alerts are placed first.
-					'text-field': [
-						'step',
-						['zoom'],
-						['get', 'badge'],
-						7,
-						[
-							'format',
-							['case', ['==', ['get', 'badge'], ''], '', ['concat', ['get', 'badge'], '\n']],
-							{ 'text-color': LABEL_COLOUR },
-							['get', 'label'],
-							{}
-						]
-					],
-					'symbol-sort-key': ['get', 'sort'],
-					'text-font': FONT,
-					'text-size': 10,
-					'text-anchor': 'top',
-					// Below the symbol; with a badge, below the alert ring too.
-					'text-offset': [
-						'case',
-						['==', ['get', 'badge'], ''],
-						['literal', [0, 1.3]],
-						['literal', [0, 2.3]]
-					],
-					'text-optional': true
-				},
-				paint: {
-					'icon-color': altitudeColour(),
-					'icon-halo-color': HALO,
-					'icon-halo-width': 2,
-					// (Set again while a radar is open: see `answered`.)
-					'icon-opacity': ['case', ['get', 'dim'], 0.15, ['get', 'stale'], STALE_OPACITY, 1],
-					// The badge alone (zoomed out) in the alert's colour; with the label, the
-					// format above colours the badge.
-					'text-color': ['step', ['zoom'], LABEL_COLOUR, 7, '#d4d4d8'],
-					'text-halo-color': HALO,
-					'text-halo-width': 1.5,
-					'text-opacity': ['case', ['get', 'stale'], STALE_OPACITY, 1]
-				}
-			});
+			for (const layer of mapLayers()) m.addLayer(layer);
 
-			m.on('click', (e: MapMouseEvent) => {
-				// Generous hit box: the symbols are small, fingers are not.
-				const box: [maplibregl.PointLike, maplibregl.PointLike] = [
-					[e.point.x - 12, e.point.y - 12],
-					[e.point.x + 12, e.point.y + 12]
-				];
-				// The aircraft, radar or receiver nearest the tap: an aircraft passing over the
-				// receiver mustn't make the dot impossible to hit, nor the other way round. Then a
-				// wind barb (they sit under the aircraft's trails), then an airport's label.
-				const query = (id: string) => m.queryRenderedFeatures(box, { layers: [id] });
-				const away = (f: maplibregl.MapGeoJSONFeature) => {
-					if (f.geometry.type !== 'Point') return Infinity;
-					const at = m.project(f.geometry.coordinates as [number, number]);
-					return Math.hypot(at.x - e.point.x, at.y - e.point.y);
-				};
-				const nearest = [
-					...query('aircraft').map((f) => ({ f, kind: 'aircraft' as const })),
-					...(layers.radars ? query('radar-sites') : []).map((f) => ({
-						f,
-						kind: 'radar' as const
-					})),
-					...query('receiver').map((f) => ({ f, kind: 'receiver' as const }))
-				].sort((a, b) => away(a.f) - away(b.f))[0];
-				if (nearest) {
-					picked = null;
-					if (nearest.kind === 'aircraft') stream.select(nearest.f.properties.icao as string);
-					else if (nearest.kind === 'radar')
-						onfocus({ kind: 'radar', id: nearest.f.properties.id as string });
-					else onfocus({ kind: 'receiver' });
-					return;
+			// What was tapped (lib/map/pick.ts) opens its panel or card; the map itself closes them.
+			m.on('click', (e) => {
+				const hit = pick(m, e.point, layers);
+				picked = hit?.kind === 'barb' ? hit : null;
+				switch (hit?.kind) {
+					case 'aircraft':
+						return stream.select(hit.icao);
+					case 'radar':
+						return onfocus({ kind: 'radar', id: hit.id });
+					case 'receiver':
+						return onfocus({ kind: 'receiver' });
+					case 'airport':
+						return onfocus({ kind: 'airport', airport: hit.airport });
+					case undefined:
+						stream.select(null);
+						onfocus(null);
 				}
-				const barb = layers.winds ? (query('winds')[0] ?? null) : null;
-				if (barb && barb.geometry.type === 'Point') {
-					const [lon, lat] = barb.geometry.coordinates;
-					picked = { barb: barb.properties as BarbProperties, lon, lat };
-					placeCard();
-					return;
-				}
-				const label = query('airports')[0];
-				const airport =
-					label?.geometry.type === 'Point'
-						? airportFrom(label.properties, {
-								lon: label.geometry.coordinates[0],
-								lat: label.geometry.coordinates[1]
-							})
-						: null;
-				if (airport) {
-					picked = null;
-					onfocus({ kind: 'airport', airport });
-					return;
-				}
-				picked = null;
-				stream.select(null);
-				onfocus(null);
 			});
-			for (const id of ['aircraft', 'winds', 'receiver', 'radar-sites', 'airports']) {
+			for (const id of PICKABLE) {
 				m.on('mouseenter', id, () => (m.getCanvas().style.cursor = 'pointer'));
 				m.on('mouseleave', id, () => (m.getCanvas().style.cursor = ''));
 			}
 
-			// The credits open expanded. On a narrow map they cover the legend and the layers, so
-			// there they fold to the ⓘ on the first tap or zoom (MapLibre itself only on a drag),
-			// or after CREDITS_MS. Never before they've been seen: OSMF's attribution guidelines
-			// want them visible without a tap at first, and allow folding them on map interaction
-			// or after five seconds. Opened again with the ⓘ, the next tap or zoom folds them.
-			if (container.clientWidth < 800) {
-				const credits = container.querySelector('.maplibregl-ctrl-attrib');
-				const fold = () => {
-					credits?.classList.remove('maplibregl-compact-show');
-					credits?.removeAttribute('open');
-				};
-				m.on('click', fold);
-				// Only the user's zooms (they carry the input event), not the fit to the first aircraft.
-				m.on('zoomstart', (e) => e.originalEvent && fold());
-				creditsTimer = setTimeout(fold, CREDITS_MS);
-			}
+			unfold = foldCredits(m, container);
 
 			map = m;
 		});
 
 		return () => {
-			clearTimeout(creditsTimer);
+			unfold();
 			unwatch();
 			map = null;
 			m.remove();
@@ -906,19 +349,7 @@
 	$effect(() => {
 		const icaos = answered;
 		if (!map) return;
-		const normal: maplibregl.ExpressionSpecification = [
-			'case',
-			['get', 'dim'],
-			0.15,
-			['get', 'stale'],
-			STALE_OPACITY,
-			1
-		];
-		map.setPaintProperty(
-			'aircraft',
-			'icon-opacity',
-			icaos ? ['case', ['in', ['get', 'icao'], ['literal', icaos]], normal, 0.25] : normal
-		);
+		map.setPaintProperty('aircraft', 'icon-opacity', aircraftOpacity(icaos));
 	});
 
 	// The selected aircraft's route: when it's looked up or the selection changes.
@@ -966,27 +397,6 @@
 		);
 	});
 
-	/** Put the card over its barb (on tap, and as the map moves). */
-	function placeCard() {
-		if (!map || !picked) return;
-		const { x, y } = map.project([picked.lon, picked.lat]);
-		pickedAt = { x, y, width: map.getContainer().clientWidth };
-	}
-	// The barb switched off: no card for it.
-	$effect(() => {
-		if (!layers.winds) picked = null;
-	});
-
-	/** Who measured the picked barb: callsign if known, else the address. */
-	let pickedBy = $derived.by(() => {
-		if (!picked) return null;
-		const icao = picked.barb.icao;
-		const tracked = stream.get(icao);
-		const callsign =
-			tracked?.callsign?.value ?? weather.aircraft.find((a) => a.icao === icao)?.callsign ?? null;
-		return { icao, name: callsign ?? icao, tracked: !!tracked };
-	});
-
 	// Trails: with every update from the tracker.
 	$effect(() => {
 		const list = stream.aircraft;
@@ -994,7 +404,46 @@
 		source(map, 'trails').setData(trailFeatures(list, stream.now()));
 	});
 
-	// Aircraft and the trail pieces up to them: every animation frame (throttled).
+	// What moves with the aircraft, drawn every animation frame (throttled): the aircraft, the
+	// trail pieces up to them, the alert links, and if switched on the predictions, the
+	// uncertainty circles and the radar beams. A switched-off one is emptied once and then
+	// skipped (20 times a second for nothing shown), so it never shows stale data when it's
+	// switched on again: the switches' effect then draws it at once.
+	let predictionDrawn = false;
+	let uncertaintyDrawn = false;
+	let beamsDrawn = false;
+	function drawMoving(m: maplibregl.Map) {
+		const list = stream.aircraft;
+		const now = stream.now();
+		source(m, 'aircraft').setData(aircraftFeatures(list, now, !reducedMotion.current));
+		source(m, 'alert-links').setData(alertLinkFeatures(list, now));
+		source(m, 'heads').setData(headFeatures(list, now));
+		if (layers.prediction) {
+			const prediction = predictionFeatures(list, now, stream.selected);
+			source(m, 'prediction').setData(prediction.lines);
+			source(m, 'prediction-minutes').setData(prediction.minutes);
+			predictionDrawn = true;
+		} else if (predictionDrawn) {
+			source(m, 'prediction').setData(empty);
+			source(m, 'prediction-minutes').setData(empty);
+			predictionDrawn = false;
+		}
+		if (layers.uncertainty) {
+			source(m, 'uncertainty').setData(uncertaintyFeatures(list, now));
+			uncertaintyDrawn = true;
+		} else if (uncertaintyDrawn) {
+			source(m, 'uncertainty').setData(empty);
+			uncertaintyDrawn = false;
+		}
+		// The beams sweep: none for those who asked for less motion.
+		if (layers.radars && !reducedMotion.current) {
+			source(m, 'radar-beams').setData(beamFeatures(radars.radars, openRadar, now));
+			beamsDrawn = true;
+		} else if (beamsDrawn) {
+			source(m, 'radar-beams').setData(empty);
+			beamsDrawn = false;
+		}
+	}
 	$effect(() => {
 		const m = map;
 		if (!m) return;
@@ -1004,24 +453,14 @@
 			frame = requestAnimationFrame(draw);
 			if (time - last < FRAME_MS) return;
 			last = time;
-			const list = stream.aircraft;
-			const now = stream.now();
-			source(m, 'aircraft').setData(aircraftFeatures(list, now, !reducedMotion.current));
-			source(m, 'alert-links').setData(alertLinkFeatures(list, now));
-			source(m, 'heads').setData(headFeatures(list, now));
-			const prediction = predictionFeatures(list, now, stream.selected);
-			source(m, 'prediction').setData(prediction.lines);
-			source(m, 'prediction-minutes').setData(prediction.minutes);
-			source(m, 'uncertainty').setData(uncertaintyFeatures(list, now));
-			// The beams sweep: none for those who asked for less motion.
-			const sweep = layers.radars && !reducedMotion.current;
-			source(m, 'radar-beams').setData(sweep ? beamFeatures(radars.radars, openRadar, now) : empty);
+			drawMoving(m);
 		};
 		frame = requestAnimationFrame(draw);
 		return () => cancelAnimationFrame(frame);
 	});
 
-	// The switches: show or hide their layers (the data keeps flowing; it's cheap).
+	// The switches: show or hide their layers. The moving ones are drawn at once (or emptied),
+	// not at the next frame: they're skipped while off.
 	$effect(() => {
 		const m = map;
 		if (!m) return;
@@ -1029,6 +468,7 @@
 			const on = key === 'coverage' ? coverageShown : layers[key as keyof Layers];
 			for (const id of ids) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
 		}
+		untrack(() => drawMoving(m));
 	});
 
 	// The selection: a ring around the symbol, its trail brighter and wider. With the trails
@@ -1093,57 +533,7 @@
 		</p>
 	{/if}
 
-	{#if picked && pickedAt && pickedBy}
-		{@const b = picked.barb}
-		{@const age = Math.max(0, Math.round((weather.now - b.rx) / 60_000))}
-		<!-- Above the barb, kept inside the map sideways. -->
-		<div
-			class="absolute z-10 w-64 -translate-y-full rounded-md bg-zinc-950/95 px-3 py-2 text-xs text-zinc-300 shadow-lg ring-1 ring-zinc-800"
-			style:left="{Math.min(Math.max(pickedAt.x - 128, 8), pickedAt.width - 264)}px"
-			style:top="{pickedAt.y - 12}px"
-			role="dialog"
-			aria-label="Wind barb"
-		>
-			<div class="flex items-start justify-between gap-2">
-				<p class="text-sm font-semibold text-zinc-100 tabular-nums">
-					{compass(b.direction)}
-					{directionText(b.direction)} · {Math.round(b.speed)} kt
-					<span class="font-normal text-zinc-400">at {flightLevel(b.altitude)}</span>
-				</p>
-				<button
-					type="button"
-					onclick={() => (picked = null)}
-					class="-mt-1 -mr-1.5 grid size-7 shrink-0 place-items-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-					aria-label="Close"><CloseIcon /></button
-				>
-			</div>
-			<p class="mt-1">
-				Measured by
-				{#if pickedBy.tracked}
-					<button
-						type="button"
-						class="font-mono text-zinc-100 underline decoration-zinc-600 underline-offset-2 hover:decoration-zinc-300"
-						onclick={() => {
-							stream.select(pickedBy.icao);
-							picked = null;
-						}}>{pickedBy.name}</button
-					>
-				{:else}
-					<span class="font-mono text-zinc-100">{pickedBy.name}</span> (gone){/if}
-				{age < 1 ? 'in the last minute' : `${age} min ago`}, here.
-			</p>
-			<p class="mt-1 text-zinc-400">
-				{#if b.from === 'turn'}
-					From a turn: its ground speed and track all the way round trace a circle whose centre is
-					the wind.
-				{:else}
-					{b.samples === 1 ? 'From one reading' : `Mean of ${b.samples} readings`}: its ground
-					vector minus its air vector (registers 5,0 and 6,0).{#if b.corrected}
-						Its heading was turned {Math.abs(b.corrected).toFixed(1)}° first: the other aircraft's
-						winds say it's off (at least {MIN_CORRECTION}°).{/if}
-				{/if}
-				The staff points where the wind comes from.
-			</p>
-		</div>
+	{#if picked && map}
+		<WindCard {map} {picked} {stream} {weather} onclose={() => (picked = null)} />
 	{/if}
 </div>

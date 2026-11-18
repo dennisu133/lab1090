@@ -15,25 +15,11 @@
 -->
 <script lang="ts" module>
 	import { flightLevel } from '#lib/describe/format.ts';
-	export interface Layers {
-		rings: boolean;
-		trail: boolean;
-		prediction: boolean;
-		uncertainty: boolean;
-		winds: boolean;
-		/** How far the antenna hears, per altitude band, and the radio horizon. */
-		coverage: boolean;
-		/** Experimental: the ground radars found from the replies. Off: not searched for. */
-		radars: boolean;
-		/** Base map: motorways, trunk and primary roads. */
-		roads: boolean;
-		/** Base map: city and town names. */
-		places: boolean;
-	}
 </script>
 
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { Layers } from '#lib/map/layers.ts';
 	import { MediaQuery } from 'svelte/reactivity';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';

@@ -1,7 +1,9 @@
 /**
- * Is the base map reachable? The map's tiles, label fonts and terrain come from outside
- * (OpenFreeMap, AWS), fetched by the browser; lab1090's server needs no internet. So a
- * device without it gets live aircraft on an empty background, and should be told why.
+ * The base map: is it reachable (watchBaseMap), and its credits (foldCredits, at the end).
+ *
+ * The map's tiles, label fonts and terrain come from outside (OpenFreeMap, AWS), fetched by
+ * the browser; lab1090's server needs no internet. So a device without it gets live aircraft
+ * on an empty background, and should be told why.
  *
  * MapLibre reports every failed tile as an `error` event. Online, one now and then is
  * normal (a server hiccup) while the rest load, so a single error isn't enough: the map
@@ -84,5 +86,39 @@ export function watchBaseMap(
 		window.removeEventListener('online', onOnline);
 		map.off('error', onError);
 		map.off('sourcedata', onData);
+	};
+}
+
+/** How long the credits stay open on a narrow map: OSMF's guidelines allow five seconds. */
+export const CREDITS_MS = 5000;
+/** Narrower than this, open credits cover the legend and the layer switches. */
+const NARROW_PX = 800;
+
+/**
+ * The credits (MapLibre's compact attribution control) open expanded. On a narrow map they
+ * cover the legend and the layers, so there they fold to the ⓘ on the first tap or zoom
+ * (MapLibre itself only on a drag), or after CREDITS_MS. Never before they've been seen:
+ * OSMF's attribution guidelines want them visible without a tap at first, and allow folding
+ * them on map interaction or after five seconds. Opened again with the ⓘ, the next tap or
+ * zoom folds them. Returns a cleanup.
+ */
+export function foldCredits(map: MapLibreMap, container: HTMLElement): () => void {
+	if (container.clientWidth >= NARROW_PX) return () => {};
+	const credits = container.querySelector('.maplibregl-ctrl-attrib');
+	const fold = () => {
+		credits?.classList.remove('maplibregl-compact-show');
+		credits?.removeAttribute('open');
+	};
+	// Only the user's zooms (they carry the input event), not a fitBounds of our own.
+	const onZoom = (e: { originalEvent?: unknown }) => {
+		if (e.originalEvent) fold();
+	};
+	map.on('click', fold);
+	map.on('zoomstart', onZoom);
+	const timer = setTimeout(fold, CREDITS_MS);
+	return () => {
+		clearTimeout(timer);
+		map.off('click', fold);
+		map.off('zoomstart', onZoom);
 	};
 }

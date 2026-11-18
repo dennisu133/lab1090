@@ -41,7 +41,8 @@
 	import AirportPanel from './AirportPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
 	import CoveragePanel from './CoveragePanel.svelte';
-	import MapLayers, { type Layers } from './MapLayers.svelte';
+	import type { Layers } from '#lib/map/layers.ts';
+	import MapLayers from './MapLayers.svelte';
 	import RadarPanel from './RadarPanel.svelte';
 	import TrackerMap, { type Focus } from './TrackerMap.svelte';
 	import PageTitle from './PageTitle.svelte';
@@ -176,6 +177,7 @@
 			{route}
 			{coverage}
 			{radars}
+			alerts={streams.alerts}
 			{focus}
 			{sector}
 			onfocus={openFocus}
