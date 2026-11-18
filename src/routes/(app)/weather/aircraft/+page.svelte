@@ -9,9 +9,7 @@
 		temperatureFields,
 		windFields
 	} from '#lib/describe/weather.ts';
-	import { trackerContrail } from '#lib/describe/contrail.ts';
 	import type { Observation } from '#lib/weather/observation.ts';
-	import { layerAt, layers } from '#lib/weather/profile.ts';
 	import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 	import AircraftTable from '../AircraftTable.svelte';
 	import Calculation from '../Calculation.svelte';
@@ -58,12 +56,7 @@
 	});
 
 	/** The tracker panel's contrail answer for the example's aircraft, for the third card. */
-	let temperatureLayers = $derived(layers(stream.sky.temperatures, [], []));
-	let contrail = $derived.by(() => {
-		const a = example && stream.aircraft.find((a) => a.icao === example.observation.icao);
-		const feet = a?.lastTemperature?.inputs.altitude?.feet;
-		return a && feet !== undefined ? trackerContrail(a, layerAt(temperatureLayers, feet)) : null;
-	});
+	let contrail = $derived(stream.contrailFor(example?.observation.icao));
 
 	let feed = $derived(
 		stream.items

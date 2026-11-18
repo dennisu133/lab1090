@@ -1,3 +1,4 @@
+import { trackerContrail, type TrackerContrail } from '#lib/describe/contrail.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { fromHex } from '#lib/modes/frame.ts';
@@ -5,7 +6,7 @@ import type { WireFrame } from '#lib/receiver-types.ts';
 import type { Observation } from '#lib/weather/observation.ts';
 import { applyHeadingChecks, headingChecks, type HeadingCheck } from '#lib/weather/headings.ts';
 import { WeatherPipeline } from '#lib/weather/pipeline.ts';
-import type { WindSample } from '#lib/weather/profile.ts';
+import { layerAt, layers, type Layer, type WindSample } from '#lib/weather/profile.ts';
 import type { SkySamples } from '#lib/weather/sky.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 
@@ -14,6 +15,14 @@ export interface ObservationRow {
 	id: number;
 	callsign: string | null;
 	observation: Observation;
+}
+
+/** What the tracker panel shows of one aircraft's weather (weatherFor). */
+export interface AircraftWeather {
+	aircraft: WeatherAircraft;
+	check: HeadingCheck | null;
+	/** The temperature layer at its level, for the contrail line; null: none. */
+	layer: Layer | null;
 }
 
 const MAX_ROWS = 2000;
@@ -45,6 +54,11 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 	 */
 	checks: Map<string, HeadingCheck> = $derived(headingChecks(this.sky.winds));
 	correctedWinds: WindSample[] = $derived(applyHeadingChecks(this.sky.winds, this.checks));
+	/**
+	 * The temperature profile alone (/weather's layers without winds and columns): the
+	 * contrail answer for one aircraft uses its layer's mean temperature.
+	 */
+	temperatureLayers: Layer[] = $derived(layers(this.sky.temperatures, [], []));
 	/** When the first frame arrived (server clock): how long we've been collecting. */
 	since = $state<number | null>(null);
 
@@ -55,6 +69,37 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		super(MAX_ROWS);
 		this.#reference = reference;
 		this.#pipeline = new WeatherPipeline(reference);
+	}
+
+	/** One aircraft's wind, temperature, heading check and layer (the tracker panel). */
+	weatherFor(icao: string | null | undefined): AircraftWeather | null {
+		const aircraft = this.#find(icao);
+		if (!aircraft) return null;
+		return {
+			aircraft,
+			check: this.checks.get(aircraft.icao) ?? null,
+			layer: this.#layerOf(aircraft)
+		};
+	}
+
+	/**
+	 * The tracker panel's contrail answer for one aircraft (/weather/aircraft's worked
+	 * example). Unlike weatherFor it doesn't read the heading checks, so they aren't
+	 * computed for it.
+	 */
+	contrailFor(icao: string | null | undefined): TrackerContrail | null {
+		const aircraft = this.#find(icao);
+		return aircraft ? trackerContrail(aircraft, this.#layerOf(aircraft)) : null;
+	}
+
+	#find(icao: string | null | undefined): WeatherAircraft | undefined {
+		return icao ? this.aircraft.find((a) => a.icao === icao) : undefined;
+	}
+
+	/** The temperature layer at its latest temperature's altitude. */
+	#layerOf(a: WeatherAircraft): Layer | null {
+		const feet = a.lastTemperature?.inputs.altitude?.feet;
+		return feet === undefined ? null : layerAt(this.temperatureLayers, feet);
 	}
 
 	/** The receiver's position, for maps around it. */
