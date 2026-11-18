@@ -20,8 +20,17 @@
  *   aircraft passing close by); many mean the strongest pulses get flattened, and the tuner
  *   itself works outside its linear range, with all its intermodulation.
  *
- * MAX_CLIPPED and MAX_ROUNDING_DB are first guesses (Nov 2026): a gain sweep with real
- * traffic should set them.
+ * MAX_CLIPPED and MAX_ROUNDING_DB are first guesses (Nov 2026). A sweep with real traffic
+ * (tools/gain-sweep.ts, 18 Nov 2026, 29.7–49.6 dB in 5 s steps, each against its own round's
+ * mean) found nothing to move them on:
+ *
+ * - More gain heard more all the way up, 48.0 and 49.6 dB the same: the default stays 49.6.
+ * - The rounding limit is on the cautious side. "Too low" starts at 43.4 dB and below,
+ *   which do lose 12 % and more. But 44.5 dB (−41.2 dBFS, "fine") still heard ~14 % less
+ *   than 48–49.6: more gain keeps helping after rounding stops mattering, probably
+ *   because the tuner's own noise figure gets better with more LNA gain. One evening and one
+ *   antenna: not enough to move the limit.
+ * - Clipping: see MAX_CLIPPED.
  */
 
 /**
@@ -98,7 +107,13 @@ export function roundingCostDb(sigma: number): number {
 	return 10 * Math.log10(1 + 1 / (12 * sigma * sigma));
 }
 
-/** More than this share of messages clipped: the gain is too high. */
+/**
+ * More than this share of messages clipped: the gain is too high.
+ *
+ * TODO: check it at a time with more strong traffic. Nothing clipped in the gain sweep;
+ * afterwards one close aircraft reached full scale and clipped 42 messages in 5 s at 49.6 dB
+ * (3.4 % of that step), too little to say whether 1 % over 5 minutes is the right limit.
+ */
 export const MAX_CLIPPED = 0.01;
 /** Rounding costing more than this: the gain is too low… */
 export const MAX_ROUNDING_DB = 1;

@@ -31,6 +31,10 @@ export const ADC_LIMIT = Math.floor((127.5 / 128) * FULL_SCALE);
 /**
  * Magnitude of every (I, Q) byte pair, index I | (Q << 8): the pair read as one little-endian
  * 16-bit number, one load instead of two. Clipped at full scale.
+ *
+ * 128 KB. A 32 KB one folded by symmetry (|I − 127.5|, |Q − 127.5|) was slower on the Pi 5.
+ * TODO: try it on a Pi 3 or 4 (nothing has run on one yet): an in-order core with less cache
+ * might be faster with it.
  */
 const MAGNITUDE = Uint16Array.from({ length: 65536 }, (_, index) => {
 	const i = ((index & 0xff) - 127.5) / 128;

@@ -37,7 +37,14 @@
  * Tuned against readsb on the same recordings (tools/demod-compare.ts): on 12 minutes of
  * afternoon traffic (18 Nov 2026) this finds 17–22 % more messages than readsb, and misses
  * 0.3–0.4 % of those readsb finds (not counting DF11 replies to a radar, whose last 7 bits
- * nobody can check: filter.ts).
+ * nobody can check: filter.ts). Live, side by side on the same samples for 10 minutes that
+ * evening: +17 % messages, +10 % airborne positions, every aircraft readsb heard and two more,
+ * for 7.8 % of a Pi 5 core (the whole lab1090 process) against readsb's 2.8 %.
+ *
+ * What was tried and dropped is noted where it would have gone, with what it gave. A change
+ * made only for speed must leave the output identical on the three recordings
+ * (tools/demod-bench.ts --save before, --check after), and speed that costs messages isn't
+ * taken.
  *
  * Samples come in chunks of any size; a message can straddle two of them, so the end of one
  * chunk is kept for the next.
@@ -91,7 +98,13 @@ export interface DemodulatorStats {
 	repaired: number;
 	/** Messages passed on (accepted or repaired) with a sample at the ADC's limit. */
 	clipped: number;
-	/** Mean magnitude of the latest 27 ms, 1 = full scale: mostly the noise. */
+	/**
+	 * Mean magnitude of the latest 27 ms, 1 = full scale: mostly the noise.
+	 *
+	 * TODO: messages add to the mean too. Compare a busy hour with one late at night: if
+	 * traffic raises it noticeably, a median or a low percentile would measure the noise
+	 * better (for QUICK_ABOVE_LEVEL and the gain advice, lib/radio/gain.ts).
+	 */
 	level: number;
 	/**
 	 * Blocks of LEVEL_BLOCK samples measured, and the sum of their mean magnitudes: the mean
@@ -147,7 +160,9 @@ const SELF_OVERLAP = Array.from({ length: SAMPLE }, (_, start) => {
 
 /**
  * Step 1: the pulses' weakest sample must beat the gaps' mean by this much (amplitude). Low
- * on purpose: it only saves work, the parity decides. 1.5 is 3.5 dB.
+ * on purpose: it only saves work, the parity decides. 1.5 is 3.5 dB. Looser (this or
+ * QUICK_ABOVE_LEVEL lower) found 1 % more on real traffic for 5× the work; readsb's test as
+ * a second way in found more for less.
  */
 export const QUICK_RATIO = 1.5;
 /**
@@ -160,7 +175,8 @@ export const QUICK_ABOVE_LEVEL = 1.5;
 export const LEVEL_BLOCK = 65536;
 /**
  * Step 2: mean energy in the pulses vs in the gaps. 1.8 is 5.1 dB. Lower finds more weak
- * messages, and costs: 2 found 3 % fewer, 1.6 another 0.4 % more for twice the work.
+ * messages, and costs: 2 found 3 % fewer, 1.6 another 0.4 % more for twice the work, 1.4
+ * nothing more than 1.6.
  */
 export const PREAMBLE_RATIO = 1.8;
 
@@ -308,6 +324,8 @@ export class Demodulator {
 				if (frame) {
 					frames.push(frame.frame);
 					// Go on after this message; one starting inside it would be garbled anyway.
+					// Resuming 30 µs before its end (about what readsb does) found 8 more per
+					// 5 minutes for 24 % more CPU; at the next sample, only the same message again.
 					n = Math.floor(frame.end / SAMPLE) - 1;
 					early = n >= 0 ? this.#readsbEarly(n) : 0;
 				}
@@ -373,6 +391,9 @@ export class Demodulator {
 			this.stats.noPreamble++;
 			return null;
 		}
+		// Every start that scores, best first, also when readsb's test let the sample in: reading
+		// only the best-scored start lost 2.9 % of messages, scoring readsb's candidates only at
+		// its own phases 3 to 11 per recording.
 		/** Why the best start that reached the parity check was turned down. */
 		let rejection: Rejection | null = null;
 		for (; count > 0; count--) {
@@ -394,6 +415,7 @@ export class Demodulator {
 	 */
 	#read(s: number, weak: boolean): { frame: DemodulatedFrame; end: number } | 'format' | Rejection {
 		this.#triedCount = 0;
+		// All three readings for these too: 0.9 % more messages for twice the CPU.
 		if (weak) return this.#readAs(s, 'slicer');
 		const asSequence = this.#readAs(s, 'sequence');
 		if (typeof asSequence === 'object') return asSequence;

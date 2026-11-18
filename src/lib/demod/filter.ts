@@ -14,11 +14,14 @@
  * - DF0/4/5/16/20/21/24: the parity is overlaid with the address, so every bit string
  *   "passes" with some address. Only from an aircraft already heard: noise matching one of a
  *   few dozen known addresses is a one-in-a-million chance per try. That also keeps out
- *   replies from aircraft whose squitters we can't hear: readsb does the same.
+ *   replies from aircraft whose squitters we can't hear: readsb does the same. readsb's test as
+ *   a second way in (readsb.ts) means ~8× more tries, so at most ~11 an hour (tries × known
+ *   addresses / 2²⁴), was ~3. The tracker wants two agreeing replies; /frames shows them.
  * - One flipped bit in an ADS-B message: each of the 112 bit positions gives its own
  *   syndrome, so a syndrome on that list says which bit to flip back. But noise lands on
  *   one of the 107 entries once in ~150,000 tries, which would be several false messages
- *   an hour. So a repaired message only counts from an aircraft already heard intact.
+ *   an hour. So a repaired message only counts from an aircraft already heard intact
+ *   (readsb also takes them from aircraft it hasn't heard: more noise gets through).
  * - A wrong bit in the format of an ADS-B message turns DF17 into 16, 19, 21 or 25, read
  *   under the wrong rules. If flipping that bit back gives CRC 0, it was DF17 (readsb's
  *   fixDF does the same). Also only from an aircraft already heard intact.
@@ -67,6 +70,9 @@ const ONE_BIT_SHORT = oneBit(7);
 /**
  * The formats DF17 becomes with one wrong bit, and that bit, with the syndrome it leaves in
  * a long message. (DF1 too, but that's read as 56 bits and never gets here.)
+ *
+ * TODO: DF1 doesn't exist, so the demodulator stops at the format (#length0) and this never
+ * sees it; readsb reads a DF1 as long and tries it as DF17. A couple of messages per 5 minutes.
  */
 const FROM_17 = new Map<number, { bit: number; syndrome: number }>();
 for (let bit = 1; bit <= 5; bit++) {
@@ -125,7 +131,12 @@ export class MessageFilter {
 				this.#heard(address(data), t);
 				return this.#accept(data);
 			}
-			// A radar's code, or one wrong bit?
+			// A radar's code, or one wrong bit? A wrong bit among the last 7 gives another radar's
+			// code, so readsb and we sometimes read the same reply with different codes; readsb also
+			// accepts a long tail of rare ones. Where they differed on the recordings, ours was the
+			// common code 170 times, readsb's 66.
+			// TODO: take a code only if it was heard often enough recently (lib/radar/ relies on
+			// the codes being right).
 			if ((s & ~0x7f) === 0)
 				return this.#isKnown(address(data), t) ? this.#accept(data) : this.#reject('unheard');
 			return this.#repair(data, ONE_BIT_SHORT.get(s), t);

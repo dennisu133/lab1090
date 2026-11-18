@@ -10,6 +10,11 @@
  * over the points (the median, so the many weak outliers don't pull it). What's left over
  * is the interesting part: the antennas' patterns (a vertical antenna hears little straight
  * up), the building in the way, the ground reflection.
+ *
+ * TODO: check it against real traffic. Does the line fit? Aircraft high overhead should sit
+ * below it. Is the distance where it meets the noise plausible next to the farthest aircraft
+ * heard (266 km in fixtures/capture-1h.beast)? Our signal is pulse amplitude, 3 dB above
+ * readsb's for the same message.
  */
 
 export interface SignalPoint {

@@ -27,6 +27,13 @@
  * The crystal error is the slope of a least-squares line through the minima (steps taken
  * out), with its standard error: each window adds a point, so it gets better the longer a
  * run goes. One run at a time: a restart starts a new line.
+ *
+ * On a warm dongle that's right: a restart read −18.9 ± 0.1 ppm within 3 minutes, as rtl_sdr
+ * measured against CLOCK_MONOTONIC (18 Nov 2026; against CLOCK_MONOTONIC_RAW, the Pi's own
+ * crystal, −11.8: the 7 ppm between them is NTP's correction of it). From a cold one it isn't:
+ * the crystal warms up for a quarter of an hour (−183 ppm after 2 minutes, −100 by minute 16
+ * while showing ±2), a curve the line can't follow and whose ± assumes it can.
+ * TODO: fit only the last ~10 minutes, so the number follows a warm-up and its ± is honest.
  */
 import type { ClockReport } from '#lib/receiver-types.ts';
 
