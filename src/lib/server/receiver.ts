@@ -1,5 +1,4 @@
-import type { BeastFrame } from './beast/parser';
-import { openSource, type FrameSource } from './frame-source';
+import { openSource, type FrameSource, type ModeSFrame } from './frame-source';
 import { FrameBuffers } from './frame-buffers';
 import { FrameCounts } from './frame-counts';
 import { RadioHistory } from './radio-history';
@@ -117,8 +116,7 @@ export class Receiver {
 		return () => this.#subscribers.delete(subscriber);
 	}
 
-	#onFrame(f: BeastFrame): void {
-		if (f.kind === 'modeac') return; // Mode S only: a Beast feed may carry Mode A/C (readsb --modeac)
+	#onFrame(f: ModeSFrame): void {
 		const now = Date.now();
 		const df = downlinkFormat(f.data);
 		const tc = typeCode(f.data);

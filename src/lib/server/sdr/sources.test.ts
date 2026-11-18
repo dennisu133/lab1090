@@ -6,7 +6,7 @@ import { modulate } from '#lib/demod/modulate.ts';
 import { toHex } from '#lib/modes/frame.ts';
 import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
 import { waitFor } from '../beast/testing';
-import type { BeastFrame } from '../beast/parser';
+import type { ModeSFrame } from '../frame-source';
 import { Recording } from './recording';
 import { explain, learn, RtlSdr } from './rtl-sdr';
 import { RtlTcp, setupCommands, tunerName } from './rtl-tcp';
@@ -40,12 +40,12 @@ const sources: { close(): void }[] = [];
 afterEach(() => sources.splice(0).forEach((s) => s.close()));
 
 function collect() {
-	const frames: BeastFrame[] = [];
+	const frames: ModeSFrame[] = [];
 	const statuses: SourceStatus[] = [];
 	return {
 		frames,
 		statuses,
-		onFrame: (f: BeastFrame) => frames.push(f),
+		onFrame: (f: ModeSFrame) => frames.push(f),
 		onStatus: (s: SourceStatus) => statuses.push(s)
 	};
 }
