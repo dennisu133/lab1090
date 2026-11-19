@@ -137,11 +137,7 @@
 </div>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="1 · Who asked"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="1 · Who asked">
 		<p>
 			A Mode S radar finds new aircraft with an "all-call": a question to everyone in its beam. Each
 			aircraft answers with a DF11 reply: its address, and a parity field that is the checksum (CRC)
@@ -164,7 +160,7 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip
 		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
+		class="mb-2 text-xs font-medium text-zinc-400"
 		label="2 · How fast it turns"
 	>
 		<p>
@@ -222,11 +218,7 @@
 </section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="3 · Where it stands"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="3 · Where it stands">
 		<p>
 			If the beam turns steadily, it points at β(t) = 360° · (t − t₀) / P. Each burst is a moment it
 			pointed at an aircraft whose position we know. For a guessed radar position, the bearings from
@@ -299,11 +291,7 @@
 </section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="4 · How sure"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="4 · How sure">
 		<p>
 			Fit again without each aircraft in turn (a jackknife): if the position hangs on one aircraft,
 			it moves a lot. The spread of those fits gives the dashed ellipse on the map, two standard
@@ -340,11 +328,7 @@
 </section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="Who answered"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="Who answered">
 		<p>
 			Every aircraft with bursts to this code, with how many the fit explains. Many unexplained
 			bursts: it answered another radar with the same code, or was too far away for a good position.
@@ -370,11 +354,7 @@
 </section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="The beam"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="The beam">
 		<p>
 			The line sweeping round on the map is the fit's prediction, not something we receive: where
 			β(t) says the beam points now. It should pass over each aircraft just as its replies come in.

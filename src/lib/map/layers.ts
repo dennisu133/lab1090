@@ -81,7 +81,8 @@ export const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 };
 
 const FONT = ['Noto Sans Regular'];
-const HALO = '#09090b';
+/** The base map's land colour (style.ts): a halo that hides what's under a label, no ring. */
+const HALO = '#131316';
 /** The horizon's amber (amber-300), as on the sky plot. */
 const HORIZON_COLOUR = '#fcd34d';
 

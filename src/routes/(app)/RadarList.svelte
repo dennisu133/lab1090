@@ -28,11 +28,7 @@
 </script>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm">
-	<InfoTip
-		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-		label="All radars"
-	>
+	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="All radars">
 		<p>
 			The radars on the map: every fit has found them again for {CONFIRM_MS / 60_000} minutes. One goes
 			after {MAX_MISSES} fits in a row that find other radars on its code but not it; fits that find nothing

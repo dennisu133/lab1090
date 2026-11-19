@@ -64,8 +64,8 @@
 	let clock = $derived(demod.clock);
 </script>
 
-<section class="rounded-lg bg-zinc-900 p-4">
-	<h2 class="mb-3 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Diagnosis</h2>
+<section class="rounded-lg border border-zinc-800 p-4">
+	<h2 class="mb-3 text-sm font-semibold text-zinc-100">Diagnosis</h2>
 	<dl class="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 text-sm tabular-nums">
 		<dt>
 			<InfoTip label="Gain" wide>

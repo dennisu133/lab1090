@@ -94,7 +94,7 @@
 </p>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">On the map</h3>
+	<h3 class="mb-2 text-xs font-medium text-zinc-400">On the map</h3>
 	<ul class="space-y-1">
 		<li>
 			<span class="font-medium text-zinc-100">Outlines</span>: the farthest position per {SECTOR_DEG}°
@@ -117,7 +117,7 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm">
 	<InfoTip
 		heading="h3"
-		class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
+		class="mb-2 text-xs font-medium text-zinc-400"
 		label="The antenna's sky"
 		wide
 	>
@@ -184,7 +184,7 @@
 					<dt>Traffic</dt>
 					<dd>{n(sector.positions)} from {sector.aircraft} aircraft</dd>
 				</dl>
-				<h5 class="mt-3 mb-1 text-xs text-zinc-500 uppercase">
+				<h5 class="mt-3 mb-1 text-xs font-medium text-zinc-400">
 					<InfoTip label="Farthest per altitude band">
 						<p>
 							The farthest position in each band, as a share of the radio horizon at its altitude.
@@ -217,7 +217,7 @@
 </section>
 
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
-	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">So far</h3>
+	<h3 class="mb-2 text-xs font-medium text-zinc-400">So far</h3>
 	<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 tabular-nums">
 		<dt>
 			<InfoTip label="Farthest">

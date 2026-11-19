@@ -155,7 +155,7 @@
 				</p>
 			{/snippet}
 			{#if top.found}
-				<p class="mt-2 text-2xl text-amber-300">
+				<p class="mt-2 text-2xl font-semibold tracking-tight text-amber-300">
 					{top.atOrBelow ? '≤ ' : ''}{levelOrFeet(top.level)}
 				</p>
 				<p class="mt-1 text-xs text-zinc-500">
@@ -163,7 +163,7 @@
 					{top.atOrBelow ? 'Already the lowest layer with enough data: may be lower.' : ''}
 				</p>
 			{:else}
-				<p class="mt-2 text-2xl text-zinc-500">not found</p>
+				<p class="mt-2 text-2xl font-semibold tracking-tight text-zinc-500">not found</p>
 				<p class="mt-1 text-xs text-zinc-500">{top.reason}</p>
 			{/if}
 		</Card>
@@ -178,7 +178,9 @@
 				</p>
 			{/snippet}
 			{#if strongest}
-				<p class="mt-2 font-mono text-2xl text-emerald-300">{windText(strongest.wind)}</p>
+				<p class="mt-2 font-mono text-2xl font-semibold tracking-tight text-emerald-300">
+					{windText(strongest.wind)}
+				</p>
 				<p class="mt-1 text-xs text-zinc-500">
 					at {levelOrFeet(strongest.level)}{strongest.jet ? ': jet stream strength' : ''}.
 					{strongest.atTop
@@ -188,7 +190,7 @@
 							: ''}
 				</p>
 			{:else}
-				<p class="mt-2 text-2xl text-zinc-500">—</p>
+				<p class="mt-2 text-2xl font-semibold tracking-tight text-zinc-500">—</p>
 				<p class="mt-1 text-xs text-zinc-500">
 					No layer with {MIN_SAMPLES} winds from {MIN_AIRCRAFT} aircraft yet.
 				</p>
@@ -199,7 +201,7 @@
 			{#snippet info()}
 				<p>QNH: the pressure the pilots near the ground set on their altimeters.</p>
 			{/snippet}
-			<p class="mt-2 text-2xl">{hpa(pressure.hPa)}</p>
+			<p class="mt-2 text-2xl font-semibold tracking-tight">{hpa(pressure.hPa)}</p>
 			<p class="mt-1 text-xs text-zinc-500">
 				{pressure.local.length
 					? `Median of ${pressure.local.length} aircraft's local settings.`
@@ -217,13 +219,15 @@
 				</p>
 			{/snippet}
 			{#if example}
-				<p class="mt-2 text-2xl text-amber-300">{isaText(example.column.isaDeviation)}</p>
+				<p class="mt-2 text-2xl font-semibold tracking-tight text-amber-300">
+					{isaText(example.column.isaDeviation)}
+				</p>
 				<p class="mt-1 text-xs text-zinc-500">
 					Mean of the air below {levelOrFeet(example.layer.level)}, from {example.layer.column!.n}
 					samples.
 				</p>
 			{:else}
-				<p class="mt-2 text-2xl text-zinc-500">—</p>
+				<p class="mt-2 text-2xl font-semibold tracking-tight text-zinc-500">—</p>
 				<p class="mt-1 text-xs text-zinc-500">No GNSS − baro heard yet.</p>
 			{/if}
 		</Card>
@@ -314,7 +318,7 @@
 						bind:heights
 					/>
 				{:else}
-					<p class="rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
+					<p class="rounded-lg border border-zinc-800 p-4 text-sm text-zinc-500">
 						Waiting for GNSS − baro (ADS-B velocity messages, TC 19)…
 					</p>
 				{/if}
@@ -330,7 +334,7 @@
 
 	<!-- Last: it grows with every level heard. Picking a layer shows its column above. -->
 	<section>
-		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Layers</h2>
+		<h2 class="mb-2 text-sm font-semibold text-zinc-100">Layers</h2>
 		<LayerTable
 			layers={all}
 			{columns}

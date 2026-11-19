@@ -44,7 +44,7 @@
 		children
 	}: Props = $props();
 
-	const TITLE = 'text-sm font-semibold tracking-wide text-zinc-400 uppercase';
+	const TITLE = 'text-sm font-semibold text-zinc-100';
 </script>
 
 {#snippet titleTip(extra?: ClassValue)}
@@ -53,7 +53,7 @@
 	</InfoTip>
 {/snippet}
 
-<div class={[className, 'rounded-lg bg-zinc-900 p-4']}>
+<div class={[className, 'rounded-lg border border-zinc-800 p-4']}>
 	{#if header}
 		<div
 			class={[

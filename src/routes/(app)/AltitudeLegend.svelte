@@ -30,7 +30,7 @@
 </script>
 
 <div
-	class="flex items-center gap-2.5 rounded-md bg-zinc-950/80 px-3 py-1.5 text-xs text-zinc-400 backdrop-blur sm:block sm:py-2"
+	class="flex items-center gap-2.5 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-400 sm:block sm:py-2"
 >
 	<div class="sm:mb-1">
 		<InfoTip label="Altitude">

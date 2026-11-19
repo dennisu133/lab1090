@@ -21,18 +21,17 @@
 	<section class="border-t border-zinc-800 px-4 py-3">
 		<h3
 			class={[
-				'mb-2 text-xs font-semibold tracking-wide uppercase',
+				'mb-2 text-xs font-medium',
 				section.tier === 'emergency'
 					? 'text-red-400'
 					: section.tier === 'caution'
 						? 'text-amber-300'
-						: 'text-zinc-500'
+						: 'text-zinc-400'
 			]}
 		>
 			{section.title}
 			{#if section.source}
-				<span class="font-normal tracking-normal text-zinc-500 normal-case">· {section.source}</span
-				>
+				<span class="font-normal text-zinc-500">· {section.source}</span>
 			{/if}
 		</h3>
 		<dl class="grid grid-cols-[8.75rem_1fr] gap-x-3 gap-y-1.5 text-sm">

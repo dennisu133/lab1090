@@ -29,7 +29,7 @@
 </script>
 
 <section class="border-t border-zinc-800 px-4 py-3">
-	<h3 class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">Live messages</h3>
+	<h3 class="mb-2 text-xs font-medium text-zinc-400">Live messages</h3>
 	{#if frozen}
 		<p class="mb-2 text-xs text-amber-300">
 			Paused while a message is open{waiting ? ` · ${waiting} new` : ''}

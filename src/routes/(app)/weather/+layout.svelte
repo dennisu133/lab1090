@@ -25,7 +25,7 @@
 				class={[
 					'-mb-px border-b-2 px-4 py-2 text-sm',
 					page.url.pathname === tab.href
-						? 'border-sky-400 text-white'
+						? 'border-zinc-100 text-white'
 						: 'border-transparent text-zinc-400 hover:text-white'
 				]}
 				aria-current={page.url.pathname === tab.href ? 'page' : undefined}

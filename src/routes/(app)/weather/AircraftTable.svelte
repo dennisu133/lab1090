@@ -26,12 +26,7 @@
 
 <section>
 	<div class="mb-2 flex">
-		<InfoTip
-			heading="h2"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Aircraft"
-			wide
-		>
+		<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Aircraft" wide>
 			<p>
 				Every aircraft a radar read both 5,0 and 6,0 from in the last {AIRCRAFT_TTL_MS / 1000} s, with
 				a verified address and nothing ADS-B contradicts. Each new reply of one register is paired with

@@ -16,11 +16,14 @@ import type { StyleSpecification } from 'maplibre-gl';
 
 const FONT = ['Noto Sans Regular'];
 
-/** Tailwind's zinc, plus a dark blue-grey for water. */
+/**
+ * Tailwind's zinc, plus a dark blue for water. The label halo is the land's colour: it
+ * hides roads under a label without drawing a ring of its own around it.
+ */
 const C = {
 	land: '#131316',
-	water: '#0d1520',
-	waterway: '#14202e',
+	water: '#0e1724',
+	waterway: '#152233',
 	wood: '#17181b',
 	residential: '#1a1a1e',
 	border: '#52525b', // zinc-600
@@ -33,7 +36,7 @@ const C = {
 	buildingEdge: '#2e2e33',
 	label: '#a1a1aa', // zinc-400
 	minorLabel: '#71717a', // zinc-500
-	halo: '#09090b' // zinc-950
+	halo: '#131316' // = land
 };
 
 /**

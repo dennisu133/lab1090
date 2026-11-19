@@ -83,7 +83,7 @@
 	<!-- Worked example -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Worked example</h2>
+			<h2 class="text-sm font-semibold text-zinc-100">Worked example</h2>
 			{#if example}
 				<span class="text-sm">
 					<span class="font-mono text-amber-300">{example.observation.icao}</span>
@@ -114,7 +114,7 @@
 			</div>
 		{:else}
 			<!-- As tall as the three cards will be, so nothing jumps when the first pair arrives. -->
-			<p class="h-266 rounded-lg bg-zinc-900 p-4 text-sm text-zinc-500">
+			<p class="h-266 rounded-lg border border-zinc-800 p-4 text-sm text-zinc-500">
 				Waiting for a 5,0/6,0 pair…
 			</p>
 		{/if}
@@ -125,7 +125,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Live observations</h2>
+			<h2 class="text-sm font-semibold text-zinc-100">Live observations</h2>
 			<PauseButton feed={stream} noun="observations" />
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SHOW as s (s.value)}

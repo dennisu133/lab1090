@@ -242,7 +242,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Live frames</h2>
+			<h2 class="text-sm font-semibold text-zinc-100">Live frames</h2>
 			<PauseButton feed={stream} noun="frames" />
 			{#each chips as chip (chip.key)}
 				<FilterChip label={chip.label} onclear={() => (filter[chip.key] = null)} />

@@ -70,12 +70,7 @@
 
 <section>
 	<div class="mb-2 flex">
-		<InfoTip
-			heading="h2"
-			class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-			label="Aircraft"
-			wide
-		>
+		<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Aircraft" wide>
 			<p>
 				Aircraft whose Comm-B replies can be verified, heard in the last {AIRCRAFT_TTL_MS / 1000} s. The
 				middle columns are the latest <strong>Enhanced Surveillance</strong> readings, dimmed after {STALE_MS /

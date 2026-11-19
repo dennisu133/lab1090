@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './theme.css';
 
 /*
  * The page background lives on <html>, not just on the layout wrapper: absolutely
@@ -33,7 +34,7 @@
  * utilities, and it loads after this file: these rules are more specific instead.
  */
 .maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
-	@apply bg-zinc-950/80 text-zinc-500 backdrop-blur;
+	@apply bg-zinc-950 text-zinc-500;
 }
 .maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib a {
 	@apply text-zinc-400;

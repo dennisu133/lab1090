@@ -32,6 +32,7 @@ Generating committed files (below):
 | `address-blocks.ts`              | `src/lib/modes/address-blocks.ts`, from ICAO Annex 10                       |
 | `geoid-grid.ts`                  | `src/lib/weather/egm96.ts`, from GeographicLib's EGM96 grid                 |
 | `sounding.ts`                    | `fixtures/sounding/`: weather balloons, from the University of Wyoming      |
+| `hyperlegible-open.py`           | `src/lib/assets/fonts/`: Atkinson Hyperlegible with an open zero            |
 
 ## Regenerating
 
@@ -101,4 +102,23 @@ where they came from.
 ```sh
 bun tools/sounding.ts 10393 "2026-11-13 12:00" > fixtures/sounding/10393-2026-11-13-12z.csv
 bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11-13-18z.csv
+```
+
+### Fonts
+
+Atkinson Hyperlegible Next and Mono (Braille Institute, SIL Open Font License 1.1), upright
+and italic, with an open zero; the slashed one stays behind the OpenType `zero` feature. The
+tool's header says how; `src/lib/assets/fonts/OFL.txt` is the license that goes with them.
+The variable fonts from Google Fonts, at the commits they were made from:
+
+```sh
+mkdir -p fixtures/local/fonts
+G=https://raw.githubusercontent.com/google/fonts
+N=$G/afbb27a87bc4be2b0005e17c144831438e82ab37/ofl/atkinsonhyperlegiblenext
+M=$G/3a0be2fdd3252b377a0851f0ba01c3609f99b7ab/ofl/atkinsonhyperlegiblemono
+curl -L -o fixtures/local/fonts/next.ttf "$N/AtkinsonHyperlegibleNext%5Bwght%5D.ttf"
+curl -L -o fixtures/local/fonts/next-italic.ttf "$N/AtkinsonHyperlegibleNext-Italic%5Bwght%5D.ttf"
+curl -L -o fixtures/local/fonts/mono.ttf "$M/AtkinsonHyperlegibleMono%5Bwght%5D.ttf"
+curl -L -o fixtures/local/fonts/mono-italic.ttf "$M/AtkinsonHyperlegibleMono-Italic%5Bwght%5D.ttf"
+tools/.venv/bin/python tools/hyperlegible-open.py fixtures/local/fonts src/lib/assets/fonts
 ```

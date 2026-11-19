@@ -28,8 +28,8 @@
 	let shown = $derived(events.toReversed().slice(0, EVENTS_SHOWN));
 </script>
 
-<section class="rounded-lg bg-zinc-900 p-4">
-	<h2 class="mb-3 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Device</h2>
+<section class="rounded-lg border border-zinc-800 p-4">
+	<h2 class="mb-3 text-sm font-semibold text-zinc-100">Device</h2>
 	<dl class="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-1 text-sm">
 		<dt class="text-zinc-400">Source</dt>
 		<dd>{source ?? '–'}</dd>

@@ -56,7 +56,7 @@
 		<div class="mb-2 flex">
 			<InfoTip
 				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				class="text-sm font-semibold text-zinc-100"
 				label="Signal strength"
 				wide
 			>

@@ -1,0 +1,138 @@
+/*
+ * EXPERIMENT (branch experiment/vercel-theme): Vercel's dark "Geist" look.
+ *
+ * Instead of renaming classes in ~40 components, this re-points Tailwind's palette at Geist's
+ * dark values (from https://vercel.com/geist/vercel-brand.css, --vbg-* tokens):
+ * - zinc → still zinc, at Geist's lightness steps (text at 0.946 / 0.706).
+ * - sky → Geist blue, emerald → green, amber → amber, red and rose → red.
+ * Everything else (the altitude colours, orange, purple, …) stays Tailwind's.
+ *
+ * So "sky" now means Geist blue. Fine for trying it out; if the look stays, the honest version
+ * is semantic names (--color-accent, --color-text-secondary, …) instead.
+ */
+
+/*
+ * The font: Atkinson Hyperlegible Next and Mono (Braille Institute; made so that similar
+ * characters can't be mistaken for each other), with an open zero; the slashed one is behind
+ * font-feature-settings: 'zero'. tools/hyperlegible-open.py makes them.
+ */
+@font-face {
+	font-family: 'Hyperlegible Open';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 200 800;
+	src: url('../lib/assets/fonts/hyperlegible-open.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Hyperlegible Open';
+	font-style: italic;
+	font-display: swap;
+	font-weight: 200 800;
+	src: url('../lib/assets/fonts/hyperlegible-open-italic.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Hyperlegible Open Mono';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 200 800;
+	src: url('../lib/assets/fonts/hyperlegible-open-mono.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Hyperlegible Open Mono';
+	font-style: italic;
+	font-display: swap;
+	font-weight: 200 800;
+	src: url('../lib/assets/fonts/hyperlegible-open-mono-italic.woff2') format('woff2');
+}
+
+@theme {
+	--font-sans: 'Hyperlegible Open', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'Hyperlegible Open Mono', ui-monospace, monospace;
+
+	/*
+	 * Zinc's tint (Tailwind's hue and chroma per step) at Geist's lightness steps: brighter
+	 * secondary text (500), subtler borders and hovers (700–900). 950, the page, is
+	 * Tailwind's zinc-950 itself.
+	 */
+	--color-zinc-50: oklch(0.985 0 0);
+	--color-zinc-100: oklch(0.946 0.001 286.375);
+	--color-zinc-200: oklch(0.9 0.004 286.32);
+	--color-zinc-300: oklch(0.83 0.006 286.286);
+	--color-zinc-400: oklch(0.706 0.015 286.067);
+	--color-zinc-500: oklch(0.623 0.016 285.938);
+	--color-zinc-600: oklch(0.45 0.017 285.786);
+	--color-zinc-700: oklch(0.32 0.013 285.805);
+	--color-zinc-800: oklch(0.255 0.006 286.033);
+	--color-zinc-900: oklch(0.19 0.006 285.885);
+	--color-zinc-950: oklch(0.141 0.005 285.823);
+
+	/* Geist blue: 700 is Vercel's #0070f3-ish, 900 the readable text blue on black. */
+	--color-sky-100: oklch(0.9675 0.0179 242.42);
+	--color-sky-200: oklch(0.86 0.08 245);
+	--color-sky-300: oklch(0.717 0.1648 250.79);
+	--color-sky-400: oklch(0.66 0.2 254);
+	--color-sky-500: oklch(0.5761 0.2321 258.23);
+	--color-sky-600: oklch(0.53 0.23 258);
+	--color-sky-700: oklch(0.45 0.2 257);
+	--color-sky-800: oklch(0.38 0.15 256);
+	--color-sky-900: oklch(0.341 0.121 254.74);
+	--color-sky-950: oklch(0.2217 0.069 259.89);
+
+	--color-emerald-100: oklch(0.9676 0.056 154.18);
+	--color-emerald-200: oklch(0.86 0.13 150);
+	--color-emerald-300: oklch(0.731 0.2158 148.29);
+	--color-emerald-400: oklch(0.69 0.21 148);
+	--color-emerald-500: oklch(0.6458 0.199 147.27);
+	--color-emerald-600: oklch(0.56 0.17 147.5);
+	--color-emerald-700: oklch(0.48 0.14 147.6);
+	--color-emerald-800: oklch(0.41 0.12 147.7);
+	--color-emerald-900: oklch(0.3439 0.1039 147.78);
+	--color-emerald-950: oklch(0.2309 0.0716 149.68);
+
+	--color-amber-100: oklch(0.967 0.0418 84.59);
+	--color-amber-200: oklch(0.9 0.12 80);
+	--color-amber-300: oklch(0.8187 0.1969 76.46);
+	--color-amber-400: oklch(0.7721 0.1991 64.28);
+	--color-amber-500: oklch(0.7 0.18 62);
+	--color-amber-600: oklch(0.6 0.16 60);
+	--color-amber-700: oklch(0.5 0.13 62);
+	--color-amber-800: oklch(0.42 0.11 64);
+	--color-amber-900: oklch(0.3553 0.0903 66.3);
+	--color-amber-950: oklch(0.2246 0.0538 76.04);
+
+	--color-red-100: oklch(0.956 0.0293 6.61);
+	--color-red-200: oklch(0.86 0.09 15);
+	--color-red-300: oklch(0.6996 0.2136 22.03);
+	--color-red-400: oklch(0.6256 0.2234 23.03);
+	--color-red-500: oklch(0.6 0.22 23);
+	--color-red-600: oklch(0.53 0.2 23);
+	--color-red-700: oklch(0.46 0.17 22);
+	--color-red-800: oklch(0.4 0.15 21.5);
+	--color-red-900: oklch(0.3527 0.1273 21.23);
+	--color-red-950: oklch(0.221 0.0657 15.11);
+
+	--color-rose-100: var(--color-red-100);
+	--color-rose-200: var(--color-red-200);
+	--color-rose-300: var(--color-red-300);
+	--color-rose-400: var(--color-red-400);
+	--color-rose-500: var(--color-red-500);
+	--color-rose-600: var(--color-red-600);
+	--color-rose-700: var(--color-red-700);
+	--color-rose-800: var(--color-red-800);
+	--color-rose-900: var(--color-red-900);
+	--color-rose-950: var(--color-red-950);
+
+	/* Geist's radii: 6 px small, 8 px default. Tailwind's -md and -lg already are. */
+}
+
+@layer base {
+	/* Tabular figures, so live numbers don't jitter; headings set a touch tighter. */
+	html {
+		font-feature-settings: 'tnum';
+		-webkit-font-smoothing: antialiased;
+	}
+	h1,
+	h2 {
+		letter-spacing: -0.01em;
+	}
+}

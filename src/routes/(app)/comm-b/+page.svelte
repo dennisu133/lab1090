@@ -75,12 +75,7 @@
 	<!-- Registers -->
 	<section>
 		<div class="mb-2 flex">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Registers"
-				wide
-			>
+			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Registers" wide>
 				<p>
 					A Mode S transponder holds up to 256 <strong>registers</strong> of 56 bits, numbered by
 					their <strong>BDS</strong> code: <code>4,0</code> is register 0x40.
@@ -166,7 +161,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Live readings</h2>
+			<h2 class="text-sm font-semibold text-zinc-100">Live readings</h2>
 			<PauseButton feed={stream} noun="readings" />
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SOURCES as s (s.label)}

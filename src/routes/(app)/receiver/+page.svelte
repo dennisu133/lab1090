@@ -71,13 +71,9 @@
 </script>
 
 {#snippet messages()}
-	<section class="rounded-lg bg-zinc-900 p-4">
+	<section class="rounded-lg border border-zinc-800 p-4">
 		<div class="mb-2 flex items-baseline gap-3">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label="Messages"
-			>
+			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Messages">
 				<p>
 					Messages per second, every format, averaged over 10 s. It follows the traffic: quiet at
 					night, busy in the afternoon, and dips when the receiver had trouble.
@@ -104,8 +100,8 @@
 	{#if demod && advice}
 		<Diagnosis {demod} {summary} {advice} />
 	{:else if receiverLink.source}
-		<section class="rounded-lg bg-zinc-900 p-4 text-sm text-zinc-300">
-			<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">Diagnosis</h2>
+		<section class="rounded-lg border border-zinc-800 p-4 text-sm text-zinc-300">
+			<h2 class="mb-2 text-sm font-semibold text-zinc-100">Diagnosis</h2>
 			<p>
 				Messages come from a Beast feed ({receiverLink.source}): demodulated on that machine, by
 				readsb, dump1090 or another lab1090. The samples, the gain, the noise and the CPU are its
@@ -127,13 +123,9 @@
 
 	{#if demod}
 		<div class="grid gap-6 xl:grid-cols-2">
-			<section class="rounded-lg bg-zinc-900 p-4">
+			<section class="rounded-lg border border-zinc-800 p-4">
 				<div class="mb-2 flex items-baseline gap-3">
-					<InfoTip
-						heading="h2"
-						class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-						label="Noise level"
-					>
+					<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Noise level">
 						<p>
 							The mean magnitude of the samples per 10 s, in dBFS: the noise floor. It rises with
 							the gain and with interference (other transmitters, a switching power supply or USB 3
@@ -161,11 +153,11 @@
 		</div>
 	{/if}
 
-	<section class="rounded-lg bg-zinc-900 p-4">
+	<section class="rounded-lg border border-zinc-800 p-4">
 		<div class="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
 			<InfoTip
 				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
+				class="text-sm font-semibold text-zinc-100"
 				label="Signal against distance"
 				wide
 			>

@@ -51,7 +51,7 @@
 	}
 </script>
 
-<div class="rounded-md bg-zinc-950/80 text-xs text-zinc-400 backdrop-blur">
+<div class="rounded-md border border-zinc-800 bg-zinc-950 text-xs text-zinc-400">
 	<div
 		id="map-layers"
 		class={[
@@ -232,11 +232,7 @@
 				</svg>
 			{/snippet}
 		</LayerSwitch>
-		<p
-			class="border-t border-zinc-800 pt-1.5 text-[10px] tracking-wide text-amber-300/80 uppercase"
-		>
-			Experimental
-		</p>
+		<p class="border-t border-zinc-800 pt-1.5 text-xs text-amber-300">Experimental</p>
 		<LayerSwitch
 			bind:checked={layers.radars}
 			label="Search for the ground radars and show them"

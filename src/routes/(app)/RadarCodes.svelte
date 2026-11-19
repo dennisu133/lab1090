@@ -28,11 +28,7 @@
 
 {#if listed.length || unlisted}
 	<section class="border-t border-zinc-800 px-4 py-3 text-sm">
-		<InfoTip
-			heading="h3"
-			class="mb-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase"
-			{label}
-		>
+		<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" {label}>
 			<p>
 				The radar codes in the replies of the last {WINDOW_MS / 60_000} minutes with at least {LISTED_BURSTS}
 				bursts. Most are never placed: too few aircraft answer them often enough, or too few of those

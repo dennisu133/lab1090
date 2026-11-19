@@ -122,14 +122,12 @@
 <section>
 	{#if info}
 		<div class="mb-2 flex">
-			<InfoTip
-				heading="h2"
-				class="text-sm font-semibold tracking-wide text-zinc-400 uppercase"
-				label={title}>{@render info()}</InfoTip
+			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label={title}
+				>{@render info()}</InfoTip
 			>
 		</div>
 	{:else}
-		<h2 class="mb-2 text-sm font-semibold tracking-wide text-zinc-400 uppercase">{title}</h2>
+		<h2 class="mb-2 text-sm font-semibold text-zinc-100">{title}</h2>
 	{/if}
 	<!-- Fixed layout: only Name takes the remaining width, so changing counts never move the columns.
 	     min-w-xl leaves Name room for one line; narrower than that, the table scrolls. -->
