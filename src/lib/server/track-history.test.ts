@@ -5,7 +5,8 @@ import { downlinkFormat, fromHex, toHex, typeCode } from '#lib/modes/frame.ts';
 import { timedMessages } from '#lib/modes/testing.ts';
 import type { WireFrame } from '#lib/receiver-types.ts';
 import { Tracker } from '#lib/tracker/tracker.ts';
-import { TRACK_HISTORY_MS, TrackHistory } from './track-history';
+import { bridges } from '#lib/tracker/trail.ts';
+import { TRACK_HISTORY_MS, TrackHistory, VELOCITY_KEEP_MS } from './track-history';
 
 /** The capture as the server sees it: wire frames with verdicts, rx = receiver time in ms. */
 const filter = new AddressFilter();
@@ -33,17 +34,30 @@ describe('TrackHistory on the capture', () => {
 	}
 	history.prune(end);
 	const kept = history.frames;
+	const isVelocity = (f: WireFrame) => typeCode(fromHex(f.hex)) === 19;
+	const positions = kept.filter((f) => !isVelocity(f));
 	const full = track(frames);
 	const thin = track(kept);
 
 	test('keeps about one position frame per aircraft every 4 s', () => {
 		// Of the capture's 2,763 airborne positions (16 aircraft, 10 minutes): 18 %.
-		expect(kept.length).toBe(498);
+		expect(positions.length).toBe(498);
 		expect(kept.every((f) => f.addr?.verdict === 'valid')).toBe(true);
 	});
 
+	test(`and a velocity frame every ${VELOCITY_KEEP_MS / 1000} s, for the trails' bridges`, () => {
+		expect(kept.length - positions.length).toBe(179);
+		const bridged = (t: Tracker) =>
+			t.list().flatMap((a) => bridges(a.trail).map(([, to]) => `${a.icao} ${to.t}`));
+		// All but one: there the newest velocity kept was 60.4 s old, just past VELOCITY_MS
+		// (the one heard 4.8 s after it wasn't kept).
+		expect(bridged(full).length).toBe(5);
+		expect(bridged(thin).length).toBe(4);
+		expect(bridged(full)).toEqual(expect.arrayContaining(bridged(thin)));
+	});
+
 	test('alternating the grids, so each pairs with the one before', () => {
-		const byIcao = Map.groupBy(kept, (f) => f.addr!.icao);
+		const byIcao = Map.groupBy(positions, (f) => f.addr!.icao);
 		let alternating = 0;
 		let pairs = 0;
 		for (const list of byIcao.values()) {

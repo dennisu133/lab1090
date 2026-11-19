@@ -62,7 +62,7 @@ import { squitter } from '#lib/modes/squitter.ts';
 import type { OperationalStatus, TargetStateV2 } from '#lib/modes/status.ts';
 import type { Velocity } from '#lib/modes/velocity.ts';
 import { Positions, type Located, type Outcome } from './positions';
-import { extend, prune, type Trail } from './trail';
+import { extend, prune, VELOCITY_MS, type Trail } from './trail';
 
 /** Aircraft not heard for this long are dropped (the same minute as the address filter). */
 export const AIRCRAFT_TTL_MS = 60_000;
@@ -490,9 +490,13 @@ export class Tracker {
 		a.position = p;
 		const altitude =
 			!surface && a.altitude && t - a.altitude.t <= TRAIL_ALTITUDE_MS ? a.altitude.value : null;
+		const velocity =
+			!surface && a.ground && t - a.ground.t <= VELOCITY_MS
+				? { ...a.ground.value, t: a.ground.t }
+				: null;
 		a.trail = extend(
 			a.trail,
-			{ lat: p.lat, lon: p.lon, altitude, ground: surface, t },
+			{ lat: p.lat, lon: p.lon, altitude, ground: surface, velocity, t },
 			outcome.kind !== 'moved'
 		);
 		return a;

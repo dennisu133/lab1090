@@ -6,7 +6,7 @@
 	always stay: they're what you find your way by). Below another, the experiments: the
 	ground radars. All on by default but coverage and the experiments. With the trails off,
 	the selected aircraft still has one. Labels whose layer needs explaining are InfoTips
-	(tappable: phones never show `title`); Trail, Roads and Place names are plain. The rings'
+	(tappable: phones never show `title`); Roads and Place names are plain. The rings'
 	unit is set above the aircraft list.
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
@@ -21,6 +21,7 @@
 	import LayerSwitch from './LayerSwitch.svelte';
 	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
+	import { GAP_MS, SLOWER_TOLERANCE, TRACK_TOLERANCE_DEG, TRAIL_MS } from '#lib/tracker/trail.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
 	import { BANDS } from '#lib/coverage/coverage.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
@@ -93,6 +94,17 @@
 					/>
 				</svg>
 			{/snippet}
+			<p>
+				Where each aircraft has been in the last {TRAIL_MS / 60_000} min, in the colour of its altitude.
+				After more than {GAP_MS / 1000} s without a position the trail breaks: nobody heard where the
+				aircraft went.
+			</p>
+			<p>
+				A fainter line bridges the gap where the aircraft must have flown straight. Its length over
+				the gap's time is a speed, and any detour would make it slower than the aircraft flew. So it
+				has to be the ground speed the aircraft reported on both sides (at most {SLOWER_TOLERANCE *
+					100} % slower), and the line has to point along the track it reported at both ends (within {TRACK_TOLERANCE_DEG}°).
+			</p>
 		</LayerSwitch>
 		<LayerSwitch
 			bind:checked={layers.prediction}

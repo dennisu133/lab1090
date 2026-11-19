@@ -7,9 +7,11 @@ export const TRACK_HISTORY_MS = 10 * 60_000;
 export const KEEP_MS = 4_000;
 /** Global decoding pairs frames at most this far apart (cpr.ts). */
 const PAIR_MS = 10_000;
+/** Keep a velocity frame per aircraft this often: within the trail's VELOCITY_MS (trail.ts). */
+export const VELOCITY_KEEP_MS = 16_000;
 
 /**
- * The last 10 minutes of ADS-B position frames, thinned, so the tracker can draw every
+ * The last 10 minutes of ADS-B position (and some velocity) frames, thinned, so the tracker can draw every
  * aircraft's trail the moment a page opens instead of starting from nothing.
  *
  * The frames stay raw: the browser decodes them like live ones (the server only does
@@ -27,16 +29,32 @@ const PAIR_MS = 10_000;
  * just a few. So at the start (and after PAIR_MS without a kept frame) the first frame from
  * the other grid is kept right away, whatever its age.
  *
- * At ~20–40 aircraft that's ~3,000–6,000 frames, a few hundred KB of JSON.
+ * And a velocity frame (TC 19, ground speed: subtypes 1 and 2) every VELOCITY_KEEP_MS, for
+ * the reported ground speed and track the trail keeps with its points: they decide which
+ * gaps in a trail a straight line bridges (trail.ts). Every 16 s is enough for that: a third
+ * more frames (on the capture) instead of twice as many. After a gap the first one is kept at once.
+ *
+ * At ~20–40 aircraft that's ~4,000–8,000 frames, a few hundred KB of JSON.
  */
 export class TrackHistory {
 	#frames: WireFrame[] = [];
 	/** Per aircraft: when its last frame was kept, from which grid, and if it has a pair yet. */
 	#last = new Map<string, { rx: number; odd: boolean; paired: boolean }>();
+	/** Per aircraft: when its last velocity frame was kept. */
+	#lastVelocity = new Map<string, number>();
 
 	/** Every frame, in arrival order; keeps the ones it needs. */
 	add(frame: WireFrame, data: Uint8Array, df: number, tc: number | null): void {
 		if (df !== 17 || frame.addr?.verdict !== 'valid' || tc === null) return;
+		if (tc === 19) {
+			const subtype = bits(data, 38, 3); // ME bits 6–8
+			if (subtype !== 1 && subtype !== 2) return;
+			const last = this.#lastVelocity.get(frame.addr.icao) ?? -Infinity;
+			if (frame.rx - last < VELOCITY_KEEP_MS) return;
+			this.#lastVelocity.set(frame.addr.icao, frame.rx);
+			this.#frames.push(frame);
+			return;
+		}
 		if (!((tc >= 5 && tc <= 18) || (tc >= 20 && tc <= 22))) return;
 		const odd = bits(data, 54, 1) === 1; // F: ME bit 22, the same place in both layouts
 		const last = this.#last.get(frame.addr.icao);
@@ -65,5 +83,6 @@ export class TrackHistory {
 		const keep = this.#frames.findIndex((f) => f.rx >= from);
 		if (keep !== 0) this.#frames = keep === -1 ? [] : this.#frames.slice(keep);
 		for (const [icao, last] of this.#last) if (last.rx < from) this.#last.delete(icao);
+		for (const [icao, rx] of this.#lastVelocity) if (rx < from) this.#lastVelocity.delete(icao);
 	}
 }

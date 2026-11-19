@@ -26,6 +26,7 @@ import { badge as alertBadge } from '#lib/describe/alert.ts';
 import { flightLevel, n, type Unit } from '#lib/describe/format.ts';
 import { alertsOf, identing, tierOf, type Tier } from '#lib/tracker/alerts.ts';
 import { EXTRAPOLATE_MS, shownPosition } from '#lib/tracker/shown.ts';
+import { bridges } from '#lib/tracker/trail.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import { circlePoints, lngLat } from './geometry.ts';
@@ -121,6 +122,8 @@ export interface TrailProperties {
 	icao: string;
 	altitude: number | null;
 	ground: boolean;
+	/** Across a gap nobody heard, where the aircraft flew straight (tracker/trail.ts): fainter. */
+	bridge: boolean;
 }
 
 function line(
@@ -128,12 +131,13 @@ function line(
 	from: LatLon,
 	to: LatLon,
 	altitude: number | null,
-	ground: boolean
+	ground: boolean,
+	bridge = false
 ): Feature<LineString, TrailProperties> {
 	return {
 		type: 'Feature',
 		geometry: { type: 'LineString', coordinates: [lngLat(from), lngLat(to)] },
-		properties: { icao, altitude, ground }
+		properties: { icao, altitude, ground, bridge }
 	};
 }
 
@@ -168,7 +172,8 @@ function runs<P extends LatLon, Props>(
 /**
  * Trails, each piece between neighbouring points in the colour of the altitude it ends at:
  * a climbing aircraft leaves a trail that changes colour. Pieces at the same altitude are
- * joined into one line (`runs`), which looks the same. Only for aircraft on the map at `now`.
+ * joined into one line (`runs`), which looks the same. Between the segments, the gaps the
+ * aircraft flew straight across (`bridges`). Only for aircraft on the map at `now`.
  */
 export function trailFeatures(
 	list: TrackedAircraft[],
@@ -182,9 +187,11 @@ export function trailFeatures(
 				...runs(
 					segment,
 					(x, y) => x.altitude === y.altitude && x.ground === y.ground,
-					(p) => ({ icao: a.icao, altitude: p.altitude, ground: p.ground })
+					(p) => ({ icao: a.icao, altitude: p.altitude, ground: p.ground, bridge: false })
 				)
 			);
+		for (const [from, to] of bridges(a.trail))
+			features.push(line(a.icao, from, to, to.altitude, false, true));
 	}
 	return { type: 'FeatureCollection', features };
 }

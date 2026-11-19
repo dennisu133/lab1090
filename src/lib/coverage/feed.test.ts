@@ -17,6 +17,7 @@ const point = (t: number, lon: number, altitude: number | null = 35_000, ground 
 	lon,
 	altitude,
 	ground,
+	velocity: null,
 	t
 });
 

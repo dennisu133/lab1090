@@ -93,6 +93,7 @@
 		mapLayers,
 		SOURCES,
 		type Layers,
+		trailPaint,
 		type SourceId
 	} from '#lib/map/layers.ts';
 	import { pick, PICKABLE, type PickedBarb } from '#lib/map/pick.ts';
@@ -480,10 +481,11 @@
 		map.setFilter('selected', ['==', ['get', 'icao'], icao]);
 		const mine = ['==', ['get', 'icao'], icao] as maplibregl.ExpressionSpecification;
 		const kept = ['in', ['get', 'icao'], ['literal', shown]] as maplibregl.ExpressionSpecification;
+		const paint = trailPaint(icao || null);
 		for (const id of ['trails', 'heads']) {
 			map.setFilter(id, layers.trail ? null : kept);
-			map.setPaintProperty(id, 'line-width', ['case', mine, 3, 1.5]);
-			map.setPaintProperty(id, 'line-opacity', ['case', mine, 1, icao ? 0.35 : 0.7]);
+			map.setPaintProperty(id, 'line-width', paint['line-width']);
+			map.setPaintProperty(id, 'line-opacity', paint['line-opacity']);
 		}
 		map.setPaintProperty('prediction', 'line-width', ['case', mine, 2.5, 1.5]);
 		map.setPaintProperty('prediction', 'line-opacity', ['case', mine, 0.9, icao ? 0.3 : 0.75]);

@@ -59,9 +59,9 @@ function aircraft(changes: Partial<TrackedAircraft> = {}): TrackedAircraft {
 		lastRejection: null,
 		trail: [
 			[
-				{ lat: 52, lon: 13.9, altitude: 34_900, ground: false, t: -8000 },
-				{ lat: 52, lon: 13.95, altitude: 34_950, ground: false, t: -4000 },
-				{ lat: 52, lon: 14, altitude: 35_000, ground: false, t: 0 }
+				{ lat: 52, lon: 13.9, altitude: 34_900, ground: false, velocity: null, t: -8000 },
+				{ lat: 52, lon: 13.95, altitude: 34_950, ground: false, velocity: null, t: -4000 },
+				{ lat: 52, lon: 14, altitude: 35_000, ground: false, velocity: null, t: 0 }
 			]
 		],
 		commB: { intention: null, trackAndTurn: null, headingAndSpeed: null },
@@ -193,6 +193,7 @@ describe('features', () => {
 			lon,
 			altitude,
 			ground,
+			velocity: null,
 			t: (lon - 14) * 1e5
 		});
 		const trail = [
@@ -212,6 +213,28 @@ describe('features', () => {
 		expect(lines.map((l) => l.properties.ground)).toEqual([false, false, false, true]);
 		// Level flight: the predicted path is one line.
 		expect(predictionFeatures([aircraft()], 0, null).lines.features).toHaveLength(1);
+	});
+
+	test('a gap the aircraft flew straight across: a bridge, drawn apart', () => {
+		// East along 52°N, 0.01° of longitude a second, reporting that speed and track.
+		const kt = (distanceKm({ lat: 52, lon: 14 }, { lat: 52, lon: 14.01 }) / KM_PER_NM) * 3600;
+		const at = (lon: number) => {
+			const t = (lon - 14) * 1e5;
+			const velocity = { speed: kt, track: bearing({ lat: 52, lon }, { lat: 52, lon: 14 }), t };
+			return { lat: 52, lon, altitude: 35_000, ground: false, velocity, t };
+		};
+		const trail = [
+			[at(13.9), at(13.92)],
+			[at(13.98), at(14)]
+		];
+		const lines = trailFeatures([aircraft({ trail })], 0).features;
+		expect(lines.map((l) => [l.properties.bridge, l.geometry.coordinates.map(([x]) => x)])).toEqual(
+			[
+				[false, [13.9, 13.92]],
+				[false, [13.98, 14]],
+				[true, [13.92, 13.98]]
+			]
+		);
 	});
 
 	test(`the predicted path: ${PREDICT_S} s in 5 s pieces, ${PREDICT_SELECTED_S} s with minute marks when selected`, () => {

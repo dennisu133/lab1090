@@ -42,7 +42,14 @@ function flown(end: LatLon, track: number, seconds: number, kt = 450, turn = 0):
 	let p = end;
 	let t = track;
 	for (let s = 0; s <= seconds; s += step) {
-		points.unshift({ lat: p.lat, lon: p.lon, altitude: 30_000, ground: false, t: -s * 1000 });
+		points.unshift({
+			lat: p.lat,
+			lon: p.lon,
+			altitude: 30_000,
+			ground: false,
+			velocity: null,
+			t: -s * 1000
+		});
 		p = destination(p, t + 180, km);
 		t -= turn * step;
 	}

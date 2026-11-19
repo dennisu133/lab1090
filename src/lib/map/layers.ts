@@ -26,6 +26,20 @@ export interface Layers {
 	places: boolean;
 }
 
+/**
+ * The trails' width and opacity: the selected aircraft's (`icao`) wider and brighter, the
+ * others dimmed while one is selected (TrackerMap's selection effect). A bridge across a gap
+ * (features.ts) thinner and fainter than the trail it joins: nobody heard the aircraft there.
+ */
+export function trailPaint(icao: string | null) {
+	const mine: ExpressionSpecification = ['==', ['get', 'icao'], icao ?? ''];
+	const bridge: ExpressionSpecification = ['==', ['get', 'bridge'], true];
+	return {
+		'line-width': ['*', ['case', mine, 3, 1.5], ['case', bridge, 0.6, 1]],
+		'line-opacity': ['*', ['case', mine, 1, icao ? 0.35 : 0.7], ['case', bridge, 0.5, 1]]
+	} satisfies Record<string, ExpressionSpecification>;
+}
+
 /** Our GeoJSON sources, one per kind of thing drawn, all empty until TrackerMap fills them. */
 export const SOURCES = [
 	'rings',
@@ -272,12 +286,7 @@ export function mapLayers(): LayerSpecification[] {
 			type: 'line',
 			source: id,
 			layout: { 'line-cap': 'round' },
-			paint: {
-				'line-color': altitudeColour(),
-				// The selected aircraft's trail stands out (TrackerMap's selection effect).
-				'line-width': 1.5,
-				'line-opacity': 0.7
-			}
+			paint: { 'line-color': altitudeColour(), ...trailPaint(null) }
 		})),
 		// Wind barbs: over the trails they were measured on, under everything else. They give
 		// way to each other (the newest stays) and to the aircraft labels.
