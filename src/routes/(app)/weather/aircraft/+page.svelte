@@ -1,6 +1,6 @@
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
-	import PauseButton from '#lib/components/PauseButton.svelte';
+	import FilterChip from '#lib/components/FilterChip.svelte';
+	import LiveHeading from '#lib/components/LiveHeading.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import { arrivalTime, levelOrFeet } from '#lib/describe/format.ts';
 	import {
@@ -125,8 +125,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold text-zinc-100">Live observations</h2>
-			<PauseButton feed={stream} noun="observations" />
+			<LiveHeading feed={stream} noun="observations" />
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SHOW as s (s.value)}
 					<button
@@ -141,12 +140,7 @@
 				{/each}
 			</div>
 			{#if selected !== null}
-				<button
-					class="flex items-center gap-1.5 rounded bg-accent-900 py-1 pr-2 pl-3 text-sm hover:bg-accent-800"
-					onclick={() => (selected = null)}
-				>
-					{selected} only <CloseIcon class="size-3.5" />
-				</button>
+				<FilterChip label={selected} onclear={() => (selected = null)} />
 			{/if}
 		</div>
 

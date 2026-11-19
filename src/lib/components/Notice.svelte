@@ -1,6 +1,6 @@
 <!--
 	The pill that floats over the page: the live list's "paused while you scroll"
-	(PauseButton.svelte) and the alert banner (routes/AlertBanner.svelte). The content brings
+	(LiveHeading.svelte) and the alert banner (routes/AlertBanner.svelte). The content brings
 	its own buttons; where it floats is up to them. The colour says what kind of notice it is:
 	sky for the live lists, red for an emergency, amber for a caution (an ACAS advisory, a
 	priority flight).

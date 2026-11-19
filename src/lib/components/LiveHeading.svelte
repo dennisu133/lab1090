@@ -1,11 +1,13 @@
 <!--
-	The Pause button for a live list, which also pauses it automatically while you read.
+	A live list's heading, "Live frames ⏸", which pauses the list: a click on the heading or
+	the icon pauses it, another resumes it (the icon then a ▶, with how many arrived since). It
+	also pauses by itself while you read.
 
 	New items go on top of the list. Once you scroll down into it, every batch (4 a second)
-	would push the rows you're reading further down. So as soon as this button, which sits in
-	the list's heading, scrolls out of view at the top, the list pauses. When it comes back
-	into view, the list resumes and shows what arrived in the meantime. The button stays in
-	charge: if you paused with it, scrolling back up doesn't resume.
+	would push the rows you're reading further down. So as soon as this heading scrolls out of
+	view at the top, the list pauses. When it comes back into view, the list resumes and shows
+	what arrived in the meantime. The click stays in charge: if you paused with it, scrolling
+	back up doesn't resume.
 
 	While paused by scrolling, a notice at the top of the window says so, so the list never
 	looks frozen without a reason (below the alert banner, if there is one). Clicking it
@@ -16,10 +18,11 @@
 	import type { Attachment } from 'svelte/attachments';
 	import type { LiveFeed } from '#lib/live-feed.svelte.ts';
 	import Notice from './Notice.svelte';
+	import PauseIcon from './icons/PauseIcon.svelte';
 
 	interface Props {
 		feed: LiveFeed<unknown>;
-		/** What the list holds, for the notice: "frames", "readings", … */
+		/** What the list holds, for the heading and the notice: "frames", "readings", … */
 		noun: string;
 	}
 
@@ -47,14 +50,24 @@
 	};
 </script>
 
-<button
-	class="scroll-mt-6 rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-	title="The list also pauses by itself while you scroll down into it, so new {noun} don't push away the ones you're reading."
-	onclick={() => feed.togglePause()}
-	{@attach watchScroll}
->
-	{feed.paused ? `Resume (${n(feed.held)} new)` : 'Pause'}
-</button>
+<h2 class="text-sm font-semibold text-zinc-100">
+	<button
+		class="group scroll-mt-6"
+		title="{feed.paused
+			? 'Resume'
+			: 'Pause'}. The list also pauses by itself while you scroll down into it, so new {noun} don't push away the ones you're reading."
+		aria-pressed={feed.paused}
+		onclick={() => feed.togglePause()}
+		{@attach watchScroll}
+	>
+		Live {noun}<PauseIcon
+			paused={feed.paused}
+			class="ml-1 inline-block size-[1em] align-[-0.125em] text-zinc-500 group-hover:text-zinc-200"
+		/>{#if feed.paused}<span class="ml-2 font-normal text-zinc-400">
+				paused · {n(feed.held)} new</span
+			>{/if}
+	</button>
+</h2>
 
 {#if feed.scrolledAway && !feed.pausedByUser}
 	<!-- Below the alert banner, if one is showing (the layout sets its height). -->

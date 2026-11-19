@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { arrivalTime, dbfs } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
-	import PauseButton from '#lib/components/PauseButton.svelte';
+	import LiveHeading from '#lib/components/LiveHeading.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
 	import type { Verdict } from '#lib/modes/address-filter.ts';
@@ -242,8 +242,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold text-zinc-100">Live frames</h2>
-			<PauseButton feed={stream} noun="frames" />
+			<LiveHeading feed={stream} noun="frames" />
 			{#each chips as chip (chip.key)}
 				<FilterChip label={chip.label} onclear={() => (filter[chip.key] = null)} />
 			{/each}

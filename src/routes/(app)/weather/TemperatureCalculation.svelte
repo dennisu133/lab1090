@@ -64,15 +64,18 @@
 					{n(t.speedOfSound)} kt.
 				</li>
 				<li>
-					<InfoTip label="a = a₀ · √(T / T₀)">
+					<InfoTip>
+						{#snippet label()}a = a<sub>0</sub> · √(T / T<sub>0</sub>){/snippet}
 						<p>
 							The speed of sound in air is √(γ·R·T): γ = 1.4 (how air's pressure responds to
 							compression) and R = 287 J/(kg·K) (air's gas constant) are fixed, so only the absolute
 							temperature T changes it.
 						</p>
 						<p>
-							Written relative to the standard sea level (T₀ = {T0} K, 15 °C, where a₀ = {n(A0, 2)} kt)
-							it needs no constants at all.
+							Written relative to the standard sea level (T<sub>0</sub> = {T0} K, 15 °C, where a<sub
+								>0</sub
+							>
+							= {n(A0, 2)} kt) it needs no constants at all.
 						</p>
 					</InfoTip>, solved for T: T = {T0} K × ({n(t.speedOfSound)} / {n(A0, 2)})² =
 					<strong>{n(t.kelvin)} K = {celsius(t.kelvin)}</strong> (white dot).

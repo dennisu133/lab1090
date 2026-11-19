@@ -11,7 +11,8 @@
 	section titles and whatever scrolled under it.
 -->
 <script lang="ts">
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
+	import CloseIcon from '#lib/components/icons/CloseIcon.svelte';
+	import WarningIcon from '#lib/components/icons/WarningIcon.svelte';
 	import Notice from '#lib/components/Notice.svelte';
 	import { headline, nameOf } from '#lib/describe/alert.ts';
 	import { getStreams } from './streams';
@@ -40,7 +41,8 @@
 					]}
 					onclick={() => streams.show(alert.icao)}
 				>
-					<span class="font-mono font-semibold">⚠ {nameOf(aircraft, alert.icao)}</span>
+					<span class="font-mono font-semibold"><WarningIcon /> {nameOf(aircraft, alert.icao)}</span
+					>
 					{headline(alert)}
 					<span class={alert.tier === 'emergency' ? 'text-error-300' : 'text-warn-300'}>
 						· show</span

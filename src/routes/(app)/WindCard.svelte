@@ -6,7 +6,7 @@
 <script lang="ts">
 	import type { Map as MapLibreMap } from 'maplibre-gl';
 	import { createSubscriber } from 'svelte/reactivity';
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
+	import CloseIcon from '#lib/components/icons/CloseIcon.svelte';
 	import { directionText, flightLevel } from '#lib/describe/format.ts';
 	import { compass } from '#lib/geo.ts';
 	import type { PickedBarb } from '#lib/map/pick.ts';

@@ -1,11 +1,13 @@
 The hyperlegible-open*.woff2 files are Atkinson Hyperlegible Next and Atkinson Hyperlegible
 Mono, upright and italic, modified and renamed ("Hyperlegible Open", "Hyperlegible Open Mono"):
-the zero is open, and the original slashed zero is behind the OpenType "zero" feature.
-tools/hyperlegible-open.py makes them from Google Fonts' files. Licensed, like the originals,
-under the SIL Open Font License 1.1:
+the zero is open, and the original slashed zero is behind the OpenType "zero" feature; arrows,
+check and ballot marks and primes are added, and the upright and italic sans have Inter's
+lowercase Greek. tools/hyperlegible-open.py makes them from Google Fonts' files. Licensed, like
+the originals, under the SIL Open Font License 1.1:
 
 Copyright 2020-2024 The Atkinson Hyperlegible Next Project Authors (https://github.com/googlefonts/atkinson-hyperlegible-next)
 Copyright 2020-2024 The Atkinson Hyperlegible Mono Project Authors (https://github.com/googlefonts/atkinson-hyperlegible-next-mono)
+Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

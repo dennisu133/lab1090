@@ -220,10 +220,10 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="3 · Where it stands">
 		<p>
-			If the beam turns steadily, it points at β(t) = 360° · (t − t₀) / P. Each burst is a moment it
-			pointed at an aircraft whose position we know. For a guessed radar position, the bearings from
-			there to the aircraft must fit one such line through the bursts' times: the fit gives t₀ and
-			P, and how far each burst is off, as an angle of the beam.
+			If the beam turns steadily, it points at β(t) = 360° · (t − t<sub>0</sub>) / P. Each burst is
+			a moment it pointed at an aircraft whose position we know. For a guessed radar position, the
+			bearings from there to the aircraft must fit one such line through the bursts' times: the fit
+			gives t<sub>0</sub> and P, and how far each burst is off, as an angle of the beam.
 		</p>
 		<p>
 			The position is where the bursts are off the least: searched on a 25 km grid within 600 km of

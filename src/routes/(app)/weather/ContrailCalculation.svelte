@@ -93,12 +93,15 @@
 				</li>
 				<li>
 					<span class="text-amber-300">The engine's line</span> has the slope
-					<InfoTip label="G = EI · cₚ · p / (ε · Q · (1 − η))">
+					<InfoTip>
+						{#snippet label()}G = EI · c<sub>p</sub> · p / (ε · Q · (1 − η)){/snippet}
 						<p>
 							How much water vapour the exhaust carries for each kelvin of heat it brings. EI = {EI_H2O}
-							kg of water per kg of kerosene burnt; Q = {Q / 1e6} MJ/kg, the heat in it; cₚ = {CP} J/(kg·K),
-							what it takes to warm air; ε = {EPSILON}, water's molar mass over air's (vapour
-							pressure from the mixing ratio); p, the pressure.
+							kg of water per kg of kerosene burnt; Q = {Q / 1e6} MJ/kg, the heat in it; c<sub
+								>p</sub
+							>
+							= {CP} J/(kg·K), what it takes to warm air; ε = {EPSILON}, water's molar mass over
+							air's (vapour pressure from the mixing ratio); p, the pressure.
 						</p>
 						<p>
 							η = {ETA}: the share of the heat that goes into pushing the aircraft instead of

@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import CloseIcon from '#lib/components/CloseIcon.svelte';
+	import CloseIcon from '#lib/components/icons/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, angleText, distanceText, flightLevel, n, type Unit } from '#lib/describe/format.ts';
 	import {

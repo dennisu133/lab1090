@@ -7,10 +7,10 @@ import type { UpdateListener } from '#lib/stream-connection.ts';
  * StreamConnection, which feeds every page's view all the time, also while another page is
  * shown (see routes/streams.ts).
  *
- * Two things pause it: the Pause button, and scrolling down into the list (see
- * PauseButton.svelte). New items go on top, so while you read further down they would push
+ * Two things pause it: a click on the list's heading, and scrolling down into the list (see
+ * LiveHeading.svelte). New items go on top, so while you read further down they would push
  * the rows you're reading away. The list resumes when you scroll back up, unless the
- * button paused it too.
+ * click paused it too.
  *
  * What an item is depends on the page: subclasses turn each batch of frames into items.
  * Views that aren't a list (the tracker, the radars, the coverage) are plain UpdateListeners.
@@ -19,7 +19,7 @@ export abstract class LiveFeed<T> implements UpdateListener {
 	/** Newest first. */
 	items = $state.raw<T[]>([]);
 
-	/** Paused with the button. */
+	/** Paused with a click on the heading. */
 	pausedByUser = $state(false);
 	/** Paused because the list's top is scrolled out of view. */
 	scrolledAway = $state(false);

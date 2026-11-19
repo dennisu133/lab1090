@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { arrivalTime, n as whole } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
-	import PauseButton from '#lib/components/PauseButton.svelte';
+	import LiveHeading from '#lib/components/LiveHeading.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { HOW, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
@@ -161,8 +161,7 @@
 	<!-- Feed -->
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
-			<h2 class="text-sm font-semibold text-zinc-100">Live readings</h2>
-			<PauseButton feed={stream} noun="readings" />
+			<LiveHeading feed={stream} noun="readings" />
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SOURCES as s (s.label)}
 					<button

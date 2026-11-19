@@ -107,18 +107,22 @@ bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11
 ### Fonts
 
 Atkinson Hyperlegible Next and Mono (Braille Institute, SIL Open Font License 1.1), upright
-and italic, with an open zero; the slashed one stays behind the OpenType `zero` feature. The
-tool's header says how; `src/lib/assets/fonts/OFL.txt` is the license that goes with them.
-The variable fonts from Google Fonts, at the commits they were made from:
+and italic, with an open zero (the slashed one stays behind the OpenType `zero` feature),
+arrows, ✓ ✗ and primes drawn with their own strokes, and Inter's lowercase Greek. The tool's
+header says how; `src/lib/assets/fonts/OFL.txt` is the license that goes with them. The
+variable fonts from Google Fonts, at the commits they were made from:
 
 ```sh
 mkdir -p fixtures/local/fonts
 G=https://raw.githubusercontent.com/google/fonts
 N=$G/afbb27a87bc4be2b0005e17c144831438e82ab37/ofl/atkinsonhyperlegiblenext
 M=$G/3a0be2fdd3252b377a0851f0ba01c3609f99b7ab/ofl/atkinsonhyperlegiblemono
+I=$G/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/inter
 curl -L -o fixtures/local/fonts/next.ttf "$N/AtkinsonHyperlegibleNext%5Bwght%5D.ttf"
 curl -L -o fixtures/local/fonts/next-italic.ttf "$N/AtkinsonHyperlegibleNext-Italic%5Bwght%5D.ttf"
 curl -L -o fixtures/local/fonts/mono.ttf "$M/AtkinsonHyperlegibleMono%5Bwght%5D.ttf"
 curl -L -o fixtures/local/fonts/mono-italic.ttf "$M/AtkinsonHyperlegibleMono-Italic%5Bwght%5D.ttf"
+curl -L -o fixtures/local/fonts/inter.ttf "$I/Inter%5Bopsz,wght%5D.ttf"
+curl -L -o fixtures/local/fonts/inter-italic.ttf "$I/Inter-Italic%5Bopsz,wght%5D.ttf"
 tools/.venv/bin/python tools/hyperlegible-open.py fixtures/local/fonts src/lib/assets/fonts
 ```

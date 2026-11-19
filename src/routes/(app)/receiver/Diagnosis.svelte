@@ -99,7 +99,8 @@
 				<p>
 					From it follows σ, the noise's spread on I and Q in ADC steps (a table from simulated
 					Gaussian noise), and what rounding to whole steps costs: it adds 1/12 step² of noise, so
-					10·log₁₀(1 + 1/(12σ²)) dB of signal-to-noise. 0.35 dB at σ = 1, 1 dB at σ = 0.57.
+					10·log<sub>10</sub>(1 + 1/(12σ²)) dB of signal-to-noise. 0.35 dB at σ = 1, 1 dB at σ =
+					0.57.
 				</p>
 			</InfoTip>
 		</dt>

@@ -41,9 +41,10 @@
 		</p>
 		<p>
 			Two things move it: the <strong>pressure at the bottom</strong> (high pressure lifts every
-			level, about 27 ft per hPa) and the <strong>temperature of the column</strong> (warm air takes more
-			room, cold air less: the hypsometric equation, Δz = (R / g) · T · ln(p₁ / p₂)). With the first from
-			the pilots' QNH, what's left is the temperature.
+			level, about 27 ft per hPa) and the <strong>temperature of the column</strong> (warm air takes
+			more room, cold air less: the hypsometric equation, Δz = (R / g) · T · ln(p<sub>1</sub> / p<sub
+				>2</sub
+			>)). With the first from the pilots' QNH, what's left is the temperature.
 		</p>
 		<p class="text-zinc-400">
 			It's the same reason altimeters over-read in the cold, and why approach charts list

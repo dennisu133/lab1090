@@ -27,10 +27,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { ClassValue } from 'svelte/elements';
+	import InfoIcon from './icons/InfoIcon.svelte';
 
 	interface Props {
-		/** The visible text that gets the tooltip. */
-		label: string;
+		/** The visible text that gets the tooltip: a snippet for markup (a formula's <sub>). */
+		label: string | Snippet;
 		/** Wrap the label in a heading element. */
 		heading?: 'h2' | 'h3';
 		/** Classes for the label (or heading). */
@@ -150,7 +151,9 @@
 				!heading && 'underline decoration-zinc-600 decoration-dotted underline-offset-4'
 			]}
 		>
-			{label}<span aria-hidden="true" class="ml-1 text-zinc-500">ⓘ</span>
+			{#if typeof label === 'string'}{label}{:else}{@render label()}{/if}<InfoIcon
+				class="ml-1 inline-block size-[1em] align-[-0.125em] text-zinc-500"
+			/>
 		</button>
 	</svelte:element>
 	<!-- p-2: a see-through margin, part of the tooltip. Above and below, the gap to the label:

@@ -198,8 +198,8 @@
 						{#if contours}(contours every {contours.step} ft){/if}.
 					</p>
 					<p class="text-zinc-400">
-						At {geo.latitude.toFixed(1)}° f = {(geo.coriolis * 1e4).toFixed(3)} × 10⁻⁴ /s, so the wind
-						along the contours is {Math.round(geo.wind.speed)} kt.
+						At {geo.latitude.toFixed(1)}° f = {(geo.coriolis * 1e4).toFixed(3)} × 10<sup>−4</sup>
+						/s, so the wind along the contours is {Math.round(geo.wind.speed)} kt.
 					</p>
 					<p class="text-zinc-400">
 						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {levelOrFeet(

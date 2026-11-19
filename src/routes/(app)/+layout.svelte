@@ -63,7 +63,7 @@
 		(href !== resolve('/(app)') && page.url.pathname.startsWith(`${href}/`));
 </script>
 
-<!-- --alert-banner: other notices (PauseButton) float below the alert banner, not over it. -->
+<!-- --alert-banner: other notices (LiveHeading) float below the alert banner, not over it. -->
 <div
 	class={[
 		'bg-zinc-950 text-zinc-100',
