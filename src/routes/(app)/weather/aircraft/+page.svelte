@@ -86,7 +86,7 @@
 			<h2 class="text-sm font-semibold text-zinc-100">Worked example</h2>
 			{#if example}
 				<span class="text-sm">
-					<span class="font-mono text-amber-300">{example.observation.icao}</span>
+					<span class="font-mono text-highlight-300">{example.observation.icao}</span>
 					<span class="text-zinc-500">{example.callsign ?? ''}</span>
 					{#if example.observation.inputs.altitude}
 						<span class="text-zinc-400">
@@ -130,7 +130,10 @@
 			<div class="flex overflow-hidden rounded text-sm">
 				{#each SHOW as s (s.value)}
 					<button
-						class={['px-3 py-1', show === s.value ? 'bg-sky-900' : 'bg-zinc-800 hover:bg-zinc-700']}
+						class={[
+							'px-3 py-1',
+							show === s.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
+						]}
 						onclick={() => (show = s.value)}
 					>
 						{s.label}
@@ -139,7 +142,7 @@
 			</div>
 			{#if selected !== null}
 				<button
-					class="flex items-center gap-1.5 rounded bg-sky-900 py-1 pr-2 pl-3 text-sm hover:bg-sky-800"
+					class="flex items-center gap-1.5 rounded bg-accent-900 py-1 pr-2 pl-3 text-sm hover:bg-accent-800"
 					onclick={() => (selected = null)}
 				>
 					{selected} only <CloseIcon class="size-3.5" />
@@ -168,7 +171,7 @@
 							<td class="py-0.5 text-zinc-400">{arrivalTime(o.rx)}</td>
 							<td class="py-0.5 whitespace-nowrap">
 								<button
-									class="font-mono text-amber-300 hover:underline"
+									class="font-mono text-highlight-300 hover:underline"
 									onclick={() => select(o.icao)}
 								>
 									{o.icao}

@@ -70,7 +70,7 @@
 				<button
 					class={[
 						'px-2 py-0.5',
-						correct === c.value ? 'bg-sky-900' : 'bg-zinc-800 hover:bg-zinc-700'
+						correct === c.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
 					]}
 					onclick={() => (correct = c.value)}
 				>
@@ -95,11 +95,11 @@
 				{#each rows.slice(0, 10) as c (c.icao)}
 					<tr class="h-7 border-t border-zinc-800">
 						<td class="truncate">
-							<span class="font-mono text-amber-300">{c.icao}</span>
+							<span class="font-mono text-highlight-300">{c.icao}</span>
 							<span class="text-zinc-500">{callsigns.get(c.icao) ?? ''}</span>
 						</td>
 						<td
-							class={c.significant ? 'text-amber-300' : 'text-zinc-400'}
+							class={c.significant ? 'text-highlight-300' : 'text-zinc-400'}
 							title={c.significant
 								? undefined
 								: `Under ${MIN_CORRECTION}°: within what the comparison can tell, left as sent`}

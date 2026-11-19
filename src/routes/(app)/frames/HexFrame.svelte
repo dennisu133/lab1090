@@ -38,9 +38,9 @@
 
 	export const PART_COLORS: Record<Part, string> = {
 		header: 'text-zinc-400',
-		address: 'text-amber-300',
-		payload: 'text-sky-300',
-		parity: 'text-rose-400/80'
+		address: 'text-highlight-300',
+		payload: 'text-blue-300',
+		parity: 'text-red-400/80'
 	};
 </script>
 

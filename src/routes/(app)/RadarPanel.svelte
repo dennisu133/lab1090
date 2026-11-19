@@ -109,7 +109,7 @@
 <PanelHeader {onclose}>
 	<h2 class="text-xl font-semibold">
 		Radar <span class="font-mono">{r.id}</span>
-		<span class="text-sm font-normal text-amber-300">experimental</span>
+		<span class="text-sm font-normal text-warn-300">experimental</span>
 	</h2>
 	<p class="text-sm text-zinc-400">
 		{fixed(rpm, 1)} rpm · {r.clockwise ? 'clockwise' : 'anticlockwise'}

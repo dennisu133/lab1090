@@ -116,12 +116,12 @@
 					<tr
 						class={[
 							'h-8 cursor-pointer border-t border-zinc-900 hover:bg-zinc-900',
-							selected === a.icao && 'bg-sky-950'
+							selected === a.icao && 'bg-accent-950'
 						]}
 						onclick={() => onselect(a.icao)}
 					>
 						<td class="py-0.5 whitespace-nowrap">
-							<button class="font-mono text-amber-300" aria-pressed={selected === a.icao}>
+							<button class="font-mono text-highlight-300" aria-pressed={selected === a.icao}>
 								{a.icao}
 							</button>
 							<span class="text-xs text-zinc-500">{a.callsign ?? ''}</span>
@@ -154,7 +154,7 @@
 						<td class="py-0.5 whitespace-nowrap">
 							{#if avg.isaDeviation !== null}
 								<span
-									class={avg.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
+									class={avg.isaDeviation >= 0 ? 'text-red-300' : 'text-blue-300'}
 									title="Mean deviation from the standard atmosphere of {avg.isaCount} trusted temperatures of the last {minute} s: {signed(
 										avg.isaDeviation
 									)} °C"
@@ -168,7 +168,7 @@
 						</td>
 						<td class="truncate py-0.5 text-xs" title={problem ?? undefined}>
 							<span class="text-zinc-500">{seconds(a.latest.rx)}</span>
-							{#if problem}<span class="text-orange-400">{problem}</span>{:else}<span
+							{#if problem}<span class="text-warn-400">{problem}</span>{:else}<span
 									class="text-zinc-400">trusted</span
 								>{/if}
 						</td>

@@ -95,10 +95,10 @@
 		y1={origin.y}
 		x2={airTip.x}
 		y2={airTip.y}
-		class="stroke-sky-400"
+		class="stroke-blue-400"
 		stroke-width="2"
 	/>
-	<polygon points={head(origin, airTip)} class="fill-sky-400" />
+	<polygon points={head(origin, airTip)} class="fill-blue-400" />
 	<line
 		x1={origin.x}
 		y1={origin.y}
@@ -124,10 +124,10 @@
 			y1={airTip.y}
 			x2={groundTip.x}
 			y2={groundTip.y}
-			class="stroke-emerald-400"
+			class="stroke-green-400"
 			stroke-width="3"
 		/>
-		<polygon points={head(airTip, groundTip, 12)} class="fill-emerald-400" />
+		<polygon points={head(airTip, groundTip, 12)} class="fill-green-400" />
 	{/if}
 
 	<!-- North and scale. -->
@@ -145,7 +145,7 @@
 			y1={INSET / 2}
 			x2={ipx(result.air).x}
 			y2={ipx(result.air).y}
-			class="stroke-sky-400"
+			class="stroke-blue-400"
 			stroke-width="1.5"
 		/>
 		<line

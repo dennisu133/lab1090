@@ -32,7 +32,7 @@
 		onclick={() => notifications.toggle()}
 		class={[
 			'relative h-4 w-7 shrink-0 rounded-full transition-colors disabled:opacity-40',
-			notifications.on ? 'bg-sky-600' : 'bg-zinc-700 enabled:hover:bg-zinc-600'
+			notifications.on ? 'bg-accent-600' : 'bg-zinc-700 enabled:hover:bg-zinc-600'
 		]}
 	>
 		<span
@@ -48,15 +48,15 @@
 			(medical, minimum fuel). Only while this tab is open.
 		</p>
 		{#if notifications.permission === 'denied'}
-			<p class="text-amber-300">
+			<p class="text-warn-300">
 				Blocked by your browser. Allow them in the site settings (the icon left of the address).
 			</p>
 		{:else if notifications.permission === 'insecure'}
-			<p class="text-amber-300">
+			<p class="text-warn-300">
 				Browsers only allow notifications over HTTPS or on <code>localhost</code>.
 			</p>
 		{:else if notifications.permission === 'unsupported'}
-			<p class="text-amber-300">This browser has no notifications for web pages.</p>
+			<p class="text-warn-300">This browser has no notifications for web pages.</p>
 		{/if}
 	</InfoTip>
 </div>

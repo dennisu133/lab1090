@@ -52,7 +52,7 @@
 			the engine the hot, wet exhaust mixes with the cold air around it. On the way from one to the
 			other, temperature and water vapour change in step, so in the diagram the mixture moves along
 			a straight line (<span class="text-amber-300">amber</span>). If that line crosses the
-			<span class="text-sky-300">water curve</span>, the mixture is supersaturated for a moment:
+			<span class="text-blue-300">water curve</span>, the mixture is supersaturated for a moment:
 			droplets form and freeze at once. That's the Schmidt–Appleman criterion (Schmidt 1941,
 			Appleman 1953; the form here is Schumann 1996).
 		</p>
@@ -73,10 +73,7 @@
 			</span>
 		{/if}
 		{#if o.temperatureProblem}
-			<span
-				class="min-w-0 truncate text-sm text-orange-400"
-				title="Not used: {o.temperatureProblem}"
-			>
+			<span class="min-w-0 truncate text-sm text-warn-400" title="Not used: {o.temperatureProblem}">
 				temperature not used: {o.temperatureProblem}
 			</span>
 		{/if}
@@ -141,7 +138,7 @@
 					{:else}
 						it needs ({n(eLM)} − {n(t.slope, 2)} × {n(t.saturated - kelvin)}) / {n(eT)} Pa =
 						<strong>{pct(r.at.humidityNeeded!)}</strong> relative humidity, where the bar turns
-						<span class="text-sky-300">blue</span>.
+						<span class="text-blue-300">blue</span>.
 					{/if}
 				</li>
 				<li class="text-zinc-400">

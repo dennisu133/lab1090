@@ -56,7 +56,7 @@
 			text: 'listed in 1,7 as available, but no radar has read it here'
 		},
 		'not listed': {
-			color: 'text-orange-400',
+			color: 'text-warn-400',
 			text: "read, but 1,7 doesn't list it: either 1,7 is out of date, or the register was inferred wrongly"
 		}
 	};
@@ -139,12 +139,12 @@
 							// row needs, plus padding. From xl that's three lines (3 × 20 px); narrower,
 							// the reading columns need a fourth.
 							'h-20 cursor-pointer border-t border-zinc-900 align-top hover:bg-zinc-900 xl:h-16',
-							selected === a.icao && 'bg-sky-950'
+							selected === a.icao && 'bg-accent-950'
 						]}
 						onclick={() => onselect(a.icao)}
 					>
 						<td class="py-0.5 whitespace-nowrap">
-							<button class="font-mono text-amber-300" aria-pressed={selected === a.icao}>
+							<button class="font-mono text-highlight-300" aria-pressed={selected === a.icao}>
 								{a.icao}
 							</button>
 							<span class="text-xs text-zinc-500">{a.callsign ?? ''}</span>

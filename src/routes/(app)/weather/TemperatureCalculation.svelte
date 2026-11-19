@@ -44,10 +44,7 @@
 			</span>
 		{/if}
 		{#if o.temperatureProblem}
-			<span
-				class="min-w-0 truncate text-sm text-orange-400"
-				title="Not used: {o.temperatureProblem}"
-			>
+			<span class="min-w-0 truncate text-sm text-warn-400" title="Not used: {o.temperatureProblem}">
 				not used: {o.temperatureProblem}
 			</span>
 		{/if}
@@ -98,7 +95,7 @@
 							</p>
 						</InfoTip>
 						at {levelOrFeet(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is
-						<span class={at.isaDeviation >= 0 ? 'text-rose-300' : 'text-sky-300'}
+						<span class={at.isaDeviation >= 0 ? 'text-red-300' : 'text-blue-300'}
 							>{n(Math.abs(at.isaDeviation))} °C {at.isaDeviation >= 0 ? 'warmer' : 'colder'}</span
 						>: <strong>{isaText(at.isaDeviation)}</strong>.
 					</li>

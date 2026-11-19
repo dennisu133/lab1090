@@ -89,7 +89,7 @@
 					lab1090's demodulator measures the pulses' amplitude, so pulses at full scale are 0 dBFS.
 					readsb (a Beast feed) averages the power over pulses and gaps alike, which puts the same
 					message 3 dB lower: there −3 dBFS is the ceiling. Either way the
-					<span class="text-rose-400">red</span> bucket is close to the top: those messages may have clipped
+					<span class="text-red-400">red</span> bucket is close to the top: those messages may have clipped
 					(/receiver counts the ones that did).
 				</p>
 			</InfoTip>
@@ -106,7 +106,7 @@
 					<div
 						class={[
 							'rounded-t-sm',
-							b.key >= STRONG_SIGNAL_DBFS ? 'bg-rose-400' : 'bg-sky-500',
+							b.key >= STRONG_SIGNAL_DBFS ? 'bg-red-400' : 'bg-blue-500',
 							b.count > 0 && 'min-h-px'
 						]}
 						style:height="{(b.count / max) * 100}%"

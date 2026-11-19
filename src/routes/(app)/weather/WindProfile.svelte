@@ -44,7 +44,7 @@
 				markerHeight="5"
 				orient="auto"
 			>
-				<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
+				<path d="M0,0 L6,3 L0,6 z" class="fill-green-300" />
 			</marker>
 		</defs>
 		<g class="fill-zinc-500 text-[10px]">
@@ -64,10 +64,10 @@
 			y1={TOP}
 			x2={x(JET_KT)}
 			y2={H - BOTTOM}
-			class="stroke-sky-400/70"
+			class="stroke-blue-400/70"
 			stroke-dasharray="4 3"
 		/>
-		<text x={x(JET_KT) + 4} y={TOP + 8} class="fill-sky-300 text-[10px]">jet stream →</text>
+		<text x={x(JET_KT) + 4} y={TOP + 8} class="fill-blue-300 text-[10px]">jet stream →</text>
 
 		{#each measured as l (l.level)}
 			{@const w = l.wind!}
@@ -80,7 +80,7 @@
 				y1={cy}
 				x2={cx + (ARROW * w.wind.vector.east) / len}
 				y2={cy - (ARROW * w.wind.vector.north) / len}
-				class="stroke-emerald-300/80"
+				class="stroke-green-300/80"
 				marker-end="url(#wind-arrow)"
 			/>
 			<circle
@@ -89,9 +89,9 @@
 				r={top ? 4.5 : 3}
 				class={enough(w)
 					? top
-						? 'fill-emerald-300 stroke-white'
-						: 'fill-emerald-300'
-					: 'fill-zinc-950 stroke-emerald-300'}
+						? 'fill-green-300 stroke-white'
+						: 'fill-green-300'
+					: 'fill-zinc-950 stroke-green-300'}
 			>
 				<title>
 					{`${flightLevel(l.level)}: from ${directionText(w.wind.direction)} at ${Math.round(w.wind.speed)} kt, ${w.n} samples`}

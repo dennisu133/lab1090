@@ -21,12 +21,12 @@
 		const status = link.status;
 		if (link.online === false) return { dot: 'bg-zinc-500', label: 'Server offline' };
 		if (link.online && status?.state === 'connected')
-			return { dot: 'motion-safe:animate-pulse bg-emerald-400', label: 'Live' };
+			return { dot: 'motion-safe:animate-pulse bg-ok-400', label: 'Live' };
 		if (link.online && status?.state === 'waiting')
-			return { dot: 'bg-amber-400', label: 'Receiver unreachable', status };
+			return { dot: 'bg-warn-400', label: 'Receiver unreachable', status };
 		if (link.online && status?.state === 'ended')
 			return { dot: 'bg-zinc-500', label: 'Recording ended' };
-		return { dot: 'bg-amber-400', label: 'Connecting…' };
+		return { dot: 'bg-warn-400', label: 'Connecting…' };
 	});
 </script>
 

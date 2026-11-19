@@ -58,7 +58,7 @@
 		class={[
 			'border-t',
 			child ? 'border-zinc-800/50' : 'border-zinc-800',
-			selected === row.key ? 'bg-sky-950/60' : child && 'bg-zinc-900/50',
+			selected === row.key ? 'bg-accent-950/60' : child && 'bg-zinc-900/50',
 			onselect && 'cursor-pointer hover:bg-zinc-800/60',
 			row.count === 0 && 'text-zinc-400'
 		]}
@@ -104,7 +104,7 @@
 			<div class="flex items-center gap-2">
 				<div class="h-2 flex-1 rounded-sm bg-zinc-800">
 					<div
-						class={['h-2 rounded-sm', child ? 'bg-sky-700' : 'bg-sky-500']}
+						class={['h-2 rounded-sm', child ? 'bg-blue-700' : 'bg-blue-500']}
 						style:width="{(row.count / max) * 100}%"
 					></div>
 				</div>

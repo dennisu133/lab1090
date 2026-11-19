@@ -16,7 +16,7 @@
 				'whitespace-nowrap',
 				field.tone === 'main' && 'text-zinc-100',
 				field.tone === 'minor' && 'text-xs text-zinc-500',
-				field.tone === 'alert' && 'text-orange-400'
+				field.tone === 'alert' && 'text-warn-400'
 			]}
 		>
 			{#if field.label}<span class="text-xs text-zinc-500">{field.label}</span>{/if}

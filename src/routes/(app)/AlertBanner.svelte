@@ -36,13 +36,13 @@
 					type="button"
 					class={[
 						'min-w-0 truncate py-1.5 pr-2 pl-4 text-left',
-						alert.tier === 'emergency' ? 'hover:bg-red-900' : 'hover:bg-amber-900'
+						alert.tier === 'emergency' ? 'hover:bg-error-900' : 'hover:bg-warn-900'
 					]}
 					onclick={() => streams.show(alert.icao)}
 				>
 					<span class="font-mono font-semibold">⚠ {nameOf(aircraft, alert.icao)}</span>
 					{headline(alert)}
-					<span class={alert.tier === 'emergency' ? 'text-red-300' : 'text-amber-300'}>
+					<span class={alert.tier === 'emergency' ? 'text-error-300' : 'text-warn-300'}>
 						· show</span
 					>
 				</button>
@@ -51,8 +51,8 @@
 					class={[
 						'grid shrink-0 place-items-center pr-3 pl-2.5',
 						alert.tier === 'emergency'
-							? 'text-red-300 hover:bg-red-900'
-							: 'text-amber-300 hover:bg-amber-900'
+							? 'text-error-300 hover:bg-error-900'
+							: 'text-warn-300 hover:bg-warn-900'
 					]}
 					aria-label="Hide this alert until it's over"
 					onclick={() => streams.alerts.dismiss(alert)}><CloseIcon /></button

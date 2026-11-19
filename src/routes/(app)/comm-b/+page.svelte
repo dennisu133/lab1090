@@ -132,7 +132,7 @@
 						<tr
 							class={[
 								'cursor-pointer border-t border-zinc-900 hover:bg-zinc-900',
-								register === row.key && 'bg-sky-950'
+								register === row.key && 'bg-accent-950'
 							]}
 							onclick={() => (register = register === row.key ? null : row.key)}
 						>
@@ -168,7 +168,7 @@
 					<button
 						class={[
 							'px-3 py-1',
-							source === s.value ? 'bg-sky-900' : 'bg-zinc-800 hover:bg-zinc-700'
+							source === s.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
 						]}
 						onclick={() => (source = s.value)}
 					>
@@ -214,7 +214,7 @@
 								<p>
 									The reading against what the same aircraft broadcast (≤ 30 s earlier):
 									<span class="text-zinc-300">✓</span> agrees,
-									<span class="text-orange-400">✗</span>
+									<span class="text-warn-400">✗</span>
 									doesn't. Heading (magnetic, the nose) may differ from track (true, over the ground)
 									by up to 30°. Mach is checked against the reply's own airspeed and altitude.
 								</p>
@@ -231,7 +231,7 @@
 								<button
 									class={[
 										'font-mono hover:underline',
-										r.verdict === 'unknown' ? 'text-zinc-500' : 'text-amber-300'
+										r.verdict === 'unknown' ? 'text-zinc-500' : 'text-highlight-300'
 									]}
 									onclick={() => (aircraft = aircraft === r.icao ? null : r.icao)}
 								>
@@ -254,7 +254,7 @@
 										class={[
 											'text-xs',
 											r.inference.how === 'unknown' || r.inference.how === 'ambiguous'
-												? 'text-orange-400'
+												? 'text-warn-400'
 												: 'text-zinc-500'
 										]}
 									>
@@ -263,7 +263,7 @@
 								{/if}
 							</td>
 							<td
-								class="py-0.5 font-mono text-sky-300"
+								class="py-0.5 font-mono text-blue-300"
 								title={bitsTitle(r.mb, r.source === 'broadcast' ? 'ME' : 'MB')}
 							>
 								{#if range}{r.mb.slice(0, range[0])}<span class="font-semibold text-zinc-100"

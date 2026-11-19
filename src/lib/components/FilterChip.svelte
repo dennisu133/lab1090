@@ -12,6 +12,6 @@
 	let { label, onclear }: Props = $props();
 </script>
 
-<button class="rounded bg-sky-900 px-3 py-1 text-sm hover:bg-sky-800" onclick={onclear}>
+<button class="rounded bg-accent-900 px-3 py-1 text-sm hover:bg-accent-800" onclick={onclear}>
 	{label} only ✕
 </button>

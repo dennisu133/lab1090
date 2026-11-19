@@ -52,7 +52,7 @@
 			<tbody>
 				{#each qnh.local.slice(0, 8) as s (s.icao)}
 					<tr class="border-t border-zinc-800">
-						<td class="py-0.5 font-mono text-amber-300">{s.icao}</td>
+						<td class="py-0.5 font-mono text-highlight-300">{s.icao}</td>
 						<td class="py-0.5">{s.hPa.toFixed(1)}</td>
 						<td class="py-0.5 text-zinc-400"
 							>{s.altitude === null ? '—' : levelOrFeet(s.altitude)}</td

@@ -9,6 +9,7 @@
 	import { n } from '#lib/describe/format.ts';
 	import { SIGNAL_BUCKET_DB } from '#lib/modes/frame.ts';
 	import { freeSpace, type SignalPoint } from '#lib/radio/path-loss.ts';
+	import { themeColour, type ThemeColour } from '#lib/theme.ts';
 
 	interface Props {
 		points: SignalPoint[];
@@ -52,13 +53,13 @@
 	const DB_TICKS = [0, -6, -12, -18, -24, -30, -36, -42, -48];
 
 	/** The elevation bands the dots are coloured by: a vertical antenna hears little overhead. */
-	const BANDS = [
-		{ below: 5, color: '#38bdf8', label: 'below 5°' },
-		{ below: 20, color: '#34d399', label: '5–20°' },
-		{ below: 91, color: '#fbbf24', label: 'above 20°' }
+	const BANDS: { below: number; colour: ThemeColour; label: string }[] = [
+		{ below: 5, colour: 'blue-400', label: 'below 5°' },
+		{ below: 20, colour: 'green-400', label: '5–20°' },
+		{ below: 91, colour: 'amber-400', label: 'above 20°' }
 	];
-	const colorOf = (elevation: number | null) =>
-		elevation === null ? '#71717a' : BANDS.find((b) => elevation < b.below)!.color;
+	const colourOf = (elevation: number | null): ThemeColour =>
+		elevation === null ? 'zinc-500' : BANDS.find((b) => elevation < b.below)!.colour;
 
 	let bins = $derived.by(() => {
 		const out = [];
@@ -88,8 +89,10 @@
 		const ctx = canvas.getContext('2d')!;
 		const k = px / W;
 		ctx.globalAlpha = 0.7;
+		const fill: Partial<Record<ThemeColour, string>> = {};
 		for (const p of points) {
-			ctx.fillStyle = colorOf(p.elevation);
+			const c = colourOf(p.elevation);
+			ctx.fillStyle = fill[c] ??= themeColour(c);
 			ctx.beginPath();
 			ctx.arc(x(p.km) * k, y(p.dbfs) * k, 1.6 * k, 0, 2 * Math.PI);
 			ctx.fill();
@@ -148,7 +151,7 @@
 				y1={y(freeSpace(line.level, line.from))}
 				x2={x(line.to)}
 				y2={y(freeSpace(line.level, line.to))}
-				class="stroke-sky-300"
+				class="stroke-blue-300"
 				stroke-dasharray="6 3"
 			/>
 		{/if}
@@ -172,10 +175,11 @@
 	<span>Elevation:</span>
 	{#each BANDS as b (b.label)}
 		<span class="flex items-center gap-1"
-			><span class="size-2 rounded-full" style:background={b.color}></span>{b.label}</span
+			><span class="size-2 rounded-full" style:background="var(--color-{b.colour})"
+			></span>{b.label}</span
 		>
 	{/each}
 	<span class="flex items-center gap-1"
-		><span class="h-0 w-4 border-t border-dashed border-sky-300"></span>free space</span
+		><span class="h-0 w-4 border-t border-dashed border-blue-300"></span>free space</span
 	>
 </div>

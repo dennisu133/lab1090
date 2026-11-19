@@ -131,11 +131,11 @@
 	/>
 	<polyline
 		points={ice}
-		class="fill-none stroke-sky-300/60"
+		class="fill-none stroke-blue-300/60"
 		stroke-width="1"
 		stroke-dasharray="3 3"
 	/>
-	<polyline points={water} class="fill-none stroke-sky-300" stroke-width="1.5" />
+	<polyline points={water} class="fill-none stroke-blue-300" stroke-width="1.5" />
 	<line {...tangent} class="stroke-amber-300" stroke-width="1.5" />
 
 	<!-- The two thresholds. -->
@@ -169,7 +169,7 @@
 		y1={y(needed)}
 		x2={x(shown)}
 		y2={y(saturated)}
-		class="stroke-sky-400"
+		class="stroke-blue-400"
 		stroke-width="3"
 	/>
 	<line
@@ -190,7 +190,7 @@
 	{/if}
 
 	<!-- The legend, top left: the curves rise to the right, so that corner stays empty. -->
-	<text x={LEFT + 4} y={TOP + 10} class="fill-sky-300 text-[10px]">water</text>
-	<text x={LEFT + 4} y={TOP + 22} class="fill-sky-300/70 text-[10px]">ice (dashed)</text>
+	<text x={LEFT + 4} y={TOP + 10} class="fill-blue-300 text-[10px]">water</text>
+	<text x={LEFT + 4} y={TOP + 22} class="fill-blue-300/70 text-[10px]">ice (dashed)</text>
 	<text x={LEFT + 4} y={TOP + 34} class="fill-amber-300 text-[10px]">engine</text>
 </svg>

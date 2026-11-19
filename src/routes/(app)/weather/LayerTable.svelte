@@ -116,7 +116,7 @@
 					<td class="py-0.5 whitespace-nowrap">
 						{#if r.layer.column}
 							<button
-								class={['hover:underline', selected === level && 'text-amber-300']}
+								class={['hover:underline', selected === level && 'text-highlight-300']}
 								onclick={() => onselect(level)}>{levelOrFeet(level)}</button
 							>
 						{:else}
@@ -126,7 +126,7 @@
 							<span class="ml-1 text-xs text-amber-300">tropopause</span>
 						{/if}
 						{#if strongest?.level === level}
-							<span class="ml-1 text-xs text-emerald-300">strongest</span>
+							<span class="ml-1 text-xs text-green-300">strongest</span>
 						{/if}
 					</td>
 					<td class="py-0.5"><Fields fields={layerTemperatureFields(r.layer)} /></td>

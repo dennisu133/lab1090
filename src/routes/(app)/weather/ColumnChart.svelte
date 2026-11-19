@@ -90,7 +90,7 @@
 				points={g.points}
 				class={[
 					'fill-none',
-					g.dT === 0 ? 'stroke-zinc-400' : g.dT < 0 ? 'stroke-sky-700' : 'stroke-rose-800'
+					g.dT === 0 ? 'stroke-zinc-400' : g.dT < 0 ? 'stroke-blue-700' : 'stroke-red-800'
 				]}
 				stroke-dasharray={g.dT === 0 ? '4 3' : '2 3'}
 			/>
@@ -100,7 +100,7 @@
 				text-anchor="middle"
 				class={[
 					'text-[9px]',
-					g.dT === 0 ? 'fill-zinc-400' : g.dT < 0 ? 'fill-sky-400' : 'fill-rose-400'
+					g.dT === 0 ? 'fill-zinc-400' : g.dT < 0 ? 'fill-blue-400' : 'fill-red-400'
 				]}
 			>
 				{g.dT === 0 ? 'ISA' : signed(g.dT, 0)}

@@ -16,9 +16,9 @@
 	let { tone, children }: Props = $props();
 
 	const TONES = {
-		live: 'border-sky-800 bg-sky-950/95 text-sky-100',
-		emergency: 'border-red-700 bg-red-950/95 text-red-100',
-		caution: 'border-amber-700 bg-amber-950/95 text-amber-100'
+		live: 'border-accent-800 bg-accent-950/95 text-accent-100',
+		emergency: 'border-error-700 bg-error-950/95 text-error-100',
+		caution: 'border-warn-700 bg-warn-950/95 text-warn-100'
 	};
 </script>
 

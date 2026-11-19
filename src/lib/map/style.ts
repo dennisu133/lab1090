@@ -39,6 +39,9 @@ const C = {
 	halo: '#131316' // = land
 };
 
+/** The label halo, for our own layers' labels too (layers.ts). */
+export const HALO = C.halo;
+
 /**
  * `streets`: buildings, every street, street names and house numbers when zoomed in, for
  * /setup's "is the marker on your building?". The tracker leaves them out: at its zooms

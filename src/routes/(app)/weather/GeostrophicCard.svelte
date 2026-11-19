@@ -55,14 +55,14 @@
 	);
 	const tone = (d: number) =>
 		d < -60
-			? 'fill-sky-400'
+			? 'fill-blue-400'
 			: d < -20
-				? 'fill-sky-200'
+				? 'fill-blue-200'
 				: d <= 20
 					? 'fill-zinc-300'
 					: d <= 60
-						? 'fill-rose-200'
-						: 'fill-rose-400';
+						? 'fill-red-200'
+						: 'fill-red-400';
 
 	/** Height contours of the fitted plane, every `step` ft, as long lines across the map. */
 	let contours = $derived.by(() => {
@@ -128,7 +128,7 @@
 	{/snippet}
 	{#snippet header()}
 		{#if geo.found}
-			<span class="font-mono text-lg text-emerald-300">{windText(geo.wind)}</span>
+			<span class="font-mono text-lg text-green-300">{windText(geo.wind)}</span>
 			{#if geo.uncertainty !== null}
 				<span class="text-sm text-zinc-500">± {Math.round(geo.uncertainty)} kt</span>
 			{/if}
@@ -156,7 +156,7 @@
 						markerHeight="5"
 						orient="auto"
 					>
-						<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
+						<path d="M0,0 L6,3 L0,6 z" class="fill-green-300" />
 					</marker>
 				</defs>
 				{#each [radius / 2, radius] as r (r)}
@@ -186,12 +186,7 @@
 				<circle cx={C} cy={C} r="3" class="fill-amber-300" />
 
 				{#if arrow}
-					<line
-						{...arrow}
-						class="stroke-emerald-300"
-						stroke-width="2"
-						marker-end="url(#geo-arrow)"
-					/>
+					<line {...arrow} class="stroke-green-300" stroke-width="2" marker-end="url(#geo-arrow)" />
 				{/if}
 			</svg>
 
@@ -217,7 +212,7 @@
 					{#if measured}
 						<p>
 							Measured by the aircraft (5,0/6,0) over the same levels:
-							<span class="font-mono text-emerald-300">{windText(measured)}</span>.
+							<span class="font-mono text-green-300">{windText(measured)}</span>.
 						</p>
 					{/if}
 				{:else}
@@ -225,7 +220,7 @@
 				{/if}
 				<p class="text-xs text-zinc-500">
 					Dots: each flight's pressure level against its own average,
-					<span class="text-sky-300">lower</span> to <span class="text-rose-300">higher</span>
+					<span class="text-blue-300">lower</span> to <span class="text-red-300">higher</span>
 					(±20 and ±60 ft). Amber: the receiver.
 				</p>
 			</div>

@@ -5,8 +5,10 @@
  * switches layers on and off (LAYER_IDS, by MapLayers.svelte's switches).
  */
 import type { ExpressionSpecification, LayerSpecification } from 'maplibre-gl';
+import type { ThemeColour } from '#lib/theme.ts';
 import { altitudeColour } from './altitude.ts';
 import { STALE_OPACITY } from './features.ts';
+import { HALO } from './style.ts';
 import { BARB_BELOW } from './winds.ts';
 
 /** The map's switches (MapLayers.svelte): each true while what it names is drawn. */
@@ -81,27 +83,6 @@ export const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 };
 
 const FONT = ['Noto Sans Regular'];
-/** The base map's land colour (style.ts): a halo that hides what's under a label, no ring. */
-const HALO = '#131316';
-/** The horizon's amber (amber-300), as on the sky plot. */
-const HORIZON_COLOUR = '#fcd34d';
-
-/** Alert colours: red-500 for emergencies, amber-400 for cautions (as the banner). */
-export const TIER_COLOUR: ExpressionSpecification = [
-	'match',
-	['get', 'tier'],
-	'emergency',
-	'#ef4444',
-	'#fbbf24'
-];
-/** The label's colour: the alert's, or the normal one. */
-const LABEL_COLOUR: ExpressionSpecification = [
-	'match',
-	['get', 'tier'],
-	'',
-	'#f4f4f5',
-	TIER_COLOUR
-];
 
 /**
  * The aircraft symbols' opacity: dimmed in IDENT's blink, faded once stale (features.ts). With
@@ -133,14 +114,32 @@ const toScale = (key: string): ExpressionSpecification => [
 	['*', ['get', key], 2 ** 24]
 ];
 
-/** Every layer of ours, bottom first. */
-export function mapLayers(): LayerSpecification[] {
+/**
+ * Every layer of ours, bottom first, in the theme's colours (`colour`: lib/theme.ts's
+ * themeColour).
+ */
+export function mapLayers(
+	colour: (name: ThemeColour, opacity?: number) => string
+): LayerSpecification[] {
+	/** The radio horizon: amber, as on the sky plot and in its explanation. */
+	const horizon = colour('amber-300');
+	/** Alerts: in the colours of the banner's emergencies and cautions. */
+	const tier: ExpressionSpecification = [
+		'match',
+		['get', 'tier'],
+		'emergency',
+		colour('error-500'),
+		colour('warn-400')
+	];
+	/** The label's colour: the alert's, or the normal one. */
+	const label: ExpressionSpecification = ['match', ['get', 'tier'], '', colour('zinc-100'), tier];
+
 	return [
 		{
 			id: 'rings',
 			type: 'line',
 			source: 'rings',
-			paint: { 'line-color': '#52525b', 'line-width': 1, 'line-dasharray': [4, 4] }
+			paint: { 'line-color': colour('zinc-600'), 'line-width': 1, 'line-dasharray': [4, 4] }
 		},
 		{
 			id: 'ring-labels',
@@ -153,7 +152,7 @@ export function mapLayers(): LayerSpecification[] {
 				'text-anchor': 'bottom',
 				'text-offset': [0, -0.2]
 			},
-			paint: { 'text-color': '#71717a', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			paint: { 'text-color': colour('zinc-500'), 'text-halo-color': HALO, 'text-halo-width': 1.5 }
 		},
 		// Coverage: background, like the rings. The sector picked on the sky plot as a faint
 		// wedge, the horizon dashed amber, the outlines in their band's colour.
@@ -161,7 +160,7 @@ export function mapLayers(): LayerSpecification[] {
 			id: 'coverage-sector',
 			type: 'fill',
 			source: 'coverage-sector',
-			paint: { 'fill-color': '#f4f4f5', 'fill-opacity': 0.08 }
+			paint: { 'fill-color': colour('zinc-100'), 'fill-opacity': 0.08 }
 		},
 		{
 			id: 'coverage-horizon',
@@ -169,7 +168,7 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'coverage-horizon',
 			filter: ['==', ['geometry-type'], 'LineString'],
 			paint: {
-				'line-color': HORIZON_COLOUR,
+				'line-color': horizon,
 				'line-opacity': 0.6,
 				'line-width': 1,
 				'line-dasharray': [3, 2]
@@ -187,7 +186,7 @@ export function mapLayers(): LayerSpecification[] {
 				'text-anchor': 'bottom',
 				'text-offset': [0, -0.2]
 			},
-			paint: { 'text-color': HORIZON_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			paint: { 'text-color': horizon, 'text-halo-color': HALO, 'text-halo-width': 1.5 }
 		},
 		{
 			id: 'coverage-fill',
@@ -218,7 +217,7 @@ export function mapLayers(): LayerSpecification[] {
 			type: 'fill',
 			source: 'radar-ellipses',
 			paint: {
-				'fill-color': '#e4e4e7', // zinc-200
+				'fill-color': colour('zinc-200'),
 				'fill-opacity': ['case', ['get', 'selected'], 0.12, 0.05]
 			}
 		},
@@ -227,7 +226,7 @@ export function mapLayers(): LayerSpecification[] {
 			type: 'line',
 			source: 'radar-ellipses',
 			paint: {
-				'line-color': '#d4d4d8', // zinc-300
+				'line-color': colour('zinc-300'),
 				'line-width': ['case', ['get', 'selected'], 1.5, 1],
 				'line-opacity': ['case', ['get', 'selected'], 0.8, 0.4],
 				'line-dasharray': [2, 2]
@@ -239,7 +238,7 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'radar-beams',
 			layout: { 'line-cap': 'round' },
 			paint: {
-				'line-color': '#f4f4f5', // zinc-100
+				'line-color': colour('zinc-100'),
 				'line-width': ['case', ['get', 'selected'], 2, 1],
 				'line-opacity': ['*', ['get', 'opacity'], ['case', ['get', 'selected'], 0.55, 0.3]]
 			}
@@ -251,7 +250,7 @@ export function mapLayers(): LayerSpecification[] {
 			type: 'line',
 			source: 'route',
 			paint: {
-				'line-color': '#a1a1aa', // zinc-400
+				'line-color': colour('zinc-400'),
 				'line-width': 1.5,
 				'line-opacity': 0.8,
 				'line-dasharray': [6, 3, 1, 3]
@@ -263,7 +262,7 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'route-airports',
 			paint: {
 				'circle-radius': 3.5,
-				'circle-color': '#a1a1aa',
+				'circle-color': colour('zinc-400'),
 				'circle-stroke-color': HALO,
 				'circle-stroke-width': 1.5
 			}
@@ -280,7 +279,7 @@ export function mapLayers(): LayerSpecification[] {
 				'text-offset': [0, -0.5],
 				'text-allow-overlap': true
 			},
-			paint: { 'text-color': '#e4e4e7', 'text-halo-color': HALO, 'text-halo-width': 2 }
+			paint: { 'text-color': colour('zinc-200'), 'text-halo-color': HALO, 'text-halo-width': 2 }
 		},
 		...(['trails', 'heads'] as const).map((id): LayerSpecification => ({
 			id,
@@ -332,7 +331,7 @@ export function mapLayers(): LayerSpecification[] {
 			filter: ['has', 'containment'],
 			paint: {
 				'circle-radius': toScale('containment'),
-				'circle-color': 'rgba(0,0,0,0)',
+				'circle-color': 'transparent',
 				'circle-stroke-color': altitudeColour(),
 				'circle-stroke-width': 1,
 				'circle-stroke-opacity': 0.6
@@ -346,8 +345,8 @@ export function mapLayers(): LayerSpecification[] {
 			filter: ['==', ['get', 'unknown'], true],
 			paint: {
 				'circle-radius': 13,
-				'circle-color': 'rgba(0,0,0,0)',
-				'circle-stroke-color': '#fbbf24', // amber-400
+				'circle-color': 'transparent',
+				'circle-stroke-color': colour('amber-400'),
 				'circle-stroke-width': 1.5,
 				'circle-stroke-opacity': 0.8
 			}
@@ -377,7 +376,7 @@ export function mapLayers(): LayerSpecification[] {
 				'text-offset': [0.6, 0],
 				'text-allow-overlap': true
 			},
-			paint: { 'text-color': '#a1a1aa', 'text-halo-color': HALO, 'text-halo-width': 1.5 }
+			paint: { 'text-color': colour('zinc-400'), 'text-halo-color': HALO, 'text-halo-width': 1.5 }
 		},
 		{
 			id: 'prediction-ticks',
@@ -385,7 +384,7 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'prediction-minutes',
 			paint: {
 				'circle-radius': 2.5,
-				'circle-color': '#f4f4f5',
+				'circle-color': colour('zinc-100'),
 				'circle-stroke-color': HALO,
 				'circle-stroke-width': 1
 			}
@@ -398,8 +397,8 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'airport-selected',
 			paint: {
 				'circle-radius': 22,
-				'circle-color': 'rgba(244,244,245,0.05)',
-				'circle-stroke-color': '#f4f4f5',
+				'circle-color': colour('zinc-100', 0.05),
+				'circle-stroke-color': colour('zinc-100'),
 				'circle-stroke-width': 1.5
 			}
 		},
@@ -411,8 +410,8 @@ export function mapLayers(): LayerSpecification[] {
 			layout: { visibility: 'none' },
 			paint: {
 				'circle-radius': 11,
-				'circle-color': 'rgba(244,244,245,0.08)',
-				'circle-stroke-color': '#f4f4f5',
+				'circle-color': colour('zinc-100', 0.08),
+				'circle-stroke-color': colour('zinc-100'),
 				'circle-stroke-width': 1.5
 			}
 		},
@@ -422,7 +421,7 @@ export function mapLayers(): LayerSpecification[] {
 			source: 'receiver',
 			paint: {
 				'circle-radius': 4,
-				'circle-color': '#f4f4f5',
+				'circle-color': colour('zinc-100'),
 				'circle-stroke-color': HALO,
 				'circle-stroke-width': 2
 			}
@@ -447,12 +446,12 @@ export function mapLayers(): LayerSpecification[] {
 				'text-optional': true
 			},
 			paint: {
-				'icon-color': '#e4e4e7', // zinc-200
+				'icon-color': colour('zinc-200'),
 				'icon-halo-color': HALO,
 				'icon-halo-width': 2,
 				// Not heard for a while: dimmer (and no beam).
 				'icon-opacity': ['case', ['get', 'heard'], 1, 0.5],
-				'text-color': '#a1a1aa', // zinc-400
+				'text-color': colour('zinc-400'),
 				'text-halo-color': HALO,
 				'text-halo-width': 1.5
 			}
@@ -462,7 +461,7 @@ export function mapLayers(): LayerSpecification[] {
 			id: 'alert-links',
 			type: 'line',
 			source: 'alert-links',
-			paint: { 'line-color': TIER_COLOUR, 'line-width': 2, 'line-dasharray': [2, 1.5] }
+			paint: { 'line-color': tier, 'line-width': 2, 'line-dasharray': [2, 1.5] }
 		},
 		{
 			id: 'alert-link-labels',
@@ -476,7 +475,7 @@ export function mapLayers(): LayerSpecification[] {
 				'text-offset': [0, -0.8],
 				'text-allow-overlap': true
 			},
-			paint: { 'text-color': TIER_COLOUR, 'text-halo-color': HALO, 'text-halo-width': 2 }
+			paint: { 'text-color': tier, 'text-halo-color': HALO, 'text-halo-width': 2 }
 		},
 		// When an alert starts: rings pulsing out from the symbol (features.ts PULSES).
 		{
@@ -486,8 +485,8 @@ export function mapLayers(): LayerSpecification[] {
 			filter: ['>=', ['get', 'pulse'], 0],
 			paint: {
 				'circle-radius': ['+', 18, ['*', 40, ['get', 'pulse']]],
-				'circle-color': 'rgba(0,0,0,0)',
-				'circle-stroke-color': TIER_COLOUR,
+				'circle-color': 'transparent',
+				'circle-stroke-color': tier,
 				'circle-stroke-width': 2,
 				'circle-stroke-opacity': ['-', 1, ['get', 'pulse']]
 			}
@@ -501,9 +500,9 @@ export function mapLayers(): LayerSpecification[] {
 			filter: ['!=', ['get', 'tier'], ''],
 			paint: {
 				'circle-radius': 21,
-				'circle-color': TIER_COLOUR,
+				'circle-color': tier,
 				'circle-opacity': 0.12,
-				'circle-stroke-color': TIER_COLOUR,
+				'circle-stroke-color': tier,
 				'circle-stroke-width': 2.5
 			}
 		},
@@ -514,8 +513,8 @@ export function mapLayers(): LayerSpecification[] {
 			filter: ['==', ['get', 'icao'], ''],
 			paint: {
 				'circle-radius': 17,
-				'circle-color': 'rgba(244,244,245,0.08)',
-				'circle-stroke-color': '#f4f4f5',
+				'circle-color': colour('zinc-100', 0.08),
+				'circle-stroke-color': colour('zinc-100'),
 				'circle-stroke-width': 1.5
 			}
 		},
@@ -541,7 +540,7 @@ export function mapLayers(): LayerSpecification[] {
 					[
 						'format',
 						['case', ['==', ['get', 'badge'], ''], '', ['concat', ['get', 'badge'], '\n']],
-						{ 'text-color': LABEL_COLOUR },
+						{ 'text-color': label },
 						['get', 'label'],
 						{}
 					]
@@ -567,7 +566,7 @@ export function mapLayers(): LayerSpecification[] {
 				'icon-opacity': aircraftOpacity(null),
 				// The badge alone (zoomed out) in the alert's colour; with the label, the
 				// format above colours the badge.
-				'text-color': ['step', ['zoom'], LABEL_COLOUR, 7, '#d4d4d8'],
+				'text-color': ['step', ['zoom'], label, 7, colour('zinc-300')],
 				'text-halo-color': HALO,
 				'text-halo-width': 1.5,
 				'text-opacity': ['case', ['get', 'stale'], STALE_OPACITY, 1]

@@ -88,7 +88,7 @@
 			max={rateRange.max}
 			ticks={rateRange.ticks}
 			format={(v) => `${v}`}
-			color="stroke-emerald-400"
+			color="stroke-green-400"
 			label="Messages per second over the last hour"
 		/>
 	</section>
@@ -145,7 +145,7 @@
 					ticks={noiseRange.ticks}
 					format={n}
 					reference={{ value: ROUNDING_LIMIT_DBFS, label: 'rounding > 1 dB below' }}
-					color="stroke-sky-400"
+					color="stroke-blue-400"
 					label="Noise level over the last hour, dBFS"
 				/>
 			</section>

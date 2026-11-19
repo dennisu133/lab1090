@@ -84,7 +84,7 @@
 				</td>
 				<td class="py-1 text-right">{perSecond(rates.candidates)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(rates.candidates, rates.samples)}</td>
-				<td class="py-1 pl-4">{@render bar(rates.candidates, 'bg-sky-700')}</td>
+				<td class="py-1 pl-4">{@render bar(rates.candidates, 'bg-blue-700')}</td>
 			</tr>
 			<tr class="border-t border-zinc-800">
 				<td class="py-1">
@@ -99,7 +99,7 @@
 				<td class="py-1 text-right">{perSecond(preamble)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(preamble, rates.candidates)}</td>
 				<td class="py-1 pl-4">
-					{@render bar(preamble, 'bg-sky-600')}
+					{@render bar(preamble, 'bg-blue-600')}
 					<div class="mt-0.5 text-xs text-zinc-500">
 						{perSecond(rates.noPreamble)}/s no start looked like a preamble
 					</div>
@@ -122,7 +122,7 @@
 				<td class="py-1 text-right">{perSecond(format)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(format, preamble)}</td>
 				<td class="py-1 pl-4">
-					{@render bar(format, 'bg-sky-500')}
+					{@render bar(format, 'bg-blue-500')}
 					<div class="mt-0.5 text-xs text-zinc-500">
 						{perSecond(rates.unknownFormat)}/s a format that doesn't exist
 					</div>
@@ -143,7 +143,7 @@
 				<td class="py-1 text-right">{perSecond(passed)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(passed, format)}</td>
 				<td class="py-1 pl-4">
-					{@render bar(passed, 'bg-emerald-500')}
+					{@render bar(passed, 'bg-green-500')}
 					<div class="mt-0.5 text-xs text-zinc-500">
 						<div>{perSecond(rates.parity)}/s parity wrong</div>
 						<div>{perSecond(rates.unheard)}/s address not heard</div>

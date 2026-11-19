@@ -3,7 +3,7 @@ import { LAYER_IDS, mapLayers, SOURCES } from './layers.ts';
 import { PICKABLE } from './pick.ts';
 import { mapStyle } from './style.ts';
 
-const ours = mapLayers();
+const ours = mapLayers(() => '#000');
 const base = mapStyle().layers.map((l) => l.id);
 
 test('every layer of ours draws one of our sources, and has its own id', () => {

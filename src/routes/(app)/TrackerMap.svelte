@@ -85,6 +85,7 @@
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
 	import { barbFeatures } from '#lib/map/winds.ts';
 	import { mapStyle } from '#lib/map/style.ts';
+	import { themeColour } from '#lib/theme.ts';
 	import { foldCredits, watchBaseMap } from '#lib/map/base-map.ts';
 	import { lngLat } from '#lib/map/geometry.ts';
 	import {
@@ -212,7 +213,7 @@
 
 			for (const id of SOURCES) m.addSource(id, { type: 'geojson', data: empty });
 
-			for (const layer of mapLayers()) m.addLayer(layer);
+			for (const layer of mapLayers(themeColour)) m.addLayer(layer);
 
 			// What was tapped (lib/map/pick.ts) opens its panel or card; the map itself closes them.
 			m.on('click', (e) => {

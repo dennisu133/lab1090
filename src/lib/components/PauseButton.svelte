@@ -61,11 +61,11 @@
 	<div class="fixed top-[calc(1rem+var(--alert-banner,0px))] left-1/2 z-30 -translate-x-1/2">
 		<Notice tone="live">
 			<button
-				class="px-4 py-1.5 hover:bg-sky-900"
+				class="px-4 py-1.5 hover:bg-accent-900"
 				onclick={() => button?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
 			>
 				Live {noun} paused while you scroll: {n(feed.held)} new
-				<span class="ml-2 text-sky-300">↑ Back to live</span>
+				<span class="ml-2 text-accent-300">↑ Back to live</span>
 			</button>
 		</Notice>
 	</div>

@@ -10,6 +10,7 @@
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { mapStyle } from '#lib/map/style.ts';
 	import { watchBaseMap } from '#lib/map/base-map.ts';
+	import { themeColour } from '#lib/theme.ts';
 
 	interface Props {
 		position: LatLon;
@@ -38,7 +39,10 @@
 			touchPitch: false
 		});
 		m.touchZoomRotate.disableRotation();
-		marker = new maplibregl.Marker({ color: '#f4f4f5' }).setLngLat([position.lon, position.lat]);
+		marker = new maplibregl.Marker({ color: themeColour('zinc-100') }).setLngLat([
+			position.lon,
+			position.lat
+		]);
 		marker.addTo(m);
 		map = m;
 		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));

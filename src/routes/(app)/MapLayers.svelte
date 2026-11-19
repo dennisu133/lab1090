@@ -232,7 +232,7 @@
 				</svg>
 			{/snippet}
 		</LayerSwitch>
-		<p class="border-t border-zinc-800 pt-1.5 text-xs text-amber-300">Experimental</p>
+		<p class="border-t border-zinc-800 pt-1.5 text-xs text-warn-300">Experimental</p>
 		<LayerSwitch
 			bind:checked={layers.radars}
 			label="Search for the ground radars and show them"

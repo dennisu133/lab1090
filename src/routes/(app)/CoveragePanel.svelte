@@ -84,7 +84,7 @@
 	Antenna at
 	<span class="font-mono text-zinc-300">{receiver.lat.toFixed(5)}, {receiver.lon.toFixed(5)}</span>
 	·
-	<a href={resolve('/setup')} class="text-sky-400 hover:text-sky-300">Change</a>
+	<a href={resolve('/setup')} class="text-accent-400 hover:text-accent-300">Change</a>
 </p>
 
 <p class="px-4 pb-3 text-sm text-zinc-300">

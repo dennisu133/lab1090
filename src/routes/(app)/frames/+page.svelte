@@ -290,7 +290,7 @@
 									class={[
 										'py-0.5 font-mono',
 										f.addr.verdict === 'valid' || f.addr.verdict === 'known'
-											? 'text-amber-300'
+											? 'text-highlight-300'
 											: 'text-zinc-500'
 									]}
 									title={addressTitle(f.addr)}

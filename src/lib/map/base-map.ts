@@ -65,9 +65,13 @@ export function watchBaseMap(
 	const onOnline = () => {
 		if (state) retry();
 	};
-	// Source errors carry the source's id (MapLibre's types don't say so).
+	// Source errors carry the source's id (MapLibre's types don't say so). The others are
+	// logged: with a listener, MapLibre no longer does (a refused layer went unnoticed).
 	const onError = (e: object) => {
-		if ((e as { sourceId?: string }).sourceId !== sourceId) return;
+		if ((e as { sourceId?: string }).sourceId !== sourceId) {
+			console.error((e as { error?: unknown }).error ?? e);
+			return;
+		}
 		health.error(performance.now());
 		clearTimeout(timer);
 		timer = setTimeout(update, GRACE_MS);

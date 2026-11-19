@@ -80,17 +80,17 @@
 			<text x={(LEFT + W - RIGHT) / 2} y={H - 4} text-anchor="middle">temperature, °C</text>
 		</g>
 
-		<polygon points={band} class="fill-sky-400/10" />
-		<polyline points={dryLine} class="fill-none stroke-sky-400/60" stroke-width="1">
+		<polygon points={band} class="fill-blue-400/10" />
+		<polyline points={dryLine} class="fill-none stroke-blue-400/60" stroke-width="1">
 			<title>Colder than this, engines leave contrails even in dry air (0 % humidity)</title>
 		</polyline>
-		<polyline points={saturatedLine} class="fill-none stroke-sky-400/60" stroke-width="1">
+		<polyline points={saturatedLine} class="fill-none stroke-blue-400/60" stroke-width="1">
 			<title>Warmer than this, no contrails even in saturated air (100 % humidity)</title>
 		</polyline>
 		<text
 			x={x(contrail[0].saturated) + 4}
 			y={y(CONTRAIL_FROM) - 4}
-			class="fill-sky-300/80 text-[10px]">contrails</text
+			class="fill-blue-300/80 text-[10px]">contrails</text
 		>
 
 		<polyline
@@ -136,7 +136,7 @@
 				cx={x(t.kelvin)}
 				cy={yy}
 				r="3"
-				class={enough(t) ? 'fill-rose-300' : 'fill-zinc-950 stroke-rose-300'}
+				class={enough(t) ? 'fill-red-300' : 'fill-zinc-950 stroke-red-300'}
 			>
 				<title>{`${flightLevel(l.level)}: ${celsius(t.kelvin)}, ${t.n} samples`}</title>
 			</circle>

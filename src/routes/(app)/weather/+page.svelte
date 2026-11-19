@@ -178,7 +178,7 @@
 				</p>
 			{/snippet}
 			{#if strongest}
-				<p class="mt-2 font-mono text-2xl font-semibold tracking-tight text-emerald-300">
+				<p class="mt-2 font-mono text-2xl font-semibold tracking-tight text-green-300">
 					{windText(strongest.wind)}
 				</p>
 				<p class="mt-1 text-xs text-zinc-500">
@@ -265,7 +265,7 @@
 				</InfoTip>
 				<p class="mt-0.5">
 					{#each contrails as run, i (run.from)}
-						{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-sky-300' : ''}
+						{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-blue-300' : ''}
 							>{runText(run)}</span
 						>
 					{:else}

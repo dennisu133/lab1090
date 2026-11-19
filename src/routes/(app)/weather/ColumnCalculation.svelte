@@ -70,7 +70,7 @@
 					<button
 						class={[
 							'px-2 py-0.5',
-							heights === r.value ? 'bg-sky-900' : 'bg-zinc-800 hover:bg-zinc-700'
+							heights === r.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
 						]}
 						onclick={() => (heights = r.value)}
 					>

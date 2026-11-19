@@ -221,14 +221,14 @@
 					<p class="text-sm text-zinc-400">
 						Searching sends what you type from this browser to <a
 							href="https://nominatim.org"
-							class="text-sky-400 hover:text-sky-300">Nominatim</a
+							class="text-accent-400 hover:text-accent-300">Nominatim</a
 						>, OpenStreetMap's address search, run by the OpenStreetMap Foundation (<a
 							href="https://osmfoundation.org/wiki/Privacy_Policy"
-							class="text-sky-400 hover:text-sky-300">privacy policy</a
+							class="text-accent-400 hover:text-accent-300">privacy policy</a
 						>). The lab1090 server never sees the address, only the position you save. Rather not?
 						<button
 							type="button"
-							class="text-sky-400 hover:text-sky-300"
+							class="text-accent-400 hover:text-accent-300"
 							onclick={() => (mode = 'coordinates')}>Enter coordinates</button
 						> instead.
 					</p>
@@ -239,7 +239,7 @@
 							autocomplete="street-address"
 							placeholder="Street and number, town"
 							aria-label="Address"
-							class="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 placeholder:text-zinc-500 focus:border-sky-500 focus:outline-none"
+							class="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 placeholder:text-zinc-500 focus:border-accent-500 focus:outline-none"
 						/>
 						<button
 							type="submit"
@@ -249,7 +249,7 @@
 						>
 					</form>
 					{#if searchError}
-						<p class="text-sm text-red-300">{searchError}</p>
+						<p class="text-sm text-error-300">{searchError}</p>
 					{:else if places?.length === 0}
 						<p class="text-sm text-zinc-400">
 							Nothing found. Try the street and town without extras, or enter coordinates.
@@ -271,7 +271,7 @@
 										<span
 											class={[
 												'shrink-0 text-xs',
-												place.matched === 'building' ? 'text-zinc-400' : 'text-amber-300'
+												place.matched === 'building' ? 'text-zinc-400' : 'text-warn-300'
 											]}>{matchLabel[place.matched]}</span
 										>
 									</button>
@@ -298,10 +298,10 @@
 						spellcheck="false"
 						placeholder="52.5163, 13.3777 or a map link"
 						aria-label="Coordinates or a map link"
-						class="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono placeholder:font-sans placeholder:text-zinc-500 focus:border-sky-500 focus:outline-none"
+						class="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono placeholder:font-sans placeholder:text-zinc-500 focus:border-accent-500 focus:outline-none"
 					/>
 					{#if parsed && 'error' in parsed}
-						<p class="text-sm text-red-300">{parsed.error}</p>
+						<p class="text-sm text-error-300">{parsed.error}</p>
 					{/if}
 					<div class="space-y-1 text-sm text-zinc-400">
 						<p>Latitude first, then longitude. Where to find them:</p>
@@ -332,7 +332,7 @@
 						{/if}
 					</p>
 					{#if candidate.note}
-						<p class="text-sm text-amber-300">
+						<p class="text-sm text-warn-300">
 							{candidate.note} Check that the marker is on your building.
 						</p>
 					{/if}
@@ -341,8 +341,8 @@
 							class={[
 								'rounded-lg border px-4 py-3 text-sm',
 								tooCoarse
-									? 'border-red-900/60 bg-red-950/40 text-red-200'
-									: 'border-amber-900/60 bg-amber-950/40 text-amber-200'
+									? 'border-error-900/60 bg-error-950/40 text-error-200'
+									: 'border-warn-900/60 bg-warn-950/40 text-warn-200'
 							]}
 						>
 							{tooCoarse ? 'Too rough to use' : 'Only rough'}: up to {distance(
@@ -358,14 +358,14 @@
 						type="button"
 						disabled={tooCoarse || saving}
 						onclick={() => save(candidate.position)}
-						class="w-full rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white hover:bg-sky-500 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto"
+						class="w-full rounded-md bg-accent-600 px-4 py-2.5 font-medium text-white hover:bg-accent-500 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto"
 						>{saving ? 'Saving…' : 'Use this position'}</button
 					>
 				</section>
 			{/if}
 
 			{#if saveError}
-				<p class="text-sm text-red-300">{saveError}</p>
+				<p class="text-sm text-error-300">{saveError}</p>
 			{/if}
 
 			<p class="text-xs text-zinc-500">

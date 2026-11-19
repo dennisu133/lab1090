@@ -5,19 +5,19 @@ export const VERDICTS: Record<Verdict, { symbol: string; label: string; color: s
 	valid: {
 		symbol: '✓',
 		label: 'Valid (address in the clear)',
-		color: 'text-emerald-400'
+		color: 'text-ok-400'
 	},
 	known: {
 		symbol: '✓',
 		label: 'From parity, known aircraft',
-		color: 'text-sky-400'
+		color: 'text-blue-400'
 	},
 	unknown: {
 		symbol: '?',
 		label: 'From parity, unknown aircraft',
-		color: 'text-amber-400'
+		color: 'text-warn-400'
 	},
-	invalid: { symbol: '✗', label: 'Corrupted (CRC mismatch)', color: 'text-rose-400' }
+	invalid: { symbol: '✗', label: 'Corrupted (CRC mismatch)', color: 'text-error-400' }
 };
 
 /** "II 0", "SI 44", … for DF11 replies; null for everything else. */

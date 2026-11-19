@@ -31,7 +31,7 @@
 <section class="border-t border-zinc-800 px-4 py-3">
 	<h3 class="mb-2 text-xs font-medium text-zinc-400">Live messages</h3>
 	{#if frozen}
-		<p class="mb-2 text-xs text-amber-300">
+		<p class="mb-2 text-xs text-warn-300">
 			Paused while a message is open{waiting ? ` · ${waiting} new` : ''}
 		</p>
 	{/if}
@@ -56,7 +56,7 @@
 						<p class="text-zinc-500">{m.title} · {dbfs(m.dbfs)}</p>
 						{#each m.fields as f, i (i)}
 							<p>
-								<span class={f.tone === 'alert' ? 'text-orange-400' : 'text-zinc-200'}>
+								<span class={f.tone === 'alert' ? 'text-warn-400' : 'text-zinc-200'}>
 									{f.label ? `${f.label} ` : ''}<span class={{ 'font-mono': f.mono }}
 										>{f.value}</span
 									>

@@ -98,7 +98,7 @@
 					<span
 						class={[
 							'min-w-0 truncate text-xs font-semibold',
-							x.tier === 'emergency' ? 'text-red-400' : 'text-amber-300'
+							x.tier === 'emergency' ? 'text-error-400' : 'text-warn-300'
 						]}>{badge(x)}</span
 					>
 				{/each}

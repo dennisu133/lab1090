@@ -1,14 +1,21 @@
 /*
- * EXPERIMENT (branch experiment/vercel-theme): Vercel's dark "Geist" look.
+ * EXPERIMENT (branch experiment/vercel-theme): the app's look and its colours.
  *
- * Instead of renaming classes in ~40 components, this re-points Tailwind's palette at Geist's
- * dark values (from https://vercel.com/geist/vercel-brand.css, --vbg-* tokens):
- * - zinc → still zinc, at Geist's lightness steps (text at 0.946 / 0.706).
- * - sky → Geist blue, emerald → green, amber → amber, red and rose → red.
- * Everything else (the altitude colours, orange, purple, …) stays Tailwind's.
+ * Classes say what a colour is for, not which colour it is:
+ * - accent: what you can click or have selected (links, chosen buttons, the selected row).
+ * - highlight: what to read first (aircraft addresses, the selected level).
+ * - ok, warn, error: states (receiver status, alerts, problems with a value, failed input).
+ * - zinc: everything else, from the page (950) to the brightest text (50).
+ * - blue, green, amber, red: data. Charts, map lines, and the text that names them ("the
+ *   amber line", "the red bucket"), so they're named by colour.
+ * Each role points at a data colour; change a role there, or a colour's values below.
+ * Tailwind's other colours stay available for what has a colour of its own (the altitude
+ * scale) or a one-off.
  *
- * So "sky" now means Geist blue. Fine for trying it out; if the look stays, the honest version
- * is semantic names (--color-accent, --color-text-secondary, …) instead.
+ * Values: Vercel's Geist (dark, from https://vercel.com/geist/vercel-brand.css), zinc at
+ * Geist's lightness steps. The map's own colours are in lib/map/style.ts (base map) and
+ * lib/map/altitude.ts (the altitude scale); its other lines and labels read these
+ * (lib/theme.ts).
  */
 
 /*
@@ -48,7 +55,10 @@
 @theme {
 	--font-sans: 'Hyperlegible Open', ui-sans-serif, system-ui, sans-serif;
 	--font-mono: 'Hyperlegible Open Mono', ui-monospace, monospace;
+}
 
+/* static: every variable is written out, used by a class or not, so lib/theme.ts can read it. */
+@theme static {
 	/*
 	 * Zinc's tint (Tailwind's hue and chroma per step) at Geist's lightness steps: brighter
 	 * secondary text (500), subtler borders and hovers (700–900). 950, the page, is
@@ -67,27 +77,27 @@
 	--color-zinc-950: oklch(0.141 0.005 285.823);
 
 	/* Geist blue: 700 is Vercel's #0070f3-ish, 900 the readable text blue on black. */
-	--color-sky-100: oklch(0.9675 0.0179 242.42);
-	--color-sky-200: oklch(0.86 0.08 245);
-	--color-sky-300: oklch(0.717 0.1648 250.79);
-	--color-sky-400: oklch(0.66 0.2 254);
-	--color-sky-500: oklch(0.5761 0.2321 258.23);
-	--color-sky-600: oklch(0.53 0.23 258);
-	--color-sky-700: oklch(0.45 0.2 257);
-	--color-sky-800: oklch(0.38 0.15 256);
-	--color-sky-900: oklch(0.341 0.121 254.74);
-	--color-sky-950: oklch(0.2217 0.069 259.89);
+	--color-blue-100: oklch(0.9675 0.0179 242.42);
+	--color-blue-200: oklch(0.86 0.08 245);
+	--color-blue-300: oklch(0.717 0.1648 250.79);
+	--color-blue-400: oklch(0.66 0.2 254);
+	--color-blue-500: oklch(0.5761 0.2321 258.23);
+	--color-blue-600: oklch(0.53 0.23 258);
+	--color-blue-700: oklch(0.45 0.2 257);
+	--color-blue-800: oklch(0.38 0.15 256);
+	--color-blue-900: oklch(0.341 0.121 254.74);
+	--color-blue-950: oklch(0.2217 0.069 259.89);
 
-	--color-emerald-100: oklch(0.9676 0.056 154.18);
-	--color-emerald-200: oklch(0.86 0.13 150);
-	--color-emerald-300: oklch(0.731 0.2158 148.29);
-	--color-emerald-400: oklch(0.69 0.21 148);
-	--color-emerald-500: oklch(0.6458 0.199 147.27);
-	--color-emerald-600: oklch(0.56 0.17 147.5);
-	--color-emerald-700: oklch(0.48 0.14 147.6);
-	--color-emerald-800: oklch(0.41 0.12 147.7);
-	--color-emerald-900: oklch(0.3439 0.1039 147.78);
-	--color-emerald-950: oklch(0.2309 0.0716 149.68);
+	--color-green-100: oklch(0.9676 0.056 154.18);
+	--color-green-200: oklch(0.86 0.13 150);
+	--color-green-300: oklch(0.731 0.2158 148.29);
+	--color-green-400: oklch(0.69 0.21 148);
+	--color-green-500: oklch(0.6458 0.199 147.27);
+	--color-green-600: oklch(0.56 0.17 147.5);
+	--color-green-700: oklch(0.48 0.14 147.6);
+	--color-green-800: oklch(0.41 0.12 147.7);
+	--color-green-900: oklch(0.3439 0.1039 147.78);
+	--color-green-950: oklch(0.2309 0.0716 149.68);
 
 	--color-amber-100: oklch(0.967 0.0418 84.59);
 	--color-amber-200: oklch(0.9 0.12 80);
@@ -111,18 +121,61 @@
 	--color-red-900: oklch(0.3527 0.1273 21.23);
 	--color-red-950: oklch(0.221 0.0657 15.11);
 
-	--color-rose-100: var(--color-red-100);
-	--color-rose-200: var(--color-red-200);
-	--color-rose-300: var(--color-red-300);
-	--color-rose-400: var(--color-red-400);
-	--color-rose-500: var(--color-red-500);
-	--color-rose-600: var(--color-red-600);
-	--color-rose-700: var(--color-red-700);
-	--color-rose-800: var(--color-red-800);
-	--color-rose-900: var(--color-red-900);
-	--color-rose-950: var(--color-red-950);
+	/* The roles. */
+	--color-accent-100: var(--color-blue-100);
+	--color-accent-200: var(--color-blue-200);
+	--color-accent-300: var(--color-blue-300);
+	--color-accent-400: var(--color-blue-400);
+	--color-accent-500: var(--color-blue-500);
+	--color-accent-600: var(--color-blue-600);
+	--color-accent-700: var(--color-blue-700);
+	--color-accent-800: var(--color-blue-800);
+	--color-accent-900: var(--color-blue-900);
+	--color-accent-950: var(--color-blue-950);
 
-	/* Geist's radii: 6 px small, 8 px default. Tailwind's -md and -lg already are. */
+	--color-highlight-100: var(--color-amber-100);
+	--color-highlight-200: var(--color-amber-200);
+	--color-highlight-300: var(--color-amber-300);
+	--color-highlight-400: var(--color-amber-400);
+	--color-highlight-500: var(--color-amber-500);
+	--color-highlight-600: var(--color-amber-600);
+	--color-highlight-700: var(--color-amber-700);
+	--color-highlight-800: var(--color-amber-800);
+	--color-highlight-900: var(--color-amber-900);
+	--color-highlight-950: var(--color-amber-950);
+
+	--color-ok-100: var(--color-green-100);
+	--color-ok-200: var(--color-green-200);
+	--color-ok-300: var(--color-green-300);
+	--color-ok-400: var(--color-green-400);
+	--color-ok-500: var(--color-green-500);
+	--color-ok-600: var(--color-green-600);
+	--color-ok-700: var(--color-green-700);
+	--color-ok-800: var(--color-green-800);
+	--color-ok-900: var(--color-green-900);
+	--color-ok-950: var(--color-green-950);
+
+	--color-warn-100: var(--color-amber-100);
+	--color-warn-200: var(--color-amber-200);
+	--color-warn-300: var(--color-amber-300);
+	--color-warn-400: var(--color-amber-400);
+	--color-warn-500: var(--color-amber-500);
+	--color-warn-600: var(--color-amber-600);
+	--color-warn-700: var(--color-amber-700);
+	--color-warn-800: var(--color-amber-800);
+	--color-warn-900: var(--color-amber-900);
+	--color-warn-950: var(--color-amber-950);
+
+	--color-error-100: var(--color-red-100);
+	--color-error-200: var(--color-red-200);
+	--color-error-300: var(--color-red-300);
+	--color-error-400: var(--color-red-400);
+	--color-error-500: var(--color-red-500);
+	--color-error-600: var(--color-red-600);
+	--color-error-700: var(--color-red-700);
+	--color-error-800: var(--color-red-800);
+	--color-error-900: var(--color-red-900);
+	--color-error-950: var(--color-red-950);
 }
 
 @layer base {

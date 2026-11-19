@@ -77,7 +77,7 @@
 				{#each shown as e (e.id)}
 					<tr class="border-t border-zinc-800 align-baseline">
 						<td class="w-36 py-0.5 text-zinc-400">{dayAndTime(e.t)}</td>
-						<td class={['w-32 py-0.5', e.state === 'waiting' ? 'text-amber-300' : '']}
+						<td class={['w-32 py-0.5', e.state === 'waiting' ? 'text-warn-300' : '']}
 							>{STATES[e.state]}</td
 						>
 						<td class="py-0.5 text-zinc-400">

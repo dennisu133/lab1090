@@ -78,7 +78,7 @@
 			y1={yy}
 			x2={x(result.kelvin)}
 			y2={yy}
-			class={warmer ? 'stroke-rose-400' : 'stroke-sky-400'}
+			class={warmer ? 'stroke-red-400' : 'stroke-blue-400'}
 			stroke-width="3"
 		/>
 		<!-- What the probe reads, warmed by stopping the air. -->

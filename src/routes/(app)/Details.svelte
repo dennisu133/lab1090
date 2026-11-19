@@ -23,9 +23,9 @@
 			class={[
 				'mb-2 text-xs font-medium',
 				section.tier === 'emergency'
-					? 'text-red-400'
+					? 'text-error-400'
 					: section.tier === 'caution'
-						? 'text-amber-300'
+						? 'text-warn-300'
 						: 'text-zinc-400'
 			]}
 		>
@@ -62,7 +62,7 @@
 						'min-w-0 break-words tabular-nums',
 						field.tone === 'main' && 'text-zinc-100',
 						field.tone === 'minor' && 'text-zinc-400',
-						field.tone === 'alert' && 'text-orange-400',
+						field.tone === 'alert' && 'text-warn-400',
 						!field.note && field.mono && 'font-mono'
 					]}
 				>

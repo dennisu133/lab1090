@@ -24,8 +24,8 @@ export function duration(seconds: number): string {
 export type Tone = 'good' | 'warn' | 'bad' | 'none';
 
 export const TONE_DOT: Record<Tone, string> = {
-	good: 'bg-emerald-400',
-	warn: 'bg-amber-400',
-	bad: 'bg-rose-400',
+	good: 'bg-ok-400',
+	warn: 'bg-warn-400',
+	bad: 'bg-error-400',
 	none: 'bg-zinc-600'
 };

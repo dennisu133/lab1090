@@ -128,9 +128,7 @@
 	{/snippet}
 	<AlertBanner floating={fullScreen} />
 	{#if WIDE_ONLY.some(within)}
-		<p
-			class="border-b border-amber-900/50 bg-amber-950/40 px-6 py-2 text-sm text-amber-200 lg:hidden"
-		>
+		<p class="border-b border-warn-900/50 bg-warn-950/40 px-6 py-2 text-sm text-warn-200 lg:hidden">
 			Made for wide screens (1024 px and up). On a smaller screen the tables scroll sideways, and
 			most explanations only appear when you hover with a mouse.
 		</p>

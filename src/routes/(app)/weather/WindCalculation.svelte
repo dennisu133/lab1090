@@ -33,9 +33,9 @@
 <Card title="Wind" class="h-86" nowrap>
 	{#snippet info()}
 		<p>
-			The aircraft moves through the air (<span class="text-sky-300">air vector</span>: true
+			The aircraft moves through the air (<span class="text-blue-300">air vector</span>: true
 			airspeed, in the direction the nose points), and the air moves over the ground (the
-			<span class="text-emerald-300">wind</span>). Together they make the path over the ground (<span
+			<span class="text-green-300">wind</span>). Together they make the path over the ground (<span
 				class="text-amber-300">ground vector</span
 			>: ground speed along the track).
 		</p>
@@ -57,7 +57,7 @@
 			</span>
 		{/if}
 		{#if o.windProblem}
-			<span class="min-w-0 truncate text-sm text-orange-400" title="Not used: {o.windProblem}">
+			<span class="min-w-0 truncate text-sm text-warn-400" title="Not used: {o.windProblem}">
 				not used: {o.windProblem}
 			</span>
 		{/if}
@@ -90,7 +90,7 @@
 					is {signed(w.declination, 2)}°, so true heading {n(w.trueHeading)}°.
 				</li>
 				<li>
-					<span class="text-sky-300">Air vector</span>: {track.tas} kt (TAS, 5,0) towards {n(
+					<span class="text-blue-300">Air vector</span>: {track.tas} kt (TAS, 5,0) towards {n(
 						w.trueHeading
 					)}° = {ns(w.air.north)}, {ew(w.air.east)}.
 				</li>
@@ -100,7 +100,7 @@
 					)}° (5,0) = {ns(w.ground.north)}, {ew(w.ground.east)}.
 				</li>
 				<li>
-					<span class="text-emerald-300">Wind</span> = ground − air = {ns(w.wind.vector.north)},
+					<span class="text-green-300">Wind</span> = ground − air = {ns(w.wind.vector.north)},
 					{ew(w.wind.vector.east)}: {n(w.wind.speed)} kt towards {n(
 						(w.wind.direction + 180) % 360
 					)}°, so <strong>from {n(w.wind.direction)}° ({compass(w.wind.direction)})</strong>.
@@ -145,12 +145,12 @@
 	{/if}
 
 	<p class="mt-2 truncate text-xs text-zinc-500">
-		<span class={o.skewMs > MAX_SKEW_MS ? 'text-orange-400' : ''}>
+		<span class={o.skewMs > MAX_SKEW_MS ? 'text-warn-400' : ''}>
 			5,0 and 6,0 {interval(o.skewMs)} apart (at most {MAX_SKEW_MS / 1000} s)</span
 		>
 		·
 		{#if track.roll !== null}
-			<span class={Math.abs(track.roll) > MAX_ROLL ? 'text-orange-400' : ''}>
+			<span class={Math.abs(track.roll) > MAX_ROLL ? 'text-warn-400' : ''}>
 				banked {n(Math.abs(track.roll))}° (at most {MAX_ROLL}°)
 			</span>
 		{:else}

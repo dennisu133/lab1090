@@ -82,7 +82,7 @@
 						markerHeight="5"
 						orient="auto"
 					>
-						<path d="M0,0 L6,3 L0,6 z" class="fill-emerald-300" />
+						<path d="M0,0 L6,3 L0,6 z" class="fill-green-300" />
 					</marker>
 				</defs>
 				<line x1={C} y1="0" x2={C} y2={SIZE} class="stroke-zinc-800" />
@@ -96,14 +96,14 @@
 					stroke-dasharray="3 3"
 				/>
 				{#each latest.points as p, i (i)}
-					<circle cx={x(p.east)} cy={y(p.north)} r="1.6" class="fill-sky-300" />
+					<circle cx={x(p.east)} cy={y(p.north)} r="1.6" class="fill-blue-300" />
 				{/each}
 				<line
 					x1={C}
 					y1={C}
 					x2={x(w.east)}
 					y2={y(w.north)}
-					class="stroke-emerald-300"
+					class="stroke-green-300"
 					stroke-width="2"
 					marker-end="url(#turn-arrow)"
 				/>
@@ -112,14 +112,14 @@
 
 			<div class="space-y-2 text-sm">
 				<p>
-					<span class="font-mono text-amber-300">{latest.icao}</span>
+					<span class="font-mono text-highlight-300">{latest.icao}</span>
 					<span class="text-zinc-500">{callsigns.get(latest.icao) ?? ''}</span>
 					turned {Math.abs(latest.arc).toFixed(0)}° {latest.arc > 0 ? 'right' : 'left'} at {levelOrFeet(
 						Math.round(latest.altitude / 100) * 100
 					)}, in {Math.round((latest.end - latest.start) / 1000)} s.
 				</p>
 				<p>
-					Wind <span class="font-mono text-emerald-300">{windText(latest.wind)}</span> (the arrow to
+					Wind <span class="font-mono text-green-300">{windText(latest.wind)}</span> (the arrow to
 					the centre), TAS {Math.round(latest.tas)} kt (the radius){Math.abs(latest.tasChange) >= 3
 						? `, ${signed(latest.tasChange, 0)} kt over the turn`
 						: ''}.
@@ -133,11 +133,11 @@
 						<tbody>
 							{#each turns.slice(-6, -1).reverse() as t (t.end + t.icao)}
 								<tr class="h-6 border-t border-zinc-800">
-									<td class="w-16 font-mono text-amber-300">{t.icao}</td>
+									<td class="w-16 font-mono text-highlight-300">{t.icao}</td>
 									<td class="w-16 text-zinc-400"
 										>{levelOrFeet(Math.round(t.altitude / 100) * 100)}</td
 									>
-									<td class="font-mono text-emerald-300">{windText(t.wind)}</td>
+									<td class="font-mono text-green-300">{windText(t.wind)}</td>
 									<td class="w-12 text-zinc-500">{Math.abs(t.arc).toFixed(0)}°</td>
 								</tr>
 							{/each}
