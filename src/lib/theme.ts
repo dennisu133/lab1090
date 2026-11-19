@@ -19,14 +19,15 @@ export function themeColour(name: ThemeColour, opacity = 1): string {
 }
 
 /**
- * `oklch(L C H)` (L 0–1, as Tailwind writes it) as `rgba(r, g, b, opacity)`, by OKLab and linear
+ * `oklch(L C H)` (L 0–1, or a percentage as in Tailwind's own palette) as `rgba(r, g, b, opacity)`, by OKLab and linear
  * sRGB (Björn Ottosson, "A perceptual color space for image processing", 2020). Colours
  * outside sRGB are clipped per channel. Anything else (`#fff`) is returned unchanged.
  */
 export function toRgb(css: string, opacity = 1): string {
-	const m = /^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)$/.exec(css);
+	const m = /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)\s*\)$/.exec(css);
 	if (!m) return css;
-	const [L, C, h] = [Number(m[1]), Number(m[2]), (Number(m[3]) * Math.PI) / 180];
+	const L = Number(m[1]) / (m[2] ? 100 : 1);
+	const [C, h] = [Number(m[3]), (Number(m[4]) * Math.PI) / 180];
 	const a = C * Math.cos(h);
 	const b = C * Math.sin(h);
 	const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
