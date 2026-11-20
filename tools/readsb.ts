@@ -15,7 +15,7 @@ export interface ReadsbMessage {
 	hex: string;
 	/** receiverTime in 12 MHz ticks (readsb's clock, not yet ours). */
 	tick: number;
-	/** readsb's signal level, dBFS (power: 3 dB below our pulse amplitude). */
+	/** readsb's signal level, dBFS (mean power: about 4.5 dB below our pulse amplitude). */
 	rssi: number;
 	/** Bits readsb repaired. */
 	fixed: number;

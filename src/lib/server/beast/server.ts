@@ -13,7 +13,7 @@ import { encodeFrame } from './encode';
  * the demodulator's filter (lib/demod/filter.ts), repairs included, and the address check's
  * rejects too (the receiving end does its own, as readsb does with Beast input). The timestamp
  * is the demodulator's 12 MHz clock, Beast's own unit. The signal byte is our pulse amplitude,
- * about 3 dB above readsb's for the same message (ModeSFrame.signal): left as it is, so a
+ * about 4.5 dB above readsb's for the same message (ModeSFrame.signal): left as it is, so a
  * lab1090 reading this shows the same levels as the one sending it.
  *
  * The frames of one batch of samples go out in one write (a microtask after the first). A
