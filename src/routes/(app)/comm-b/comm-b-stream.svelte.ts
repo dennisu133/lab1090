@@ -40,6 +40,8 @@ export interface RegisterRow {
 export type Counts = Record<string, Record<Source, number>>;
 
 const MAX_ROWS = 2000;
+/** Rows the page shows at most; also what each register's buffer keeps. */
+export const FEED_ROWS = 200;
 
 /**
  * /comm-b's view of the live stream: every register reading, broadcast or interrogated.
@@ -62,6 +64,14 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 	#callsigns = new Map<string, string>();
 	/** On the server's clock, like the frames. */
 	#window = new RateWindow<Counts>();
+	/**
+	 * The latest FEED_ROWS readings of each register and source ("4,0 interrogated"), oldest
+	 * first, like the server's FrameBuffers for /frames. Each turns over only as fast as its own
+	 * register arrives, so a rare one (an "unknown", a 0,9 a radar asked for) can still be
+	 * found long after the 2000 general rows have moved on. Fed also while the list is paused.
+	 */
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
+	#latest = new Map<string, RegisterRow[]>();
 
 	constructor() {
 		super(MAX_ROWS);
@@ -73,6 +83,7 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		this.#callsigns.clear();
 		this.#window.clear();
 		this.#aircraft.clear();
+		this.#latest.clear();
 		this.counts = {};
 		this.rates = {};
 		this.aircraft = [];
@@ -86,9 +97,29 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		this.#memory.prune(now);
 		this.#aircraft.prune(now);
 		this.#count(rows, now);
+		for (const r of rows) {
+			const key = `${r.key} ${r.source}`;
+			const kept = this.#latest.get(key) ?? [];
+			kept.push(r);
+			if (kept.length > FEED_ROWS) kept.shift();
+			this.#latest.set(key, kept);
+		}
 		this.aircraft = this.#aircraft.list();
 		this.now = now;
 		return rows;
+	}
+
+	/**
+	 * The latest readings of one register (from one source, or both), newest first and no
+	 * newer than `upTo` (a row id: while the list is paused, the rows held back stay hidden
+	 * here too). Not reactive: read it where `items` is read, which changes with every update.
+	 */
+	latest(key: string, source: Source | null, upTo: number): RegisterRow[] {
+		const sources: Source[] = source ? [source] : ['broadcast', 'interrogated'];
+		return sources
+			.flatMap((s) => this.#latest.get(`${key} ${s}`) ?? [])
+			.filter((r) => r.id <= upTo)
+			.sort((a, b) => b.id - a.id);
 	}
 
 	#row(f: WireFrame): RegisterRow | null {

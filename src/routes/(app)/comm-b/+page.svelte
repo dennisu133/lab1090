@@ -11,9 +11,8 @@
 	import AircraftTable from './AircraftTable.svelte';
 	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
-	import type { RegisterRow, Source } from './comm-b-stream.svelte';
+	import { FEED_ROWS, type RegisterRow, type Source } from './comm-b-stream.svelte';
 
-	const FEED_ROWS = 200;
 	/** Keys that aren't registers, shown last. */
 	const SPECIAL: Record<string, string> = {
 		empty: 'Empty (all zeros)',
@@ -38,16 +37,25 @@
 			.sort((a, b) => +(a.key in SPECIAL) - +(b.key in SPECIAL) || a.key.localeCompare(b.key))
 	);
 
-	let feed = $derived(
-		stream.items
-			.filter(
-				(r) =>
-					(source === null || r.source === source) &&
-					(register === null || r.key === register) &&
-					(aircraft === null || r.icao === aircraft)
-			)
-			.slice(0, FEED_ROWS)
-	);
+	/**
+	 * The live rows matching the filter. With a register chosen, also that register's own
+	 * buffer (see CommBStream), so rare ones show up even when they're long gone from the
+	 * live list.
+	 */
+	let feed = $derived.by(() => {
+		const match = (r: RegisterRow) =>
+			(source === null || r.source === source) &&
+			(register === null || r.key === register) &&
+			(aircraft === null || r.icao === aircraft);
+		const live = stream.items.filter(match);
+		const newest = stream.items[0]?.id;
+		if (register === null || newest === undefined) return live.slice(0, FEED_ROWS);
+		const ids = new Set(live.map((r) => r.id));
+		const stored = stream
+			.latest(register, source, newest)
+			.filter((r) => match(r) && !ids.has(r.id));
+		return [...live, ...stored].sort((a, b) => b.id - a.id).slice(0, FEED_ROWS);
+	});
 
 	const SOURCES: { value: Source | null; label: string }[] = [
 		{ value: null, label: 'All' },
@@ -303,7 +311,9 @@
 							<td colspan="7" class="py-4 text-zinc-500">
 								{stream.items.length === 0
 									? 'Waiting for frames…'
-									: `None of the last ${stream.items.length} readings match the filter.`}
+									: register === null
+										? `None of the last ${stream.items.length} readings match the filter.`
+										: `None of the last ${stream.items.length} readings, nor of the latest ${FEED_ROWS} of this register, match the filter.`}
 							</td>
 						</tr>
 					{/each}
