@@ -168,6 +168,26 @@ export function runText(r: ContrailRun): string {
 }
 
 /**
+ * The Temperature card's headline: the levels where any air makes contrails (the blue runs).
+ * Runs split only by layers without enough temperatures count as one: no layer in between
+ * said otherwise, and the header has room for one range. Without any, the next best answer.
+ */
+export function contrailHeadline(runs: ContrailRun[]): { text: string; always: boolean } {
+	const always: ContrailRun[] = [];
+	let previous = -2;
+	for (const [i, r] of runs.entries()) {
+		if (r.verdict !== 'always') continue;
+		if (previous === i - 1) always[always.length - 1] = { ...always.at(-1)!, to: r.to };
+		else always.push(r);
+		previous = i;
+	}
+	if (always.length) return { text: always.map(runLevels).join(', '), always: true };
+	if (runs.some((r) => r.verdict === 'humid')) return { text: 'humid air only', always: false };
+	if (runs.length) return { text: 'too warm', always: false };
+	return { text: 'no data yet', always: false };
+}
+
+/**
  * /weather's summary: the layers with enough temperatures, lowest first, joined into runs
  * of neighbouring layers with the same verdict.
  */

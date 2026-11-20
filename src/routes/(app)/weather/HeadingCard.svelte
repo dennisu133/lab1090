@@ -51,8 +51,9 @@
 			once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?
 		</p>
 		<p class="text-zinc-400">
-			Only corrections of {MIN_CORRECTION}° or more are applied: against weather balloons, the
-			check's own estimates were up to 2.2° off. It can't see an error every aircraft shares.
+			Only corrections of {MIN_CORRECTION}° or more are applied (amber; "26 → 7 kt" is how far off
+			the wind is before and after): against weather balloons, the check's own estimates were up to
+			2.2° off. It can't see an error every aircraft shares.
 		</p>
 	{/snippet}
 	{#snippet header()}
@@ -64,12 +65,12 @@
 	{/snippet}
 
 	{#if rows.length}
-		<table class="w-full table-fixed text-sm tabular-nums">
+		<table class="w-full table-fixed text-sm tabular-nums [&_td]:pr-3 [&_th]:pr-3">
 			<thead class="text-left text-xs text-zinc-500">
 				<tr>
-					<th class="w-28 py-1 font-normal">Aircraft</th>
+					<th class="w-36 py-1 font-normal">Aircraft</th>
 					<th class="w-20 py-1 font-normal">Heading</th>
-					<th class="w-24 py-1 font-normal">Crosswind</th>
+					<th class="w-20 py-1 font-normal">Crosswind</th>
 					<th class="w-28 py-1 font-normal">Compared with</th>
 					<th class="py-1 font-normal">Off from the others</th>
 				</tr>
@@ -94,8 +95,7 @@
 						</td>
 						<td class="text-zinc-400">{c.others} aircraft</td>
 						<td class="text-zinc-400">
-							{c.before.toFixed(0)} kt{#if c.significant}
-								→ {c.after.toFixed(0)} kt corrected{/if}
+							{c.before.toFixed(0)}{#if c.significant}&nbsp;→ {c.after.toFixed(0)}{/if} kt
 							<span class="text-zinc-600">({c.samples} samples)</span>
 						</td>
 					</tr>

@@ -53,7 +53,7 @@
 		</p>
 	{/snippet}
 	{#snippet header()}
-		<span class="text-lg">{isaText(c.isaDeviation)}</span>
+		<span class="text-sm">{isaText(c.isaDeviation)}</span>
 		<span class="text-sm text-zinc-500">
 			mean of {col.n} samples from {col.aircraft} aircraft
 		</span>

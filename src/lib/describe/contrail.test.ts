@@ -3,7 +3,14 @@ import { staticPressure } from '#lib/modes/air-data.ts';
 import { contrailRange, thresholds } from '#lib/weather/contrail.ts';
 import { LAYER_FT, layers } from '#lib/weather/profile.ts';
 import { runCapture } from '#lib/weather/testing.ts';
-import { contrailField, contrailRuns, humidityNeeded, runText } from './contrail';
+import {
+	contrailField,
+	contrailHeadline,
+	contrailRuns,
+	humidityNeeded,
+	runText,
+	type ContrailRun
+} from './contrail';
 
 describe('humidityNeeded', () => {
 	const p = staticPressure(37_000);
@@ -13,6 +20,28 @@ describe('humidityNeeded', () => {
 		expect(humidityNeeded(contrailRange(t.dry + 1, p))).toMatch(/^up to \d+\u00a0%$/);
 		expect(humidityNeeded(contrailRange(t.saturated - 1, p))).toMatch(/^\d+\u00a0% or more$/);
 		expect(humidityNeeded(contrailRange(t.saturated + 3, p))).toBeNull();
+	});
+});
+
+describe('contrailHeadline', () => {
+	const run = (verdict: ContrailRun['verdict'], from: number, to = from): ContrailRun => ({
+		verdict,
+		from,
+		to,
+		needed: verdict === 'humid' ? '10–80\u00a0%' : null
+	});
+	test('joins "any air" runs split only by layers without data, not across another verdict', () => {
+		const gap = [run('humid', 33_000), run('always', 35_000, 37_000), run('always', 39_000)];
+		expect(contrailHeadline(gap)).toEqual({ text: 'FL350–FL390', always: true });
+		const between = [run('always', 31_000), run('humid', 32_000), run('always', 35_000, 36_000)];
+		expect(contrailHeadline(between).text).toBe('FL310, FL350–FL360');
+	});
+	test('without any, the next best answer', () => {
+		expect(contrailHeadline([run('never', 30_000), run('humid', 34_000)]).text).toBe(
+			'humid air only'
+		);
+		expect(contrailHeadline([run('never', 30_000)])).toEqual({ text: 'too warm', always: false });
+		expect(contrailHeadline([]).text).toBe('no data yet');
 	});
 });
 

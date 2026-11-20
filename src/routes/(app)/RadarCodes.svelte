@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { n } from '#lib/describe/format.ts';
+	import { plural } from '#lib/describe/format.ts';
 	import { WINDOW_MS, type CodeSummary } from '#lib/radar/finder.ts';
 
 	interface Props {
@@ -17,8 +17,6 @@
 
 	/** Codes with fewer bursts aren't listed (one by one, they say nothing). */
 	const LISTED_BURSTS = 10;
-
-	const plural = (count: number, word: string) => `${n(count)} ${word}${count === 1 ? '' : 's'}`;
 
 	let listed = $derived(
 		codes.filter((c) => c.bursts >= LISTED_BURSTS || c.radars.length || c.candidates.length)

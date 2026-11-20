@@ -128,7 +128,7 @@
 	{/snippet}
 	{#snippet header()}
 		{#if geo.found}
-			<span class="font-mono text-lg text-green-300">{windText(geo.wind)}</span>
+			<span class="font-mono text-sm text-green-300">{windText(geo.wind)}</span>
 			{#if geo.uncertainty !== null}
 				<span class="text-sm text-zinc-500">± {Math.round(geo.uncertainty)} kt</span>
 			{/if}

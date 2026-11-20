@@ -54,9 +54,11 @@
 	);
 </script>
 
-<!-- Fixed layout: only the column temperature wraps. Scrolls only below lg (see /comm-b). -->
+<!-- Fixed layout: only the column temperature wraps. Scrolls only below lg (see /comm-b). The
+     widths fit the widest values at 1024 px: "17,000 ft" with its tags, a 3-digit wind
+     speed, counts like 234/9. -->
 <div class="overflow-x-auto">
-	<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-4 [&_th]:pr-4">
+	<table class="w-full min-w-240 table-fixed text-sm tabular-nums [&_td]:pr-3 [&_th]:pr-3">
 		<thead class="text-left text-xs text-zinc-500">
 			<tr>
 				<th class="w-36 py-1 font-normal">
@@ -76,7 +78,7 @@
 						</p>
 					</InfoTip>
 				</th>
-				<th class="w-28 py-1 font-normal">
+				<th class="w-24 py-1 font-normal">
 					<InfoTip label="Lapse rate">
 						<p>
 							How much colder it gets per km up, to the next layer with a temperature. 6.5 K/km in
@@ -85,12 +87,12 @@
 						</p>
 					</InfoTip>
 				</th>
-				<th class="w-64 py-1 font-normal">
+				<th class="w-63 py-1 font-normal">
 					<InfoTip label="Wind">
 						<p>Mean wind (5,0/6,0 and turns), where it blows from, and how steady it is.</p>
 					</InfoTip>
 				</th>
-				<th class="w-32 py-1 font-normal">
+				<th class="w-35 py-1 font-normal">
 					<InfoTip label="GNSS − baro" align="right">
 						<p>
 							GNSS height minus pressure altitude, as ADS-B sends it (TC 19): how far the real
@@ -112,22 +114,27 @@
 		<tbody>
 			{#each rows as r (r.layer.level)}
 				{@const level = r.layer.level}
+				{@const isTropopause = tropopause.found && tropopause.level === level}
+				{@const isStrongest = strongest?.level === level}
 				<tr class={['h-9 border-t border-zinc-900', selected === level && 'bg-zinc-900']}>
 					<td class="py-0.5 whitespace-nowrap">
-						{#if r.layer.column}
-							<button
-								class={['hover:underline', selected === level && 'text-highlight-300']}
-								onclick={() => onselect(level)}>{levelOrFeet(level)}</button
-							>
-						{:else}
-							<span>{levelOrFeet(level)}</span>
-						{/if}
-						{#if tropopause.found && tropopause.level === level}
-							<span class="ml-1 text-xs text-amber-300">tropopause</span>
-						{/if}
-						{#if strongest?.level === level}
-							<span class="ml-1 text-xs text-green-300">strongest</span>
-						{/if}
+						<div class="flex items-center gap-1.5">
+							{#if r.layer.column}
+								<button
+									class={['hover:underline', selected === level && 'text-highlight-300']}
+									onclick={() => onselect(level)}>{levelOrFeet(level)}</button
+								>
+							{:else}
+								<span>{levelOrFeet(level)}</span>
+							{/if}
+							<!-- Stacked, so both fit next to "17,000 ft" in the row's height. -->
+							{#if isTropopause || isStrongest}
+								<span class="flex flex-col text-xs leading-3.5">
+									{#if isTropopause}<span class="text-amber-300">tropopause</span>{/if}
+									{#if isStrongest}<span class="text-green-300">strongest</span>{/if}
+								</span>
+							{/if}
+						</div>
 					</td>
 					<td class="py-0.5"><Fields fields={layerTemperatureFields(r.layer)} /></td>
 					<td class="py-0.5">

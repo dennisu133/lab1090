@@ -14,6 +14,10 @@ const minus = (text: string) => (/^-[0.,]*$/.test(text) ? text.slice(1) : text.r
 /** Whole numbers with thousands separators: 38,000, −500. */
 export const n = (x: number) => minus(Math.round(x).toLocaleString('en'));
 
+/** A count and its noun, singular for 1: "1 wind", "1,204 winds". Regular plurals only. */
+export const plural = (count: number, word: string) =>
+	`${n(count)} ${word}${count === 1 ? '' : 's'}`;
+
 /** Fixed decimals with thousands separators: 1,234.5, 0.250, −5.0. */
 export const fixed = (x: number, digits = 1) =>
 	minus(x.toLocaleString('en', { minimumFractionDigits: digits, maximumFractionDigits: digits }));

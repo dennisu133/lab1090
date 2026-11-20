@@ -3,16 +3,17 @@
 	together over the last half hour. First the answer: the tropopause, the strongest wind,
 	the pressure and the air column, then temperature and wind by altitude (from 5,0/6,0 and
 	turns) and the temperature of the air column below each level (from ADS-B's GNSS − baro
-	and the pilots' QNH), then the layers' numbers. Then how the column and the pressure are
-	worked out, and three checks on the winds: the geostrophic wind from the slope of the
-	pressure surfaces, each aircraft's heading against the others', and winds from turns,
-	which need no heading at all.
+	and the pilots' QNH, whose sources are in the Sea-level pressure card's tooltip), then
+	the layers' numbers. Then, on the left, what the GNSS heights say: the column worked out
+	for one layer, and the geostrophic wind from the slope of the pressure surfaces; on the
+	right, whether the headings are right: each aircraft's against the others', and winds
+	from turns, which need no heading at all.
 	What one aircraft gives on its own is on the Aircraft tab.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { contrailRuns, runText } from '#lib/describe/contrail.ts';
-	import { hpa, levelOrFeet, signed } from '#lib/describe/format.ts';
+	import { contrailHeadline, contrailRuns, runText } from '#lib/describe/contrail.ts';
+	import { hpa, levelOrFeet, plural, signed } from '#lib/describe/format.ts';
 	import { isaText, windText } from '#lib/describe/weather.ts';
 	import { column, type HeightReference } from '#lib/weather/column.ts';
 	import { ETA, ETA_MODERN, TEMPERATURE_MARGIN } from '#lib/weather/contrail.ts';
@@ -33,7 +34,7 @@
 	import GeostrophicCard from './GeostrophicCard.svelte';
 	import HeadingCard from './HeadingCard.svelte';
 	import LayerTable from './LayerTable.svelte';
-	import QnhCard from './QnhCard.svelte';
+	import QnhDetails from './QnhDetails.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
 	import TurnCard from './TurnCard.svelte';
 	import WindProfile from './WindProfile.svelte';
@@ -78,6 +79,7 @@
 	let top = $derived(tropopause(all));
 	let strongest = $derived(strongestWind(all));
 	let contrails = $derived(contrailRuns(all));
+	let contrailHead = $derived(contrailHeadline(contrails));
 	let geo = $derived(geostrophicWind(sky.columns, stream.reference, heights));
 	/** The aircraft's own mean wind over the levels the geostrophic fit covers. */
 	let measuredThere = $derived(
@@ -106,6 +108,7 @@
 	let minutes = $derived(
 		stream.since === null ? 0 : Math.min(WINDOW_MS, stream.now - stream.since) / 60_000
 	);
+	let span = $derived(minutes < 1 ? 'minute' : `${Math.floor(minutes)} min`);
 	let aircraft = $derived(
 		new Set([...sky.temperatures, ...sky.winds, ...sky.columns].map((s) => s.icao)).size
 	);
@@ -138,9 +141,11 @@
 				</p>
 			</InfoTip>
 			<span>
-				over the last {minutes < 1 ? 'minute' : `${Math.floor(minutes)} min`}: {aircraft} aircraft,
-				{sky.temperatures.length} temperatures, {sky.winds.length} winds, {sky.columns.length} GNSS heights,
-				{sky.settings.length} pressure settings.
+				{plural(sky.temperatures.length, 'temperature')}, {plural(sky.winds.length, 'wind')},
+				{plural(sky.columns.length, 'GNSS height')} and {plural(
+					sky.settings.length,
+					'pressure setting'
+				)} from {aircraft} aircraft over the last {span}.
 			</span>
 		</div>
 	</Tabs>
@@ -171,7 +176,9 @@
 					{top.atOrBelow ? '≤ ' : ''}{levelOrFeet(top.level)}
 				</p>
 				<p class="mt-1 text-xs text-zinc-500">
-					{signed(top.lapse)} K/km to the next layer, checked up to {levelOrFeet(top.checkedTo)}.
+					Above it the air stops getting colder ({signed(top.lapse)} K/km). Checked up to {levelOrFeet(
+						top.checkedTo
+					)}.
 					{top.atOrBelow ? 'Already the lowest layer with enough data: may be lower.' : ''}
 				</p>
 			{:else}
@@ -209,9 +216,9 @@
 			{/if}
 		</Card>
 
-		<Card heading="h2" title="Sea-level pressure" class="h-36">
+		<Card heading="h2" title="Sea-level pressure" class="h-36" wide>
 			{#snippet info()}
-				<p>QNH: the pressure the pilots near the ground set on their altimeters.</p>
+				<QnhDetails qnh={pressure} now={stream.now} />
 			{/snippet}
 			<p class="mt-2 text-2xl font-semibold tracking-tight">{hpa(pressure.hPa)}</p>
 			<p class="mt-1 text-xs text-zinc-500">
@@ -254,37 +261,41 @@
 					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
 				</p>
 			{/snippet}
+			{#snippet header()}
+				<span class="ml-auto text-sm">
+					<InfoTip label="Contrails" class="text-zinc-400" align="right" wide>
+						<p>
+							In blue: the levels where every aircraft leaves a contrail, however dry the air. Layer
+							by layer:
+							{#each contrails as run, i (run.from)}
+								{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-blue-300' : ''}
+									>{runText(run)}</span
+								>{:else}no layer with enough temperatures yet{/each}.
+						</p>
+						<p>
+							A contrail forms when the engines' hot, wet exhaust cools in the cold air until water
+							condenses (the Schmidt–Appleman criterion; Schumann 1996). How cold the air must be
+							depends on the pressure and the humidity: the band's right edge is the limit for
+							saturated air, the left edge for perfectly dry air, about 10 K colder.
+						</p>
+						<p>
+							Humidity at cruise level is almost never in the data, so in between the answer is the
+							humidity the air would need. Near the edges 1 K changes it by 20 points, and aircraft
+							read about 2 K cold, so a layer only counts as "any air" or "too warm" with {TEMPERATURE_MARGIN}
+							K to spare.
+						</p>
+						<p class="text-zinc-400">
+							For engines that turn {ETA * 100} % of the fuel's energy into thrust; modern ones ({ETA_MODERN *
+								100} %) make contrails in air about 1.6 K warmer. The Aircraft tab works it through step
+							by step.
+						</p>
+					</InfoTip>
+					<span class={contrailHead.always ? 'text-blue-300' : 'text-zinc-500'}
+						>{contrailHead.text}</span
+					>
+				</span>
+			{/snippet}
 			<TemperatureProfile layers={all} tropopause={top} />
-			<div class="mt-2 text-xs text-zinc-400">
-				<InfoTip label="Contrails" class="font-semibold" wide>
-					<p>
-						A contrail forms when the engines' hot, wet exhaust cools in the cold air until water
-						condenses (the Schmidt–Appleman criterion; Schumann 1996). How cold the air must be
-						depends on the pressure and the humidity: the band's right edge is the limit for
-						saturated air, the left edge for perfectly dry air, about 10 K colder.
-					</p>
-					<p>
-						Humidity at cruise level is almost never in the data, so in between the answer is the
-						humidity the air would need. Near the edges 1 K changes it by 20 points, and aircraft
-						read about 2 K cold, so a layer only counts as "any air" or "too warm" with {TEMPERATURE_MARGIN}
-						K to spare.
-					</p>
-					<p class="text-zinc-400">
-						For engines that turn {ETA * 100} % of the fuel's energy into thrust; modern ones ({ETA_MODERN *
-							100} %) make contrails in air about 1.6 K warmer. The Aircraft tab works it through step
-						by step.
-					</p>
-				</InfoTip>
-				<p class="mt-0.5">
-					{#each contrails as run, i (run.from)}
-						{i ? ' · ' : ''}<span class={run.verdict === 'always' ? 'text-blue-300' : ''}
-							>{runText(run)}</span
-						>
-					{:else}
-						No layer with enough temperatures yet.
-					{/each}
-				</p>
-			</div>
 		</Card>
 		<Card heading="h2" title="Wind" headClass="mb-2">
 			{#snippet info()}
@@ -344,8 +355,10 @@
 		/>
 	</section>
 
-	<!-- Two columns, each card at its own height: how the column and the pressure are worked
-	     out on the left, the checks on the winds on the right. -->
+	<!-- Two columns, each card at its own height. Left, what the GNSS heights say: how warm
+	     the air column is (worked through for the layer picked above, so it stays right under
+	     the table) and the wind from the slope of the pressure surfaces. Right, whether the
+	     compass headings are right: each against the others, and winds that need none. -->
 	<section class="grid items-start gap-4 xl:grid-cols-2">
 		<div class="space-y-4">
 			<div bind:this={columnCard} class="scroll-mt-4">
@@ -362,10 +375,9 @@
 					</p>
 				{/if}
 			</div>
-			<QnhCard qnh={pressure} now={stream.now} />
+			<GeostrophicCard {geo} measured={measuredThere} />
 		</div>
 		<div class="space-y-4">
-			<GeostrophicCard {geo} measured={measuredThere} />
 			<HeadingCard {checks} {callsigns} correct={correctHeadings} />
 			<TurnCard turns={sky.turns} {callsigns} />
 		</div>
