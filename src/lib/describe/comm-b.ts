@@ -188,10 +188,10 @@ export function registerFields(r: Register): Field[] {
 				});
 			if (r.baroSetting !== null)
 				fields.push({
-					label: 'QNH',
+					label: 'baro',
 					value: `${r.baroSetting.toFixed(1)} hPa`,
 					title:
-						'Altimeter setting, in 0.1 hPa steps (ADS-B uses 0.8). 1013.2 = standard pressure, used above the transition altitude',
+						'Barometric pressure setting: the altimeter’s, in 0.1 hPa steps (ADS-B uses 0.8). The local QNH below the transition altitude; 1013.2 = standard pressure, used above it',
 					tone: 'minor'
 				});
 			if (r.modes) {

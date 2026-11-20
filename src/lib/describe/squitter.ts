@@ -124,7 +124,7 @@ function surfaceFields(p: SurfacePosition): Field[] {
 					: m.speed.max === null
 						? `> ${m.speed.min} kt`
 						: `${kt(m.speed.min)}–${kt(m.speed.max)} kt`,
-		title: `Ground speed, movement code ${m.code}: a non-linear scale: 1/8 kt steps below 1 kt, ½ kt up to 15 kt, 1 kt up to 70 kt, 5 kt above 100 kt. Codes 2–8 changed in ADS-B version 2; read as version 2`,
+		title: `Ground speed, movement code ${m.code}: a non-linear scale, finer the slower: steps of about 0.15 kt below 1 kt, ¼ kt up to 2 kt, ½ kt up to 15 kt, 1 kt up to 70 kt, 2 kt up to 100 kt, 5 kt up to 175 kt. Read as ADS-B version 2 (version 1 had ⅛ kt steps below 1 kt)`,
 		tone: m.speed === null ? 'minor' : 'main'
 	});
 	fields.push(
@@ -296,10 +296,10 @@ function targetStateFields(t: TargetState): Field[] {
 	}
 	if (t.qnh !== null) {
 		fields.push({
-			label: 'QNH',
+			label: 'baro',
 			value: `${t.qnh} hPa`,
 			title:
-				"Altimeter setting. Above the transition altitude everyone uses the standard 1013.25 hPa, which this 0.8 hPa-step field can't hold exactly: it arrives as 1012.8 or 1013.6",
+				"Barometric pressure setting: the altimeter's. The local QNH below the transition altitude; above it everyone uses the standard 1013.25 hPa, which this 0.8 hPa-step field can't hold exactly: it arrives as 1012.8 or 1013.6",
 			tone: 'main'
 		});
 	}

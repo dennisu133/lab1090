@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { arrivalTime, dbfs } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
+	import InfoTip from '#lib/components/InfoTip.svelte';
 	import LiveHeading from '#lib/components/LiveHeading.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import { isEmpty, matches, type FrameQuery } from '#lib/frame-query.ts';
@@ -108,7 +109,9 @@
 			keyClass: VERDICTS[v].color,
 			label: VERDICTS[v].label,
 			count: counts?.byVerdict[v] ?? 0,
-			rate: stats.rates.byVerdict[v] ?? 0
+			rate: stats.rates.byVerdict[v] ?? 0,
+			// The demodulator drops them; only a Beast feed from another decoder could send some.
+			zeroNote: v === 'invalid' ? 'dropped before they get here' : undefined
 		}))
 	);
 
@@ -173,7 +176,8 @@
 
 <PageTitle page="Frames" />
 
-<div class="space-y-6">
+<!-- The feed follows the counts directly: the histogram's axis labels already leave room. -->
+<div>
 	<!-- Counts -->
 	<!-- Side by side only from xl: at 1024 px two columns leave too little room for the names. -->
 	<div class="grid gap-6 xl:grid-cols-2">
@@ -193,16 +197,21 @@
 		>
 			{#snippet info()}
 				<p>
-					The first 5 bits of the payload: what the message carries. In the position groups the code
-					also gives the <strong>containment radius Rc</strong>: the circle the aircraft vouches for
-					(integrity), not its accuracy. Where it says "or", supplement bits in TC 31 and the
-					position message pick the radius.
+					The first 5 bits of the payload say what kind of message it is: identification, position,
+					velocity, status…
+				</p>
+				<p>
+					A position message's type code also sets its <strong>containment radius Rc</strong>: the
+					aircraft guarantees its true position is inside this circle unless its navigation fails
+					unnoticed. That's a limit, not the typical error (NACp). Where a row says "or", the code
+					alone isn't enough: the aircraft's status message (TC 31) and a bit in the position
+					message pick the radius.
 				</p>
 			{/snippet}
 		</CountTable>
 	</div>
 
-	<div class="grid gap-6 xl:grid-cols-2">
+	<div class="mt-6 grid gap-6 xl:grid-cols-2">
 		<CountTable
 			title="Parity check"
 			keyLabel=""
@@ -212,27 +221,29 @@
 		>
 			{#snippet info()}
 				<p>
-					The last 24 bits are a CRC. <span class={VERDICTS.valid.color}>DF11/17/18</span> send the
-					address in the clear, so the CRC checks the whole message. The others XOR the address into
-					the CRC: you get an address back, trusted only if that aircraft was heard in a checked
-					message within 60 s (<span class={VERDICTS.known.color}>known</span>, else
-					<span class={VERDICTS.unknown.color}>unknown</span>).
+					The last 24 bits of every message are a <strong>CRC</strong>, a checksum: the transponder
+					computes it from the rest of the message, the receiver computes it again, and a single
+					wrong bit makes the two differ.
 				</p>
 				<p>
-					A DF11 reply's CRC also carries the code of the radar that asked: II 1–15 or SI 1–63; II 0
-					is the aircraft's own squitter. <span class={VERDICTS.unknown.color}>IC n?</span>: a code
-					no radar can have, a bit error the CRC can't catch (the address is still right).
+					In <span class={VERDICTS.valid.color}>DF11/17/18</span> the aircraft's address is sent
+					openly, and an intact message checks out to zero. The other formats save space by mixing
+					the address into the CRC, so the check leaves the address instead of zero. A corrupted
+					message then leaves a random address, a made-up aircraft. So it's only trusted if that
+					aircraft was heard in a checked message within the last 60 s (<span
+						class={VERDICTS.known.color}>known</span
+					>, else <span class={VERDICTS.unknown.color}>unknown</span>).
 				</p>
-				<p class="text-zinc-400">
-					The demodulator already drops frames whose CRC fails (readsb does too, with --connect), so <span
-						class={VERDICTS.invalid.color}>invalid</span
-					>
-					stays at 0. And it passes an address-in-parity reply only if that address was heard in a checked
-					message within 60 s: noise turns a reply's parity into a random address, a made-up aircraft.
-					So
-					<span class={VERDICTS.unknown.color}>unknown</span> stays near 0 as well: the demodulator keeps
-					its own list of addresses (on the sample clock), so the two can disagree for a moment at the
-					60 s edge.
+				<p>
+					A DF11 reply to a radar mixes in that radar's code the same way; the feed shows it as II
+					1–15 or SI 1–63. II 0 means no radar was named, usually the aircraft announcing itself
+					about once a second. <span class={VERDICTS.unknown.color}>IC n?</span> is a code no radar has:
+					some of the last 7 bits were received wrong, but the address is almost certainly right.
+				</p>
+				<p>
+					Like most receivers, lab1090 drops corrupted messages and parity replies from aircraft it
+					hasn't heard before they get here, so <span class={VERDICTS.unknown.color}>unknown</span> stays
+					small.
 				</p>
 			{/snippet}
 		</CountTable>
@@ -246,13 +257,6 @@
 			{#each chips as chip (chip.key)}
 				<FilterChip label={chip.label} onclear={() => (filter[chip.key] = null)} />
 			{/each}
-			<div class="ml-auto flex gap-3 font-mono text-xs">
-				<span class={PART_COLORS.header}>DF + control</span>
-				<span class={PART_COLORS.address}>ICAO address</span>
-				<span class={PART_COLORS.payload}>payload</span>
-				<span class={PART_COLORS.parity}>parity</span>
-				<span class="text-zinc-500">* address from parity</span>
-			</div>
 		</div>
 
 		<!-- Fixed layout: every column but Content has a set width, sized for its longest value,
@@ -269,7 +273,29 @@
 						<th class="w-20 py-1 font-normal">ICAO</th>
 						<th class="w-20 py-1 font-normal">Parity</th>
 						<th class="py-1 font-normal"> Content </th>
-						<th class="w-66 py-1 font-normal">Message</th>
+						<th class="w-66 py-1 font-normal">
+							<InfoTip label="Message" align="right">
+								<p>The message as received, in hex: two characters per byte, 14 or 28 in all.</p>
+								<ul class="space-y-1">
+									<li>
+										<span class={PART_COLORS.header}>DF + control</span>: the format and its control
+										fields (CA, FS, …)
+									</li>
+									<li>
+										<span class={PART_COLORS.address}>ICAO address</span>: the aircraft's 24-bit
+										address, sent openly in DF11/17/18
+									</li>
+									<li>
+										<span class={PART_COLORS.payload}>payload</span>: 56 bits of data, e.g. the
+										ADS-B message (DF17/18) or a Comm-B register (DF20/21)
+									</li>
+									<li>
+										<span class={PART_COLORS.parity}>parity</span>: the CRC. The other formats mix
+										the address into it; the ICAO column marks an address recovered from it with *.
+									</li>
+								</ul>
+							</InfoTip>
+						</th>
 					</tr>
 				</thead>
 				<tbody>

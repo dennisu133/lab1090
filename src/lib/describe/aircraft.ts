@@ -557,7 +557,7 @@ function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Altimeter',
 			value: `${target.qnh.toFixed(1)} hPa${Math.abs(target.qnh - 1013.2) < 0.5 ? ' (standard)' : ''}`,
 			title:
-				"The altimeter's setting: 1013.25 hPa at flight levels, else the local QNH (the airport's pressure reduced to sea level). Sent in 0.8 hPa steps, so standard comes out as 1013.6." +
+				"The altimeter's setting: 1013.25 hPa at flight levels, else the local QNH (the airport's pressure reduced to sea level). Sent in 0.8 hPa steps, so standard comes out as 1012.8 or 1013.6." +
 				source(a.target!, now),
 			tone: 'minor'
 		});

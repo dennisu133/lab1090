@@ -53,9 +53,7 @@
 <h2 class="text-sm font-semibold text-zinc-100">
 	<button
 		class="group scroll-mt-6"
-		title="{feed.paused
-			? 'Resume'
-			: 'Pause'}. The list also pauses by itself while you scroll down into it, so new {noun} don't push away the ones you're reading."
+		title="{feed.paused ? 'Resume' : 'Pause'} the live feed"
 		aria-pressed={feed.paused}
 		onclick={() => feed.togglePause()}
 		{@attach watchScroll}

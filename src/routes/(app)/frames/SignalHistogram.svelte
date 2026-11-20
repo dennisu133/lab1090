@@ -3,6 +3,7 @@
 	next to a short guide on reading dBFS.
 -->
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { n } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { SIGNAL_BUCKET_DB, STRONG_SIGNAL_DBFS } from '#lib/modes/frame.ts';
@@ -25,23 +26,37 @@
 	});
 	let total = $derived(bins.reduce((sum, b) => sum + b.count, 0));
 	let max = $derived(Math.max(1, ...bins.map((b) => b.count)));
-	let strong = $derived(counts[STRONG_SIGNAL_DBFS] ?? 0);
+	/**
+	 * Where half the messages are weaker, in bins (2.5 = halfway through the third), assuming
+	 * they're spread evenly within a bin. null without messages.
+	 */
 	let median = $derived.by(() => {
+		if (!total) return null;
 		let seen = 0;
-		for (const b of bins) if ((seen += b.count) >= total / 2) return b;
+		for (const [i, b] of bins.entries()) {
+			if (seen + b.count >= total / 2) return i + (total / 2 - seen) / b.count;
+			seen += b.count;
+		}
+		return null;
 	});
+
+	/** Gap between bars, px (gap-1). */
+	const GAP = 4;
+	/** CSS position of a point measured in bins, matching the flex layout of the bars. */
+	const at = (bin: number) =>
+		`calc(${bin} * (100% - ${(bins.length - 1) * GAP}px) / ${bins.length} + ${Math.floor(Math.min(bin, bins.length - 1))} * ${GAP}px)`;
 
 	const percent = (n: number) => (total ? ((n / total) * 100).toFixed(1) : '0.0');
 
 	/** The handful of dB values worth knowing by heart. */
 	const reference = [
-		{ db: 0, note: 'full scale: the loudest the 8-bit ADC can represent' },
-		{ db: -3, note: 'half the power: readsb’s ceiling (see below)' },
+		{ db: 0, note: 'full scale: the most the dongle’s 8-bit samples can hold' },
+		{ db: -3, note: 'half the power: from here up, messages may have clipped' },
 		{ db: -6, note: 'half the amplitude, a quarter of the power' },
 		{ db: -10, note: 'a tenth of the power' },
 		{ db: -20, note: 'a tenth of the amplitude, a hundredth of the power' },
-		{ db: -30, note: 'a thousandth of the power' },
-		{ db: -40, note: 'about where messages drown in noise' }
+		{ db: -30, note: 'a thousandth of the power: about the weakest messages heard' },
+		{ db: -40, note: 'about the noise, at the default gain' }
 	];
 	const share = (db: number) => {
 		const amplitude = 10 ** (db / 20) * 100;
@@ -61,8 +76,8 @@
 				wide
 			>
 				<p>
-					Decibels below <em>full scale</em>, the loudest signal the dongle can measure, so always 0
-					or negative.
+					How strong each message's pulses are, in decibels below <em>full scale</em>: the loudest
+					signal the dongle can measure, so always 0 or negative.
 				</p>
 				<table class="w-full text-xs tabular-nums">
 					<thead class="text-left text-zinc-500">
@@ -86,27 +101,46 @@
 					</tbody>
 				</table>
 				<p>
-					lab1090's demodulator measures the pulses' amplitude, so pulses at full scale are 0 dBFS.
-					readsb (a Beast feed) averages the power over pulses and gaps alike, which puts the same
-					message 3 dB lower: there −3 dBFS is the ceiling. Either way the
-					<span class="text-red-400">red</span> bucket is close to the top: those messages may have clipped
-					(/receiver counts the ones that did).
+					Pulses in the <span class="text-error-400">red</span> bucket come close to full scale:
+					they may have been too loud for the dongle and got cut off (clipped). A few are harmless;
+					many mean the gain is too high. When lab1090 demodulates itself,
+					<a href={resolve('/(app)/receiver')} class="text-accent-400 hover:text-accent-300"
+						>the receiver page</a
+					> counts the ones that did. A feed from readsb reads about 4.5 dB lower for the same message.
 				</p>
 			</InfoTip>
 		</div>
 
-		<div class="flex h-28 items-end gap-1 border-b border-zinc-700">
+		<div class="relative flex h-32 items-end gap-1 border-b border-zinc-700 pt-4">
+			{#if median !== null}
+				{@const value = bins[0].key + median * SIGNAL_BUCKET_DB}
+				<div
+					class="pointer-events-none absolute inset-y-0 z-10 border-l border-dashed border-zinc-300"
+					style:left={at(median)}
+				>
+					<span class="absolute top-0 left-1 text-xs whitespace-nowrap text-zinc-300"
+						>median {n(Math.round(value))}</span
+					>
+				</div>
+			{/if}
 			{#each bins as b (b.key)}
 				<div
-					class="flex h-full flex-1 flex-col justify-end hover:bg-zinc-800/60"
+					class="relative flex h-full flex-1 flex-col justify-end hover:bg-zinc-800/60"
 					title="{n(b.key)} to {n(b.key + SIGNAL_BUCKET_DB)} dBFS: {n(b.count)} messages ({percent(
 						b.count
 					)} %)"
 				>
+					{#if b.key >= STRONG_SIGNAL_DBFS && b.count > 0}
+						<!-- the share, on top of the bar: the bar itself is often too short to see -->
+						<span
+							class="absolute right-0 mb-0.5 text-xs whitespace-nowrap text-error-400"
+							style:bottom="{(b.count / max) * 100}%">{percent(b.count)} %</span
+						>
+					{/if}
 					<div
 						class={[
 							'rounded-t-sm',
-							b.key >= STRONG_SIGNAL_DBFS ? 'bg-red-400' : 'bg-blue-500',
+							b.key >= STRONG_SIGNAL_DBFS ? 'bg-error-400' : 'bg-blue-500',
 							b.count > 0 && 'min-h-px'
 						]}
 						style:height="{(b.count / max) * 100}%"
@@ -122,16 +156,5 @@
 			<div class="w-0">0</div>
 		</div>
 		<p class="mt-1 text-right text-xs text-zinc-500">dBFS</p>
-
-		<dl class="mt-3 flex flex-wrap gap-x-8 gap-y-1 text-sm tabular-nums">
-			<div>
-				<dt class="inline text-zinc-400">Half the messages are below</dt>
-				<dd class="inline">{median ? `${n(median.key + SIGNAL_BUCKET_DB)} dBFS` : '–'}</dd>
-			</div>
-			<div>
-				<dt class="inline text-zinc-400">Strong (≥ −3 dBFS)</dt>
-				<dd class="inline">{n(strong)} ({percent(strong)} %)</dd>
-			</div>
-		</dl>
 	</div>
 </section>

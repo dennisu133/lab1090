@@ -20,6 +20,8 @@
 		title?: string;
 		count: number;
 		rate: number;
+		/** Shown instead of the numbers while the count is 0 (e.g. why it can't be anything else). */
+		zeroNote?: string;
 		/** Sub-rows, shown when the row is expanded. Their counts are part of this row's. */
 		children?: Row[];
 	}
@@ -99,23 +101,27 @@
 				{row.label}
 			{/if}
 		</td>
-		<td class="py-1 text-right">{n(row.count)}</td>
-		<td class="py-1 pl-4">
-			<div class="flex items-center gap-2">
-				<div class="h-2 flex-1 rounded-sm bg-zinc-800">
-					<div
-						class={['h-2 rounded-sm', child ? 'bg-blue-700' : 'bg-blue-500']}
-						style:width="{(row.count / max) * 100}%"
-					></div>
+		{#if row.count === 0 && row.zeroNote}
+			<td colspan="3" class="py-1 text-right text-zinc-500">{row.zeroNote}</td>
+		{:else}
+			<td class="py-1 text-right">{n(row.count)}</td>
+			<td class="py-1 pl-4">
+				<div class="flex items-center gap-2">
+					<div class="h-2 flex-1 rounded-sm bg-zinc-800">
+						<div
+							class={['h-2 rounded-sm', child ? 'bg-blue-700' : 'bg-blue-500']}
+							style:width="{(row.count / max) * 100}%"
+						></div>
+					</div>
+					<span class="w-12 text-right text-xs text-zinc-400">
+						{total ? ((row.count / total) * 100).toFixed(1) : '0.0'} %
+					</span>
 				</div>
-				<span class="w-12 text-right text-xs text-zinc-400">
-					{total ? ((row.count / total) * 100).toFixed(1) : '0.0'} %
-				</span>
-			</div>
-		</td>
-		<td class={['py-1 text-right', row.count > 0 && 'text-zinc-300']}>
-			{row.rate.toFixed(1)}
-		</td>
+			</td>
+			<td class={['py-1 text-right', row.count > 0 && 'text-zinc-300']}>
+				{row.rate.toFixed(1)}
+			</td>
+		{/if}
 	</tr>
 {/snippet}
 
