@@ -7,7 +7,8 @@ import { settings } from '#lib/server/live-settings.ts';
 /** Start reading the receiver when the server starts, not on the first request. */
 export const init: ServerInit = () => {
 	if (building) return;
-	console.log(`Receiving from ${receiver().source}`);
+	// Importing live-receiver.ts has started it (and Receiver.start named the source).
+	receiver();
 
 	// --port and --bind: adapter-bun reads PORT and HOST once this hook is done, just before
 	// it starts listening. (Vite's dev server has its own port.)

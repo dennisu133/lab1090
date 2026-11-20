@@ -58,19 +58,22 @@ export class Receiver {
 	#timer: ReturnType<typeof setInterval> | undefined;
 	/** When the demodulator's report last went out with a batch. */
 	#demodSentAt = -Infinity;
+	/** Say on the console which source this is and how its link is doing (#log). */
+	#logging: boolean;
 
 	constructor(
 		source: Source,
 		{ log = true, beastOut = null }: { log?: boolean; beastOut?: number | null } = {}
 	) {
 		this.source = describeSource(source);
+		this.#logging = log;
 		this.#beast = beastOut === null ? null : new BeastServer({ port: beastOut });
 		this.#client = openSource(
 			source,
 			(f) => this.#onFrame(f),
 			(status) => {
 				const event = this.radio.status(status, Date.now());
-				if (log && event) this.#log(event);
+				if (this.#logging && event) this.#log(event);
 			}
 		);
 	}
@@ -91,7 +94,12 @@ export class Receiver {
 		return this.#counts.counts;
 	}
 
+	/**
+	 * The source is named before the first attempt, so that its outcome (`…: receiving`, or
+	 * why not) reads as the next line. In dev, a hot reload starts a new Receiver: named again.
+	 */
 	start(): this {
+		if (this.#logging) console.log(`Source: ${this.source}`);
 		try {
 			this.#beast?.start();
 		} catch (error) {
