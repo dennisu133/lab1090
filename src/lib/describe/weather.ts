@@ -60,17 +60,20 @@ export function windFields(o: Observation): Field[] {
 		'',
 		`Rounding of the four inputs allows ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, ±${directionSpread.toFixed(1)}°.`
 	].join('\n');
-	const fields: Field[] = [
-		{ value: windText(wind), title, tone: o.windProblem ? 'minor' : 'main', mono: true }
-	];
-	if (o.windProblem) fields.push(problemField(o.windProblem, 'wind'));
-	else
-		fields.push({
+	// Not used: greyed out, like /weather's calculation cards; the checks (checkFields) show
+	// why in amber, so no "not used" here, and the row stays one line.
+	if (o.windProblem)
+		return [
+			{ value: windText(wind), title: notUsed(o.windProblem, title), tone: 'minor', mono: true }
+		];
+	return [
+		{ value: windText(wind), title, tone: 'main', mono: true },
+		{
 			value: `±${Math.max(Math.round((speedRange[1] - speedRange[0]) / 2), 1)}`,
 			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors (the aircraft's own magnetic variation table, compass calibration) come on top.`,
 			tone: 'minor'
-		});
-	return fields;
+		}
+	];
 }
 
 export function temperatureFields(o: Observation): Field[] {
@@ -95,21 +98,21 @@ export function temperatureFields(o: Observation): Field[] {
 		'',
 		`Rounding (TAS ±${STEP.speed / 2} kt, Mach ±${STEP.mach / 2}) allows ${celsius(range[0])} to ${celsius(range[1])}.`
 	].join('\n');
-	const fields: Field[] = [
-		{ value: celsius(kelvin), title, tone: o.temperatureProblem ? 'minor' : 'main' }
-	];
-	if (o.temperatureProblem) fields.push(problemField(o.temperatureProblem, 'temperature'));
-	else
-		fields.push({
+	if (o.temperatureProblem)
+		return [{ value: celsius(kelvin), title: notUsed(o.temperatureProblem, title), tone: 'minor' }];
+	return [
+		{ value: celsius(kelvin), title, tone: 'main' },
+		{
 			value: `±${((range[1] - range[0]) / 2).toFixed(1)}`,
 			title: `From rounding alone: ${celsius(range[0])} to ${celsius(range[1])}`,
 			tone: 'minor'
-		});
-	return fields;
+		}
+	];
 }
 
-function problemField(problem: string, what: string): Field {
-	return { value: 'not used', title: `This ${what} isn't trusted: ${problem}`, tone: 'alert' };
+/** A greyed-out value's title: why it isn't used, then the calculation. */
+function notUsed(problem: string, title: string): string {
+	return `Not used: ${problem}.\n\n${title}`;
 }
 
 /** The checks: time between the two replies and the bank angle. */

@@ -4,8 +4,9 @@
 	the pressure and the air column, then temperature and wind by altitude (from 5,0/6,0 and
 	turns) and the temperature of the air column below each level (from ADS-B's GNSS − baro
 	and the pilots' QNH), then the layers' numbers. Then how the column and the pressure are
-	worked out, and two checks on the winds that need many aircraft: the geostrophic wind from
-	the slope of the pressure surfaces, and each aircraft's heading against the others'.
+	worked out, and three checks on the winds: the geostrophic wind from the slope of the
+	pressure surfaces, each aircraft's heading against the others', and winds from turns,
+	which need no heading at all.
 	What one aircraft gives on its own is on the Aircraft tab.
 -->
 <script lang="ts">
@@ -34,6 +35,7 @@
 	import LayerTable from './LayerTable.svelte';
 	import QnhCard from './QnhCard.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
+	import TurnCard from './TurnCard.svelte';
 	import WindProfile from './WindProfile.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
 	import PageTitle from '../PageTitle.svelte';
@@ -365,6 +367,7 @@
 		<div class="space-y-4">
 			<GeostrophicCard {geo} measured={measuredThere} />
 			<HeadingCard {checks} {callsigns} correct={correctHeadings} />
+			<TurnCard turns={sky.turns} {callsigns} />
 		</div>
 	</section>
 </div>

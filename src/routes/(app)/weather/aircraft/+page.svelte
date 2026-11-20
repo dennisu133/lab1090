@@ -1,7 +1,7 @@
 <!--
 	/weather/aircraft, "Aircraft": what one aircraft's replies give on its own. Its wind and
-	temperature from a 5,0/6,0 pair and whether it leaves a contrail, worked through; a wind
-	from a turn; then every aircraft's latest values and the feed of observations. The
+	temperature from a 5,0/6,0 pair and whether it leaves a contrail, worked through; then
+	every aircraft's latest values and the feed of observations. The
 	Profile tab puts them together.
 -->
 <script lang="ts">
@@ -22,7 +22,6 @@
 	import AircraftTable from '../AircraftTable.svelte';
 	import ContrailCalculation from '../ContrailCalculation.svelte';
 	import TemperatureCalculation from '../TemperatureCalculation.svelte';
-	import TurnCard from '../TurnCard.svelte';
 	import WindCalculation from '../WindCalculation.svelte';
 	import PageTitle from '../../PageTitle.svelte';
 	import Tabs from '../Tabs.svelte';
@@ -67,10 +66,6 @@
 		return a ? { observation: a.latest, callsign: a.callsign } : null;
 	});
 
-	let callsigns = $derived(
-		new Map(stream.aircraft.flatMap((a) => (a.callsign ? [[a.icao, a.callsign]] : [])))
-	);
-
 	/** The tracker panel's contrail answer for the example's aircraft, for the third card. */
 	let contrail = $derived(stream.contrailFor(example?.observation.icao));
 
@@ -89,36 +84,47 @@
 		selected = selected === icao ? null : icao;
 		held = null;
 	}
+
+	let table = $state<HTMLElement>();
+
+	/** From the tab row's address down to the table, where it's highlighted. */
+	function showTable() {
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		table?.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' });
+	}
 </script>
 
 <PageTitle page="Weather per aircraft" />
 
 <div class="space-y-6">
 	<!-- Which reply the calculations below work through; the pause keeps it, like a live
-	     list's (LiveHeading), until clicked again or another aircraft is picked. -->
+	     list's (LiveHeading), until clicked again or another aircraft is picked. The icon shows
+	     the state (pause / play) and the time stands still: no "paused" text, which would
+	     move the button in this right-aligned row. -->
 	<Tabs>
 		{#if example}
-			<div class="flex items-baseline justify-end gap-x-2 whitespace-nowrap">
+			<div class="flex items-baseline justify-end gap-x-2 whitespace-nowrap tabular-nums">
 				<button
 					class="group font-semibold text-zinc-100"
 					title="{held ? 'Resume' : 'Pause'} the calculations"
 					aria-pressed={held !== null}
 					onclick={() => (held = held ? null : example)}
 				>
-					Calculated for<PauseIcon
+					<PauseIcon
 						paused={held !== null}
-						class="ml-1 inline-block size-[1em] align-[-0.125em] text-zinc-500 group-hover:text-zinc-200"
-					/>
+						class="mr-1 inline-block size-[1em] align-[-0.125em] text-zinc-500 group-hover:text-zinc-200"
+					/>Calculated for
 				</button>
-				<span class="font-mono text-highlight-300">{example.observation.icao}</span>
-				<span class="text-zinc-500">{example.callsign ?? ''}</span>
+				<button class="font-mono text-highlight-300 hover:underline" onclick={showTable}>
+					{example.observation.icao}
+				</button>
+				{#if example.callsign}<span class="text-zinc-500">{example.callsign}</span>{/if}
 				{#if example.observation.inputs.altitude}
 					<span class="text-zinc-400">
 						{levelOrFeet(example.observation.inputs.altitude.feet)}
 					</span>
 				{/if}
 				<span class="text-zinc-500">{arrivalTime(example.observation.rx)}</span>
-				{#if held}<span class="text-zinc-400">paused</span>{/if}
 			</div>
 		{/if}
 	</Tabs>
@@ -135,15 +141,22 @@
 			</div>
 		{:else}
 			<!-- As tall as the three cards will be, so nothing jumps when the first pair arrives. -->
-			<p class="h-266 rounded-lg border border-zinc-800 p-4 text-sm text-zinc-500">
+			<p class="h-237.5 rounded-lg border border-zinc-800 p-4 text-sm text-zinc-500">
 				Waiting for a 5,0/6,0 pair…
 			</p>
 		{/if}
 	</section>
 
-	<TurnCard turns={stream.sky.turns} {callsigns} />
-
-	<AircraftTable aircraft={stream.aircraft} now={stream.now} {selected} onselect={select} />
+	<!-- The table picks the aircraft for the cards above, so it comes right after them. -->
+	<div bind:this={table} class="scroll-mt-4">
+		<AircraftTable
+			aircraft={stream.aircraft}
+			now={stream.now}
+			{selected}
+			shown={example?.observation.icao ?? null}
+			onselect={select}
+		/>
+	</div>
 
 	<!-- Feed -->
 	<section>

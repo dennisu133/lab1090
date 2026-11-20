@@ -1,7 +1,9 @@
 <!--
 	One row per aircraft with 5,0/6,0 pairs: its latest trusted wind and temperature, the
 	average over the last minute, and what's wrong with the latest pair if anything.
-	Clicking a row shows that aircraft's calculation and filters the feed.
+	Clicking a row shows that aircraft's calculation and filters the feed. The row whose
+	calculation is shown is highlighted: brighter when picked here, fainter when the page
+	picked it (it follows an active aircraft by itself until one is picked).
 -->
 <script lang="ts">
 	import Fields from '#lib/components/Fields.svelte';
@@ -14,11 +16,14 @@
 	interface Props {
 		aircraft: WeatherAircraft[];
 		now: number;
+		/** Picked here (and filtering the feed). */
 		selected: string | null;
+		/** Whose calculation the cards above show: the picked one, or the page's own choice. */
+		shown: string | null;
 		onselect: (icao: string) => void;
 	}
 
-	let { aircraft, now, selected, onselect }: Props = $props();
+	let { aircraft, now, selected, shown, onselect }: Props = $props();
 
 	const seconds = (rx: number) => `${Math.max(0, Math.round((now - rx) / 1000))} s`;
 	const minute = AVERAGE_MS / 1000;
@@ -90,8 +95,8 @@
 							</p>
 						</InfoTip>
 					</th>
-					<th class="w-20 py-1 text-right font-normal">
-						<InfoTip label="Trusted" align="right">
+					<th class="w-28 py-1 font-normal">
+						<InfoTip label="Trusted">
 							<p>
 								Observations with a trusted wind, out of all since the aircraft appeared here. The
 								others had their replies too far apart, or the aircraft was turning.
@@ -116,8 +121,9 @@
 					<tr
 						class={[
 							'h-8 cursor-pointer border-t border-zinc-900 hover:bg-zinc-900',
-							selected === a.icao && 'bg-accent-950'
+							selected === a.icao ? 'bg-accent-950' : shown === a.icao && 'bg-accent-950/70'
 						]}
+						aria-current={shown === a.icao ? 'true' : undefined}
 						onclick={() => onselect(a.icao)}
 					>
 						<td class="py-0.5 whitespace-nowrap">
@@ -145,7 +151,7 @@
 							{/if}
 							{#if avg.kelvin !== null}
 								<span
-									class="ml-2"
+									class={avg.wind && 'ml-2'}
 									title="Mean of {avg.temperatureCount} trusted temperatures of the last {minute} s"
 									>{celsius(avg.kelvin)}</span
 								>
@@ -163,7 +169,7 @@
 								</span>
 							{/if}
 						</td>
-						<td class="py-0.5 text-right text-zinc-400">
+						<td class="py-0.5 whitespace-nowrap text-zinc-400">
 							{n(a.trustedWinds)}/{n(a.observations)}
 						</td>
 						<td class="truncate py-0.5 text-xs" title={problem ?? undefined}>

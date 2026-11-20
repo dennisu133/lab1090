@@ -39,7 +39,7 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 	aircraft = $state.raw<WeatherAircraft[]>([]);
 	/** The latest frame's time (server clock): "now" for ages. */
 	now = $state(0);
-	/** Samples for the Profile tab (and the turns for the Aircraft tab); a new object whenever one is added or dropped. */
+	/** Samples for the Profile tab; a new object whenever one is added or dropped. */
 	sky = $state.raw<SkySamples>({
 		temperatures: [],
 		winds: [],

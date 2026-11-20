@@ -1,7 +1,7 @@
 <!--
 	One observation's temperature worked through step by step, from TAS and Mach, with its
 	own numbers and the standard atmosphere drawn beside it. Everything here can be checked
-	with a calculator. Fixed height and a one-line header, like the wind card.
+	with a calculator. Sized like the wind card (see there), without its footer.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -14,7 +14,7 @@
 	} from '#lib/describe/format.ts';
 	import { isaText } from '#lib/describe/weather.ts';
 	import { A0, R_AIR, RHO0, T0 } from '#lib/modes/air-data.ts';
-	import { STEP, type Observation } from '#lib/weather/observation.ts';
+	import { MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
 	import Card from './Card.svelte';
 	import IsaChart from './IsaChart.svelte';
 
@@ -24,7 +24,7 @@
 	let heading = $derived(o.inputs.headingAndSpeed.value);
 </script>
 
-<Card title="Temperature" class="h-86" nowrap>
+<Card title="Temperature" class="min-h-76.5" nowrap>
 	{#snippet info()}
 		<p>
 			Mach is the true airspeed divided by the <strong>speed of sound</strong>, and the speed of
@@ -36,16 +36,22 @@
 			temperature with a probe outside, worked out Mach from the pitot and static pressures, and TAS
 			= Mach × speed of sound. 5,0 and 6,0 hand us both results; we undo the last step.
 		</p>
+		<p>
+			Greyed out and left out of the profile when 5,0 and 6,0 are more than {MAX_SKEW_MS / 1000} s apart:
+			the speed may have changed in between. The wind card's checks show it in amber.
+		</p>
 	{/snippet}
 	{#snippet header()}
 		{#if o.temperature}
-			<span class={['text-lg', o.temperatureProblem ? 'text-zinc-500' : 'text-zinc-100']}>
+			<span class={['text-sm', o.temperatureProblem ? 'text-zinc-500' : 'text-zinc-100']}>
 				{celsius(o.temperature.kelvin)}
 			</span>
 		{/if}
-		{#if o.temperatureProblem}
-			<span class="min-w-0 truncate text-sm text-warn-400" title="Not used: {o.temperatureProblem}">
-				not used: {o.temperatureProblem}
+		<!-- Only when there's no temperature (an input missing, Mach too small): with one, the
+		     only problem left is the pair's timing, shown by the grey and the wind card's checks. -->
+		{#if !o.temperature && o.temperatureProblem}
+			<span class="min-w-0 truncate text-sm text-warn-400" title={o.temperatureProblem}>
+				{o.temperatureProblem}
 			</span>
 		{/if}
 	{/snippet}

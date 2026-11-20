@@ -6,8 +6,8 @@
 
 	- Profile (/weather): the air above the receiver, layer by layer, from all aircraft
 	  together over the last half hour.
-	- Aircraft (/weather/aircraft): what one aircraft's replies give (its wind and temperature,
-	  a wind from a turn), worked through.
+	- Aircraft (/weather/aircraft): what one aircraft's replies give (its wind, temperature
+	  and contrails), worked through.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
