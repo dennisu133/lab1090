@@ -1,5 +1,5 @@
 /**
- * What the weather charts share. The three profile charts on the "Now" tab share the
+ * What the weather charts share. The three profile charts on the Profile tab share the
  * height and the altitude axis (0 to 45,000 ft, ground at the bottom), so the same layer
  * sits at the same height in each and they can be read side by side. Their width is the
  * element's, in px (bind:clientWidth), so the 10 px labels stay 10 px at any card width.

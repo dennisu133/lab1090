@@ -145,8 +145,8 @@
 					</table>
 				{/if}
 				<p class="text-xs text-zinc-500">
-					Winds from turns join the layers like any other, and the heading checks use them as a
-					reference: they can't share a compass error.
+					Winds from turns join the profile's layers like any other, and the heading checks use them
+					as a reference: they can't share a compass error.
 				</p>
 			</div>
 		</div>

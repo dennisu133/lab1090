@@ -1,5 +1,5 @@
 /**
- * Collects what /weather's "Now" tab shows, over the last WINDOW_MS: temperatures and
+ * Collects what /weather's Profile tab shows, over the last WINDOW_MS: temperatures and
  * winds by altitude (from the observations), GNSS − baro (from ADS-B), and the pressure
  * settings aircraft report (for QNH). profile.ts and column.ts turn them into layers.
  *

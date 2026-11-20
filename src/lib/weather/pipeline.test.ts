@@ -106,7 +106,7 @@ describe('the capture', () => {
 	});
 });
 
-describe('the capture, for the "Now" tab', () => {
+describe('the capture, for the Profile tab', () => {
 	const sky = pipeline.sky.samples;
 	const all = layers(sky.temperatures, sky.winds, sky.columns);
 

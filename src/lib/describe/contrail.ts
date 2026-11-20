@@ -133,7 +133,7 @@ export function contrailField(
 			`${temperatureSource(c)} ${verdictText}`,
 			MARGIN_TEXT,
 			r.verdict === 'never' ? '' : persistText(r),
-			'Worked through step by step, with a diagram: Weather → Per aircraft.'
+			'Worked through step by step, with a diagram: Weather → Aircraft.'
 		]
 			.filter(Boolean)
 			.join('\n\n'),

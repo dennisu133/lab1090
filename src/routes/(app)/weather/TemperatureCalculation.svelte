@@ -94,7 +94,7 @@
 							</p>
 							<p class="text-zinc-400">
 								Warm air also makes the altimeter read low (pressure levels are further apart): the
-								Now tab turns that into the temperature of the column below.
+								Profile tab turns that into the temperature of the column below.
 							</p>
 						</InfoTip>
 						at {levelOrFeet(o.inputs.altitude!.feet)}: {celsius(at.isa)} (dashed). This air is

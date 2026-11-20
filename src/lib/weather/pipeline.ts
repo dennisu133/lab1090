@@ -14,7 +14,7 @@
  * its ADS-B position (for the magnetic declination; the receiver's position if it has
  * none), and its callsign.
  *
- * For the "Now" tab it also fills `sky` (sky.ts): the trusted observations, GNSS − baro
+ * For the Profile tab it also fills `sky` (sky.ts): the trusted observations, GNSS − baro
  * from ADS-B velocity messages (TC 19, CRC-checked, with a barometric altitude from the
  * same aircraft's position messages at most COLUMN_ALTITUDE_MS older), and the pressure
  * settings from register 4,0 (same rules as 5,0/6,0) and ADS-B TC 29, and the winds from

@@ -1,11 +1,11 @@
 <!--
 	Heading checks (lib/weather/headings.ts): each aircraft's wind against the other
 	aircraft's at the same level and time, and the heading correction that would make them
-	agree. The switch says whether the profile uses the corrected winds.
+	agree. Whether the profile uses the corrected winds is switched on the Wind card above;
+	the footer says which it does.
 -->
 <script lang="ts">
 	import { n, signed } from '#lib/describe/format.ts';
-	import Segmented from '#lib/components/Segmented.svelte';
 	import {
 		MAX_LEVEL_FT,
 		MAX_TIME_MS,
@@ -19,10 +19,11 @@
 		checks: Map<string, HeadingCheck>;
 		/** Callsigns by address, where known. */
 		callsigns: Map<string, string>;
+		/** Whether the profile uses the corrected winds (switched on the Wind card). */
 		correct: boolean;
 	}
 
-	let { checks, callsigns, correct = $bindable() }: Props = $props();
+	let { checks, callsigns, correct }: Props = $props();
 
 	/** Clearly off first, then by size. */
 	let rows = $derived(
@@ -33,11 +34,6 @@
 		)
 	);
 	let off = $derived(rows.filter((c) => c.significant).length);
-
-	const CHOICES = [
-		{ value: false, label: 'as sent' },
-		{ value: true, label: 'corrected' }
-	];
 </script>
 
 <Card title="Heading checks" wide>
@@ -65,7 +61,6 @@
 				? `${rows.length} aircraft checked, ${off} clearly off`
 				: `no aircraft with ${MIN_OTHERS} others nearby yet`}
 		</span>
-		<Segmented options={CHOICES} bind:value={correct} prefix="profile winds" class="ml-auto" />
 	{/snippet}
 
 	{#if rows.length}

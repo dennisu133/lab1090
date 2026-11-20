@@ -31,7 +31,7 @@ const TICKS_PER_MS = 12_000;
 
 /**
  * /weather's view of the live stream: every 5,0/6,0 pair as an observation (the feed), per
- * aircraft the latest wind and temperature (lib/weather/tracker.ts), and for the "Now" tab
+ * aircraft the latest wind and temperature (lib/weather/tracker.ts), and for the Profile tab
  * the samples of the last half hour (lib/weather/sky.ts). It collects as long as the app is
  * open, whichever page is shown (routes/streams.ts); a reload starts it empty.
  */
@@ -39,7 +39,7 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 	aircraft = $state.raw<WeatherAircraft[]>([]);
 	/** The latest frame's time (server clock): "now" for ages. */
 	now = $state(0);
-	/** Samples for the "Now" tab; a new object whenever one is added or dropped. */
+	/** Samples for the Profile tab (and the turns for the Aircraft tab); a new object whenever one is added or dropped. */
 	sky = $state.raw<SkySamples>({
 		temperatures: [],
 		winds: [],

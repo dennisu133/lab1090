@@ -1,9 +1,12 @@
 <!--
-	/weather, "Now": the air above the receiver, from every aircraft together. Temperature and
-	wind by altitude (from 5,0/6,0), the tropopause and the strongest wind, and the temperature
-	of the air column below each level (from ADS-B's GNSS − baro and the pilots' QNH). Then
-	three more ways to the wind: the geostrophic wind from the slope of the pressure
-	surfaces, heading checks against the other aircraft, and winds from turns.
+	/weather, "Profile": the air above the receiver, layer by layer, from every aircraft
+	together over the last half hour. First the answer: the tropopause, the strongest wind,
+	the pressure and the air column, then temperature and wind by altitude (from 5,0/6,0 and
+	turns) and the temperature of the air column below each level (from ADS-B's GNSS − baro
+	and the pilots' QNH), then the layers' numbers. Then how the column and the pressure are
+	worked out, and two checks on the winds that need many aircraft: the geostrophic wind from
+	the slope of the pressure surfaces, and each aircraft's heading against the others'.
+	What one aircraft gives on its own is on the Aircraft tab.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -28,14 +31,15 @@
 	import ColumnChart from './ColumnChart.svelte';
 	import GeostrophicCard from './GeostrophicCard.svelte';
 	import HeadingCard from './HeadingCard.svelte';
-	import TurnCard from './TurnCard.svelte';
 	import LayerTable from './LayerTable.svelte';
 	import QnhCard from './QnhCard.svelte';
 	import TemperatureProfile from './TemperatureProfile.svelte';
 	import WindProfile from './WindProfile.svelte';
+	import Segmented from '#lib/components/Segmented.svelte';
 	import PageTitle from '../PageTitle.svelte';
 	import { getStreams } from '../streams';
 	import Card from './Card.svelte';
+	import Tabs from './Tabs.svelte';
 
 	const stream = getStreams().weather;
 
@@ -53,6 +57,10 @@
 
 	/** Whether the profile uses the heading-corrected winds (HeadingCard). */
 	let correctHeadings = $state(true);
+	const HEADINGS = [
+		{ value: false, label: 'as sent' },
+		{ value: true, label: 'corrected' }
+	];
 
 	let sky = $derived(stream.sky);
 	let checks = $derived(stream.checks);
@@ -101,37 +109,39 @@
 	);
 </script>
 
-<PageTitle page="Weather now" />
+<PageTitle page="Weather profile" />
 
 <div class="space-y-6">
-	<div class="flex flex-wrap items-baseline gap-x-1 text-sm text-zinc-400">
-		<InfoTip label="Collected" wide>
-			<p>
-				Nobody sends us the weather, but radars read every aircraft's speeds and heading for air
-				traffic control, in registers <strong>5,0</strong> and <strong>6,0</strong>: enough to work
-				out the wind and the temperature where it flies. ADS-B adds the gap between GNSS height and
-				pressure altitude (how warm the air column below is) and the pilots' altimeter settings. The
-				Dutch weather service (KNMI) feeds such observations into its forecasts.
-			</p>
-			<p>
-				Collected here in the browser from the moment the app opened, on any page; reloading starts
-				over. Samples older than {WINDOW_MS / 60_000} minutes are dropped. Cruising aircraft fill FL300–FL410
-				within minutes; the levels below fill as aircraft climb out and descend, like a weather balloon
-				on its way up.
-			</p>
-			<p class="text-zinc-400">
-				Sources: S. de Haan, "High-resolution wind and temperature observations from aircraft
-				tracked by Mode-S air traffic control radar", J. Geophys. Res. (2011). J. Sun et al.,
-				"Weather field reconstruction using aircraft surveillance data and a novel meteo-particle
-				model", PLOS ONE (2018).
-			</p>
-		</InfoTip>
-		<span>
-			over the last {minutes < 1 ? 'minute' : `${Math.floor(minutes)} min`}: {aircraft} aircraft,
-			{sky.temperatures.length} temperatures, {sky.winds.length} winds, {sky.columns.length} GNSS heights,
-			{sky.settings.length} pressure settings.
-		</span>
-	</div>
+	<Tabs>
+		<div class="flex flex-wrap items-baseline justify-end gap-x-1 text-zinc-400">
+			<InfoTip label="Collected" wide>
+				<p>
+					Nobody sends us the weather, but radars read every aircraft's speeds and heading for air
+					traffic control, in registers <strong>5,0</strong> and <strong>6,0</strong>: enough to
+					work out the wind and the temperature where it flies. ADS-B adds the gap between GNSS
+					height and pressure altitude (how warm the air column below is) and the pilots' altimeter
+					settings. The Dutch weather service (KNMI) feeds such observations into its forecasts.
+				</p>
+				<p>
+					Collected here in the browser from the moment the app opened, on any page; reloading
+					starts over. Samples older than {WINDOW_MS / 60_000} minutes are dropped. Cruising aircraft
+					fill FL300–FL410 within minutes; the levels below fill as aircraft climb out and descend, like
+					a weather balloon on its way up.
+				</p>
+				<p class="text-zinc-400">
+					Sources: S. de Haan, "High-resolution wind and temperature observations from aircraft
+					tracked by Mode-S air traffic control radar", J. Geophys. Res. (2011). J. Sun et al.,
+					"Weather field reconstruction using aircraft surveillance data and a novel meteo-particle
+					model", PLOS ONE (2018).
+				</p>
+			</InfoTip>
+			<span>
+				over the last {minutes < 1 ? 'minute' : `${Math.floor(minutes)} min`}: {aircraft} aircraft,
+				{sky.temperatures.length} temperatures, {sky.winds.length} winds, {sky.columns.length} GNSS heights,
+				{sky.settings.length} pressure settings.
+			</span>
+		</div>
+	</Tabs>
 
 	<!-- Summary. Fixed heights: nothing below jumps as the values change. -->
 	<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -259,7 +269,7 @@
 					</p>
 					<p class="text-zinc-400">
 						For engines that turn {ETA * 100} % of the fuel's energy into thrust; modern ones ({ETA_MODERN *
-							100} %) make contrails in air about 1.6 K warmer. Per aircraft has the calculation step
+							100} %) make contrails in air about 1.6 K warmer. The Aircraft tab works it through step
 						by step.
 					</p>
 				</InfoTip>
@@ -280,6 +290,18 @@
 					Each layer's mean wind speed, with an arrow pointing where the air goes (up is north: an
 					arrow to the right is a westerly). The dashed line is jet stream strength.
 				</p>
+				<p>
+					Headings: the winds as the aircraft sent them, or with the headings corrected where the
+					heading checks below found one clearly off.
+				</p>
+			{/snippet}
+			{#snippet header()}
+				<Segmented
+					options={HEADINGS}
+					bind:value={correctHeadings}
+					prefix="headings"
+					class="ml-auto"
+				/>
 			{/snippet}
 			<WindProfile layers={all} {strongest} />
 		</Card>
@@ -305,8 +327,23 @@
 		</Card>
 	</section>
 
-	<!-- Two columns, each card at its own height: pressure and the column on the left, the
-	     other ways to the wind on the right. -->
+	<!-- The numbers behind the profiles. It grows as levels fill in; scroll anchoring keeps
+	     the cards below still while they're being read. Picking a layer works its column
+	     through below. -->
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-zinc-100">Layers</h2>
+		<LayerTable
+			layers={all}
+			{columns}
+			tropopause={top}
+			{strongest}
+			selected={example?.layer.level ?? null}
+			onselect={pick}
+		/>
+	</section>
+
+	<!-- Two columns, each card at its own height: how the column and the pressure are worked
+	     out on the left, the checks on the winds on the right. -->
 	<section class="grid items-start gap-4 xl:grid-cols-2">
 		<div class="space-y-4">
 			<div bind:this={columnCard} class="scroll-mt-4">
@@ -327,21 +364,7 @@
 		</div>
 		<div class="space-y-4">
 			<GeostrophicCard {geo} measured={measuredThere} />
-			<HeadingCard {checks} {callsigns} bind:correct={correctHeadings} />
-			<TurnCard turns={sky.turns} {callsigns} />
+			<HeadingCard {checks} {callsigns} correct={correctHeadings} />
 		</div>
-	</section>
-
-	<!-- Last: it grows with every level heard. Picking a layer shows its column above. -->
-	<section>
-		<h2 class="mb-2 text-sm font-semibold text-zinc-100">Layers</h2>
-		<LayerTable
-			layers={all}
-			{columns}
-			tropopause={top}
-			{strongest}
-			selected={example?.layer.level ?? null}
-			onselect={pick}
-		/>
 	</section>
 </div>
