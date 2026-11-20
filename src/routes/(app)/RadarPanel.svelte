@@ -140,8 +140,8 @@
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="1 · Who asked">
 		<p>
 			A Mode S radar finds new aircraft with an "all-call": a question to everyone in its beam. Each
-			aircraft answers with a DF11 reply: its address, and a parity field that is the checksum (CRC)
-			of the message XOR the code of the radar that asked. Recomputing the CRC leaves the code.
+			aircraft answers with a DF11 reply: its address, and a checksum (CRC) with the code of the
+			radar that asked mixed into it. Checking the CRC leaves that code instead of zero.
 		</p>
 		<p>
 			II (1–15) and SI (1–63) codes are assigned so that radars whose coverage overlaps have

@@ -31,5 +31,5 @@ export function addressTitle(addr: Checked): string {
 	// The address itself is the cell's text: only say where it came from.
 	return addr.source === 'clear'
 		? 'Sent in the clear'
-		: 'Recovered from the parity (CRC XOR address)';
+		: 'Recovered from the checksum (CRC), which the address is mixed into';
 }
