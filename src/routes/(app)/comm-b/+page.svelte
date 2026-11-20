@@ -78,33 +78,22 @@
 		<div class="mb-2 flex">
 			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Registers" wide>
 				<p>
-					A Mode S transponder holds up to 256 <strong>registers</strong> of 56 bits, numbered by
-					their <strong>BDS</strong> code: <code>4,0</code> is register 0x40.
-					<strong>Broadcast:</strong> ADS-B (DF17) sends a few on its own; the type code says which.
-					<strong>Interrogated:</strong> a radar asks for one, and the reply (DF20/21) carries it without
-					saying which. We only hear the replies, so the register has to be inferred:
+					A Mode S transponder keeps a set of <strong>registers</strong> of 56 bits, each holding
+					one kind of data about the flight: <code>4,0</code> the altitude the pilots selected,
+					<code>6,0</code> heading and speed. The aircraft broadcasts a few of them by itself; the others
+					only go out when a radar asks.
 				</p>
-				<ol class="list-decimal space-y-1 pl-5">
-					<li>
-						<strong>By pattern:</strong> 1,0, 2,0 and 3,0 start with their own number, 1,7 ends in 32
-						zero bits.
-					</li>
-					<li>
-						<strong>By elimination:</strong> status bits, reserved bits and impossible values rule registers
-						out.
-					</li>
-					<li>
-						<strong>By ADS-B:</strong> if several remain, the one that agrees with what the aircraft broadcast
-						wins.
-					</li>
-				</ol>
 				<p>
-					EU regulation 1207/2011 sets which ones aircraft must provide:
-					<strong>Elementary Surveillance</strong> 1,0, 1,7 and 2,0 for every IFR flight (3,0 during
-					an ACAS advisory);
-					<strong>Enhanced Surveillance</strong> adds 4,0, 5,0 and 6,0 for aircraft over 5,700 kg or faster
-					than 250 kt. Which ones a radar asks for is up to its operator. Rarely asked ones (4,4, 4,5,
-					5,3, 2,1) are a last resort: random bits fit them by chance now and then.
+					In Europe (<a
+						href="https://eur-lex.europa.eu/eli/reg_impl/2023/1770/oj/eng"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">EU regulation 2023/1770</a
+					>), every flight under instrument flight rules must provide
+					<strong>Elementary Surveillance</strong>: 1,0, 1,7 and 2,0, plus 3,0 with a collision
+					avoidance system (ACAS). Aircraft over 5,700 kg or faster than 250 kt add
+					<strong>Enhanced Surveillance</strong>: 4,0, 5,0 and 6,0. Which ones a radar asks for is
+					up to its operator.
 				</p>
 			</InfoTip>
 		</div>
@@ -122,10 +111,56 @@
 				</colgroup>
 				<thead class="text-left text-xs text-zinc-500">
 					<tr>
-						<th class="py-1 font-normal">BDS</th>
+						<th class="py-1 font-normal">
+							<InfoTip label="BDS">
+								<p>
+									<strong>Comm-B Data Selector</strong>, the register's number: two hexadecimal
+									digits (0–9, A–F) written with a comma, so there can be 256, from 0,0 to F,F.
+								</p>
+								<p>
+									The rows below the registers are replies whose register couldn't be told: all
+									zeros, several registers fit equally well, or none does.
+								</p>
+							</InfoTip>
+						</th>
 						<th class="py-1 font-normal">Register</th>
-						<th class="py-1 text-right font-normal" colspan="2">Broadcast (ADS-B)</th>
-						<th class="py-1 text-right font-normal" colspan="2">Interrogated (Comm-B)</th>
+						<th class="py-1 text-right font-normal" colspan="2">
+							<InfoTip label="Broadcast (ADS-B)" align="right">
+								<p>
+									Sent by the aircraft on its own as DF17, up to twice a second each. The message's
+									type code says which register it is.
+								</p>
+							</InfoTip>
+						</th>
+						<th class="py-1 text-right font-normal" colspan="2">
+							<InfoTip label="Interrogated (Comm-B)" align="right" wide>
+								<p>
+									Sent when a radar asks for a register, as a reply (DF20 or DF21). The reply
+									doesn't say which register it is, and the radar's question goes out on another
+									frequency (1030 MHz), so the register has to be inferred:
+								</p>
+								<ol class="list-decimal space-y-1 pl-5">
+									<li>
+										<strong>By pattern:</strong> 1,0, 2,0 and 3,0 start with their own number, 1,7 ends
+										in 32 zero bits.
+									</li>
+									<li>
+										<strong>Only fit:</strong> every other register is ruled out because the bits make
+										no sense for it: a value out of range, a "no data" flag with data behind it, bits
+										that must be zero but aren't.
+									</li>
+									<li>
+										<strong>By ADS-B:</strong> if several fit, the one that agrees with what the aircraft
+										broadcast wins.
+									</li>
+									<li>
+										<strong>Rarely asked ones</strong> (4,4, 4,5, 5,3, 2,1) only count if nothing else
+										fits: random bits fit them by chance now and then.
+									</li>
+								</ol>
+								<p>Radars can ask for the broadcast registers too.</p>
+							</InfoTip>
+						</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -190,7 +225,7 @@
 						<th class="w-36 py-1 font-normal">
 							<InfoTip label="MB">
 								<p>
-									The 56 register bits: MB of DF20/21, ME of DF17.
+									The register's 56 bits in hex: MB in a Comm-B reply, ME in ADS-B.
 									<span class="font-semibold text-zinc-100">Highlighted</span>: what gave the
 									register away by pattern.
 								</p>
@@ -200,11 +235,13 @@
 						<th class="w-56 py-1 font-normal xl:w-72">
 							<InfoTip label="vs ADS-B" align="right">
 								<p>
-									The reading against what the same aircraft broadcast (≤ 30 s earlier):
+									The reading against what the same aircraft broadcast in the last 30 s:
 									<span class="text-zinc-300">✓</span> agrees,
 									<span class="text-warn-400">✗</span>
-									doesn't. Heading (magnetic, the nose) may differ from track (true, over the ground)
-									by up to 30°. Mach is checked against the reply's own airspeed and altitude.
+									doesn't. Heading is compared with the broadcast track if there's no broadcast heading,
+									and gets 30° of leeway: the wind turns the nose away from the track, and heading is
+									magnetic, track true. Mach needs no broadcast: at a given altitude, the airspeed in
+									the same reading gives it.
 								</p>
 							</InfoTip>
 						</th>

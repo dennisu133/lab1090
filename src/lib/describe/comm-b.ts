@@ -115,7 +115,11 @@ export function registerFields(r: Register): Field[] {
 						[r.squitter, 'ES', 'Sends extended squitter (ADS-B)'],
 						[r.identification, 'ident', 'Can report its callsign (register 2,0)'],
 						[r.surveillanceIdentifier, 'SI', 'Understands surveillance identifier codes'],
-						[r.overlay, 'overlay', 'Can XOR the register number into the parity']
+						[
+							r.overlay,
+							'overlay',
+							'Can mix the register number into the reply’s checksum ("data parity"), so the radar can check it got the register it asked for'
+						]
 					] as const
 				)
 					.filter(([on]) => on)
@@ -176,14 +180,16 @@ export function registerFields(r: Register): Field[] {
 				fields.push({
 					label: 'MCP',
 					value: `${n(r.mcpAltitude)} ft`,
-					title: 'Selected altitude, dialled in on the autopilot panel (MCP/FCU)',
+					title:
+						'Selected altitude, dialled in on the autopilot panel (MCP/FCU). Sent in 16 ft steps, so 35,000 ft arrives as 34,992 or 35,008',
 					tone: 'main'
 				});
 			if (r.fmsAltitude !== null)
 				fields.push({
 					label: 'FMS',
 					value: `${n(r.fmsAltitude)} ft`,
-					title: 'Altitude the flight management computer plans to fly',
+					title:
+						'Altitude the flight management computer plans to fly. Sent in 16 ft steps, so 35,000 ft arrives as 34,992 or 35,008',
 					tone: 'main'
 				});
 			if (r.baroSetting !== null)
@@ -191,7 +197,7 @@ export function registerFields(r: Register): Field[] {
 					label: 'baro',
 					value: `${r.baroSetting.toFixed(1)} hPa`,
 					title:
-						'Barometric pressure setting: the altimeter’s, in 0.1 hPa steps (ADS-B uses 0.8). The local QNH below the transition altitude; 1013.2 = standard pressure, used above it',
+						'Barometric pressure setting: the altimeter’s, in 0.1 hPa steps (ADS-B uses 0.8). The local QNH below the transition altitude; above it the standard 1013.25 hPa, which comes out as 1013.2 or 1013.3',
 					tone: 'minor'
 				});
 			if (r.modes) {

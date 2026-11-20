@@ -72,8 +72,9 @@
 	<div class="mb-2 flex">
 		<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Aircraft" wide>
 			<p>
-				Aircraft whose Comm-B replies can be verified, heard in the last {AIRCRAFT_TTL_MS / 1000} s. The
-				middle columns are the latest <strong>Enhanced Surveillance</strong> readings, dimmed after {STALE_MS /
+				Aircraft whose Comm-B replies come from an address already heard (a corrupted reply would
+				otherwise add an aircraft that isn't there), in the last {AIRCRAFT_TTL_MS / 1000} s. The middle
+				columns are the latest <strong>Enhanced Surveillance</strong> readings, dimmed after {STALE_MS /
 					1000} s without a new one.
 			</p>
 		</InfoTip>
@@ -107,7 +108,7 @@
 						<InfoTip label="5,0 Track and turn">
 							<p>
 								Track, ground speed, true airspeed, roll angle and track rate. A turn shows the
-								moment the pilot banks, sweeps before the radar's own track does.
+								moment the aircraft banks, several radar sweeps before the radar's own track does.
 							</p>
 						</InfoTip>
 					</th>
@@ -115,7 +116,8 @@
 						<InfoTip label="6,0 Heading and speed" align="right">
 							<p>
 								Magnetic heading (where the nose points, not the track: the wind pushes it
-								sideways), indicated airspeed, Mach and vertical rate.
+								sideways), indicated airspeed, Mach and vertical rate, from the altimeter and from
+								the inertial system (ins).
 							</p>
 						</InfoTip>
 					</th>
@@ -125,7 +127,8 @@
 								What radars read, against <strong>1,7</strong>, the transponder's own list of what
 								it has. <span class={STATUS.read.color}>Bright</span>: read.
 								<span class={STATUS['not read'].color}>Dark</span>: listed, not read.
-								<span class={STATUS['not listed'].color}>Orange</span>: read, not listed.
+								<span class={STATUS['not listed'].color}>Orange</span>: read, not listed. Without a
+								1,7, only what was read shows.
 							</p>
 						</InfoTip>
 					</th>

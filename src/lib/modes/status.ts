@@ -76,7 +76,10 @@ export interface TargetStateV2 {
 	subtype: 1;
 	/** The altitude the pilot dialled in on the glareshield (MCP/FCU) or the FMS plans. */
 	selectedAltitude: { feet: number; source: 'MCP/FCU' | 'FMS' } | null;
-	/** The altimeter setting in hPa: 1013.2 = standard (above the transition altitude). */
+	/**
+	 * The altimeter setting in hPa, 0.8 hPa steps: standard (above the transition altitude)
+	 * arrives as 1012.8 or 1013.6.
+	 */
 	qnh: number | null;
 	/** Degrees. */
 	selectedHeading: number | null;
