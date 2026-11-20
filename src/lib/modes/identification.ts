@@ -50,7 +50,11 @@ export function character(code: number): string {
 	return '#';
 }
 
-/** Names from ICAO Doc 9871, Table A-2-8. Weights are maximum take-off weight. */
+/**
+ * Names from ICAO Doc 9871, Table A-2-8. Weights are maximum take-off weight. Set C as in
+ * MIT Lincoln Laboratory ATC-334 (Table 6-5) and readsb: 2 is the service vehicle (pyModeS
+ * has it at 3), cluster and line obstacles came with version 1.
+ */
 const CATEGORIES: Record<EmitterCategory['set'], string[]> = {
 	A: [
 		'No category information',
@@ -75,11 +79,11 @@ const CATEGORIES: Record<EmitterCategory['set'], string[]> = {
 	C: [
 		'No category information',
 		'Surface vehicle: emergency',
-		'Reserved',
 		'Surface vehicle: service',
-		'Point obstacle',
+		'Point obstacle (fixed or tethered, e.g. a balloon)',
 		'Cluster obstacle',
 		'Line obstacle',
+		'Reserved',
 		'Reserved'
 	],
 	D: Array.from({ length: 8 }, (_, i) => (i === 0 ? 'No category information' : 'Reserved'))
