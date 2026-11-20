@@ -28,7 +28,7 @@ const C = {
 	residential: '#1a1a1e',
 	border: '#52525b', // zinc-600
 	state: '#3f3f46', // zinc-700
-	motorway: '#3f3f46',
+	motorway: '#2c2c31', // between zinc-800 and 700: below the borders, or they look alike
 	road: '#27272a', // zinc-800
 	runway: '#71717a', // zinc-500
 	airportArea: '#1f1f23',
