@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import { n, signed } from '#lib/describe/format.ts';
+	import Segmented from '#lib/components/Segmented.svelte';
 	import {
 		MAX_LEVEL_FT,
 		MAX_TIME_MS,
@@ -64,20 +65,7 @@
 				? `${rows.length} aircraft checked, ${off} clearly off`
 				: `no aircraft with ${MIN_OTHERS} others nearby yet`}
 		</span>
-		<span class="ml-auto inline-flex overflow-hidden rounded text-xs">
-			<span class="bg-zinc-950 px-2 py-0.5 text-zinc-500">profile winds</span>
-			{#each CHOICES as c (c.label)}
-				<button
-					class={[
-						'px-2 py-0.5',
-						correct === c.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
-					]}
-					onclick={() => (correct = c.value)}
-				>
-					{c.label}
-				</button>
-			{/each}
-		</span>
+		<Segmented options={CHOICES} bind:value={correct} prefix="profile winds" class="ml-auto" />
 	{/snippet}
 
 	{#if rows.length}

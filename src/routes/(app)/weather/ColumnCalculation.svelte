@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import Segmented from '#lib/components/Segmented.svelte';
 	import { FT } from '#lib/units.ts';
 	import { celsius, hpa, levelOrFeet, n, signed } from '#lib/describe/format.ts';
 	import { isaText } from '#lib/describe/weather.ts';
@@ -66,19 +67,7 @@
 		</li>
 		<li>
 			<strong>To sea level.</strong> The GNSS heights are
-			<span class="inline-flex overflow-hidden rounded align-baseline text-xs">
-				{#each REFERENCES as r (r.value)}
-					<button
-						class={[
-							'px-2 py-0.5',
-							heights === r.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
-						]}
-						onclick={() => (heights = r.value)}
-					>
-						{r.label}
-					</button>
-				{/each}
-			</span>
+			<Segmented options={REFERENCES} bind:value={heights} inline />
 			<InfoTip label="Which?" wide>
 				<p>
 					GPS measures from the <strong>WGS84 ellipsoid</strong>, a smooth model of the Earth's

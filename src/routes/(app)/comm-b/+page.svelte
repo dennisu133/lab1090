@@ -2,6 +2,7 @@
 	import { arrivalTime, n as whole } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import LiveHeading from '#lib/components/LiveHeading.svelte';
+	import Segmented from '#lib/components/Segmented.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { HOW, bitsTitle, inferenceTitle } from '#lib/describe/comm-b.ts';
@@ -162,19 +163,7 @@
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
 			<LiveHeading feed={stream} noun="readings" />
-			<div class="flex overflow-hidden rounded text-sm">
-				{#each SOURCES as s (s.label)}
-					<button
-						class={[
-							'px-3 py-1',
-							source === s.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
-						]}
-						onclick={() => (source = s.value)}
-					>
-						{s.label}
-					</button>
-				{/each}
-			</div>
+			<Segmented options={SOURCES} bind:value={source} />
 			{#if register !== null}
 				<FilterChip
 					label={register in SPECIAL ? SPECIAL[register] : `BDS ${register}`}

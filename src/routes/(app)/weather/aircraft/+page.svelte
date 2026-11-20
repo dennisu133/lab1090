@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FilterChip from '#lib/components/FilterChip.svelte';
+	import Segmented from '#lib/components/Segmented.svelte';
 	import LiveHeading from '#lib/components/LiveHeading.svelte';
 	import Fields from '#lib/components/Fields.svelte';
 	import { arrivalTime, levelOrFeet } from '#lib/describe/format.ts';
@@ -126,19 +127,7 @@
 	<section>
 		<div class="mb-2 flex flex-wrap items-center gap-4">
 			<LiveHeading feed={stream} noun="observations" />
-			<div class="flex overflow-hidden rounded text-sm">
-				{#each SHOW as s (s.value)}
-					<button
-						class={[
-							'px-3 py-1',
-							show === s.value ? 'bg-accent-900' : 'bg-zinc-800 hover:bg-zinc-700'
-						]}
-						onclick={() => (show = s.value)}
-					>
-						{s.label}
-					</button>
-				{/each}
-			</div>
+			<Segmented options={SHOW} bind:value={show} />
 			{#if selected !== null}
 				<FilterChip label={selected} onclear={() => (selected = null)} />
 			{/if}

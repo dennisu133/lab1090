@@ -14,9 +14,11 @@
 	let { label, onclear }: Props = $props();
 </script>
 
+<!-- Plain text like the view switch next to it; the colour says the list is narrowed, "only"
+     and the cross say it without colour too. -->
 <button
-	class="flex items-center gap-1.5 rounded bg-accent-900 py-1 pr-2 pl-3 text-sm hover:bg-accent-800"
+	class="flex items-center gap-1 text-xs text-accent-400 hover:text-accent-200"
 	onclick={onclear}
 >
-	{label} only <CloseIcon class="size-3.5" />
+	{label} only <CloseIcon class="size-3" />
 </button>
