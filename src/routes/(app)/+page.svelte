@@ -68,7 +68,7 @@
 		trail: true,
 		prediction: true,
 		uncertainty: true,
-		winds: true,
+		winds: false,
 		coverage: false,
 		radars: false,
 		roads: true,

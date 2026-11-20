@@ -4,10 +4,10 @@
 	circles and the wind barbs where they measured the wind; the antenna's coverage. Below a
 	line, two parts of the base map: roads and place names (borders, terrain and airports
 	always stay: they're what you find your way by). Below another, the experiments: the
-	ground radars. All on by default but coverage and the experiments. With the trails off,
-	the selected aircraft still has one. Labels whose layer needs explaining are InfoTips
-	(tappable: phones never show `title`); Roads and Place names are plain. The rings'
-	unit is set above the aircraft list.
+	ground radars. All on by default but the wind barbs (busy hours fill the map with them),
+	coverage and the experiments. With the trails off, the selected aircraft still has one.
+	Labels whose layer needs explaining are InfoTips (tappable: phones never show `title`);
+	Roads and Place names are plain. The rings' unit is set above the aircraft list.
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
