@@ -10,7 +10,7 @@ const heading: Register = {
 	baroRate: 0,
 	inertialRate: 0
 };
-const gicb: Register = { bds: '1,7', supported: ['2,0', '4,0', '5,0', '6,0'] };
+const gicb: Register = { bds: '1,7', supported: ['2,0', '4,0', '5,0', '6,0'], reserved: 0 };
 
 describe('CommBAircraftList', () => {
 	test('counts replies and registers, keeps the latest EHS readings', () => {

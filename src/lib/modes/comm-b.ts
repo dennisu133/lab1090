@@ -5,7 +5,7 @@
  * listens has to infer it from the 56 bits, in three steps:
  *
  * 1. Some registers start with their own number (1,0 / 2,0 / 3,0) or have a fixed shape
- *    (1,7: 32 zero bits at the end). If one of those fits, that's it.
+ *    (1,7: 27 zero bits at the end). If one of those fits, that's it.
  * 2. For the others, rule out every register the bits can't be: a status bit says "no
  *    data" but the value bits aren't zero, reserved bits are set, a value is out of range.
  * 3. If more than one is left (5,0 and 6,0 often both fit), compare each reading with what

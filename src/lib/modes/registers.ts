@@ -174,6 +174,8 @@ export interface GicbCapability {
 	bds: '1,7';
 	/** The registers the transponder says it can deliver, e.g. ["0,5", …, "6,0"]. */
 	supported: string[];
+	/** Bits 25–29, reserved (usually 0). */
+	reserved: number;
 }
 
 /** Bit n of register 1,7 stands for register GICB_MAP[n − 1]. */
@@ -189,10 +191,19 @@ const BDS_1_7: RegisterSpec<GicbCapability> = {
 		return firstOf(
 			// Every transponder that has 1,7 can report its callsign.
 			!flag(mb, 7) ? 'bit 7 (2,0 supported) is 0, but every aircraft supports 2,0' : null,
-			bits(mb, 25, 32) !== 0 ? 'bits 25–56 must be zero' : null
+			// Bits 25–29 are reserved "for aircraft capability, E,1, E,2, F,1" (ICAO Doc 9871
+			// Table A-2-23, as jet1090 quotes it: rs1090 decode/bds/bds17.rs), so only 30–56
+			// must be zero. readsb and pyModeS want 25–56 zero, but some military transponders
+			// set bit 29 (3B7567, 3B7759, 43C5EC: ff85e108000000, be818108000000). Allowing 25–29
+			// moved no other register's reading in our recordings.
+			bits(mb, 30, 27) !== 0 ? 'bits 30–56 must be zero' : null
 		);
 	},
-	decode: (mb) => ({ bds: '1,7', supported: GICB_MAP.filter((_, i) => flag(mb, i + 1)) })
+	decode: (mb) => ({
+		bds: '1,7',
+		supported: GICB_MAP.filter((_, i) => flag(mb, i + 1)),
+		reserved: bits(mb, 25, 5)
+	})
 };
 
 // --- 2,0 Aircraft identification ---------------------------------------------------------
@@ -543,7 +554,7 @@ const BDS_4_5: RegisterSpec<MeteoHazard> = {
 	reject(mb) {
 		const r = BDS_4_5.decode(mb);
 		return firstOf(
-			// 1,7's pattern (32 zero bits at the end) also passes 4,5's checks; it's more specific.
+			// 1,7's pattern (27 zero bits at the end) also passes 4,5's checks; it's more specific.
 			BDS_1_7.reject(mb) === null ? "fits 1,7's pattern, which is more specific" : null,
 			bits(mb, 52, 5) !== 0 ? 'reserved bits 52–56 must be zero' : null,
 			wrongStatus(mb, 1, 2, 'turbulence'),

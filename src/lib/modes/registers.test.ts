@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { inferRegister, type Inference } from './comm-b';
-import { fromHex } from './frame';
-import { combineFine, FINE_SPAN, RARE, REGISTERS, type Register } from './registers';
+import { bits, fromHex } from './frame';
+import {
+	combineFine,
+	FINE_SPAN,
+	RARE,
+	REGISTERS,
+	type GicbCapability,
+	type Register
+} from './registers';
 import { build, commbOracle as oracle, registration21 } from './testing';
 import { rejectionText } from '#lib/describe/comm-b.ts';
 
@@ -128,6 +135,18 @@ function withoutNulls(o: Record<string, unknown>) {
 	return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined));
 }
 
+/**
+ * The registers pyModeS finds possible, but with our 1,7 check: pyModeS wants bits 25–56
+ * zero, we only 30–56 (bits 25–29 are reserved, and some military transponders set 29; see
+ * BDS_1_7). In the oracle that only adds 1,7 to one bit-flipped copy of a real 1,7.
+ */
+function pyModeSValid(o: (typeof commbOracle)[number]): string[] {
+	const valid = Object.keys(o.valid);
+	const mb = fromHex(o.mb);
+	const reserved17 = bits(mb, 25, 5) !== 0 && spec('1,7').reject(mb) === null;
+	return reserved17 ? ['1,7', ...valid] : valid;
+}
+
 describe('against pyModeS: every Comm-B payload of the capture, and a bit-flipped copy of each', () => {
 	test('the oracle has both kinds', () => {
 		expect(commbOracle.filter((o) => o.real).length).toBe(2737);
@@ -140,7 +159,7 @@ describe('against pyModeS: every Comm-B payload of the capture, and a bit-flippe
 			// All zeros: pyModeS rejects it in every register; inferRegister calls it "empty" first.
 			const empty = mb.every((b) => b === 0);
 			const ours = PYMODES.filter((bds) => !empty && spec(bds).reject(mb) === null);
-			expect({ mb: o.mb, valid: ours }).toEqual({ mb: o.mb, valid: Object.keys(o.valid) });
+			expect({ mb: o.mb, valid: ours }).toEqual({ mb: o.mb, valid: pyModeSValid(o) });
 		}
 	});
 
@@ -169,10 +188,15 @@ describe('against pyModeS: every Comm-B payload of the capture, and a bit-flippe
 			hows[key] = (hows[key] ?? 0) + 1;
 			// The rare registers (4,4, 4,5, 5,3) only count when no common one fits: pyModeS too
 			// only tries 4,4/4,5 on request (include_meteo), and then puts them last.
-			const valid = Object.keys(o.valid);
+			const valid = pyModeSValid(o);
 			const common = valid.filter((bds) => !RARE.has(bds));
 			const expected = common.length > 0 ? common : valid;
-			const inferred = common.length > 0 ? o.inferred : o.inferred_meteo;
+			// 1,7 is recognised by its pattern: if it fits, it's the reading.
+			const inferred = valid.includes('1,7')
+				? ['1,7']
+				: common.length > 0
+					? o.inferred
+					: o.inferred_meteo;
 			// pyModeS 3 doesn't know 5,3 (it's tested by hand below).
 			const ours = inference.candidates.map((c) => c.bds).filter((bds) => bds !== '5,3');
 			expect(ours.sort()).toEqual(expected.sort());
@@ -186,8 +210,8 @@ describe('against pyModeS: every Comm-B payload of the capture, and a bit-flippe
 			}
 		}
 		expect(hows).toEqual({
-			'only candidate': 4121,
-			fixed: 26,
+			'only candidate': 4120,
+			fixed: 27,
 			ambiguous: 22,
 			unknown: 1271,
 			empty: 1,
@@ -244,6 +268,25 @@ describe('5,1 and 5,2 (layout inferred, not from the spec)', () => {
 		const inference = inferRegister(mb, null);
 		expect(inference.how).toBe('unknown');
 		expect(reason(inference, '5,1')).toMatch(/too little structure/);
+	});
+});
+
+describe('1,7 GICB capability report (ICAO Doc 9871 Table A-2-23, as jet1090 reads it)', () => {
+	test('reserved bits 25–29 may be set: some military transponders set bit 29', () => {
+		// Live replies: 3B7759 and 43C5EC (20 Nov 2026), 3B7567 (16 Nov 2026).
+		for (const hex of ['ff85e108000000', 'be818108000000']) {
+			const inference = inferRegister(fromHex(hex), null);
+			expect(inference.how).toBe('fixed');
+			expect(inference.best?.register).toMatchObject({ bds: '1,7', reserved: 0b00001 });
+		}
+		const { supported } = spec('1,7').decode(fromHex('ff85e108000000')) as GicbCapability;
+		expect(supported.join(' ')).toBe('0,5 0,6 0,7 0,8 0,9 0,A 2,0 2,1 4,0 4,5 5,0 5,1 5,2 5,3 6,0');
+	});
+
+	test('bits 30–56 must be zero, and bit 7 (2,0) set', () => {
+		expect(spec('1,7').reject(fromHex('ff85e10c000000'))).toBe('bits 30–56 must be zero');
+		expect(spec('1,7').reject(fromHex('ff85e100000001'))).toBe('bits 30–56 must be zero');
+		expect(spec('1,7').reject(fromHex('fd85e108000000'))).toContain('bit 7');
 	});
 });
 

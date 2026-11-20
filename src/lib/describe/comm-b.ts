@@ -28,7 +28,7 @@ export const HOW: Record<How, { label: string; title: string }> = {
 	empty: { label: 'empty', title: 'All 56 bits are zero: the register holds no data.' },
 	fixed: {
 		label: 'by pattern',
-		title: 'Starts with its own register number (or, for 1,7, ends in 32 zero bits).'
+		title: 'Starts with its own register number (or, for 1,7, ends in 27 zero bits).'
 	},
 	'only candidate': {
 		label: 'only fit',
@@ -139,7 +139,18 @@ export function registerFields(r: Register): Field[] {
 					title: r.supported.map((bds) => `${bds}: ${REGISTER_NAMES[bds] ?? '?'}`).join('\n'),
 					tone: 'minor',
 					mono: true
-				}
+				},
+				...(r.reserved === 0
+					? []
+					: [
+							{
+								value: `bits 25–29: ${r.reserved.toString(2).padStart(5, '0')}`,
+								title:
+									'Reserved for more capabilities (registers E,1, E,2 and F,1, ICAO Doc 9871), usually 0. Some military transponders set bit 29.',
+								tone: 'minor' as const,
+								mono: true
+							}
+						])
 			];
 		case '2,0':
 			return [

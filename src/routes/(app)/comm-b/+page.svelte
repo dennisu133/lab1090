@@ -62,7 +62,7 @@
 	function patternRange(r: RegisterRow): [number, number] | null {
 		if (r.inference?.how !== 'fixed') return null;
 		if (NUMBERED.has(r.key)) return [0, 2];
-		if (r.key === '1,7') return [6, 14]; // bits 25–56: 32 zero bits
+		if (r.key === '1,7') return [8, 14]; // bits 33–56 (30–32 share a hex digit with reserved 29)
 		return null;
 	}
 
@@ -142,7 +142,7 @@
 								<ol class="list-decimal space-y-1 pl-5">
 									<li>
 										<strong>By pattern:</strong> 1,0, 2,0 and 3,0 start with their own number, 1,7 ends
-										in 32 zero bits.
+										in 27 zero bits.
 									</li>
 									<li>
 										<strong>Only fit:</strong> every other register is ruled out because the bits make
