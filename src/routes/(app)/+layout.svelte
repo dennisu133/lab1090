@@ -77,7 +77,9 @@
 		<!-- lab1090: 1090 MHz, the frequency of Mode S and ADS-B. The logo spells it out:
 		     "10 90" under radio waves, on an aircraft. -->
 		<a href={resolve('/(app)')} class="shrink-0">
-			<img src={logo} alt="lab1090" class="h-8 w-auto" />
+			<!-- The size it's drawn at (32 px high, the artwork 418 × 291), so the bar is laid out
+			     before the file arrives and the links don't jump right when it does. -->
+			<img src={logo} alt="lab1090" width="46" height="32" class="h-8 w-auto" />
 		</a>
 		<div class="hidden items-center gap-6 lg:flex">
 			{@render pages('text-sm')}

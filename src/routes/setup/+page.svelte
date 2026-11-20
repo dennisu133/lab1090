@@ -160,7 +160,7 @@
 
 <div class="min-h-screen bg-zinc-950 text-zinc-100">
 	<header class="flex items-center gap-4 border-b border-zinc-800 px-4 py-3 sm:px-6">
-		<img src={logo} alt="lab1090" class="h-8 w-auto" />
+		<img src={logo} alt="lab1090" width="46" height="32" class="h-8 w-auto" />
 		{#if data.position}
 			<a href={resolve('/(app)')} class="ml-auto text-sm text-zinc-400 hover:text-white"
 				>Back to the map</a
