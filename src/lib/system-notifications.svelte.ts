@@ -15,18 +15,19 @@
  *   A site can't take a permission back either, which is why ours exists.
  *
  * Browsers only allow notifications in a secure context: HTTPS, or `localhost`. Opened from
- * another machine over plain HTTP (http://pi:1090), the switch can't work, and says so.
+ * another machine over plain HTTP (http://pi:1090), or in a browser without them, there's no
+ * switch at all.
  */
 
-/** What the browser allows: its permission, or why there's none to ask for. */
-export type Permission = NotificationPermission | 'insecure' | 'unsupported';
+/** What the browser allows: its permission, or 'unavailable' (no API, or plain HTTP). */
+export type Permission = NotificationPermission | 'unavailable';
 
 const KEY = 'alerts.notify';
 
 export class SystemNotifications {
 	/** Our switch. */
 	wanted = $state(false);
-	permission = $state<Permission>('unsupported');
+	permission = $state<Permission>('unavailable');
 
 	/** Both switches on: notifications will show. */
 	get on(): boolean {
@@ -36,11 +37,7 @@ export class SystemNotifications {
 	/** In the browser, once: read our switch and the browser's permission, and follow it. */
 	start(): void {
 		this.wanted = localStorage.getItem(KEY) === 'on';
-		if (!('Notification' in window)) return;
-		if (!window.isSecureContext) {
-			this.permission = 'insecure';
-			return;
-		}
+		if (!('Notification' in window) || !window.isSecureContext) return;
 		this.permission = Notification.permission;
 		// The user can change it in the site settings while the page is open.
 		navigator.permissions?.query({ name: 'notifications' }).then(
