@@ -1,8 +1,9 @@
 /**
  * Is the gain right? Advice for `--gain`, from the noise and from clipped messages.
  *
- * The dongle's ADC has 8 bits per sample (I and Q): 256 levels, about 48 dB between one step
- * and full scale. The gain decides where in that range the sky lands:
+ * The dongle's ADC has 8 bits per sample (I and Q): 256 levels, 128 either side of the
+ * middle, so one step is 42 dB below full scale (−42 dBFS on our amplitude scale). The gain
+ * decides where in that range the sky lands:
  *
  *   full scale ┬─────────────────────  strong messages: too much gain and they hit the top
  *              │                       and get cut off (clipped), the tuner overloads too
@@ -113,6 +114,10 @@ export function roundingCostDb(sigma: number): number {
  * TODO: check it at a time with more strong traffic. Nothing clipped in the gain sweep;
  * afterwards one close aircraft reached full scale and clipped 42 messages in 5 s at 49.6 dB
  * (3.4 % of that step), too little to say whether 1 % over 5 minutes is the right limit.
+ * On fixtures/local/a.u8 one aircraft passing close (0 dBFS) made 519 clipped messages in
+ * 90 s, 1.65 % of 5 minutes: "too high" at the gain the sweep found best. Only 98 were its
+ * own; 421 were weaker aircraft's sent while it was. Counting only messages whose own
+ * pulses clip would fit the advice better; clipping is too rare here to tune it on.
  */
 export const MAX_CLIPPED = 0.01;
 /** Rounding costing more than this: the gain is too low… */

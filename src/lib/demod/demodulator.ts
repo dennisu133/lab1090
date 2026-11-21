@@ -106,9 +106,13 @@ export interface DemodulatorStats {
 	/**
 	 * Mean magnitude of the latest 27 ms, 1 = full scale: mostly the noise.
 	 *
-	 * TODO: messages add to the mean too. Compare a busy hour with one late at night: if
-	 * traffic raises it noticeably, a median or a low percentile would measure the noise
-	 * better (for QUICK_ABOVE_LEVEL and the gain advice, lib/radio/gain.ts).
+	 * TODO: messages add to the mean too. On the recordings (21 Nov 2026) they cover 0.4–1 % of
+	 * the samples and raise the mean by 0.1 dB (c, 44 messages/s) to 0.4 dB (a, 105/s); on
+	 * synthetic traffic over the same noise by 0.34 dB at 85/s and 0.84 dB at 330/s
+	 * (fixtures/local/receiver-check/robust.ts). Nothing here gets busier than that, but a
+	 * receiver near a hub (1,000/s and more) would read the noise 2–3 dB high: a median or a
+	 * low percentile would measure it better (for QUICK_ABOVE_LEVEL and the gain advice,
+	 * lib/radio/gain.ts). It changes what's found, so it needs the bench (demod-bench.ts).
 	 */
 	level: number;
 	/**

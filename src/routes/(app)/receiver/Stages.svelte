@@ -40,9 +40,14 @@
 			wide
 		>
 			<p>
-				Each step lets through a small part of what reaches it, cheapest first: most samples are
-				noise, and only the parity can tell a message from noise that happens to look like one. Per
-				second, over the last 10 s. The bars are logarithmic: each mark is ten times the one before.
+				How the demodulator finds messages among the samples, step by step, and how many get through
+				each step per second (over the last 10 s). Almost all of what the dongle hears is noise, so
+				the cheap tests come first and throw most of it away. Only the parity, at the end, can tell
+				a message from noise that happens to look like one.
+			</p>
+			<p class="text-zinc-400">
+				The bars are on a logarithmic scale: every factor of ten fewer takes the same length off a
+				bar.
 			</p>
 		</InfoTip>
 	</div>
@@ -61,8 +66,9 @@
 				<td class="py-1">
 					<InfoTip label="Samples">
 						<p>
-							2.4 million magnitudes a second, one every 0.42 µs: the I/Q pair's length, how much
-							signal there is at that moment. A message's half-µs pulses span 1.2 samples.
+							2.4 million a second, one every 0.42 µs, each saying how strong the signal is at that
+							moment (the length of its I/Q pair). A message is made of pulses half a µs long, so a
+							pulse spans just 1.2 samples.
 						</p>
 					</InfoTip>
 				</td>
@@ -74,12 +80,16 @@
 				<td class="py-1">
 					<InfoTip label="Quick test">
 						<p>
-							Four samples where the preamble's pulses would be, against nine where its gaps would
-							be: the pulses must be 1.5× stronger than the gaps and than the noise level. Failing
-							that, readsb's test, which compares the pulses with the samples right next to them and
-							so lets in weaker messages. Whole samples only, so it's cheap. The samples next to a
-							real preamble often pass too.
+							Every message starts with a <strong>preamble</strong>: four pulses in a fixed pattern,
+							8 µs in all. This test takes four samples that fall inside those pulses and nine that
+							fall in the gaps between them: each of the four must be 1.5 times as strong as the
+							gaps on average, and as the noise. It uses whole samples only, so it's cheap.
 						</p>
+						<p>
+							What fails gets a second chance with the test of readsb (a widely used decoder), which
+							compares the pulses with the samples right beside them and so lets in weaker messages.
+						</p>
+						<p class="text-zinc-400">The samples next to a real preamble often pass too.</p>
 					</InfoTip>
 				</td>
 				<td class="py-1 text-right">{perSecond(rates.candidates)}</td>
@@ -90,9 +100,9 @@
 				<td class="py-1">
 					<InfoTip label="Preamble">
 						<p>
-							Five starts per sample, 0.2 samples (1/12 µs) apart, since a message can start
-							anywhere between two samples. A start counts if the energy in its four pulses is 1.8
-							times that in its gaps (5.1 dB).
+							A message can start anywhere between two samples, so each sample that passed is tried
+							as five starts, 0.2 samples (1/12 µs) apart. A start counts if its four pulses are 1.8
+							times as strong as the gaps between them (5.1 dB).
 						</p>
 					</InfoTip>
 				</td>
@@ -109,13 +119,20 @@
 				<td class="py-1">
 					<InfoTip label="Format">
 						<p>
-							The bits are read as the string whose pulses, drawn the way the dongle draws them
-							(rounded, and ringing into the next half bit), best fit the samples. If that fails the
-							parity, bit by bit: with readsb's weights for three samples per bit, then first half
-							against second. What only readsb's test let in is read with its weights alone: it's
-							mostly noise, and a lot of it. The first 5 bits are the downlink format (DF). Only 11
-							of the 25 possible values exist; the others mean noise. The format also says how long
-							the message is: 56 or 112 bits.
+							Now the bits are read: each bit is a pulse in its first half (1) or its second half
+							(0). First all at once, as the string of bits whose pulses best match the samples,
+							drawn the way the dongle shows them: rounded, and spilling into the next half bit. If
+							that fails the parity, bit by bit: with readsb's method, which weighs three or four
+							samples per bit, then by comparing each bit's first half with its second.
+						</p>
+						<p>
+							The first 5 bits are the <strong>downlink format</strong> (DF), the kind of message, which
+							also says how long it is: 56 or 112 bits. Only 11 formats are defined; any other value means
+							noise.
+						</p>
+						<p class="text-zinc-400">
+							What only readsb's test let in is read with its method alone: it's mostly noise, and a
+							lot of it.
 						</p>
 					</InfoTip>
 				</td>
@@ -132,11 +149,18 @@
 				<td class="py-1">
 					<InfoTip label="Parity" wide>
 						<p>
-							The last 24 bits. ADS-B and DF11 squitters must come out at 0; a single wrong bit in
-							either can be found and flipped back. Replies to radars carry the aircraft's address
-							in their parity, so any bits "pass" with some address: they only count from an
-							aircraft heard intact within {KNOWN_FOR_S} s. That's where most noise ends:
-							<em>not heard</em>.
+							The last 24 bits are a check code worked out from the rest of the message. In ADS-B
+							messages and DF11 squitters (an aircraft announcing its address unasked), redoing the
+							sum must give 0. A single wrong bit can then be found and flipped back, but only for
+							an aircraft heard intact within the last {KNOWN_FOR_S} s: otherwise noise would pass as
+							a repaired message several times an hour.
+						</p>
+						<p>
+							Replies to a radar mix something into the check code: most the aircraft's address, so
+							any string of bits "passes" for some address; a DF11 reply the radar's own code (or 0,
+							like a squitter). These only count from an aircraft heard intact within the last {KNOWN_FOR_S}
+							s. That's where most noise ends:
+							<em>address not heard</em>.
 						</p>
 					</InfoTip>
 				</td>

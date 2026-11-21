@@ -33,6 +33,11 @@
  * crystal, −11.8: the 7 ppm between them is NTP's correction of it). From a cold one it isn't:
  * the crystal warms up for a quarter of an hour (−183 ppm after 2 minutes, −100 by minute 16
  * while showing ±2), a curve the line can't follow and whose ± assumes it can.
+ *
+ * It also follows the weather (21 Nov 2026): +0.3 ppm at 03:00; after a
+ * restart at 15:27, 9.3 → 7.7 → 16.3 ppm over 25 minutes, showing ±0.1–0.4 all the while;
+ * rtl_test -p then read +14. A 2 s SIGSTOP of lab1090 counted one gap of 1,229 ms
+ * (librtlsdr's buffers held the rest), a 0.5 s one a stall, nothing lost.
  * TODO: fit only the last ~10 minutes, so the number follows a warm-up and its ± is honest.
  */
 import type { ClockReport } from '#lib/receiver-types.ts';

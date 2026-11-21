@@ -37,9 +37,10 @@
 			<dt>
 				<InfoTip label="Tuner">
 					<p>
-						The chip that picks 1090 MHz out of everything the antenna hears and mixes it down to 0
-						Hz for the RTL2832U, which samples it. Each tuner has its own gain steps. The R820T and
-						R828D are the usual ones; rtl_tcp tells their type, rtl_sdr its name.
+						The chip that picks 1090 MHz out of everything the antenna hears and shifts it down to a
+						low frequency, for the dongle's other chip, the RTL2832U, to sample. Each tuner has its
+						own set of gain steps. The R820T and R828D are the usual ones; rtl_tcp reports which
+						type, rtl_sdr the chip's name.
 					</p>
 				</InfoTip>
 			</dt>
@@ -58,9 +59,9 @@
 			<dt>
 				<InfoTip label="Tuned to">
 					<p>
-						1090 MHz, where every Mode S reply and ADS-B message is sent, sampled 2.4 million times
-						a second: the samples cover 1088.8–1091.2 MHz. A message's pulses take about 2 MHz of
-						that.
+						Every Mode S reply and ADS-B message is sent on 1090 MHz. Taking 2.4 million samples a
+						second covers the 2.4 MHz around it, 1088.8–1091.2 MHz; most of a message's power lies
+						within about 1 MHz either side of its frequency.
 					</p>
 				</InfoTip>
 			</dt>

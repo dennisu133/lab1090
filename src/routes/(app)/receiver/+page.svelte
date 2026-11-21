@@ -75,8 +75,9 @@
 		<div class="mb-2 flex items-baseline gap-3">
 			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Messages">
 				<p>
-					Messages per second, every format, averaged over 10 s. It follows the traffic: quiet at
-					night, busy in the afternoon, and dips when the receiver had trouble.
+					Messages per second, of every kind, averaged over 10 s. It follows the traffic: quiet at
+					night, busy in the afternoon. A dip the traffic doesn't explain is the receiver having
+					trouble.
 				</p>
 			</InfoTip>
 			<span class="text-sm text-zinc-400">{perSecond(stats.rates.total)}/s now</span>
@@ -103,9 +104,9 @@
 		<section class="rounded-lg border border-zinc-800 p-4 text-sm text-zinc-300">
 			<h2 class="mb-2 text-sm font-semibold text-zinc-100">Diagnosis</h2>
 			<p>
-				Messages come from a Beast feed ({receiverLink.source}): demodulated on that machine, by
-				readsb, dump1090 or another lab1090. The samples, the gain, the noise and the CPU are its
-				business; its own statistics have them. Here: the message rate and the signal levels.
+				Messages come from a Beast feed ({receiverLink.source}): already demodulated on that
+				machine, by readsb, dump1090 or another lab1090. Its samples, gain, noise and CPU show in
+				its own statistics; here are only the message rate and the signal levels.
 			</p>
 		</section>
 	{/if}
@@ -127,10 +128,10 @@
 				<div class="mb-2 flex items-baseline gap-3">
 					<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Noise level">
 						<p>
-							The mean magnitude of the samples per 10 s, in dBFS: the noise floor. It rises with
-							the gain and with interference (other transmitters, a switching power supply or USB 3
-							nearby). Below the dashed line, rounding to the ADC's steps costs more than {MAX_ROUNDING_DB}
-							dB.
+							The noise (see Noise in the diagnosis) for every 10 s of the last hour. It rises with
+							the gain and with interference: other transmitters, or electronics nearby such as USB
+							3 devices and computers. Below the dashed line, rounding to the ADC's steps costs more
+							than {MAX_ROUNDING_DB} dB.
 						</p>
 					</InfoTip>
 					{#if summary.noise !== null}
@@ -162,20 +163,26 @@
 				wide
 			>
 				<p>
-					Each dot is an aircraft's signal at its distance, one per aircraft every 10 s, for the
-					last hour (this tab's: a reload starts over). In free space the amplitude falls with the
-					distance itself: ten times as far is 20 dB weaker, the dashed line, fitted through the
-					median.
+					Each dot is an aircraft's signal strength at its distance, one per aircraft every 10 s,
+					over the last hour (collected by this tab: a reload starts over). With nothing in the way,
+					a signal's power falls with the square of the distance: ten times as far is a hundred
+					times weaker, 20 dB. That's the dashed <strong>free space</strong> line, fitted through the
+					middle of the dots (their median).
 				</p>
 				<p>
-					The spread around it is the transponders (125 to 500 W, 6 dB apart) and the antennas. A
-					vertical antenna hears little straight up, so nearby aircraft high above (amber) sit below
-					the line. Whole directions below it are something in the way. Where the line meets the
-					noise, messages would drown even with a clear view.
+					The dots scatter around it because transponders differ (at least 70 W for light aircraft,
+					125 W for faster or higher ones, at most 500 W), and so do their antennas. A vertical
+					antenna hears little straight up, so nearby aircraft high above (amber) tend to sit below
+					the line, and so do aircraft behind a building or a hill.
 				</p>
 				<p>
-					The bars on the right: all messages since the server started, by signal level, on the same
-					scale.
+					Messages are rarely read less than about 10 dB above the noise. So aircraft on the line
+					are lost at about a third of the distance where it meets the noise, even with a clear
+					view.
+				</p>
+				<p class="text-zinc-400">
+					The bars on the right count every message since the server started, by signal strength, on
+					the same scale.
 				</p>
 			</InfoTip>
 			<span class="text-sm text-zinc-400">

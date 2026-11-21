@@ -70,17 +70,22 @@
 		<dt>
 			<InfoTip label="Gain" wide>
 				<p>
-					The dongle's ADC has 8 bits for I and for Q: 256 levels, about 48 dB from one step to full
-					scale. The gain decides where the sky lands in that range. Too little, and the noise is
-					smaller than one step: rounding to whole steps adds noise of its own and the weakest
-					messages go. Too much, and strong messages hit the top and get cut off, while the tuner
-					itself starts mixing signals into each other.
+					The dongle turns the radio wave into numbers with an <strong>ADC</strong>
+					(analogue-to-digital converter). Each sample is a pair of numbers, I and Q, that together describe
+					the wave at that moment, and each has only 8 bits: 256 levels, 128 either side of the middle.
+					So one step is 42 dB below the strongest wave the ADC can hold. The <strong>gain</strong>,
+					how much the tuner amplifies before that, decides where in this range the signals land.
 				</p>
 				<p>
-					So: too high when more than {percent(MAX_CLIPPED)} of messages clip, too low when rounding costs
-					more than {MAX_ROUNDING_DB} dB (see Noise). A suggestion is a step of this tuner about 3 dB
-					away. Set with <code>--gain</code> or <code>gain</code> in the config file; it takes effect
-					on the next start.
+					Too little, and the background noise is smaller than one step: rounding to whole steps
+					adds noise of its own, and the weakest messages are lost. Too much, and strong messages
+					hit the top and are cut off, while the tuner starts mixing signals into each other.
+				</p>
+				<p class="text-zinc-400">
+					Too high when more than {percent(MAX_CLIPPED)} of messages are clipped, too low when rounding
+					costs more than {MAX_ROUNDING_DB} dB (see Noise) and hardly any message clips. A suggested value
+					is one of this tuner's steps, about 3 dB away. Set it with <code>--gain</code> or
+					<code>gain</code> in the config file; it takes effect on the next start.
 				</p>
 			</InfoTip>
 		</dt>
@@ -92,15 +97,30 @@
 		<dt>
 			<InfoTip label="Noise" wide>
 				<p>
-					The mean magnitude of all samples, which is almost all noise: the receiver's own (the
-					tuner and the first amplifier) plus whatever the antenna picks up. In dBFS, decibels below
-					full scale.
+					The average strength of all the samples, in <strong>dBFS</strong>: decibels below the
+					strongest signal the ADC can hold (0 dBFS). Messages fill only a sliver of the time, so
+					this is almost all noise: the receiver's own (the tuner and its first amplifier) plus
+					whatever the antenna picks up.
 				</p>
 				<p>
-					From it follows σ, the noise's spread on I and Q in ADC steps (a table from simulated
-					Gaussian noise), and what rounding to whole steps costs: it adds 1/12 step² of noise, so
-					10·log<sub>10</sub>(1 + 1/(12σ²)) dB of signal-to-noise. 0.35 dB at σ = 1, 1 dB at σ =
-					0.57.
+					From it follows <math><mi>σ</mi></math>, how far the noise typically swings on I and Q, in
+					ADC steps (looked up in a table made with simulated noise). Rounding to a whole step is
+					off by up to half a step either way, which adds noise of
+					<math><mfrac displaystyle="true"><mn>1</mn><mn>12</mn></mfrac></math> step² to the noise's
+					own <math><msup><mi>σ</mi><mn>2</mn></msup></math>.
+				</p>
+				<p>
+					So the messages stand out above the noise by
+					<math>
+						<mn>10</mn><mo>·</mo><msub><mi>log</mi><mn>10</mn></msub><mo>(</mo><mn>1</mn><mo>+</mo>
+						<mfrac displaystyle="true">
+							<mn>1</mn>
+							<mrow><mn>12</mn><msup><mi>σ</mi><mn>2</mn></msup></mrow>
+						</mfrac>
+						<mo>)</mo>
+					</math>
+					dB less: 0.35 dB at <math><mi>σ</mi><mo>=</mo><mn>1</mn></math>, 1 dB at
+					<math><mi>σ</mi><mo>=</mo><mn>0.57</mn></math>.
 				</p>
 			</InfoTip>
 		</dt>
@@ -125,9 +145,10 @@
 		<dt>
 			<InfoTip label="Clipped">
 				<p>
-					Messages with a sample at the ADC's limit: I or Q at its last code, so at some phase of
-					the carrier the wave was cut off. One now and then is an aircraft passing close by; many
-					mean the gain is too high.
+					Messages during which a sample reached the ADC's limit: the wave, from the message itself
+					or from a closer aircraft sending at the same moment, was as strong as the 8 bits can
+					hold, so its peaks were cut off. An aircraft passing close by does that for a minute or
+					two; many clipped messages all the time mean the gain is too high.
 				</p>
 			</InfoTip>
 		</dt>
@@ -156,14 +177,15 @@
 		<dt>
 			<InfoTip label="Samples lost" wide>
 				<p>
-					The dongle makes 2.4 million samples a second from its own crystal, so the samples are a
-					clock too. Held against the server's clock, the difference (the lag) jumps when samples go
-					missing: a lost buffer is 131,072 samples, 55 ms. That happens when they aren't read in
-					time: USB trouble, rtl_tcp's network link, or lab1090 too slow.
+					The dongle takes 2.4 million samples a second, timed by its own crystal, so counting the
+					samples gives a clock of its own. Against the server's clock, the difference (the
+					<strong>lag</strong>) jumps when samples go missing: a lost buffer is 131,072 samples, 55
+					ms. Samples are lost when nobody collects them in time: USB trouble, a slow network to
+					rtl_tcp, or lab1090 itself falling behind.
 				</p>
-				<p>
-					The samples arrive in chunks a few ms late, so the smallest lag in each 10 s counts. A
-					rise that goes away again was a stall (everything late, nothing lost).
+				<p class="text-zinc-400">
+					Samples arrive in batches a few ms late, so each 10 s counts with its smallest lag. A rise
+					that goes away again was a stall: everything arrived late, but nothing was lost.
 				</p>
 			</InfoTip>
 		</dt>
@@ -193,8 +215,9 @@
 		<dt>
 			<InfoTip label="Demodulating">
 				<p>
-					Time spent finding and reading messages, per second of samples, on one CPU core. Near 100
-					% the samples pile up faster than they're read, and then get lost.
+					How long finding and reading messages takes, against the time the samples cover, on one
+					CPU core: at 5 %, each second of samples takes 50 ms. Near 100 % the samples arrive faster
+					than they're read, pile up and are lost.
 				</p>
 			</InfoTip>
 		</dt>
@@ -216,15 +239,22 @@
 		<dt>
 			<InfoTip label="Crystal" wide>
 				<p>
-					How far the dongle's 28.8 MHz crystal is off, in parts per million: the slow slope of the
-					same lag (+1 ppm: 1 ms more samples per 1000 s). Cheap dongles are often 20–50 ppm off,
+					A quartz crystal sets the dongle's pace: the frequency it tunes to and how fast it
+					samples. This is how far its 28.8 MHz crystal is off, in millionths (ppm), measured from
+					how the lag (see Samples lost) slowly drifts: at +1 ppm, every 1000 s brings 1 ms of
+					samples too many. Cheap dongles are often tens of ppm off, and more while they warm up;
 					those with a temperature-compensated crystal (TCXO) about 1.
 				</p>
-				<p>
-					Mode S doesn't mind: 50 ppm tunes 55 kHz beside 1090 MHz, well inside the 2.4 MHz we
-					sample, and the demodulator only looks at the magnitude, not the phase. It would matter
-					for timing between receivers (multilateration). The ± is the fit's standard error; it
-					shrinks the longer a run goes.
+				<p class="text-zinc-400">
+					Receiving Mode S doesn't mind: 50 ppm off tunes 55 kHz beside 1090 MHz, while transponders
+					themselves may be up to 1 MHz off, and the demodulator only looks at how strong the signal
+					is, not at its phase. Multilateration, which times one message at several receivers, works
+					out a steady error like this by itself.
+				</p>
+				<p class="text-zinc-400">
+					The ± is how precise the measurement is so far; it shrinks the longer lab1090 runs. But
+					the crystal drifts with its temperature, for a while after a start and between night and
+					day, and the ± doesn't show that: it assumes the error stays put.
 				</p>
 			</InfoTip>
 		</dt>
