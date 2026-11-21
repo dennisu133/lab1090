@@ -162,22 +162,23 @@
 	<!-- p-2: a see-through margin, part of the tooltip. Above and below, the gap to the label:
 	     the pointer crossing it stays on the tooltip. At the sides, room to the window's edge;
 	     the negative margin on the label's side lines the box up with the label (flip-inline
-	     swaps it with the alignment). Widths include it: w-100 = 384 px of box. Fades in and
-	     out (display and overlay switch at the end, so the fade-out shows). -->
+	     swaps it with the alignment). As wide as its content, up to a limit that includes it:
+	     25rem = 384 px of box. Fades in and out (display and overlay switch at the end, so the
+	     fade-out shows). -->
 	<div
 		popover="manual"
 		role="tooltip"
 		style:position-anchor={anchor}
 		{@attach popover}
 		class={[
-			'max-h-full max-w-screen flex-col overflow-visible bg-transparent p-2 open:flex',
+			'max-h-full w-max flex-col overflow-visible bg-transparent p-2 open:flex',
 			'm-auto supports-[position-area:block-end]:inset-auto supports-[position-area:block-end]:m-0',
 			align === 'left'
 				? '[position-area:block-end_span-inline-end] supports-[position-area:block-end]:-ms-2'
 				: '[position-area:block-end_span-inline-start] supports-[position-area:block-end]:-me-2',
 			'[position-try-fallbacks:flip-inline,--info-below,flip-block,flip-block_flip-inline,--info-above] [position-try-order:most-height]',
 			'opacity-0 transition-[opacity,display,overlay] transition-discrete open:opacity-100 starting:open:opacity-0',
-			wide ? 'w-164' : 'w-100'
+			wide ? 'max-w-[min(100vw,41rem)]' : 'max-w-[min(100vw,25rem)]'
 		]}
 	>
 		<div

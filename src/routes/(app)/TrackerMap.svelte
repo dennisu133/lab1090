@@ -532,7 +532,7 @@
 			role="status"
 		>
 			No map: this device can't reach OpenFreeMap, where the map comes from. The aircraft are live:
-			they come from your receiver.
+			they come from the receiver.
 		</p>
 	{/if}
 

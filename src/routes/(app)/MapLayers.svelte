@@ -15,18 +15,17 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import { flightLevel } from '#lib/describe/format.ts';
 	import type { Layers } from '#lib/map/layers.ts';
 	import { MediaQuery } from 'svelte/reactivity';
 	import LayerSwitch from './LayerSwitch.svelte';
-	import { PREDICT_S, PREDICT_SELECTED_S } from '#lib/map/features.ts';
+	import { PREDICT_S, PREDICT_SELECTED_S, RINGS } from '#lib/map/features.ts';
 	import { MAX_OPEN_TURN } from '#lib/tracker/motion.ts';
-	import { GAP_MS, SLOWER_TOLERANCE, TRACK_TOLERANCE_DEG, TRAIL_MS } from '#lib/tracker/trail.ts';
+	import { GAP_MS, TRAIL_MS } from '#lib/tracker/trail.ts';
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
 	import { BANDS } from '#lib/coverage/coverage.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
-	import { MIN_ELLIPSE_KM } from '#lib/radar/finder.ts';
-	import { MIN_CORRECTION } from '#lib/weather/headings.ts';
 
 	interface Props {
 		layers: Layers;
@@ -75,8 +74,10 @@
 				</svg>
 			{/snippet}
 			<p>
-				Circles at equal distances around the receiver. Nautical miles are aviation's unit: one
-				minute of latitude, 1,852 m.
+				Circles around the receiver at {RINGS.NM.slice(0, -1).join(', ')} and {RINGS.NM.at(-1)} nautical
+				miles (NM), or at {RINGS.km[0]} to {RINGS.km.at(-1)} km with the units set to km. A nautical mile
+				is 1,852 m, about a minute of latitude, and it's what aviation mostly measures distances in (ICAO
+				Annex 5 allows it alongside the kilometre).
 			</p>
 		</LayerSwitch>
 		<LayerSwitch bind:checked={layers.trail} label="Show the trails" name="Trail">
@@ -100,10 +101,9 @@
 				aircraft went.
 			</p>
 			<p>
-				A fainter line bridges the gap where the aircraft must have flown straight. Its length over
-				the gap's time is a speed, and any detour would make it slower than the aircraft flew. So it
-				has to be the ground speed the aircraft reported on both sides (at most {SLOWER_TOLERANCE *
-					100} % slower), and the line has to point along the track it reported at both ends (within {TRACK_TOLERANCE_DEG}°).
+				A fainter line bridges the gap only where the aircraft must have flown straight across: the
+				line points the way the aircraft was going on both sides, and covering it in the time took
+				the speed it reported. Any detour would have taken longer.
 			</p>
 		</LayerSwitch>
 		<LayerSwitch
@@ -120,14 +120,14 @@
 				</svg>
 			{/snippet}
 			<p>
-				Where each aircraft gets to in the next {PREDICT_S / 60} min ({PREDICT_SELECTED_S / 60} min with
-				minute marks when selected) if it keeps doing what it does now: the same ground speed, the turn
-				rate measured over the last seconds, climbing or descending to the altitude set on the autopilot.
+				Where each aircraft gets to in the next {PREDICT_S / 60} min ({PREDICT_SELECTED_S / 60} min, with
+				minute marks, when selected) if it keeps doing what it's doing: the same speed, the same turn,
+				climbing or descending to the altitude set on its autopilot.
 			</p>
 			<p>
-				A turn ends at the selected heading if the autopilot steers by heading; following its route
-				(LNAV) the end is unknown, so the line stops after {MAX_OPEN_TURN}°. It can't see a turn or
-				climb coming before it starts.
+				A turn ends at the heading set on the autopilot, if it steers by heading. Following its
+				planned route, the end is unknown, so the line stops after {MAX_OPEN_TURN}°. No prediction
+				sees a turn or a climb coming before it starts.
 			</p>
 		</LayerSwitch>
 		<LayerSwitch
@@ -143,16 +143,15 @@
 				</svg>
 			{/snippet}
 			<p>
-				How far off the position may be, as the aircraft states it, to scale. With satellite
-				navigation it's tens of metres, hidden under the symbol unless you zoom in close; large
-				circles mean no satellites (inertial navigation, radio beacons) or jamming.
+				How far off each position may be, as the aircraft itself states it, to scale. With satellite
+				navigation it's tens of metres, hidden under the symbol until zoomed in close. Large circles
+				mean the aircraft navigates without satellites, or its satellite receiver is being jammed.
 			</p>
 			<p>
-				<strong>Filled: accuracy</strong> (NACp), where the true position is 95 % of the time.
-				<strong>Ring: integrity</strong> (NIC), the containment radius air traffic control relies
-				on.
-				<strong class="text-amber-400">Amber ring</strong>, not to scale: it knows neither (NACp 0,
-				NIC 0).
+				<strong>Filled: accuracy</strong> (NACp), where the real position is 95 % of the time.
+				<strong>Ring: integrity</strong> (NIC), a limit it stays within unless its navigation fails
+				unnoticed.
+				<strong class="text-amber-400">Amber ring</strong>, not to scale: it knows neither.
 			</p>
 		</LayerSwitch>
 		<LayerSwitch bind:checked={layers.winds} label="Show the wind barbs" name="Wind">
@@ -168,19 +167,19 @@
 				</svg>
 			{/snippet}
 			<p>
-				The wind the aircraft measured, where they measured it: one barb per aircraft and {BARB_BIN_MS /
-					60_000} min, for the last {BARB_FADE_MS / 60_000} min, fading with age, coloured by altitude.
+				The wind where the aircraft flew: one barb per aircraft and {BARB_BIN_MS / 60_000} min, for the
+				last {BARB_FADE_MS / 60_000} min, fading with age, in the colour of its altitude.
 			</p>
 			<p>
 				<strong>How to read one:</strong> the staff points from the dot to where the wind comes from.
-				The feathers add up to the speed: a long one 10 kt, a short one 5 kt, a triangle (pennant) 50
-				kt. They sit on the low-pressure side: in the northern hemisphere, on the right looking along
-				the staff from the dot.
+				The feathers add up to its speed: a long one 10 kt, a short one 5 kt, a triangle 50 kt.
 			</p>
 			<p>
-				Nobody sends a wind: it's how the aircraft moves over the ground minus how it moves through
-				the air (registers 5,0 and 6,0, which only some radars ask for). A heading clearly off from
-				the other aircraft's winds (at least {MIN_CORRECTION}°) is corrected first.
+				Nobody sends the wind: it's worked out from the speeds and directions some radars read out
+				from the aircraft. More on <a
+					href={resolve('/(app)/weather')}
+					class="text-accent-400 hover:text-accent-300">Weather</a
+				>.
 			</p>
 		</LayerSwitch>
 		<LayerSwitch bind:checked={layers.coverage} label="Show the coverage" name="Coverage">
@@ -198,12 +197,12 @@
 				</svg>
 			{/snippet}
 			<p>
-				How far this antenna hears in every direction: one outline per altitude band ({BANDS.map(
+				How far this antenna hears in each direction, one outline per altitude band ({BANDS.map(
 					(b) => b.name
-				).join(', ')}), out to the farthest position heard in it. The dashed amber circle is the
-				radio horizon at {flightLevel(HORIZON_FT)}: how far a line of sight reaches over a smooth
-				Earth. An outline well short of it: a building or a hill in the way, or the signal gives out
-				first.
+				).join(', ')}). The dashed amber circle is how far it could hear aircraft at {flightLevel(
+					HORIZON_FT
+				)} over a smooth Earth (the radio horizon). An outline well inside it: a building or a hill is
+				in the way, or the signal gives out first.
 			</p>
 		</LayerSwitch>
 		<LayerSwitch bind:checked={layers.roads} label="Show the roads" name="Roads" divided>
@@ -249,19 +248,19 @@
 				</svg>
 			{/snippet}
 			<p>
-				The ground radars asking the aircraft we hear, found from the answers alone: we never hear a
-				radar itself (it asks on 1030 MHz, we listen on 1090). Each all-call reply names its radar,
-				and a turning radar only asks while its beam points at the aircraft: the reply times give
-				how fast it turns, and when the beam passed aircraft whose positions we know, where it
-				stands.
+				The secondary radars on the ground (air traffic control's, or the military's), found from
+				the aircraft's answers alone: the antenna never hears a radar itself, which asks on 1030
+				MHz, while aircraft answer on 1090.
 			</p>
 			<p>
-				The dashed ellipse: how sure the fit is (at least {MIN_ELLIPSE_KM} km either way); the sweeping
-				line: where the beam points now.
+				A radar's beam sweeps round, and aircraft only answer while it points at them. Some answers
+				name the radar that asked. So the times of the answers say how fast it turns, and the
+				positions of the aircraft that answered say where it must stand.
 			</p>
+			<p>The dashed ellipse: where it probably is. The sweeping line: where the beam points now.</p>
 			<p>
-				It costs about a minute of CPU an hour when the sky is busy; switched off, it stops and
-				forgets.
+				Experimental. Radars show up after a few minutes. It's off until switched on, as it takes
+				more work than the rest of the page together; switched off, it forgets what it found.
 			</p>
 		</LayerSwitch>
 	</div>

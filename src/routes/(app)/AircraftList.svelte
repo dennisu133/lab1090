@@ -18,7 +18,7 @@
 	import { KM_PER_NM } from '#lib/units.ts';
 	import { altitudeCss } from '#lib/map/altitude.ts';
 	import { distanceText, flightLevel, type Unit } from '#lib/describe/format.ts';
-	import { shownPosition } from '#lib/tracker/shown.ts';
+	import { SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
 	import type { LatLon } from '#lib/modes/cpr.ts';
 	import { allocation } from '#lib/modes/nationality.ts';
 	import { alertsOf, identing } from '#lib/tracker/alerts.ts';
@@ -160,28 +160,25 @@
 		<span>
 			<InfoTip label="Flight">
 				<p>
-					The callsign, or the transponder's 24-bit address until one comes in. The flag: the State
-					of registration, which the address alone says (each State has its own block).
-				</p>
-				<p>
-					A code after the name: an alert, red for an emergency (7700, 7600, 7500), amber for an
-					ACAS resolution advisory (RA) or a flight asking for priority. IDENT: the pilot pressed
-					the button that makes it stand out on the controller's screen.
+					The callsign, the flight's name on the radio, or the transponder's address until a
+					callsign comes in. The flag: the country the aircraft is registered in.
 				</p>
 			</InfoTip>
 		</span>
 		<span class="text-right">
 			<InfoTip label="Alt" align="right">
 				<p>
-					Barometric altitude as a flight level: hundreds of feet in the standard atmosphere, FL350
-					= 35,000 ft. GND: on the ground.
+					Altitude as a flight level (FL): hundreds of feet, so FL350 is 35,000 ft. Measured by air
+					pressure, as if the atmosphere were standard. GND: on the ground.
 				</p>
 			</InfoTip>
 		</span>
 		<span class="text-right">
 			<InfoTip label={unit === 'NM' ? 'kt' : 'km/h'} align="right">
 				<p>
-					Ground speed. Aviation's unit is the knot: a nautical mile per hour, 1 kt = 1.852 km/h.
+					Speed over the ground{unit === 'NM'
+						? ', in knots (kt): nautical miles per hour, 1 kt = 1.852 km/h'
+						: ''}.
 				</p>
 			</InfoTip>
 		</span>
@@ -198,13 +195,20 @@
 		<div class="px-4 pt-4 pb-1 text-xs text-zinc-500">
 			<InfoTip label="Heard, not on the map ({rows.elsewhere.length})">
 				<p>
-					<strong class="text-zinc-200">No ADS-B:</strong> older transponders only answer radars. A radar
-					knows where they are from its antenna's direction and the reply's delay; a receiver that only
-					listens doesn't.
+					<strong class="text-zinc-200">Too far away:</strong> at the edge of reception only some
+					messages get through, and a position takes two particular ones within 10 s. The same when
+					positions stop getting through: after {SHOW_MS / 1000} s an aircraft leaves the map.
 				</p>
 				<p>
-					<strong class="text-zinc-200">ADS-B without a position:</strong> no GPS fix ("no position information",
-					TC 0), or at the edge of reception: a position needs an even and an odd message within 10 s.
+					<strong class="text-zinc-200">No ADS-B:</strong> its transponder only answers radars,
+					which says nothing about where it is to a receiver that only listens. In Europe, ADS-B is
+					only required for instrument flights by aircraft heavier than 5.7 t or faster than 250 kt,
+					built from 1995 on (<a
+						href="https://eur-lex.europa.eu/eli/reg_impl/2023/1770/oj"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">EU 2023/1770</a
+					>), so these are mostly light, military or old aircraft.
 				</p>
 				<p>
 					<strong class="text-zinc-200">Not confirmed yet:</strong> a first position is only drawn once

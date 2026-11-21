@@ -38,6 +38,21 @@ export function provenanceText(p: Provenance): string {
 	}
 }
 
+// Links to the pages that explain a message type, with it picked (LinkedText's syntax).
+
+/** "[type code 4](/frames?tc=4)": /frames with that code (or group of codes) picked. */
+export function typeCodeLink(tc: number, to?: number): string {
+	const key = to === undefined ? `${tc}` : `${tc}–${to}`;
+	return `[type code${to === undefined ? '' : 's'} ${key}](/frames?tc=${encodeURIComponent(key)})`;
+}
+
+/** "[downlink format 4](/frames?df=4)" */
+export const formatLink = (df: number) => `[downlink format ${df}](/frames?df=${df})`;
+
+/** "[Comm-B register 5,0](/comm-b?register=5%2C0)": /comm-b with that register picked. */
+export const registerLink = (bds: string) =>
+	`[Comm-B register ${bds}](/comm-b?register=${encodeURIComponent(bds)})`;
+
 export function altitudeField(altitude: Altitude, what = 'Barometric altitude'): Field {
 	const title = {
 		none: `${what}: not available`,

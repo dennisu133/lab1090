@@ -4,7 +4,7 @@
  * calculation with this observation's own numbers, so any value can be checked by hand.
  *
  * And the tracker panel's "Weather where it flies" (weatherHereFields): the same, per
- * aircraft, in sentences (the panel's tooltips are paragraphs, and also for phones).
+ * aircraft, in a few sentences each, linking to /weather/aircraft for the calculation.
  */
 import { compass } from '#lib/geo.ts';
 import { A0, RHO0, T0 } from '#lib/modes/air-data.ts';
@@ -23,7 +23,8 @@ import {
 	type Observation
 } from '#lib/weather/observation.ts';
 import { AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
-import { components, normalise, windOf, type Wind } from '#lib/weather/wind.ts';
+import { components, windOf, type Wind } from '#lib/weather/wind.ts';
+import type { PanelField } from './aircraft';
 import type { Field } from './field';
 import { ago, celsius, directionText, interval, levelOrFeet, n, signed } from './format';
 
@@ -186,16 +187,21 @@ export function weatherHereFields(
 	w: WeatherAircraft,
 	check: HeadingCheck | null,
 	now: number
-): (Field & { label: string })[] {
-	const fields: (Field & { label: string })[] = [];
+): PanelField[] {
+	const fields: PanelField[] = [];
 	const minute = `${AVERAGE_MS / 60_000} min`;
+	/** Where a calculation (`card`: its anchor) is worked through, for this aircraft. */
+	const workedThrough = (card: string) =>
+		`Worked through step by step on [Weather → Aircraft](/weather/aircraft?icao=${w.icao}#${card}).`;
+	const readOut = (rx: number) =>
+		`Read out by radars (Comm-B registers [5,0](/comm-b?register=5%2C0) and [6,0](/comm-b?register=6%2C0)), ${ago(now - rx)}.`;
 
 	// --- wind ----------------------------------------------------------------------------
 	const o = w.lastWind;
 	if (o?.wind) {
-		const { wind, trueHeading, declination, speedRange, air } = o.wind;
-		const { groundSpeed, track, tas } = o.inputs.trackAndTurn.value;
-		const heading = o.inputs.headingAndSpeed.value.heading!;
+		const { wind, air } = o.wind;
+		const { track, tas } = o.inputs.trackAndTurn.value;
+		const { trueHeading } = o.wind;
 		// A heading clearly off (headings.ts) is corrected, as on the map and on /weather:
 		// ground − the air vector turned by the correction.
 		const correction = check?.significant ? check.correction : 0;
@@ -214,24 +220,24 @@ export function weatherHereFields(
 		fields.push({
 			label: 'Wind',
 			value: `${compass(shown.direction)} ${directionText(shown.direction)} · ${Math.round(shown.speed)} kt`,
-			title: `Where the wind comes from (degrees from true north) and how fast${level}, worked out from its own registers${
+			title: `Where the wind comes from (clockwise from true north) and how fast${level}${
 				mean ? `: the mean of its ${average.windCount} readings in the last ${minute}` : ''
-			}. Nobody sends a wind: it's the wind triangle. Over the ground the aircraft makes ${groundSpeed} kt along ${track!.toFixed(1)}° (register 5,0); through the air ${tas} kt along its heading, ${heading.toFixed(1)}° magnetic (6,0) + ${signed(declination)}° declination = ${trueHeading.toFixed(1)}° true${
-				correction
-					? `, ${signed(correction)}° heading correction (below) = ${normalise(trueHeading + correction).toFixed(1)}°`
-					: ''
-			}. The difference between the two is the air moving: ${Math.round(latest.speed)} kt from ${directionText(latest.direction)} in the latest reading, ${ago(now - o.rx)}. The registers' rounding alone allows ±${Math.max(1, Math.round((speedRange[1] - speedRange[0]) / 2))} kt.`,
+			}. Nobody sends the wind. It's the difference between how the aircraft moves over the ground and how it moves through the air, which radars read out from it.${
+				correction ? ' Its heading was corrected first (Heading check).' : ''
+			}\n\n${workedThrough('wind')}`,
+			footnote: readOut(o.rx),
 			tone: 'main'
 		});
 		const c = components(latest, trueHeading + correction, track!);
 		fields.push({
 			label: 'For it',
 			value: `${alongText(c.tailwind)} · ${driftText(c.drift)} drift`,
-			title: `The wind split along and across the nose, in the latest reading. ${
+			title: `The latest wind, split into the part along the aircraft and the part across it. ${
 				c.tailwind >= 0
 					? `A tailwind: it makes ${Math.round(c.tailwind)} kt more over the ground than through the air, which shortens the flight.`
 					: `A headwind: it makes ${Math.round(-c.tailwind)} kt less over the ground than through the air, which costs time and fuel.`
-			} The ${acrossText(c.crosswind)} makes it crab: the nose points ${Math.abs(c.drift).toFixed(1)}° ${c.drift >= 0 ? 'left' : 'right'} of the track.`,
+			} The ${acrossText(c.crosswind)} pushes it sideways, so it flies slightly crabwise: the nose points ${Math.abs(c.drift).toFixed(1)}° ${c.drift >= 0 ? 'left' : 'right'} of where it goes (the drift).`,
+			footnote: readOut(o.rx),
 			tone: 'main'
 		});
 		if (check) {
@@ -241,10 +247,10 @@ export function weatherHereFields(
 				value: correction
 					? `${Math.abs(correction).toFixed(1)}° off, corrected (as sent: ${Math.round(asSent.speed)} kt)`
 					: `agrees with ${check.others} others`,
-				title: `Its wind compared with ${check.others} other aircraft's within ${n(MAX_LEVEL_FT)} ft and ${MAX_TIME_MS / 60_000} min. Each degree of heading error turns the air vector and makes ${n(tas! * Math.sin(Math.PI / 180))} kt of crosswind that isn't there, so a heading that's off shows as a wind that disagrees with everyone else's. ${
+				title: `Its wind compared with that of ${check.others} other aircraft within ${n(MAX_LEVEL_FT)} ft and ${MAX_TIME_MS / 60_000} min. A heading 1° off adds ${n(tas! * Math.sin(Math.PI / 180))} kt of crosswind that isn't there, so it shows as a wind that disagrees with everyone else's.\n\n${
 					correction
-						? `Its heading looks ${Math.abs(correction).toFixed(1)}° too far ${correction > 0 ? 'left' : 'right'}: the others' wind fits best with it turned ${correction > 0 ? 'right' : 'left'}, off by ${n(check.before)} kt on average as sent, ${n(check.after)} kt corrected. Why it can be: an old magnetic variation table in its navigation database, or a compass out of calibration. So the wind above, the barbs on the map and the profile on /weather use the corrected heading; as sent, its wind would be ${Math.round(asSent.speed)} kt from ${directionText(asSent.direction)}.`
-						: `It fits best with its heading turned ${signed(check.correction)}°: less than the ${MIN_CORRECTION}° the check can tell from the others' own errors and the wind changing from place to place, so it's used as sent.`
+						? `Its heading looks ${Math.abs(correction).toFixed(1)}° too far ${correction > 0 ? 'left' : 'right'}, most likely from an old table of the Earth's magnetic field in its navigation system. So the wind above, the barbs on the map and [Weather](/weather) use it corrected; as sent, its wind would be ${Math.round(asSent.speed)} kt from ${directionText(asSent.direction)}.`
+						: `It fits best with its heading turned ${signed(check.correction)}°: less than the ${MIN_CORRECTION}° the check can tell apart from the others' own errors, so it's used as sent. More on [Weather](/weather).`
 				}`,
 				tone: correction ? 'alert' : 'minor'
 			});
@@ -253,7 +259,8 @@ export function weatherHereFields(
 		fields.push({
 			label: 'Wind',
 			value: 'not now',
-			title: `Its registers 5,0 and 6,0 come in, but the latest pair doesn't give a wind to trust: ${w.latest.windProblem}. The wind triangle needs the heading and the track from the same moment, in straight flight.`,
+			title: `Radars read out its speeds and directions, but the latest pair doesn't give a wind to trust: ${w.latest.windProblem}. The wind needs both from the same moment, in straight flight.`,
+			footnote: readOut(w.latest.rx),
 			tone: 'minor'
 		});
 	}
@@ -267,20 +274,19 @@ export function weatherHereFields(
 			(w.average.isaCount > 1 ? w.average.isaDeviation : null) ??
 			t.temperature.atAltitude?.isaDeviation ??
 			null;
-		const { tas } = t.inputs.trackAndTurn.value;
-		const mach = t.inputs.headingAndSpeed.value.mach!;
 		fields.push({
 			label: 'Outside air',
 			value: `${celsius(kelvin)}${deviation === null ? '' : ` · ${isaText(deviation)}`}`,
 			title: `The temperature of the air it flies through${
 				averaged === null
 					? ''
-					: ` (the mean of the last ${minute}: ${w.average.temperatureCount} readings)`
-			}. Not sent: true airspeed (5,0) / Mach (6,0) = the speed of sound, which depends only on the temperature (${tas} kt / ${mach.toFixed(3)} = ${t.temperature.speedOfSound.toFixed(0)} kt in the latest reading). ${
+					: `: the mean of the last ${minute} (${w.average.temperatureCount} readings)`
+			}. Nobody sends it either: its speed through the air divided by its Mach number gives the speed of sound there, which depends only on the temperature.${
 				deviation !== null
-					? `The standard atmosphere has ${celsius(kelvin - deviation)} here, so the air is ${Math.abs(deviation).toFixed(0)} K ${deviation >= 0 ? 'warmer' : 'colder'} than standard (ISA ${signed(deviation, 0)}). Warmer air is thinner: the engines give less thrust and the wings less lift.`
+					? ` The standard atmosphere (ISA) has ${celsius(kelvin - deviation)} at this altitude, so the air is ${Math.abs(deviation).toFixed(0)} K ${deviation >= 0 ? 'warmer' : 'colder'} than standard.`
 					: ''
-			} Its probe reads ${celsius(t.temperature.total)}: the air warms as it's stopped in front of it.`,
+			}\n\n${workedThrough('temperature')}`,
+			footnote: readOut(t.rx),
 			tone: 'main'
 		});
 	}

@@ -1,8 +1,13 @@
 /**
  * The tracker's detail panel: everything known about one aircraft, in sections, each value
- * with an explanation of what it is, where it came from and what it means. The tracker
+ * with an explanation of what it is and what it means, and where it came from. The tracker
  * works on phones too, so the panel shows these explanations as tappable InfoTips, not as
  * hover titles: every field here has a `label`.
+ *
+ * The tracker is the first page people see, so the explanations are short and casual, and
+ * leave the details to the page that has them, with a link (`[text](/weather)`). Message
+ * types (type codes, downlink formats) only appear in the `footnote` (`origin()`), linked to /frames,
+ * which explains them.
  */
 import { bearing, compass, distanceKm } from '#lib/geo.ts';
 import { airlineDesignator, type DbAircraft, type DbFlight } from '#lib/aircraft-db.ts';
@@ -24,7 +29,7 @@ import { EXTRAPOLATE_MS, SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
 import { KM_PER_NM, NM } from '#lib/units.ts';
 import { alertSection, identField } from './alert';
 import { contrailField } from './contrail';
-import { provenanceText, type Field } from './field';
+import { formatLink, registerLink, typeCodeLink, type Field } from './field';
 import {
 	ago,
 	dbfs,
@@ -41,8 +46,16 @@ import { weatherHereFields } from './weather';
 /** A row in the panel. */
 export type PanelField = Omit<Field, 'title'> & {
 	label: string;
-	/** The explanation; none for values that explain themselves (Route, Messages, …). */
+	/**
+	 * The explanation; none for values that explain themselves (Route, Messages, …). A blank
+	 * line starts a paragraph; `[text](/frames)` or `[text](https://…)` is a link.
+	 */
 	title?: string;
+	/**
+	 * A dimmed line under the explanation: which message it came from and how long ago
+	 * (`origin()`), or the fine print (the route check's limits).
+	 */
+	footnote?: string;
 	/** A few plain words after the value, dimmed: what a code stands for ("1000 · conspicuity code"). */
 	note?: string;
 	/** Every possible value, the one sent marked: a table under the explanation. */
@@ -60,18 +73,23 @@ export interface Section {
 	tier?: Tier;
 }
 
-/** Where a value came from, for the end of a tooltip. */
-function source<T>(v: Timed<T>, now: number): string {
+/**
+ * Where a value came from, for the line under its explanation: the message type, linked to
+ * /frames (or /comm-b), where the types are explained.
+ */
+export function origin<T>(v: Timed<T>, now: number): string {
 	const p = v.from;
-	const what =
-		p.kind === 'position check'
-			? 'the position check'
-			: p.kind === 'adsb'
-				? `ADS-B (${provenanceText(p)})`
-				: p.kind === 'reply'
-					? `a radar DF ${p.df} reply`
-					: `Comm-B register ${p.bds}, read by a radar`;
-	return ` From ${what}, ${ago(now - v.t)}.`;
+	const when = ago(now - v.t);
+	switch (p.kind) {
+		case 'adsb':
+			return `From an ADS-B message (${typeCodeLink(p.tc, p.to)}), ${when}.`;
+		case 'reply':
+			return `From a reply to a radar (${formatLink(p.df)}), ${when}.`;
+		case 'comm-b':
+			return `Read out by a radar (${registerLink(p.bds)}), ${when}.`;
+		case 'position check':
+			return `From the position checks, ${when}.`;
+	}
 }
 
 /** "30 m", "0.3 NM (556 m)": metres up to 100, then nautical miles as well. */
@@ -92,7 +110,8 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 		fields.push({
 			label: 'Accuracy',
 			value: u.accuracy === null ? 'unknown (NACp 0)' : `< ${radius(u.accuracy)} (NACp ${u.nacP})`,
-			title: `The navigation system's estimate of its own error: the true position is within this distance 95 % of the time (NACp, 0–11). Satellite navigation gives NACp 8–10 (93 m down to 10 m); larger means inertial navigation (drifts about 1 NM an hour), radio beacons, or a disturbed receiver, e.g. jamming.${u.accuracy === null ? " Unknown: it can't say, usually without a satellite fix." : ''}${source(a.nacP, now)}`,
+			title: `How far off the position may be, by the navigation system's own estimate: the real position is within this distance 95 % of the time. Sent as the navigation accuracy category (NACp), 0–11.\n\nWith satellite navigation it's 3–93 m. More means the aircraft navigates without it (inertial navigation drifts with time, radio beacons are coarser) or its satellite receiver is disturbed, e.g. by jamming.${u.accuracy === null ? " Unknown: it can't say, usually because it has no satellite fix." : ''}`,
+			footnote: origin(a.nacP, now),
 			tone: u.accuracy === null || u.accuracy > 0.3 * NM ? 'alert' : 'main'
 		});
 	const c = u.containment;
@@ -105,11 +124,12 @@ function uncertaintyFields(a: TrackedAircraft, now: number): Section['fields'] {
 				c.rc === null
 					? 'unknown'
 					: `< ${radius(c.rc)}${c.nic === null ? ' (HPL)' : ` (NIC ${c.nic})`}${sil ? `, SIL ${sil}` : ''}`,
-			title: `The radius of containment: the position is guaranteed to be within it unless the navigation system fails unnoticed (SIL says how likely${sil ? `: ${SIL_ODDS[sil]} ${per}` : ''}). Air traffic control separates aircraft on this, not on the accuracy. Not sent as a number: the type code (TC ${a.positionCode.value.tc}) says it, ${
+			title: `A limit rather than an estimate: the position stays within this radius unless the navigation system fails without noticing. Sent as the navigation integrity category (NIC)${
 				c.nic === null
-					? 'as the horizontal protection limit (ADS-B version 0 has no NIC).'
-					: 'refined by the NIC supplement bits (TC 31 and the position message).'
-			}${c.assumed ? ' A supplement bit is still missing, so this is the larger possible radius.' : ''}${source(a.positionCode, now)}`,
+					? '; older transponders (ADS-B version 0) send the horizontal protection limit (HPL) instead'
+					: ''
+			}.${sil ? ` How likely such a failure is: the source integrity level (SIL), here ${SIL_ODDS[sil]} ${per}.` : ''}${c.assumed ? ' A bit that narrows it down hasn’t come in yet, so this is the larger of the possible radii.' : ''}\n\nTo fly where ADS-B is required, US rules ask for at least NIC 7 (0.2 NM) and NACp 8 (93 m) ([14 CFR 91.227](https://www.ecfr.gov/current/title-14/part-91/section-91.227)).`,
+			footnote: origin(a.positionCode, now),
 			tone: c.rc === null || c.rc > NM ? 'alert' : 'main'
 		});
 	}
@@ -122,7 +142,7 @@ function unreachableField(): PanelField {
 		label: 'Database',
 		value: 'not reachable',
 		title:
-			'This device couldn’t reach adsbdb (api.adsbdb.com), the database of airframes and routes: no type, registration, owner, photo or route. Everything else here is decoded from the aircraft’s own messages, which need no internet. It’s asked again the next time you select the aircraft.',
+			'This device couldn’t reach adsbdb (api.adsbdb.com), the online database of aircraft and routes: no type, registration, owner, photo or route. Everything else here comes from the aircraft’s own messages, which need no internet. It’s asked again the next time the aircraft is selected.',
 		tone: 'minor'
 	};
 }
@@ -138,7 +158,7 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 			label: 'Type',
 			value: [db.icaoType, `${db.manufacturer} ${db.type}`.trim()].filter(Boolean).join(' · '),
 			title:
-				"The ICAO type designator (Doc 8643), as flight plans and the controller's screen use it (A21N = Airbus A321neo, B738 = Boeing 737-800), then the manufacturer's model. ADS-B itself only says the weight class (the category).",
+				'The type designator, the short code for the model in flight plans (A21N: Airbus A321neo, B738: Boeing 737-800; ICAO Doc 8643), then the maker’s name for it. The aircraft’s own messages only say its weight class (Category).',
 			tone: 'main'
 		});
 	if (db.registration) {
@@ -146,7 +166,7 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 		const block = allocation(a.icao);
 		const register =
 			db.country && !(block?.country && block.country === db.country.iso.toLowerCase())
-				? ` It's on ${db.country.name}'s register, ${block ? `but the address is from ${block.state}'s block` : 'but the address is in no State’s block'}: an aircraft that changed registers keeps its address until the new State assigns one, and databases mix up owner and register countries.`
+				? `It’s on ${db.country.name}’s register, ${block ? `but the address is from ${block.state}’s block` : 'but the address is in no country’s block'}: an aircraft that moves to another register keeps its address until the new country assigns one, and databases sometimes mix up the owner’s country and the register’s.`
 				: '';
 		fields.push({
 			label: 'Registration',
@@ -156,7 +176,7 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 				`${register}${
 					decoded === undefined || decoded === db.registration
 						? ''
-						: ` A radar read ${decoded} from the transponder (register 2,1): one of the two is out of date.`
+						: ` A radar read ${decoded} from the transponder itself: one of the two is out of date.`
 				}`.trim() || undefined,
 			tone: decoded !== undefined && decoded !== db.registration ? 'alert' : 'main',
 			mono: true
@@ -167,14 +187,14 @@ function airframeFields(a: TrackedAircraft, db: DbAircraft): Section['fields'] {
 		const operator = !db.operator
 			? ''
 			: flying === null
-				? ` In brackets: its usual operator's ICAO designator.`
+				? ' In brackets: the airline that usually flies it.'
 				: flying === db.operator
 					? ''
-					: ` In brackets: its usual operator, but the callsign says ${flying}: it's flying for another airline today (a wet lease or charter), or it changed hands.`;
+					: ` In brackets: the airline that usually flies it, but the callsign says ${flying}: today it flies for another airline (hired with its crew, or chartered), or it changed hands.`;
 		fields.push({
 			label: 'Owner',
 			value: db.operator ? `${db.owner} (${db.operator})` : db.owner,
-			title: `Who the aircraft is registered to: often not the airline, as leasing companies own about half of all airliners. The callsign says who flies it today.${operator}`,
+			title: `Who the aircraft is registered to: often a leasing company rather than the airline. The callsign says who flies it today.${operator}`,
 			tone: 'main'
 		});
 	}
@@ -188,7 +208,8 @@ function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 		identity.push({
 			label: 'Callsign',
 			value: a.callsign.value,
-			title: source(a.callsign, now).trim(),
+			title: "The flight's name on the radio and on the controllers' screens, set by the crew.",
+			footnote: origin(a.callsign, now),
 			tone: 'main',
 			mono: true
 		});
@@ -196,18 +217,18 @@ function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 		label: 'Address',
 		value: a.icao,
 		title:
-			"The transponder's 24-bit ICAO address, in hex. It belongs to the airframe, not the flight, and every Mode S message carries it: in the clear (DF11/17) or folded into the checksum (radar replies).",
+			"The transponder's ICAO address: a number of 24 bits, written as six hexadecimal digits (0–9 and A–F). It belongs to the aircraft, not the flight, and every message the transponder sends carries it (ICAO Annex 10, Vol. III, Chapter 9).",
 		tone: 'main',
 		mono: true
 	});
 	const block = allocation(a.icao);
 	identity.push({
 		label: 'Registered in',
-		value: block?.state ?? 'no State’s block',
+		value: block?.state ?? 'no country’s block',
 		flag: block ? { country: block.country, name: block.state } : undefined,
 		title: block
-			? `Each State gets a block of addresses (ICAO Annex 10, Vol. III, Table 9-1) for the aircraft on its register, so the address alone says it: this one is in ${block.from}–${block.to}.${block.marks.length ? ` Registrations there start with ${block.marks.join(' or ')}.` : ''} Not necessarily the airline's country: leased aircraft often keep a foreign registration.`
-			: 'The address is in no State’s block (Annex 10, Vol. III, Table 9-1): ICAO hasn’t allocated it to anyone.',
+			? `ICAO gives every country a block of addresses for the aircraft on its register, so the address alone says where an aircraft is registered (ICAO Annex 10, Vol. III, Chapter 9). ${block.state}'s block runs from ${block.from} to ${block.to}${block.marks.length ? `, and its registrations start with ${block.marks.join(' or ')}` : ''}.\n\nThat isn't always the airline's country: airlines also fly aircraft registered abroad, leased or with a daughter company there.`
+			: 'The address is in no country’s block: ICAO hasn’t given it to anyone (ICAO Annex 10, Vol. III, Chapter 9).',
 		tone: 'minor'
 	});
 	if (a.registration)
@@ -215,8 +236,8 @@ function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Registration',
 			value: a.registration.value,
 			title:
-				'The "tail number", read by a radar from the transponder\'s register 2,1, which few radars ask for. Sent without the dash (the 6-bit alphabet has none); it goes back after the nationality mark of the address\'s State.' +
-				source(a.registration, now),
+				'The registration ("tail number") painted on the aircraft, stored in the transponder as well, where a radar read it. Few radars ask for it. It comes without the dash, which goes back after the country’s prefix.',
+			footnote: origin(a.registration, now),
 			tone: 'main',
 			mono: true
 		});
@@ -226,8 +247,8 @@ function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Category',
 			value: `${set}${code} · ${name}`,
 			title:
-				`Emitter category (ICAO Doc 9871 Table A-2-8): the set from the type code (TC ${'DCBA'.indexOf(set) + 1} = set ${set}), the number from the message. For aircraft it's the weight class (maximum take-off weight), which sets how much wake turbulence it leaves and so how far behind it others must fly.` +
-				source(a.category, now),
+				"What kind of aircraft it is, set when the transponder is installed, from this list (ICAO Doc 9871, Table A-2-8). For most aeroplanes it's a weight class, by the most the aircraft may weigh at take-off: heavier aircraft leave stronger wake turbulence behind them.",
+			footnote: origin(a.category, now),
 			// The set's categories, without the reserved codes nobody sends.
 			choices: categoryNames(set).flatMap((text, i) =>
 				text === 'Reserved' ? [] : [{ key: `${set}${i}`, text, current: i === code }]
@@ -242,9 +263,9 @@ function identityFields(a: TrackedAircraft, now: number): PanelField[] {
 			value: a.squawk.value,
 			note: special?.meaning,
 			title:
-				'The Mode A code ATC assigns, four octal digits (0–7), so the radar can tell flights apart. A few have a fixed meaning: 7500 hijack, 7600 radio failure, 7700 emergency.' +
-				(special?.detail ? ` ${a.squawk.value}: ${special.detail}.` : '') +
-				source(a.squawk, now),
+				'The four-digit code air traffic control (ATC) gives a flight, so controllers can tell the flights on their radar screens apart. Also called the Mode A code, after the oldest radar question it answers. Only the digits 0–7 are used. Three codes have a fixed meaning everywhere: 7500 hijack, 7600 radio failure, 7700 emergency (ICAO Doc 8168, Vol. III).' +
+				(special?.detail ? `\n\n${a.squawk.value}: ${special.detail}.` : ''),
+			footnote: origin(a.squawk, now),
 			tone: special?.emergency ? 'alert' : 'main',
 			mono: true
 		});
@@ -267,11 +288,19 @@ function positionFields(
 		position.push({
 			label: 'Position',
 			value: `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`,
-			title: `Latitude, longitude (WGS84). Compact Position Reporting only sends where the aircraft is within a grid zone; ${
+			title: `Latitude and longitude, sent to the nearest ${p.surface ? '1.25' : '5'} m (how accurate that is: Accuracy). To save bits, ADS-B sends positions in Compact Position Reporting (CPR): each message only says where the aircraft is within a cell of a grid laid over the Earth, about ${p.surface ? '170' : '670'} km across. ${
 				p.from === 'pair'
-					? 'an even and an odd message together say which zone (global decoding)'
-					: 'the zone came from its own position a moment earlier (local decoding)'
-			}. It resolves about 5 m (1.25 m on the ground).${source({ value: null, t: p.t, from: p.surface ? { kind: 'adsb', tc: 5, to: 8 } : { kind: 'adsb', tc: 9, to: 18 } }, now)}`,
+					? 'Two messages on two slightly different grids ("even" and "odd") together say which cell.'
+					: 'Which cell came from its own position a moment earlier.'
+			} (ICAO Doc 9871, C.2.6)`,
+			footnote: origin(
+				{
+					value: null,
+					t: p.t,
+					from: p.surface ? { kind: 'adsb', tc: 5, to: 8 } : { kind: 'adsb', tc: 9, to: 18 }
+				},
+				now
+			),
 			tone: 'main',
 			mono: true
 		});
@@ -288,7 +317,7 @@ function positionFields(
 				label: 'Not on the map',
 				value: 'unconfirmed',
 				title:
-					'A first position counts only once the next one agrees with it: one corrupted pair of messages could otherwise put the aircraft anywhere for a moment.',
+					'A first position only counts once the next one agrees with it: one corrupted message could otherwise put the aircraft anywhere for a moment.',
 				tone: 'alert'
 			});
 		else {
@@ -297,14 +326,14 @@ function positionFields(
 			// whether the aircraft can be moved on (a ground velocity), not on the position's
 			// age: tied to the age, it came and went with every position message.
 			const age = Math.max(0, now - p.t);
-			const deadReckoning = `Positions come about twice a second, but some get lost. In between, the map moves it on with the ground speed and track (dead reckoning) for up to ${EXTRAPOLATE_MS / 1000} s, along the arc in a turn.`;
+			const deadReckoning = `Aircraft send their position about twice a second, but not every message gets through. In between, the map moves the aircraft on at its last speed and direction (dead reckoning), for up to ${EXTRAPOLATE_MS / 1000} s, along a curve if it's turning.`;
 			const moving = motion(a) != null;
 			position.push(
 				!shown
 					? {
 							label: 'On the map',
 							value: `hidden (no position for ${Math.round(age / 1000)} s)`,
-							title: `After ${SHOW_MS / 1000} s without a position the map stops drawing it: probably out of range, behind a hill or below the radio horizon.`,
+							title: `After ${SHOW_MS / 1000} s without a position the map stops drawing it: it's probably out of range, behind a hill, or below the horizon as seen from the antenna.`,
 							tone: 'alert'
 						}
 					: shown.extrapolatedKm > 0 && shown.age >= 1000
@@ -319,7 +348,7 @@ function positionFields(
 								value: `at the last position (${Math.round(shown.age / 1000)} s)`,
 								title: moving
 									? deadReckoning
-									: `Without a ground speed and track (on the ground, or no velocity message yet) the map leaves the symbol at the last position. ${deadReckoning}`,
+									: `Without a ground speed and direction (on the ground, or none received yet) the map leaves the symbol at the last position. ${deadReckoning}`,
 								tone: 'minor'
 							}
 			);
@@ -328,7 +357,7 @@ function positionFields(
 			position.push({
 				label: 'Rejected',
 				value: `${a.rejected} position${a.rejected === 1 ? '' : 's'}`,
-				title: `Positions that failed the plausibility checks: too far from the last one for the time between them, or more than ${MAX_RANGE_KM} km from the receiver, past any radio horizon. Last reason: ${a.lastRejection?.value ?? '–'}.`,
+				title: `Positions that failed the checks for plausibility: too far from the one before for the time in between, or more than ${MAX_RANGE_KM} km from the receiver, beyond what an antenna on the ground can hear. Last reason: ${a.lastRejection?.value ?? '–'}.`,
 				tone: 'alert'
 			});
 	} else {
@@ -337,9 +366,9 @@ function positionFields(
 			value: 'none',
 			title: a.adsb
 				? a.rejected > 0
-					? `It sends positions, but all ${a.rejected} so far failed the plausibility checks: too far from the one before for the time between them, or more than ${MAX_RANGE_KM} km from the receiver. Last reason: ${a.lastRejection?.value ?? '–'}.`
-					: 'It sends ADS-B, but no position yet: its position messages say "no position information" (TC 0, e.g. no GPS fix), or too few got through (a position needs an even and an odd message within 10 s).'
-				: "No ADS-B, only radar replies (altitude, squawk), which don't say where it is. A radar knows from its antenna's direction and the reply's delay; one receiver that only listens can't (several timing the same reply could: multilateration).",
+					? `It sends positions, but all ${a.rejected} so far failed the checks for plausibility: too far from the one before for the time in between, or more than ${MAX_RANGE_KM} km from the receiver. Last reason: ${a.lastRejection?.value ?? '–'}.`
+					: 'It sends ADS-B, but no position yet. Usually too few messages get through: a position takes two particular ones within 10 s. Sometimes the aircraft itself has none to send, e.g. without a satellite fix.'
+				: "It sends no ADS-B, only replies to radars (altitude, squawk), and those don't say where it is. A radar knows from the direction its antenna points and how long the reply takes; a single receiver that only listens can't tell.",
 			tone: 'alert'
 		});
 	}
@@ -355,7 +384,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 			label: 'Altitude',
 			value: 'on the ground',
 			title:
-				'It sends surface positions (TC 5–8): aircraft switch to those on the ground. They have no altitude, but a speed and a direction instead.',
+				'On the ground aircraft send surface positions: with speed and direction, but no altitude.',
+			footnote: origin({ value: null, t: p.t, from: { kind: 'adsb', tc: 5, to: 8 } }, now),
 			tone: 'main'
 		});
 	else if (a.altitude)
@@ -363,8 +393,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 			label: 'Altitude',
 			value: `${flightLevel(a.altitude.value)} · ${n(a.altitude.value)} ft`,
 			title:
-				'Pressure altitude: where the standard atmosphere (1013.25 hPa at sea level) has the pressure measured outside. Every aircraft measures it the same way, so they stay separated whatever the weather. Below the transition altitude (5,000 ft in Germany) pilots fly by the local pressure (QNH); this value stays standard.' +
-				source(a.altitude, now),
+				"Pressure altitude: the height at which the standard atmosphere (1013.25 hPa at sea level) has the air pressure measured outside. Every aircraft measures it the same way, so they stay apart whatever the weather. Low down, near airports, pilots set their altimeters to the local pressure instead (QNH); this value doesn't change with that.\n\nFL: flight level, the pressure altitude in hundreds of feet.",
+			footnote: origin(a.altitude, now),
 			tone: 'main'
 		});
 	if (a.gnssHeight)
@@ -372,8 +402,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 			label: 'GNSS height',
 			value: `${n(a.gnssHeight.value)} ft`,
 			title:
-				'Height above the WGS84 ellipsoid from satellite navigation, sent instead of the barometric altitude (TC 20–22). Rare.' +
-				source(a.gnssHeight, now),
+				'Height from satellite navigation (GNSS: GPS, Galileo and the like), sent instead of the pressure altitude, which is rare. Above the ellipsoid, the smooth shape satellite navigation takes the Earth to be, or above sea level where the receiver can’t give that (ICAO Doc 9871).',
+			footnote: origin(a.gnssHeight, now),
 			tone: 'main'
 		});
 	if (a.verticalRate && !p?.surface) {
@@ -381,7 +411,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 		flight.push({
 			label: 'Vertical rate',
 			value: Math.abs(r.rate) < 100 ? 'level' : `${signed(r.rate, 0)} ft/min`,
-			title: `From ${r.source === 'gnss' ? 'satellite navigation' : 'the change in air pressure'}. Airliners climb at 1,000–3,000 ft/min and descend at 1,000–2,000; under 100 counts as level here (the message's step is 64).${source(a.verticalRate, now)}`,
+			title: `How fast it climbs or descends, measured by ${r.source === 'gnss' ? 'satellite navigation' : 'the change in air pressure'}. It's sent in steps of 64 ft/min, so under 100 counts as level here. Airliners climb at about 1,000–3,000 ft/min ([Eurocontrol](https://learningzone.eurocontrol.int/ilp/customs/ATCPFDB/)).`,
+			footnote: origin(a.verticalRate, now),
 			tone: 'main'
 		});
 	}
@@ -392,16 +423,16 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 				label: 'Ground speed',
 				value: `${n(g.speed)} kt · ${n(g.speed * KM_PER_NM)} km/h`,
 				title:
-					'Speed over the ground, not through the air: a 100 kt tailwind in the jet stream adds 100 kt. Sent as east–west and north–south components.' +
-					source(a.ground, now),
+					'Speed over the ground, not through the air: a tailwind of 100 kt adds 100 kt. Knots (kt) are nautical miles per hour.',
+				footnote: origin(a.ground, now),
 				tone: 'main'
 			},
 			{
 				label: 'Track',
 				value: `${directionText(g.track)} ${compass(g.track)}`,
 				title:
-					'Where it moves over the ground, from true north. The nose (the heading) points a little off it in a crosswind: the drift angle.' +
-					source(a.ground, now),
+					'The direction it moves over the ground, clockwise from true north. In a crosswind the nose points a little off it, into the wind.',
+				footnote: origin(a.ground, now),
 				tone: 'main'
 			}
 		);
@@ -416,7 +447,7 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 				? {
 						label: 'Turn',
 						value: 'not measured',
-						title: `Measured from the ground tracks of the last ${TURN_WINDOW_MS / 1000} s, and too few of them got through.`,
+						title: `Measured from its direction over the last ${TURN_WINDOW_MS / 1000} s, and too few messages with it got through.`,
 						tone: 'minor'
 					}
 				: {
@@ -424,7 +455,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 						value: straight
 							? 'straight'
 							: `${Math.abs(turn.value).toFixed(1)}°/s ${turn.value > 0 ? 'right' : 'left'}`,
-						title: `How fast the track changes: a straight line fitted through the last ${TURN_WINDOW_MS / 1000} s of tracks, so it lags a few seconds. Under ${TURNING}°/s counts as straight. A "standard rate" turn is 3°/s (a circle in two minutes); airliners at cruise turn at about 0.5–1°/s.${source(turn, now)}`,
+						title: `How fast its direction changes, measured over the last ${TURN_WINDOW_MS / 1000} s, so it lags a few seconds behind. Under ${TURNING}°/s counts as straight. A "standard rate" turn is 3°/s, a full circle in two minutes (ICAO Doc 8168); airliners at cruising speed turn more gently, at about 1°/s.`,
+						footnote: origin(turn, now),
 						tone: straight ? 'minor' : 'main'
 					}
 		);
@@ -433,7 +465,7 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 		const { heading, speed, type } = a.air.value;
 		// Said once: on the heading, or on the airspeed without one.
 		const why =
-			" It sends heading and airspeed instead of track and ground speed (TC 19 subtype 3/4): it can't measure those, which usually means no satellite fix (jamming, or a fault).";
+			"\n\nIt sends its heading and airspeed instead of its track and ground speed: it can't measure those, which usually means it has no satellite fix (jamming, or a fault).";
 		if (heading !== null) {
 			const ref = headingReference(a);
 			const at = p ?? receiver;
@@ -444,13 +476,14 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 					ref === 'magnetic'
 						? `${directionText(heading)} magnetic (${directionText(asTrue)} true)`
 						: `${directionText(heading)}${ref ? ` ${ref}` : ''}`,
-				title: `Where the nose points. ${
+				title: `Where the nose points, ${
 					ref === null
-						? 'True or magnetic: its operational status (TC 31) will say.'
+						? 'from true or magnetic north: its status message will say which.'
 						: ref === 'magnetic'
-							? `From magnetic north (${a.operational?.value.version === 0 ? 'ADS-B version 0 has no heading reference bit, so magnetic is assumed' : 'its operational status, TC 31, says so'}); true from the World Magnetic Model.`
-							: 'From true north (its operational status, TC 31, says so).'
-				}${why}${source(a.air, now)}`,
+							? `from magnetic north (${a.operational?.value.version === 0 ? 'older transponders don’t say which, so magnetic is assumed' : 'as its status message says'}). Turned into true north with the [World Magnetic Model](https://www.ncei.noaa.gov/products/world-magnetic-model).`
+							: 'from true north (as its status message says).'
+				}${why}`,
+				footnote: origin(a.air, now),
 				tone: 'main'
 			});
 		}
@@ -460,9 +493,10 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 				value: `${n(speed)} kt ${type}`,
 				title: `${
 					type === 'IAS'
-						? 'Indicated airspeed: what the pitot tube measures. Up high the air is thin, so it reads far below the true airspeed: 250 kt IAS is about 460 kt true at FL380.'
-						: 'True airspeed: the speed through the air.'
-				}${heading === null ? why : ''}${source(a.air, now)}`,
+						? 'Indicated airspeed (IAS): what the airspeed sensor at the front measures. Up high the air is thin, so it reads far below the real speed through the air: 250 kt indicated is about 450 kt at FL380.'
+						: 'True airspeed (TAS): the speed through the air.'
+				}${heading === null ? why : ''}`,
+				footnote: origin(a.air, now),
 				tone: 'main'
 			});
 	}
@@ -488,8 +522,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 			label: 'Predicted',
 			value: 'no',
 			title: a.air
-				? "It sends heading and airspeed, not track and ground speed, and without the wind those don't say where it goes."
-				: 'That needs a ground speed and track (TC 19) from within 10 s of the position, and none got through.',
+				? "It sends heading and airspeed, not its track and ground speed, and without the wind those don't say where it goes."
+				: 'That takes its ground speed and direction from within 10 s of the position, and none got through.',
 			tone: 'minor'
 		});
 	}
@@ -504,8 +538,8 @@ function flightFields(a: TrackedAircraft, now: number, receiver: LatLon): PanelF
 					? `${speed.min}–${speed.max ?? '…'} kt${direction === null ? '' : `, ${directionText(direction)}`}`
 					: 'unknown',
 			title:
-				'On the ground the speed is a step on a non-linear scale: from 1/8 kt steps when barely moving to 5 kt steps above 100 kt. The direction is the ground track or the heading; the operational status says which.' +
-				source(a.surface, now),
+				'On the ground the speed comes in steps that grow with it: an eighth of a knot when barely moving, 5 kt above 100 kt. The direction is where it moves or where the nose points; its status message says which.',
+			footnote: origin(a.surface, now),
 			tone: 'main'
 		});
 	}
@@ -521,8 +555,8 @@ function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Selected altitude',
 			value: `${flightLevel(target.selectedAltitude.feet)} (${target.selectedAltitude.source})`,
 			title:
-				'Where the autopilot will level off: dialled in by the pilots (MCP on Boeings, FCU on Airbus) or planned by the flight management system (FMS).' +
-				source(a.target!, now),
+				'Where the autopilot will level off. MCP/FCU: dialled in by the pilots on the autopilot panel (Boeing calls it the MCP, Airbus the FCU). FMS: planned by the flight management system, the computer that flies the route.',
+			footnote: origin(a.target!, now),
 			tone: 'main'
 		});
 	if (target?.selectedHeading !== null && target?.selectedHeading !== undefined)
@@ -530,8 +564,8 @@ function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Selected heading',
 			value: directionText(target.selectedHeading),
 			title:
-				"Only flown in heading mode; in LNAV the flight management system steers along the route, and this is just what's dialled in." +
-				source(a.target!, now),
+				'The heading set on the autopilot. Flown only when the autopilot steers by heading; when it follows the route (LNAV) this is just what happens to be dialled in.',
+			footnote: origin(a.target!, now),
 			tone: 'main'
 		});
 	if (target?.modes) {
@@ -547,8 +581,8 @@ function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Modes',
 			value: on.length ? on.join(' · ') : 'hand-flown',
 			title:
-				"LNAV: following the flight management system's route. VNAV: its planned climbs and descents. Altitude hold: keeping the current altitude. Approach: following a landing guidance signal (ILS)." +
-				source(a.target!, now),
+				'What the autopilot is doing. LNAV (lateral navigation): following the route in the flight management system. VNAV (vertical navigation): its planned climbs and descents. Altitude hold: keeping the current altitude. Approach: following the instrument landing system (ILS) down to a runway.',
+			footnote: origin(a.target!, now),
 			tone: 'main'
 		});
 	}
@@ -557,8 +591,8 @@ function autopilotFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Altimeter',
 			value: `${target.qnh.toFixed(1)} hPa${Math.abs(target.qnh - 1013.2) < 0.5 ? ' (standard)' : ''}`,
 			title:
-				"The altimeter's setting: 1013.25 hPa at flight levels, else the local QNH (the airport's pressure reduced to sea level). Sent in 0.8 hPa steps, so standard comes out as 1012.8 or 1013.6." +
-				source(a.target!, now),
+				'What the altimeter is set to: the standard 1013.25 hPa at flight levels, else the local QNH (the air pressure at the airport, worked back to sea level). Sent in steps of 0.8 hPa, so the standard setting shows as 1012.8 or 1013.6.',
+			footnote: origin(a.target!, now),
 			tone: 'minor'
 		});
 	return intent;
@@ -573,7 +607,8 @@ function commBFields(a: TrackedAircraft, now: number): PanelField[] {
 		radar.push({
 			label: 'Heading',
 			value: `${directionText(hs.value.heading)} magnetic`,
-			title: 'Where the nose points, from magnetic north.' + source(hs, now),
+			title: 'Where the nose points, clockwise from magnetic north.',
+			footnote: origin(hs, now),
 			tone: 'main'
 		});
 	if (hs && (hs.value.ias !== null || hs.value.mach !== null))
@@ -586,15 +621,16 @@ function commBFields(a: TrackedAircraft, now: number): PanelField[] {
 				.filter(Boolean)
 				.join(' · '),
 			title:
-				'IAS: what the pitot tube measures and the wings fly by; up high it reads far below the true airspeed. Mach: the speed as a fraction of the speed of sound there; airliners cruise at Mach 0.78–0.85.' +
-				source(hs, now),
+				'Indicated airspeed (IAS): what the airspeed sensor measures, and what the wings fly by. Up high, in thin air, it reads far below the real speed through the air. Mach: the speed as a fraction of the speed of sound there; airliners cruise at about Mach 0.78–0.85.',
+			footnote: origin(hs, now),
 			tone: 'main'
 		});
 	if (tt?.value.tas !== null && tt?.value.tas !== undefined)
 		radar.push({
 			label: 'True airspeed',
 			value: `${n(tt.value.tas)} kt`,
-			title: 'Speed through the air: the ground speed minus the tailwind.' + source(tt, now),
+			title: 'The real speed through the air (TAS): the ground speed minus the tailwind.',
+			footnote: origin(tt, now),
 			tone: 'main'
 		});
 	if (tt?.value.roll !== null && tt?.value.roll !== undefined)
@@ -605,7 +641,8 @@ function commBFields(a: TrackedAircraft, now: number): PanelField[] {
 					? 'wings level'
 					: `${Math.abs(tt.value.roll).toFixed(1)}° ${tt.value.roll > 0 ? 'right' : 'left'}`,
 			title:
-				'Roll angle: an aircraft turns by banking; airliners use up to 25–30°.' + source(tt, now),
+				'How far it leans into a turn (the roll angle): an aircraft turns by banking. Airliners rarely bank more than 25–30°: procedures around airports are designed for at most 25° (ICAO Doc 8168).',
+			footnote: origin(tt, now),
 			tone: 'main'
 		});
 	return radar;
@@ -630,7 +667,7 @@ function receptionFields(a: TrackedAircraft, now: number): PanelField[] {
 			label: 'Signal',
 			value: dbfs(a.signal),
 			title:
-				"The latest message's strength, in dB below the receiver's full scale (−6 dB: half the amplitude). Nearer is louder, but transmitters differ in power, and buildings or hills dim what's behind them.",
+				'How strong its latest message was, in decibels below the strongest signal the receiver can take (dBFS; −6 dB is half the amplitude). Nearer is louder, but transmitters differ in power, and buildings or hills dim what’s behind them. More on [Receiver](/receiver).',
 			tone: 'minor'
 		});
 	return reception;
@@ -688,7 +725,7 @@ export function aircraftSections(
 			...(contrail ? [contrail] : [])
 		]);
 	}
-	add('From radar interrogations (Comm-B)', commBFields(a, now));
+	add('Read out by radars (Comm-B)', commBFields(a, now));
 	add('Reception', receptionFields(a, now));
 	return sections;
 }

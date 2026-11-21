@@ -5,7 +5,7 @@
 -->
 <script lang="ts" generics="K extends number | string">
 	import { n } from '#lib/describe/format.ts';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import type { ClassValue } from 'svelte/elements';
 	import { SvelteSet } from 'svelte/reactivity';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -46,7 +46,10 @@
 
 	/** Room for the arrow in the key column, if any row can expand. */
 	let expandable = $derived(rows.some((r) => r.children?.length));
-	const expanded = new SvelteSet<K>();
+	/** Open from the start: the group of a sub-row picked before the table was shown (a link). */
+	const expanded = new SvelteSet<K>(
+		untrack(() => rows.filter((r) => r.children?.some((c) => c.key === selected)).map((r) => r.key))
+	);
 
 	function toggle(key: K) {
 		if (expanded.has(key)) expanded.delete(key);

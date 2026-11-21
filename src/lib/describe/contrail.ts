@@ -41,15 +41,15 @@ export function humidityNeeded(r: ContrailRange): string | null {
 /** The thresholds at a pressure, in a sentence. */
 function thresholdText(r: ContrailRange, pressure: number): string {
 	const t = r.at.thresholds;
-	return `At ${(pressure / 100).toFixed(0)} hPa an engine's exhaust makes a contrail in air colder than ${celsius(t.saturated)} if the air is saturated, and in air colder than ${celsius(t.dry)} even if it's perfectly dry (the Schmidt–Appleman criterion: the hot, wet exhaust cools as it mixes with the air, and if it passes the point where water condenses, droplets form and freeze).`;
+	return `Whether its exhaust should leave a contrail. The hot, moist exhaust cools as it mixes with the air, and if it gets past the point where water condenses, droplets form and freeze. At its level (${(pressure / 100).toFixed(0)} hPa) that takes air colder than ${celsius(t.saturated)} if the air is saturated, and colder than ${celsius(t.dry)} if it's perfectly dry (the [Schmidt–Appleman criterion](https://elib.dlr.de/32128/)).`;
 }
 
-/** Whether a contrail lasts: ice saturation, which we can't see. */
+/** Whether a contrail lasts: ice saturation, which nobody here measures. */
 function persistText(r: ContrailRange): string {
-	return `It only lasts where the air is saturated over ice, here ${percent(r.at.iceSaturation)} humidity (over water): a trail that stays and spreads means air at least that humid. Nobody here measures it (register 4,4 is almost never sent).`;
+	return `A trail only lasts where the air is saturated over ice, here at ${percent(r.at.iceSaturation)} humidity: one that stays and spreads means air at least that humid.`;
 }
 
-const MARGIN_TEXT = `Temperatures from airspeed and Mach are a couple of kelvin off, and 1 K can change the humidity needed by 20 points, so the answer allows ${TEMPERATURE_MARGIN} K either way.`;
+const MARGIN_TEXT = `The temperature can be a couple of kelvin off, so the answer allows ${TEMPERATURE_MARGIN} K either way.`;
 
 /** The short answer, as the panel's value and the worked example's headline. */
 export function contrailValue(r: ContrailRange): string {
@@ -119,21 +119,20 @@ export function contrailField(
 	const r = c.range;
 	const needed = humidityNeeded(r);
 	const verdictText = {
-		always: `That's more than ${TEMPERATURE_MARGIN} K colder than the dry-air threshold: it should leave a contrail whatever the humidity. Look up: if it doesn't, the temperature is off.`,
-		never: `That's more than ${TEMPERATURE_MARGIN} K warmer than the saturated-air threshold: no contrail, however humid.`,
-		humid: `In between, the humidity decides: it needs ${needed} relative humidity (over water) for a contrail${r.at.humidityNeeded === null ? '' : `, ${percent(r.at.humidityNeeded)} at the temperature as measured`}. Look up: a trail behind it means the air is at least that humid.`
+		always: `Cold enough even for dry air, so it should leave a contrail. Look up: if it doesn't, the temperature is off.`,
+		never: `Too warm: no contrail, however humid the air.`,
+		humid: `In between, so the humidity decides, and nobody here measures it: it needs ${needed}${r.at.humidityNeeded === null ? '' : ` (${percent(r.at.humidityNeeded)} at the temperature as measured)`}. Look up: a trail behind it means the air is at least that humid.`
 	}[r.verdict];
 	return {
 		label: 'Contrail',
 		value: contrailValue(r),
-		// Paragraphs (Details.svelte): the rule, this air, the margin, persistence, where to
-		// see it worked through.
+		// Paragraphs (Details.svelte): the rule, this air and the answer, persistence, where
+		// to see it worked through.
 		title: [
 			thresholdText(r, c.pressure),
-			`${temperatureSource(c)} ${verdictText}`,
-			MARGIN_TEXT,
+			`${temperatureSource(c)} ${MARGIN_TEXT} ${verdictText}`,
 			r.verdict === 'never' ? '' : persistText(r),
-			'Worked through step by step, with a diagram: Weather → Aircraft.'
+			`Worked through step by step, with a diagram, on [Weather → Aircraft](/weather/aircraft?icao=${w.icao}#contrail).`
 		]
 			.filter(Boolean)
 			.join('\n\n'),

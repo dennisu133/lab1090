@@ -54,7 +54,7 @@ const PHASE_BINS = 72;
 /**
  * Grid search: this far around the aircraft, in steps of this, km. A radar further away
  * can't reach them: the radio horizon, d ≈ 4.12 (√h_radar + √h_aircraft) km with heights
- * in metres (4/3-Earth refraction), is ~450 km for an aircraft at FL350 and a radar on a
+ * in metres (4/3-Earth refraction), is ~470 km for an aircraft at FL350 and a radar on a
  * 100 m mast.
  */
 const SEARCH_KM = 600;

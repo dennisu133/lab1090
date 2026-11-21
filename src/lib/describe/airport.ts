@@ -26,7 +26,7 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 		label: 'ICAO',
 		value: a.icao,
 		title:
-			'The ICAO location indicator: in flight plans, NOTAMs, charts and weather reports (METAR); on the radio, airports go by name. The first letter is a region of the world, the second usually the country (ED: Germany, LK: Czechia), the last two the airport.',
+			'The code pilots and air traffic control use, in flight plans, charts and weather reports; on the radio, airports go by name. The first letter is a region of the world, the second usually the country (ED: Germany, LK: Czechia), the last two the airport (ICAO Doc 7910).',
 		tone: 'main',
 		mono: true
 	});
@@ -35,7 +35,7 @@ export function airportSections(a: Airport, receiver: LatLon, unit: Unit): Secti
 			label: 'Elevation',
 			value: `${n(a.elevation.feet)} ft (${n(a.elevation.metres)} m)`,
 			title:
-				"Above mean sea level, as mapped: the official elevation (the landing area's highest point) can differ by a few metres. On the runway an altimeter set to the local QNH shows the official one. Set to 1013.25 hPa, as for flight levels, it's off by about 27 ft (8 m) for every hPa the QNH differs.",
+				"Height above sea level, as mapped: the official elevation (the highest point of the runways) can differ by a few metres. On the runway, an altimeter set to the local pressure (QNH) shows about the official one. Set to the standard 1013.25 hPa, as at flight levels, it's off by about 27 ft (8 m) for every hPa the local pressure differs.",
 			tone: 'main'
 		});
 	const b = bearing(receiver, a);

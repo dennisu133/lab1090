@@ -13,7 +13,13 @@ import { ADVISORY_MS, type Alert, type Cause } from '#lib/tracker/alerts.ts';
 import type { Streak, TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { shownPosition } from '#lib/tracker/shown.ts';
 import type { Section } from './aircraft';
-import { advisoryInstruction, provenanceText } from './field';
+import {
+	advisoryInstruction,
+	formatLink,
+	provenanceText,
+	registerLink,
+	typeCodeLink
+} from './field';
 import { n, type Unit } from './format';
 
 /** The callsign, or the address while there's none. */
@@ -52,7 +58,7 @@ const CAUSES: Record<
 		headline: 'Downed aircraft',
 		badge: 'DOWN',
 		meaning:
-			'TC 28 emergency state 6: the crew reports the aircraft as going down, a forced landing or ditching. Almost never seen.',
+			'Its transponder reports the aircraft as going down: a forced landing, or ditching in water. Almost never seen.',
 		next: 'Search and rescue starts from the last known position. The emergency locator transmitter on board sends its own signal, on 406 MHz, to satellites.'
 	},
 	medical: {
@@ -60,7 +66,7 @@ const CAUSES: Record<
 		headline: 'Medical priority',
 		badge: 'MED',
 		meaning:
-			'TC 28 emergency/priority state 2, "lifeguard/medical" (DO-260B): someone on board needs a doctor, or it’s an air ambulance that needs priority, which says nothing about the aircraft itself. Without the emergency code 7700 it’s priority, not distress.',
+			'Its transponder reports "lifeguard/medical" (RTCA DO-260B): someone on board needs a doctor, or it’s an air ambulance in a hurry. Nothing is wrong with the aircraft itself: without the emergency code 7700 it’s a priority, not distress.',
 		next: 'Controllers give it a more direct route and priority for landing; an ambulance meets it.'
 	},
 	fuel: {
@@ -68,7 +74,7 @@ const CAUSES: Record<
 		headline: 'Minimum fuel',
 		badge: 'FUEL',
 		meaning:
-			'TC 28 emergency/priority state 3: the crew has told ATC that any further delay would mean landing with less than the final reserve, the fuel for 30 minutes of holding (ICAO Annex 6). Not an emergency yet.',
+			'Its transponder reports minimum fuel: the crew has told air traffic control (ATC) that any further delay would mean landing with less than the final reserve, the fuel for 30 minutes of circling (ICAO Annex 6). Not an emergency yet.',
 		next: 'Controllers avoid delaying it. If it’s going to land with less than the final reserve, the crew declares "Mayday fuel" and squawks 7700.'
 	}
 };
@@ -108,12 +114,12 @@ const RA_MEANING =
 const RA_NEXT =
 	'The pilots follow it within 5 seconds (2.5 s when it gets stronger or reverses), even against an ATC instruction, and tell ATC "TCAS RA". The controller gives it no more instructions until the crew reports "clear of conflict"; then it returns to its clearance. RAs rarely last longer than a minute. Many are "nuisance" RAs: two aircraft levelling off 1,000 ft apart at high vertical rates look to ACAS as if they won’t stop. (ICAO Doc 8168 Vol I, Doc 4444 §15.7.3)';
 
-/** Where a streak came from, in words. */
+/** Where a streak came from, in words, the message type linked to /frames (or /comm-b). */
 function sourceText(s: Streak<unknown>): string {
 	const p = s.from;
-	if (p.kind === 'adsb') return `ADS-B (${provenanceText(p)})`;
-	if (p.kind === 'reply') return `radar replies (DF${p.df})`;
-	if (p.kind === 'comm-b') return `Comm-B register ${p.bds}`;
+	if (p.kind === 'adsb') return `ADS-B messages (${typeCodeLink(p.tc, p.to)})`;
+	if (p.kind === 'reply') return `replies to radars (${formatLink(p.df)})`;
+	if (p.kind === 'comm-b') return `a radar reading ${registerLink(p.bds)}`;
 	return `the ${provenanceText(p)}`;
 }
 
@@ -148,15 +154,15 @@ export function alertSection(
 		fields.push({ label: 'What', value: headline(x), title: c.meaning, tone: 'alert' });
 		fields.push({ label: 'What happens next', value: c.nextShort, title: c.next, tone: 'main' });
 		const sources = [
-			x.squawk && a.squawk ? `squawk ${x.squawk} from ${sourceText(a.squawk)}` : null,
-			x.state !== null && a.emergency
-				? `emergency state ${x.state} from ${sourceText(a.emergency)}`
-				: null
+			x.squawk && a.squawk ? `The squawk ${x.squawk} from ${sourceText(a.squawk)}` : null,
+			x.state !== null && a.emergency ? `the emergency state from ${sourceText(a.emergency)}` : null
 		].filter(Boolean);
+		const from = sources.join(', ');
 		fields.push({
 			label: 'Since',
 			value: `${since} (${duration(now - x.since)})`,
-			title: `When the first message saying so arrived: ${sources.join(', and ')}. ${CONFIRMATION}`,
+			title: `When the first message saying so arrived. ${CONFIRMATION}`,
+			footnote: from ? `${from[0].toUpperCase()}${from.slice(1)}.` : undefined,
 			tone: 'main'
 		});
 	} else {
@@ -178,7 +184,7 @@ export function alertSection(
 			fields.push({
 				label: 'Threat',
 				value: `${nameOf(other, x.threat)}${relation(a, other, now, unit)}`,
-				title: `The aircraft ACAS is avoiding, named by its address in the advisory (threat type 1, the TID field: ${x.threat}).${other ? '' : ' Not in range of this receiver, or not heard yet.'}`,
+				title: `The aircraft ACAS is avoiding: the advisory names it by its address, ${x.threat}.${other ? '' : ' It’s out of this receiver’s range, or not heard yet.'}`,
 				tone: 'main',
 				mono: !other?.callsign
 			});
@@ -186,7 +192,8 @@ export function alertSection(
 		fields.push({
 			label: 'Since',
 			value: `${since} (${duration(now - x.since)}, ${x.count} messages)`,
-			title: `When the first message with this RA arrived; the latest came from ${a.advisory ? sourceText(a.advisory) : 'ADS-B'}. The same RA comes three ways: ADS-B TC 28 subtype 2, about once a second while it lasts; DF16, the transponder's reply to another aircraft's ACAS; and Comm-B register 3,0, if a radar asks. It's over when a message sets RAT (RA terminated), or after ${duration(ADVISORY_MS)} without one. ${RA_CONFIRMATION}`,
+			title: `When the first message with this advisory arrived. The aircraft tells it three ways: in its own ADS-B messages, about once a second while it lasts; in its replies to the other aircraft's ACAS; and to a radar that asks. It's over when a message says it has ended, or after ${duration(ADVISORY_MS)} without one. ${RA_CONFIRMATION}`,
+			footnote: `The latest came from ${a.advisory ? sourceText(a.advisory) : 'ADS-B'}.`,
 			tone: 'main'
 		});
 	}
@@ -230,7 +237,7 @@ export function identField(): Section['fields'][number] {
 		label: 'IDENT',
 		value: 'pressed (SPI)',
 		title:
-			'The controller said "squawk ident", and the pilot pressed the IDENT button: for 18 s the transponder sets the SPI bit (special position identification: SS 3 in ADS-B positions, FS 4/5 in radar replies), and the aircraft’s symbol stands out on the controller’s screen, so they can be sure which one it is. Nothing is wrong.',
+			'The controller asked for an "ident", and the pilot pressed the IDENT button: for about 18 s the aircraft’s symbol stands out on the controller’s screen, so they can be sure which one it is (15–30 s in ICAO Annex 10, Vol. IV; 18 s in RTCA DO-181). Nothing is wrong.',
 		tone: 'main'
 	};
 }

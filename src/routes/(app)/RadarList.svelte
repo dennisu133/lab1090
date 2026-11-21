@@ -30,9 +30,10 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="All radars">
 		<p>
-			The radars on the map: every fit has found them again for {CONFIRM_MS / 60_000} minutes. One goes
-			after {MAX_MISSES} fits in a row that find other radars on its code but not it; fits that find nothing
-			(too few aircraft) don't count: radars don't move. ± is the drawn ellipse's half length.
+			The radars on the map: each was found again by every fit for {CONFIRM_MS / 60_000} minutes. One
+			goes after {MAX_MISSES} fits in a row that find other radars on its code but not it; a fit that
+			finds nothing (too few aircraft) doesn't count against it, as radars don't move. ±: how far the
+			drawn ellipse reaches from the middle, the long way.
 		</p>
 		<p>A candidate has been found, but not for long enough yet: listed, not drawn.</p>
 	</InfoTip>

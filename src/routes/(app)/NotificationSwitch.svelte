@@ -43,7 +43,8 @@
 			</p>
 			{#if blocked}
 				<p class="text-warn-300">
-					Blocked by your browser. Allow them in the site settings (the icon left of the address).
+					Blocked in this browser: they can be allowed in the site settings (the icon left of the
+					address).
 				</p>
 			{/if}
 		</InfoTip>

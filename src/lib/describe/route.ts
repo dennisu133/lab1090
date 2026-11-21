@@ -25,7 +25,7 @@ const dist = (km: number, unit: Unit) => `${n(unit === 'NM' ? km / KM_PER_NM : k
 
 /** Opens every check tooltip: why a route needs checking at all. */
 const WHY_CHECK =
-	"Nothing in the messages says where a flight goes: adsbdb (routes collected by David Taylor and Jim Mason) lists routes by callsign, and callsigns get reused, so the route is checked against the aircraft's positions.";
+	"Nothing in the messages says where a flight goes. The route is looked up by callsign in adsbdb (collected by David Taylor and Jim Mason), and callsigns get reused, so it's checked against the aircraft's positions.";
 
 /** "Valencia", else the airport's name, else its code: for the panel's header. */
 export function place(a: DbAirport): string {
@@ -104,7 +104,7 @@ function airlineFields(callsign: string, airline: DbAirline): Section['fields'] 
 		{
 			label: 'Airline',
 			value: `${airline.name} (${[airline.icao, airline.iata].filter(Boolean).join(' · ')})`,
-			title: `From the callsign's first three letters: the airline's ICAO designator (${airline.icao}, Doc 8585), as air traffic control and flight plans use it. The two-character IATA code is the one on tickets.${airline.country ? ` Its home: ${airline.country}.` : ''}`,
+			title: `From the callsign's first three letters, ${airline.icao}: the airline's code for air traffic control and flight plans (ICAO Doc 8585).${airline.country ? ` Its home: ${airline.country}.` : ''}`,
 			tone: 'main'
 		}
 	];
@@ -113,17 +113,22 @@ function airlineFields(callsign: string, airline: DbAirline): Section['fields'] 
 		fields.push({
 			label: 'On the radio',
 			value: words,
-			title: `The airline goes by its telephony designator, "${airline.radio}" (Doc 8585): a word that's easy to hear through noise, not always the airline's name (British Airways is "Speedbird"). The rest is spelled in ICAO's alphabet. It often isn't the flight number on the ticket: airlines pick letters and digits so that similar callsigns on one frequency don't get mixed up.`,
+			title: `On the radio the airline goes by "${airline.radio}" (ICAO Doc 8585), a word that's easy to make out through noise and not always the airline's name: British Airways is "Speedbird". The rest is spelled out in the aviation alphabet. It often isn't the flight number on the ticket: airlines pick letters and digits so that similar callsigns on one frequency don't get mixed up.`,
 			tone: 'main'
 		});
 	return fields;
 }
 
-/** The end of every check tooltip: the rules. */
-function howChecked(c: RouteCheck | null, unit: Unit): string {
+/** The rules, in a sentence. */
+function howChecked(c: RouteCheck | null): string {
 	const from = c ? place(c.leg.from) : 'the origin';
 	const to = c ? place(c.leg.to) : 'the destination';
-	return `It must be near the way: from ${from} to ${to} via the aircraft may be at most ${MAX_DETOUR * 100} % longer than direct (${dist(MIN_DETOUR_KM, unit)} longer on short flights), as airways and detours allow. And going the right way: over the last minutes it got closer to ${to} or further from ${from}, by at least ${PROGRESS * 100} % of the distance flown. Positions only, never the heading: near airports controllers steer aircraft wherever traffic needs them.`;
+	return `To fit, the aircraft has to be near the way from ${from} to ${to}, and getting closer to ${to} or further from ${from}.`;
+}
+
+/** The limits, for the dimmed line under a check. */
+function limitsText(unit: Unit): string {
+	return `Near the way: going via the aircraft is at most ${MAX_DETOUR * 100} % longer than direct (${dist(MIN_DETOUR_KM, unit)} on short flights), as airways and detours allow. Getting closer: by at least ${PROGRESS * 100} % of the distance flown in the last minutes. Only positions count, not where the nose points: near airports, controllers send aircraft wherever traffic needs them.`;
 }
 
 /** "In the last 4 min it flew 30 NM, got 28 NM closer to Berlin and …". */
@@ -137,43 +142,42 @@ function movedText(c: RouteCheck, unit: Unit): string {
 	return ` In the last ${Math.round(m.ms / 60_000)} min it flew ${dist(m.flown, unit)}, got ${closer} ${place(c.leg.to)} and ${away} ${place(c.leg.from)}.`;
 }
 
-/** "a detour of 5 NM via its position (181 NM allowed)". */
+/** "going via its position is 5 NM longer than direct (181 NM allowed)". */
 const detourOf = (c: RouteCheck, unit: Unit) =>
-	`a detour of ${dist(c.detourKm, unit)} via its position (${dist(c.maxDetourKm, unit)} allowed)`;
-const detourText = (c: RouteCheck, unit: Unit) => {
-	const d = detourOf(c, unit);
-	return `${d[0].toUpperCase()}${d.slice(1)}.`;
-};
+	`going via its position is ${dist(c.detourKm, unit)} longer than direct (${dist(c.maxDetourKm, unit)} allowed)`;
 
 /** Why a route doesn't fit (off-route or backwards), with the numbers. */
 function misfitText(c: RouteCheck, unit: Unit): string {
 	return c.verdict === 'off-route'
-		? `it's too far off the way between ${place(c.leg.from)} and ${place(c.leg.to)}. ${detourText(c, unit)}`
+		? `it's too far off the way between ${place(c.leg.from)} and ${place(c.leg.to)}: ${detourOf(c, unit)}.`
 		: `it's on the way, but going from ${place(c.leg.to)} to ${place(c.leg.from)}: outbound and return flights get mixed up.${movedText(c, unit)}`;
 }
 
 /** For a route that's shown: one that fits, or can't be judged yet (RouteJudge). */
 function checkField(c: RouteCheck | null, unit: Unit): Section['fields'][number] {
-	const how = `${WHY_CHECK} ${howChecked(c, unit)} A route that doesn't fit isn't shown.`;
+	const how = `${WHY_CHECK} ${howChecked(c)}`;
 	if (!c)
 		return {
 			label: 'Check',
 			value: "can't tell (no position)",
-			title: `There's no position yet.\n\n${how}`,
+			title: `${how}\n\nThere's no position yet.`,
+			footnote: limitsText(unit),
 			tone: 'minor'
 		};
 	if (c.verdict === 'fits')
 		return {
 			label: 'Check',
 			value: 'fits',
-			title: `This one fits. ${detourText(c, unit)}${movedText(c, unit)}\n\n${how}`,
+			title: `${how}\n\nHere ${detourOf(c, unit)}.${movedText(c, unit)}`,
+			footnote: limitsText(unit),
 			tone: 'minor'
 		};
 	// 'unknown' (off-route and backwards never get here: those routes aren't shown).
 	return {
 		label: 'Check',
 		value: "can't tell yet",
-		title: `It's near the way (${detourOf(c, unit)}), but which way it's going isn't clear yet: ${c.progress ? 'in the last minutes it neither closed in on the destination nor left the origin behind (turning, holding, or taxiing).' : `that takes at least ${MIN_PROGRESS_WINDOW_MS / 60_000} min of trail.`}${movedText(c, unit)}\n\n${how}`,
+		title: `${how}\n\nIt's near the way (${detourOf(c, unit)}), but which way it's going isn't clear yet: ${c.progress ? 'in the last minutes it neither got closer to the destination nor further from the origin (turning, circling, or taxiing).' : `that takes at least ${MIN_PROGRESS_WINDOW_MS / 60_000} min of trail.`}${movedText(c, unit)}`,
+		footnote: limitsText(unit),
 		tone: 'minor'
 	};
 }
@@ -197,7 +201,8 @@ export function routeSection(
 		fields.push({
 			label: 'Route',
 			value: 'unknown',
-			title: `adsbdb lists ${routeText(r)} for the callsign ${callsign}, but ${misfitText(c, unit)} Callsigns get reused, so it's most likely another flight's route: not shown, and it doesn't come back when the aircraft turns.\n\n${howChecked(c, unit)}`,
+			title: `adsbdb lists ${routeText(r)} for the callsign ${callsign}, but ${misfitText(c, unit)} Callsigns get reused, so it's most likely another flight's route: not shown, and it doesn't come back when the aircraft turns.\n\n${howChecked(c)}`,
+			footnote: limitsText(unit),
 			tone: 'minor'
 		});
 	} else if (r) {

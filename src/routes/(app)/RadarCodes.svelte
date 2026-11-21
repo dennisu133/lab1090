@@ -33,9 +33,9 @@
 				have an ADS-B position.
 			</p>
 			<p>
-				Codes with fewer bursts are left out: some aren't even radars. The code is what's left of
-				the parity field after the CRC, so a flipped bit there can't be caught and names a code
-				nobody used.
+				Codes with fewer bursts are left out: some aren't even radars. The code is what's left after
+				checking the parity, so a wrong bit among the parity's last 7 (where the code sits) can't be
+				caught, and names a code nobody used.
 			</p>
 		</InfoTip>
 		<ul class="space-y-0.5 tabular-nums">

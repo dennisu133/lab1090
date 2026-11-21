@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { arrivalTime, dbfs } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -22,13 +23,22 @@
 
 	/**
 	 * Clicking a row in a count table shows only those frames; null = no filter.
-	 * tc is a TC table row key: a group ("9–18") or a single code ("11").
+	 * tc is a TC table row key: a group ("9–18") or a single code ("11"). The page can open
+	 * with one set, from `?df=17` or `?tc=4` (the tracker panel links here so).
 	 */
-	let filter = $state<{ df: number | null; tc: string | null; verdict: Verdict | null }>({
-		df: null,
-		tc: null,
-		verdict: null
-	});
+	let filter = $state<{ df: number | null; tc: string | null; verdict: Verdict | null }>(
+		fromUrl(page.url.searchParams)
+	);
+
+	function fromUrl(params: { get(name: string): string | null }) {
+		const df = Number(params.get('df') ?? NaN);
+		const tc = params.get('tc');
+		return {
+			df: Number.isInteger(df) && df >= 0 && df < 32 ? df : null,
+			tc: tc !== null && /^\d{1,2}(–\d{1,2})?$/.test(tc) ? tc : null,
+			verdict: null
+		};
+	}
 	let chips = $derived(
 		[
 			{ key: 'df' as const, label: `DF ${filter.df}`, active: filter.df !== null },

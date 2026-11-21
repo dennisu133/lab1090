@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { arrivalTime, n as whole } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import LiveHeading from '#lib/components/LiveHeading.svelte';
@@ -23,7 +24,8 @@
 	const stream = getStreams().commB;
 
 	let source = $state<Source | null>(null);
-	let register = $state<string | null>(null);
+	/** The register picked; the page can open with one, from `?register=5,0` (the tracker links so). */
+	let register = $state<string | null>(page.url.searchParams.get('register'));
 	let aircraft = $state<string | null>(null);
 
 	let rows = $derived(

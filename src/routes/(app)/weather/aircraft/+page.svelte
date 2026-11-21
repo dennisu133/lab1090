@@ -2,9 +2,11 @@
 	/weather/aircraft, "Aircraft": what one aircraft's replies give on its own. Its wind and
 	temperature from a 5,0/6,0 pair and whether it leaves a contrail, worked through; then
 	every aircraft's latest values and the feed of observations. The
-	Profile tab puts them together.
+	Profile tab puts them together. `?icao=3C6444` opens it on that aircraft, and `#wind`,
+	`#temperature` or `#contrail` at that card (the tracker panel's weather rows link here).
 -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseIcon from '#lib/components/icons/PauseIcon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
@@ -32,7 +34,7 @@
 	const stream = getStreams().weather;
 
 	/** The aircraft picked in the table (filters the feed, picks the worked example). */
-	let selected = $state<string | null>(null);
+	let selected = $state<string | null>(page.url.searchParams.get('icao'));
 	/** An observation frozen in the calculations (paused), so they can be read without changing. */
 	let held = $state.raw<{ observation: Observation; callsign: string | null } | null>(null);
 
@@ -135,9 +137,15 @@
 			     the steps would be squeezed into a narrow column and the cards would get very
 			     tall. Each one checkable with a calculator. -->
 			<div class="space-y-4">
-				<WindCalculation observation={example.observation} />
-				<TemperatureCalculation observation={example.observation} />
-				<ContrailCalculation observation={example.observation} tracker={contrail} />
+				<div id="wind" class="scroll-mt-4">
+					<WindCalculation observation={example.observation} />
+				</div>
+				<div id="temperature" class="scroll-mt-4">
+					<TemperatureCalculation observation={example.observation} />
+				</div>
+				<div id="contrail" class="scroll-mt-4">
+					<ContrailCalculation observation={example.observation} tracker={contrail} />
+				</div>
 			</div>
 		{:else}
 			<!-- As tall as the three cards will be, so nothing jumps when the first pair arrives. -->

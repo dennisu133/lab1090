@@ -7,11 +7,12 @@
  * (finder.ts shownSpread). Far radars get long thin ones, pointing along the line of sight
  * from the aircraft: the bearings pin the radar down sideways, but hardly how far away it is.
  *
- * The beam is the fit's prediction, not something we receive: β(t) = 360° · (t − t₀) / P
+ * The beam is the fit's prediction, not something received: β(t) = 360° · (t − t₀) / P
  * from the fitted phase and period, on the server's clock (Radar.offset converts). It
  * should pass over each aircraft just as that aircraft's replies come in. Drawn only while
- * the radar is heard (BEAM_FRESH_MS): even a period good to 0.1 ms drifts a degree every
- * few minutes. The selected radar's beam gets a fading tail, like the afterglow on an old
+ * the radar is heard (BEAM_FRESH_MS): without new bursts, the period's error adds up turn
+ * by turn (0.1 ms per turn: a degree in about 10 minutes at 12.5 rpm, 360° · 0.1 ms · 60 / P²
+ * a minute). The selected radar's beam gets a fading tail, like the afterglow on an old
  * radar screen; the others a faint line.
  *
  * Pure functions: the layers are in routes/TrackerMap.svelte.

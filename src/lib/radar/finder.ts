@@ -28,8 +28,8 @@
  * hundreds of km apart): each new fit more than SAME_RADAR_KM from the last counted as
  * another radar, and none ever went. Only confirmed radars are shown. One whose code goes
  * quiet, or whose fits find nothing, stays with its last fit: radars don't move. Its beam
- * is only drawn while it's heard: a period good to 0.1 ms still drifts a degree in a few
- * minutes.
+ * is only drawn while it's heard: without new bursts the period's error adds up turn by turn
+ * (0.1 ms: a degree in about 10 minutes at 12.5 rpm, map/radars.ts).
  *
  * Kept per tab, like everything else: bursts for the last WINDOW_MS.
  *

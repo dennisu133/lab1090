@@ -1,8 +1,10 @@
 <!--
 	Sections of labelled values (lib/describe/aircraft.ts). A label with an explanation is an
 	InfoTip: tappable on phones, where `title` tooltips never show. A blank line in it starts a
-	new paragraph; `choices` (e.g. every emitter category) follow as a table, the one sent
-	highlighted. Labels of self-explanatory values (Route, Messages) are plain text.
+	new paragraph, `[text](/weather)` is a link (LinkedText); `choices` (e.g. every emitter
+	category) follow as a table, the one sent highlighted, and `footnote` (which message, how long
+	ago) closes it, smaller and dimmed: the same kind of line under most tooltips, so it stays
+	out of the way. Labels of self-explanatory values (Route, Messages) are plain text.
 
 	The label column has one width in every section, so the values line up down the whole
 	panel (sized to its content, "Selected altitude" pushed one section's values to the right).
@@ -12,6 +14,7 @@
 <script lang="ts">
 	import Flag from '#lib/components/Flag.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import LinkedText from '#lib/components/LinkedText.svelte';
 	import type { Section } from '#lib/describe/aircraft.ts';
 
 	let { sections }: { sections: Section[] } = $props();
@@ -37,9 +40,11 @@
 		<dl class="grid grid-cols-[8.75rem_1fr] gap-x-3 gap-y-1.5 text-sm">
 			{#each section.fields as field (field.label)}
 				<dt class="text-zinc-400">
-					{#if field.title || field.choices}
+					{#if field.title || field.choices || field.footnote}
 						<InfoTip label={field.label}>
-							{#each field.title?.split('\n\n') ?? [] as paragraph, i (i)}<p>{paragraph}</p>{/each}
+							{#each field.title?.split('\n\n') ?? [] as paragraph, i (i)}
+								<p><LinkedText text={paragraph} /></p>
+							{/each}
 							{#if field.choices}
 								<table class="w-full text-xs">
 									<tbody>
@@ -51,6 +56,9 @@
 										{/each}
 									</tbody>
 								</table>
+							{/if}
+							{#if field.footnote}
+								<p class="text-xs text-zinc-400"><LinkedText text={field.footnote} /></p>
 							{/if}
 						</InfoTip>
 					{:else}

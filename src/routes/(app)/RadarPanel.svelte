@@ -5,6 +5,7 @@
 	codes heard are listed at the end.
 -->
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import {
 		ago,
@@ -127,18 +128,17 @@
 
 <div class="space-y-3 px-4 pb-3 text-sm text-zinc-300">
 	<p>
-		Nobody told us this radar is here, and the antenna never heard it: radars ask on 1030 MHz, we
-		listen on 1090. It was found from the answers of {r.codeAircraft} aircraft, in four steps.
+		A radar on the ground, air traffic control's or the military's: a rotating antenna that asks the
+		aircraft in its beam who they are and how high they fly (a secondary radar). Nothing announces
+		where it is, and the antenna here never heard it: radars ask on 1030 MHz, aircraft answer on
+		1090. It was found from the answers of {r.codeAircraft} aircraft alone, in four steps.
 	</p>
-	<p class="text-zinc-400">Take the symbol as "somewhere in the ellipse", not as the spot.</p>
 	{#if r.sharing.length}
 		<p class="text-zinc-400">
-			It shares its code with {r.sharing.join(', ')}: radars whose coverage overlaps may use the
-			same code if they form a cluster, which coordinates them through a ground network. Each turns
-			on its own, so each explains its own bursts; this one was fitted to what the other{r.sharing
-				.length > 1
-				? 's'
-				: ''} left.
+			It shares its code with {r.sharing.join(', ')}: radars covering the same area may share a code
+			if they're linked into a cluster: over a ground network they agree which of them deals with
+			each aircraft, and pass each other what they've seen. Each turns on its own, so each explains
+			its own bursts; this one was fitted to what the other{r.sharing.length > 1 ? 's' : ''} left.
 		</p>
 	{/if}
 </div>
@@ -146,21 +146,26 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="1 · Who asked">
 		<p>
-			A Mode S radar finds new aircraft with an "all-call": a question to everyone in its beam. Each
-			aircraft answers with a DF11 reply: its address, and a checksum (CRC) with the code of the
-			radar that asked mixed into it. Checking the CRC leaves that code instead of zero.
+			A radar finds new aircraft with an "all-call": a question to every aircraft in its beam that
+			it hasn't yet told to stay quiet (once it knows an aircraft, it asks it by name). Each answers
+			with its address (a <a
+				href={resolve('/(app)/frames')}
+				class="text-accent-400 hover:text-accent-300">DF11 reply</a
+			>), and the check code at the end of the reply, the parity, has the asking radar's code mixed
+			in. Checking the parity leaves that code instead of zero.
 		</p>
 		<p>
-			II (1–15) and SI (1–63) codes are assigned so that radars whose coverage overlaps have
-			different ones, so a code is close to a name. II 0 is left out: aircraft send that by
-			themselves, about once a second (acquisition squitter).
+			Radar codes (II 1–15 or SI 1–63) are given out (in Europe by Eurocontrol) so that radars
+			covering the same area have different ones, so a code is almost a name. II 0 is left out:
+			aircraft send it unasked about once a second, and interrogators without a code of their own
+			share it, so it names nobody.
 		</p>
 	</InfoTip>
 	<p>
 		<span class="font-mono text-zinc-100">{r.code}</span>: {n(r.codeReplies)} replies from {r.codeAircraft}
 		aircraft in the last {WINDOW_MS / 60_000} min. Replies less than {BURST_GAP_MS} ms apart are one
-		<em>burst</em>: the few times the beam asked while it swept past, about 2.4° wide. That makes
-		{n(r.codeBursts)} bursts, each with where its aircraft was then (from its ADS-B position).
+		<em>burst</em>: the few questions the beam asked while it swept past (it's about 2.4° wide).
+		That makes {n(r.codeBursts)} bursts, each with where its aircraft was then (from its ADS-B position).
 	</p>
 </section>
 
@@ -171,14 +176,28 @@
 		label="2 · How fast it turns"
 	>
 		<p>
-			The time between an aircraft's bursts is a whole number of turns: one, or more when a turn's
-			replies didn't reach us. The period is the one that makes all the gaps whole numbers at once:
-			each gap scores cos(2π · gap / period), 1 for a whole number of turns. Half or a third of the
-			period would fit as well, so it's the longest that scores near the best.
+			The beam passes each aircraft once a turn, so the time between two of its bursts is a whole
+			number of turns: one, or more when the answers of a turn didn't reach the antenna. The time
+			for one turn (the period) is the one that makes all the gaps whole numbers at once.
 		</p>
 		<p>
-			Approach radars near airports turn every 4–5 s (12–15 rpm); long-range en-route radars every
-			8–12 s (5–7.5 rpm).
+			Each gap scores cos(2π · gap / period): 1 for a whole number of turns, −1 for half a turn off
+			(½, 1½, …). A half or a third of the period scores as well (every gap is then two or three of
+			those), so the period is the longest one that scores close to the best.
+		</p>
+		<p>
+			Approach radars near airports turn every 4–5 s (12–15 rpm, <a
+				href="https://www.radartutorial.eu/02.basics/rp31.en.html"
+				target="_blank"
+				rel="noreferrer"
+				class="text-accent-400 hover:text-accent-300">Radartutorial</a
+			>), long-range en-route radars every 6–12 s (5–10 rpm,
+			<a
+				href="https://www.eurocontrol.int/sites/default/files/2019-04/surveillance-mode-s-european-mode-s-functional-specification-20050509.pdf"
+				target="_blank"
+				rel="noreferrer"
+				class="text-accent-400 hover:text-accent-300">Eurocontrol</a
+			>).
 		</p>
 	</InfoTip>
 	<p>
@@ -227,15 +246,20 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="3 · Where it stands">
 		<p>
-			If the beam turns steadily, it points at β(t) = 360° · (t − t<sub>0</sub>) / P. Each burst is
-			a moment it pointed at an aircraft whose position we know. For a guessed radar position, the
-			bearings from there to the aircraft must fit one such line through the bursts' times: the fit
-			gives t<sub>0</sub> and P, and how far each burst is off, as an angle of the beam.
+			A beam turning steadily points at β(t) = 360° · (t − t<sub>0</sub>) / P at time t, with P the
+			period and t<sub>0</sub> a moment it pointed north. Each burst is a moment it pointed at an aircraft
+			whose position is known.
 		</p>
 		<p>
-			The position is where the bursts are off the least: searched on a 25 km grid within 600 km of
-			the aircraft (the radio horizon), both directions of rotation, then refined. A burst more than {OUTLIER}°
-			off counts as {OUTLIER}°, so one stray reply can't pull it.
+			So for a radar position, guessed: work out the direction from there to each aircraft, and fit
+			one such β(t) through the bursts' times. The fit gives t<sub>0</sub> and P, and how far each burst
+			is off, as an angle of the beam. The right position is where the bursts are off the least.
+		</p>
+		<p>
+			The guesses lie on a 25 km grid within 600 km of the aircraft (about as far as even a radar on
+			a mountain sees aircraft at airliner heights over the Earth's curve), each tried turning both
+			ways, and the best one is then refined. A burst more than {OUTLIER}° off counts as {OUTLIER}°,
+			so one stray reply can't pull the position away.
 		</p>
 	</InfoTip>
 	<p>
@@ -300,9 +324,11 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="4 · How sure">
 		<p>
-			Fit again without each aircraft in turn (a jackknife): if the position hangs on one aircraft,
-			it moves a lot. The spread of those fits gives the dashed ellipse on the map, two standard
-			errors across.
+			The fit is done again once for each aircraft, leaving that one out (a "jackknife"). If the
+			position hangs on one aircraft, it moves a lot when that one is left out. How far these
+			positions spread, scaled up because each refit still shares all the other aircraft, gives the
+			position's standard error. The dashed ellipse on the map reaches two standard errors from the
+			middle.
 		</p>
 		<p>
 			Bearings pin a radar down sideways, but hardly how far away it is: seen from a distant radar,
@@ -310,19 +336,19 @@
 			at the aircraft.
 		</p>
 		<p>
-			The jackknife misses what all the bursts get wrong together (the beam is about 2.4° wide; the
-			positions are up to half a second old), so the map draws the ellipse at least {km(
-				MIN_ELLIPSE_KM
-			)} either way. Longer than {km(MAX_ELLIPSE_KM)} (from the middle), the radar isn't shown: that's
-			a line of places it could be, not a place.
+			The jackknife misses errors all the bursts share (an aircraft's reported position can lag a
+			fraction of a second behind it), so the map draws the ellipse at least {km(MIN_ELLIPSE_KM)} either
+			way. Longer than {km(MAX_ELLIPSE_KM)} (from the middle), the radar isn't shown: that's a line of
+			places it could be, not a place.
 		</p>
 	</InfoTip>
 	<p>
-		The ellipse is {km(r.spread.major)} along {directionText(r.spread.bearing)}/{directionText(
-			(r.spread.bearing + 180) % 360
-		)}
+		The ellipse reaches {km(r.spread.major)} from the middle along {directionText(
+			r.spread.bearing
+		)}/{directionText((r.spread.bearing + 180) % 360)}
 		and {km(r.spread.minor)} across{#if shown.major !== r.spread.major || shown.minor !== r.spread.minor}
-			(drawn {km(shown.major)} × {km(shown.minor)}){/if}. Without each aircraft the position moves:
+			(drawn at {km(shown.major)} and {km(shown.minor)}){/if}. Without each aircraft the position
+		moves:
 	</p>
 	<ul class="mt-1 space-y-0.5 font-mono text-xs text-zinc-400">
 		{#each moves as m (m.icao)}
@@ -363,12 +389,12 @@
 <section class="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-300">
 	<InfoTip heading="h3" class="mb-2 text-xs font-medium text-zinc-400" label="The beam">
 		<p>
-			The line sweeping round on the map is the fit's prediction, not something we receive: where
-			β(t) says the beam points now. It should pass over each aircraft just as its replies come in.
+			The line sweeping round on the map is the fit's prediction, not something received: where β(t)
+			says the beam points now. It should pass over each aircraft just as its replies come in.
 		</p>
 		<p>
-			It's drawn while the radar is heard (the last {BEAM_FRESH_MS / 60_000} min): a period good to a
-			tenth of a millisecond still drifts a degree in a few minutes.
+			It's drawn while the radar is heard (the last {BEAM_FRESH_MS / 60_000} min): without new answers
+			to fit to, a small error in the period adds up with every turn.
 		</p>
 		<p>
 			The radar is fitted again about twice a minute on the bursts of the last {WINDOW_MS / 60_000} minutes.
