@@ -31,7 +31,10 @@ export interface SettingSample {
 	from: '4,0' | 'TC 29';
 }
 
-/** Immutable: every change makes new arrays, so the page knows when to recompute. */
+/**
+ * Immutable once read (Sky.samples): a change makes a new array, so the page knows when to
+ * recompute.
+ */
 export interface SkySamples {
 	temperatures: TemperatureSample[];
 	winds: WindSample[];
@@ -43,9 +46,24 @@ export interface SkySamples {
 }
 
 export class Sky {
-	samples: SkySamples = { temperatures: [], winds: [], columns: [], settings: [], turns: [] };
+	#samples: SkySamples = { temperatures: [], winds: [], columns: [], settings: [], turns: [] };
+	/**
+	 * The kinds whose array in #samples was made since `samples` was last read: nobody else
+	 * has it yet, so a new sample goes onto it in place. The others are copied first (once
+	 * per batch, not once per sample: the page reads `samples` after each batch).
+	 */
+	#unread = new Set<keyof SkySamples>();
 	/** Last accepted sample per aircraft and kind, for the thinning. */
 	#last = new Map<string, number>();
+
+	/**
+	 * The samples, immutable: a kind that changed is a new array, one that didn't is the same
+	 * one as before (the page recomputes only what depends on a changed one).
+	 */
+	get samples(): SkySamples {
+		this.#unread.clear();
+		return this.#samples;
+	}
 
 	/** `at`: where it was measured, for the map (WindSample.at). */
 	addObservation(o: Observation, at: LatLon | null = null): void {
@@ -111,7 +129,7 @@ export class Sky {
 	prune(now: number): void {
 		const fresh = <T extends { rx: number }>(xs: T[]) =>
 			xs.length && now - xs[0].rx > WINDOW_MS ? xs.filter((x) => now - x.rx <= WINDOW_MS) : xs;
-		const s = this.samples;
+		const s = this.#samples;
 		const next = {
 			temperatures: fresh(s.temperatures),
 			winds: fresh(s.winds),
@@ -122,8 +140,10 @@ export class Sky {
 					? s.turns.filter((t) => now - t.end <= WINDOW_MS)
 					: s.turns
 		};
-		if (Object.keys(next).some((k) => next[k as keyof SkySamples] !== s[k as keyof SkySamples]))
-			this.samples = next;
+		const kinds = Object.keys(next) as (keyof SkySamples)[];
+		const pruned = kinds.filter((k) => next[k] !== s[k]);
+		if (pruned.length > 0) this.#samples = next;
+		for (const k of pruned) this.#unread.add(k);
 		for (const [key, rx] of this.#last) if (now - rx > SAMPLE_EVERY_MS) this.#last.delete(key);
 	}
 
@@ -136,7 +156,12 @@ export class Sky {
 	}
 
 	#push<K extends keyof SkySamples>(kind: K, sample: SkySamples[K][number]): void {
-		this.samples = { ...this.samples, [kind]: [...this.samples[kind], sample] };
+		if (this.#unread.has(kind)) {
+			(this.#samples[kind] as SkySamples[K][number][]).push(sample);
+			return;
+		}
+		this.#samples = { ...this.#samples, [kind]: [...this.#samples[kind], sample] };
+		this.#unread.add(kind);
 	}
 }
 

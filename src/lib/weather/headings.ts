@@ -83,7 +83,7 @@ export function correctedWind(w: { wind: Vector; air: Vector | null }, degrees: 
 /**
  * Samples are grouped into cells of one layer and TIME_BIN_MS, for finding neighbours fast:
  * everything within MAX_LEVEL_FT and MAX_TIME_MS is in the LEVELS layers and BINS time bins
- * either side, and referenceWind() keeps only what is.
+ * either side, and neighbours() keeps only what is.
  */
 const TIME_BIN_MS = 5 * 60_000;
 const LEVELS = Math.ceil(MAX_LEVEL_FT / 1000);
@@ -93,85 +93,104 @@ const cellOf = (w: WindSample) => ({
 	bin: Math.floor(w.rx / TIME_BIN_MS)
 });
 
-/** Per cell, per aircraft: its samples' altitude, time and (corrected) wind. */
-type Cells = Map<string, Map<string, { altitude: number; rx: number; wind: Vector }[]>>;
+/** Per cell, per aircraft: its samples, as indices into the winds. */
+type Cells = Map<string, Map<string, number[]>>;
 
-function cells(winds: WindSample[], corrections: Map<string, number>): Cells {
+function cells(winds: WindSample[]): Cells {
 	const out: Cells = new Map();
-	for (const w of winds) {
+	winds.forEach((w, i) => {
 		const { level, bin } = cellOf(w);
 		const key = `${level} ${bin}`;
 		let cell = out.get(key);
 		if (!cell) out.set(key, (cell = new Map()));
 		let list = cell.get(w.icao);
 		if (!list) cell.set(w.icao, (list = []));
-		list.push({
-			altitude: w.altitude,
-			rx: w.rx,
-			wind: correctedWind(w, corrections.get(w.icao) ?? 0)
-		});
-	}
+		list.push(i);
+	});
 	return out;
 }
 
+/** The other aircraft near a sample, and per aircraft its samples there (indices). */
+interface Neighbours {
+	aircraft: string[];
+	samples: number[][];
+}
+
 /**
- * The other aircraft's mean wind within MAX_LEVEL_FT and MAX_TIME_MS of a sample, each
- * aircraft once (the mean of its own samples there).
+ * The other aircraft's samples within MAX_LEVEL_FT and MAX_TIME_MS of a sample, by aircraft.
+ * Who is near whom doesn't change with the corrections, so this is found once and each
+ * round only sums the winds (referenceWind).
  */
-function referenceWind(w: WindSample, grid: Cells): { wind: Vector; aircraft: string[] } | null {
+function neighbours(w: WindSample, winds: WindSample[], grid: Cells): Neighbours {
 	const { level, bin } = cellOf(w);
-	const sums = new Map<string, { north: number; east: number; n: number }>();
+	const byAircraft = new Map<string, number[]>();
 	for (let l = level - LEVELS; l <= level + LEVELS; l++)
 		for (let b = bin - BINS; b <= bin + BINS; b++) {
 			const cell = grid.get(`${l} ${b}`);
 			if (!cell) continue;
 			for (const [icao, samples] of cell) {
 				if (icao === w.icao) continue;
-				for (const s of samples) {
+				for (const i of samples) {
+					const s = winds[i];
 					if (Math.abs(s.altitude - w.altitude) > MAX_LEVEL_FT) continue;
 					if (Math.abs(s.rx - w.rx) > MAX_TIME_MS) continue;
-					const sum = sums.get(icao) ?? { north: 0, east: 0, n: 0 };
-					sums.set(icao, {
-						north: sum.north + s.wind.north,
-						east: sum.east + s.wind.east,
-						n: sum.n + 1
-					});
+					let list = byAircraft.get(icao);
+					if (!list) byAircraft.set(icao, (list = []));
+					list.push(i);
 				}
 			}
 		}
-	const wind = meanVector(
-		[...sums.values()].map((s) => ({ north: s.north / s.n, east: s.east / s.n }))
-	);
-	return wind && { wind, aircraft: [...sums.keys()] };
+	return { aircraft: [...byAircraft.keys()], samples: [...byAircraft.values()] };
 }
+
+/** The neighbours' mean wind (their `winds`, corrected), each aircraft once. */
+function referenceWind(near: Neighbours, winds: Vector[]): Vector | null {
+	const means = near.samples.map((samples) => {
+		let north = 0;
+		let east = 0;
+		for (const i of samples) {
+			north += winds[i].north;
+			east += winds[i].east;
+		}
+		return { north: north / samples.length, east: east / samples.length };
+	});
+	return meanVector(means);
+}
+
+type Checkable = WindSample & { air: Vector };
 
 /** Every aircraft that could be checked, by address. */
 export function headingChecks(winds: WindSample[]): Map<string, HeadingCheck> {
-	const byAircraft = Map.groupBy(winds, (w) => w.icao);
+	const grid = cells(winds);
+	// Per aircraft with enough winds of its own, each one with its neighbours.
+	const candidates: { icao: string; own: { w: Checkable; near: Neighbours }[] }[] = [];
+	for (const [icao, all] of Map.groupBy(winds, (w) => w.icao)) {
+		// Winds from turns have no heading to check, but they're good references.
+		const own = all.filter((w): w is Checkable => w.air !== null);
+		if (own.length < MIN_CHECK_SAMPLES) continue;
+		candidates.push({ icao, own: own.map((w) => ({ w, near: neighbours(w, winds, grid) })) });
+	}
 	let corrections = new Map<string, number>();
 	let checks = new Map<string, HeadingCheck>();
 
 	for (let round = 0; round < ROUNDS; round++) {
-		const grid = cells(winds, corrections);
+		const corrected = winds.map((w) => correctedWind(w, corrections.get(w.icao) ?? 0));
 		const next = new Map<string, number>();
 		checks = new Map();
-		for (const [icao, all] of byAircraft) {
-			// Winds from turns have no heading to check, but they're good references.
-			const own = all.filter((w): w is WindSample & { air: Vector } => w.air !== null);
-			if (own.length < MIN_CHECK_SAMPLES) continue;
+		for (const { icao, own } of candidates) {
 			const others = new Set<string>();
 			let cos = 0;
 			let sin = 0;
-			const pairs: { w: WindSample & { air: Vector }; reference: Vector }[] = [];
-			for (const w of own) {
-				const reference = referenceWind(w, grid);
+			const pairs: { w: Checkable; reference: Vector }[] = [];
+			for (const { w, near } of own) {
+				const reference = referenceWind(near, corrected);
 				if (!reference) continue;
-				for (const o of reference.aircraft) others.add(o);
+				for (const o of near.aircraft) others.add(o);
 				// The air vector the others' wind implies, against the one reported.
-				const implied = sub(add(w.wind, w.air), reference.wind);
+				const implied = sub(add(w.wind, w.air), reference);
 				cos += w.air.north * implied.north + w.air.east * implied.east;
 				sin += w.air.north * implied.east - w.air.east * implied.north;
-				pairs.push({ w, reference: reference.wind });
+				pairs.push({ w, reference });
 			}
 			if (others.size < MIN_OTHERS || pairs.length < MIN_CHECK_SAMPLES) continue;
 			const correction = Math.atan2(sin, cos) / RAD;

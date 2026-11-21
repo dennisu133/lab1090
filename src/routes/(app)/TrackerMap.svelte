@@ -411,6 +411,8 @@
 	});
 	$effect(() => {
 		void barbClock;
+		// Hidden while switched off; switched on, this runs again and draws them at once.
+		if (!layers.winds) return;
 		const winds = weather.correctedWinds;
 		const checks = weather.checks;
 		if (!map) return;

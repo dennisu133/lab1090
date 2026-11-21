@@ -6,7 +6,7 @@ import type { Observation } from '#lib/weather/observation.ts';
 import { applyHeadingChecks, headingChecks, type HeadingCheck } from '#lib/weather/headings.ts';
 import { WeatherPipeline } from '#lib/weather/pipeline.ts';
 import { layerAt, layers, type Layer, type WindSample } from '#lib/weather/profile.ts';
-import type { SkySamples } from '#lib/weather/sky.ts';
+import { SAMPLE_EVERY_MS, type SkySamples } from '#lib/weather/sky.ts';
 import type { WeatherAircraft } from '#lib/weather/tracker.ts';
 
 export interface ObservationRow {
@@ -25,6 +25,8 @@ export interface AircraftWeather {
 }
 
 const MAX_ROWS = 2000;
+/** How often the heading checks are redone, at most (see `checks`): sky.ts's sample interval. */
+const CHECK_EVERY_MS = SAMPLE_EVERY_MS;
 /** Beast timestamps count at 12 MHz. */
 const TICKS_PER_MS = 12_000;
 
@@ -46,13 +48,24 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		settings: [],
 		turns: []
 	});
+	/** The winds the checks were made from (see `checks`). */
+	#checkedWinds = $state.raw<WindSample[]>([]);
+	/** When #checkedWinds was last taken (server clock). */
+	#checkedAt = -Infinity;
 	/**
 	 * Each aircraft's wind against the others' (lib/weather/headings.ts), and the winds with
 	 * the clearly-off headings corrected: what the tracker map draws, and what /weather
 	 * uses unless switched to "as sent". Computed only while a page reads them.
+	 *
+	 * The checks are redone at most every CHECK_EVERY_MS, from the winds as they were then
+	 * (#checkedWinds): each compares minutes of winds with everyone else's, so its cost grows
+	 * with the square of the traffic, and one more wind changes little. The corrections go
+	 * onto the latest winds at once.
 	 */
-	checks: Map<string, HeadingCheck> = $derived(headingChecks(this.sky.winds));
-	correctedWinds: WindSample[] = $derived(applyHeadingChecks(this.sky.winds, this.checks));
+	checks: Map<string, HeadingCheck> = $derived(headingChecks(this.#checkedWinds));
+	/** The winds alone: a new temperature, column or setting doesn't redraw the barbs. */
+	#winds = $derived(this.sky.winds);
+	correctedWinds: WindSample[] = $derived(applyHeadingChecks(this.#winds, this.checks));
 	/**
 	 * The temperature profile alone (/weather's layers without winds and columns): the
 	 * contrail answer for one aircraft uses its layer's mean temperature.
@@ -102,6 +115,8 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		this.aircraft = [];
 		this.now = 0;
 		this.sky = this.#pipeline.sky.samples;
+		this.#checkedWinds = [];
+		this.#checkedAt = -Infinity;
 		this.since = null;
 	}
 
@@ -120,6 +135,10 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 		this.now = now;
 		this.since ??= frames[0].rx;
 		if (this.#pipeline.sky.samples !== this.sky) this.sky = this.#pipeline.sky.samples;
+		if (this.sky.winds !== this.#checkedWinds && now - this.#checkedAt >= CHECK_EVERY_MS) {
+			this.#checkedWinds = this.sky.winds;
+			this.#checkedAt = now;
+		}
 		return rows;
 	}
 }

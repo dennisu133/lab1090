@@ -73,4 +73,19 @@ describe('Sky', () => {
 		expect(sky.samples.columns.map((c) => c.rx)).toEqual([WINDOW_MS]);
 		expect(sky.samples.settings).toEqual([]);
 	});
+
+	test('samples once read never change; a kind without new samples keeps its array', () => {
+		const sky = new Sky();
+		sky.addColumn('A', 0, 35_000, -700, position);
+		sky.addSetting(setting('A', 0, 1020));
+		const first = sky.samples;
+		sky.addColumn('B', 0, 37_000, -650, position);
+		sky.addColumn('C', 0, 36_000, -600, position);
+		const second = sky.samples;
+		expect(first.columns.map((c) => c.icao)).toEqual(['A']);
+		expect(second.columns.map((c) => c.icao)).toEqual(['A', 'B', 'C']);
+		expect(second.settings).toBe(first.settings);
+		sky.addColumn('D', 0, 38_000, -550, position);
+		expect(second.columns).toHaveLength(3);
+	});
 });
