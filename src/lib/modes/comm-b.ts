@@ -135,19 +135,45 @@ const NEEDS_ADSB = new Set(['5,1', '5,2', '0,5', '0,6', '0,8', '0,9', '6,1', '6,
 const MAX_AGE_MS = 30_000;
 const POSITION_MAX_AGE_MS = 10_000;
 
+/** What the bits alone say, register by register (REGISTERS' order): why not, or the value. */
+type Structure = ({ reason: string } | { reason: null; register: Register })[];
+
+/**
+ * structure() of the latest replies, by their bits. The tracker, /weather and /comm-b each
+ * infer every reply, each comparing with its own ADS-B; what the bits alone say is the same
+ * for all three, and most of the work. A batch's worth (oldest out first).
+ */
+const structures = new Map<string, Structure>();
+const STRUCTURES = 1024;
+
+/** Every register's reject() and decode() of `mb`. The registers are shared: don't change them. */
+function structure(mb: Uint8Array): Structure {
+	const key = toHex(mb);
+	let s = structures.get(key);
+	if (s) return s;
+	s = REGISTERS.map((spec) => {
+		const reason = spec.reject(mb);
+		return reason ? { reason } : { reason: null, register: spec.decode(mb) };
+	});
+	structures.set(key, s);
+	if (structures.size > STRUCTURES) structures.delete(structures.keys().next().value!);
+	return s;
+}
+
 export function inferRegister(mb: Uint8Array, context: Context | null): Inference {
 	const inference: Inference = { how: 'unknown', best: null, candidates: [], rejected: [] };
 	if (mb.every((b) => b === 0)) return { ...inference, how: 'empty' };
 
 	const rare: Candidate[] = [];
-	for (const spec of REGISTERS) {
+	const bits = structure(mb);
+	for (const [i, spec] of REGISTERS.entries()) {
 		const { bds, name } = spec;
-		const reason = spec.reject(mb);
-		if (reason) {
-			inference.rejected.push({ bds, name, why: 'structure', reason });
+		const read = bits[i];
+		if (read.reason !== null) {
+			inference.rejected.push({ bds, name, why: 'structure', reason: read.reason });
 			continue;
 		}
-		const register = spec.decode(mb);
+		const register = read.register;
 		const comparisons = context ? compare(register, mb, context) : [];
 		const failed = comparisons.filter((c) => !c.ok);
 		if (NEEDS_ADSB.has(bds) || bds === '2,1') {
