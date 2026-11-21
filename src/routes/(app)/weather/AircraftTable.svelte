@@ -10,7 +10,6 @@
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { celsius, levelOrFeet, n, signed } from '#lib/describe/format.ts';
 	import { temperatureFields, windFields, windText } from '#lib/describe/weather.ts';
-	import { MAX_ROLL, MAX_SKEW_MS } from '#lib/weather/observation.ts';
 	import { AIRCRAFT_TTL_MS, AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
 
 	interface Props {
@@ -33,18 +32,14 @@
 	<div class="mb-2 flex">
 		<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Aircraft" wide>
 			<p>
-				Every aircraft a radar read both 5,0 and 6,0 from in the last {AIRCRAFT_TTL_MS / 1000} s, with
-				a verified address and nothing ADS-B contradicts. Each new reply of one register is paired with
-				the latest of the other: one <strong>observation</strong>. Its wind is
-				<strong>trusted</strong>
-				if the two are at most {MAX_SKEW_MS / 1000} s apart and the aircraft banks at most {MAX_ROLL}°:
-				in a turn the heading changes by up to 3° a second between the two replies. The temperature
-				only needs the first.
+				Every aircraft a radar has read registers 5,0 and 6,0 from in the last {AIRCRAFT_TTL_MS /
+					1000} s. Each new reply of one is paired with the latest of the other: one
+				<strong>observation</strong>. Its wind is <strong>trusted</strong> if it passes the Wind card's
+				checks; the temperature only needs the two replies close enough together.
 			</p>
-			<p>
-				<strong>Wind</strong> and <strong>Temperature</strong> are the latest trusted values,
-				<strong>{minute} s average</strong> the mean over the last minute (wind as vectors: 350° and 010°
-				average to 000°), which smooths out the rounding steps.
+			<p class="text-zinc-400">
+				Only replies whose address checks out, and that ADS-B doesn't contradict, count: a damaged
+				reply can look like it came from a different aircraft.
 			</p>
 		</InfoTip>
 	</div>
@@ -58,40 +53,47 @@
 					<th class="w-24 py-1 font-normal">
 						<InfoTip label="Altitude">
 							<p>
-								Pressure altitude: what the altimeter shows with the standard setting (1013.25 hPa),
-								from the aircraft's latest verified reply or ADS-B.
+								<strong>Pressure altitude</strong>: where the standard atmosphere has the pressure
+								the aircraft measures, which is what its altimeter shows when set to 1013.25 hPa. It
+								isn't quite its height above the sea.
 							</p>
 							<p class="text-zinc-400">
-								Shown as a flight level from 18,000 ft: FL370 is 37,000 ft. (Pilots switch to flight
-								levels above the transition altitude: 18,000 ft in the US, 5,000 ft in most of
-								Germany.)
+								From 18,000 ft up it's shown as a flight level, in hundreds of feet: FL370 is 37,000
+								ft.
 							</p>
 						</InfoTip>
 					</th>
 					<th class="w-40 py-1 font-normal xl:w-44">
 						<InfoTip label="Wind">
 							<p>
-								Where the wind blows <strong>from</strong> (true north, three digits as in weather reports)
-								and its speed, from the latest trusted observation. ± is what the rounding of the register
-								values allows.
+								Where the wind blows <strong>from</strong>, clockwise from true north, and its
+								speed, from the latest trusted observation. ± is how many knots the rounding in the
+								replies allows.
 							</p>
 						</InfoTip>
 					</th>
 					<th class="w-36 py-1 font-normal">
 						<InfoTip label="Temperature">
 							<p>
-								Static air temperature from the latest trusted observation. ± is what the rounding
-								of TAS and Mach allows.
+								The temperature of the air itself (the probe reads warmer), from the latest trusted
+								observation. ± is what the rounding of TAS and Mach allows.
 							</p>
 						</InfoTip>
 					</th>
-					<th class="w-48 py-1 font-normal">{minute} s average</th>
+					<th class="w-48 py-1 font-normal">
+						<InfoTip label="{minute} s average">
+							<p>
+								The mean of the trusted values over the last minute, which smooths out the rounding
+								steps. Winds are averaged as arrows: 350° and 010° give 000°, not 180°.
+							</p>
+						</InfoTip>
+					</th>
 					<th class="w-16 py-1 font-normal">
 						<InfoTip label="ISA">
 							<p>
-								How much warmer (+) or colder (−) than the standard atmosphere, averaged over the
-								last {minute} s. Unlike the temperature it hardly changes when an aircraft climbs, so
-								aircraft at different levels compare: about the same means the same air mass.
+								How much warmer (+) or colder (−) the air is than the standard atmosphere at its
+								altitude, over the last {minute} s. Below the tropopause this changes far less with height
+								than the temperature itself, so aircraft at different levels can be compared.
 							</p>
 						</InfoTip>
 					</th>
@@ -99,7 +101,7 @@
 						<InfoTip label="Trusted">
 							<p>
 								Observations with a trusted wind, out of all since the aircraft appeared here. The
-								others had their replies too far apart, or the aircraft was turning.
+								rest failed a check: replies too far apart, a turn, or a value missing.
 							</p>
 						</InfoTip>
 					</th>

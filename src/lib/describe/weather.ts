@@ -15,7 +15,13 @@ import {
 	MIN_CORRECTION,
 	type HeadingCheck
 } from '#lib/weather/headings.ts';
-import { MAX_ROLL, MAX_SKEW_MS, STEP, type Observation } from '#lib/weather/observation.ts';
+import {
+	MAX_ROLL,
+	MAX_SKEW_MS,
+	STEP,
+	turnRate,
+	type Observation
+} from '#lib/weather/observation.ts';
 import { AVERAGE_MS, type WeatherAircraft } from '#lib/weather/tracker.ts';
 import { components, normalise, windOf, type Wind } from '#lib/weather/wind.ts';
 import type { Field } from './field';
@@ -70,7 +76,7 @@ export function windFields(o: Observation): Field[] {
 		{ value: windText(wind), title, tone: 'main', mono: true },
 		{
 			value: `±${Math.max(Math.round((speedRange[1] - speedRange[0]) / 2), 1)}`,
-			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors (the aircraft's own magnetic variation table, compass calibration) come on top.`,
+			title: `From rounding alone: ${speedRange[0].toFixed(1)}–${speedRange[1].toFixed(1)} kt, direction ±${directionSpread.toFixed(1)}°. Heading errors come on top, mostly from the aircraft's own magnetic variation table.`,
 			tone: 'minor'
 		}
 	];
@@ -82,7 +88,7 @@ export function temperatureFields(o: Observation): Field[] {
 	const tas = o.inputs.trackAndTurn.value.tas!;
 	const mach = o.inputs.headingAndSpeed.value.mach!;
 	const title = [
-		`Static air temperature ${celsius(kelvin, 2)} (${kelvin.toFixed(2)} K).`,
+		`Air temperature ${celsius(kelvin, 2)} (${kelvin.toFixed(2)} K).`,
 		'',
 		`Speed of sound a = TAS / Mach = ${tas} kt / ${mach.toFixed(3)} = ${speedOfSound.toFixed(1)} kt`,
 		`a = ${A0.toFixed(2)} kt × √(T / ${T0} K), so`,
@@ -117,7 +123,7 @@ function notUsed(problem: string, title: string): string {
 
 /** The checks: time between the two replies and the bank angle. */
 export function checkFields(o: Observation): Field[] {
-	const { roll, trackRate } = o.inputs.trackAndTurn.value;
+	const { roll, trackRate, tas } = o.inputs.trackAndTurn.value;
 	const skewOk = o.skewMs <= MAX_SKEW_MS;
 	const fields: Field[] = [
 		{
@@ -138,7 +144,11 @@ export function checkFields(o: Observation): Field[] {
 		fields.push({
 			label: 'turn',
 			value: `${signed(trackRate, 2)}°/s`,
-			title: '5,0 has no roll angle, so its track rate decides whether the aircraft is turning',
+			title: `5,0 has no roll angle, so the track rate decides${
+				tas === null
+					? ' whether the aircraft is turning.'
+					: `: at most ${turnRate(MAX_ROLL, tas).toFixed(2)}°/s at this airspeed, what ${MAX_ROLL}° of bank gives.`
+			}`,
 			tone: o.windProblem?.startsWith('turning') ? 'alert' : 'minor'
 		});
 	return fields;
