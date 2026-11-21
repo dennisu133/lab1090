@@ -148,7 +148,10 @@
 			}}
 			class={[
 				'cursor-help [text-transform:inherit] group-hover:text-zinc-200',
-				!heading && 'underline decoration-zinc-600 decoration-dotted underline-offset-4'
+				!heading && 'underline decoration-zinc-600 decoration-dotted underline-offset-4',
+				// A formula (<math>) is a box of its own: the underline doesn't reach into it, and
+				// inside it would be broken up at every subscript. One dotted line under it instead.
+				!heading && '[&_math]:border-b [&_math]:border-dotted [&_math]:border-zinc-600'
 			]}
 		>
 			{#if typeof label === 'string'}{label}{:else}{@render label()}{/if}<InfoIcon

@@ -13,6 +13,11 @@
 		color-scheme: dark;
 	}
 
+	/* Formulas in their own font (theme.css). */
+	math {
+		font-family: 'Noto Sans Math Subset', math;
+	}
+
 	/*
 	 * Tailwind 4's preflight leaves buttons with the arrow cursor (like the browser's own
 	 * buttons). Here everything you can click shows the hand, disabled things don't. In the

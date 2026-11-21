@@ -52,6 +52,21 @@
 	src: url('../lib/assets/fonts/hyperlegible-open-mono-italic.woff2') format('woff2');
 }
 
+/*
+ * Formulas (MathML): Noto Sans Math, cut down (tools/math-font.py). The browser needs a maths
+ * font for them (the Mathematical Italic letters, a √ and brackets that grow); this one is a
+ * sans like ours. size-adjust makes its letters as tall as Atkinson's (x-height 0.496 em
+ * against 0.536 em).
+ */
+@font-face {
+	font-family: 'Noto Sans Math Subset';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	size-adjust: 92.5%;
+	src: url('../lib/assets/fonts/noto-sans-math-subset.woff2') format('woff2');
+}
+
 @theme {
 	--font-sans: 'Hyperlegible Open', ui-sans-serif, system-ui, sans-serif;
 	--font-mono: 'Hyperlegible Open Mono', ui-monospace, monospace;
