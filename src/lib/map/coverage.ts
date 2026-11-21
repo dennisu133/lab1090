@@ -76,17 +76,63 @@ export function horizonFeatures(
 	return { type: 'FeatureCollection', features: [circle, label] };
 }
 
-export function pointFeatures(
-	points: CoveragePoint[]
-): FeatureCollection<Point, { altitude: number; ground: false }> {
+/** A kept position as a dot, coloured by its altitude. */
+function pointFeature(p: CoveragePoint, id: number): Feature<Point, PointProperties> {
 	return {
-		type: 'FeatureCollection',
-		features: points.map((p) => ({
-			type: 'Feature',
-			properties: { altitude: p.altitude, ground: false },
-			geometry: { type: 'Point', coordinates: lngLat(p) }
-		}))
+		type: 'Feature',
+		id,
+		properties: { altitude: p.altitude, ground: false },
+		geometry: { type: 'Point', coordinates: lngLat(p) }
 	};
+}
+
+type PointProperties = { altitude: number; ground: false };
+
+/**
+ * The kept positions as MapLibre's GeoJSONSource.updateData takes them: tens of thousands,
+ * published every few seconds, but each time only a few new at the end and a few old gone
+ * from the start (Coverage keeps them in order). So only those go; anything else (the
+ * antenna's height came in and made new points, a reset) sends everything again. Each point
+ * gets a number as its id, counting on.
+ */
+export class PointUpdates {
+	/** What the source holds, oldest first, and the id of the first. */
+	#sent: CoveragePoint[] = [];
+	#firstId = 0;
+	#nextId = 0;
+
+	next(points: CoveragePoint[]): {
+		add: Feature<Point, PointProperties>[];
+		remove: number[];
+		removeAll?: true;
+	} | null {
+		const sent = this.#sent;
+		const dropped = points.length ? sent.indexOf(points[0]) : sent.length;
+		const kept = sent.length - Math.max(dropped, 0);
+		// The points still there must be the same, in the same order (checked at the ends).
+		const continues =
+			dropped >= 0 && kept <= points.length && (kept === 0 || points[kept - 1] === sent.at(-1));
+		this.#sent = points;
+		if (!continues) {
+			this.#firstId = this.#nextId;
+			this.#nextId += points.length;
+			return {
+				removeAll: true,
+				remove: [],
+				add: points.map((p, i) => pointFeature(p, this.#firstId + i))
+			};
+		}
+		const remove = Array.from({ length: dropped }, (_, i) => this.#firstId + i);
+		this.#firstId += dropped;
+		const add = points.slice(kept).map((p) => pointFeature(p, this.#nextId++));
+		return add.length || remove.length ? { add, remove } : null;
+	}
+
+	/** The source was emptied. */
+	reset(): void {
+		this.#sent = [];
+		this.#firstId = this.#nextId;
+	}
 }
 
 /** The selected sector, out to `km`. */

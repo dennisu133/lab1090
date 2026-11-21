@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { LineString } from 'geojson';
 import { bearing, distanceKm } from '#lib/geo.ts';
 import { KM_PER_NM } from '#lib/units.ts';
 import { resolutionAdvisory } from '#lib/modes/acas.ts';
@@ -16,8 +17,10 @@ import {
 	ringFeatures,
 	routeFeatures,
 	uncertaintyFeatures,
-	trailFeatures
+	trailFeatures,
+	TrailUpdates
 } from './features';
+import { extend } from '#lib/tracker/trail.ts';
 import { flightLevel } from '#lib/describe/format.ts';
 import { EXTRAPOLATE_MS, SHOW_MS, shownPosition } from '#lib/tracker/shown.ts';
 
@@ -201,16 +204,19 @@ describe('features', () => {
 			[at(13.98, 35_200), at(13.99, 35_200), at(14, 35_200, true)]
 		];
 		const lines = trailFeatures([aircraft({ trail })], 0).features;
-		// As if every piece were its own line in the colour of the point it ends at.
+		// As if every piece were its own line in the colour of the point it ends at. The newest
+		// point moves along (1 s after the one before): its piece is the head's.
 		expect(
 			lines.map((l) => [l.properties.altitude, l.geometry.coordinates.map(([x]) => x)])
 		).toEqual([
 			[35_000, [13.94, 13.95, 13.96]],
 			[35_100, [13.96, 13.97]],
-			[35_200, [13.98, 13.99]],
-			[35_200, [13.99, 14]]
+			[35_200, [13.98, 13.99]]
 		]);
-		expect(lines.map((l) => l.properties.ground)).toEqual([false, false, false, true]);
+		expect(lines.map((l) => l.properties.ground)).toEqual([false, false, false]);
+		const [head] = headFeatures([aircraft({ trail })], 0).features;
+		expect(head.geometry.coordinates.map(([x]) => x)).toEqual([13.99, 14]);
+		expect(head.properties.ground).toBe(true);
 		// Level flight: the predicted path is one line.
 		expect(predictionFeatures([aircraft()], 0, null).lines.features).toHaveLength(1);
 	});
@@ -228,13 +234,45 @@ describe('features', () => {
 			[at(13.98), at(14)]
 		];
 		const lines = trailFeatures([aircraft({ trail })], 0).features;
+		// [13.98, 14] is the head's: 14 still moves along.
 		expect(lines.map((l) => [l.properties.bridge, l.geometry.coordinates.map(([x]) => x)])).toEqual(
 			[
 				[false, [13.9, 13.92]],
-				[false, [13.98, 14]],
 				[true, [13.92, 13.98]]
 			]
 		);
+	});
+
+	test('trail updates: only lines that changed, by id; the moving head is left to the heads', () => {
+		const point = (t: number, lon: number) => ({
+			lat: 52,
+			lon,
+			altitude: 35_000,
+			ground: false,
+			velocity: null,
+			t
+		});
+		const updates = new TrailUpdates();
+		const a = aircraft();
+		const first = updates.next([a], 0)!;
+		expect(first.add.map((f) => f.id)).toEqual(['ABC123 -8000', 'ABC123 -4000']);
+		expect(first.remove).toEqual([]);
+		expect(updates.next([a], 100)).toBeNull();
+		// A new position half a second on moves along: the trails stay as they are.
+		const moved = aircraft({ trail: extend(a.trail, point(500, 14.01)) });
+		expect(updates.next([moved], 500)).toBeNull();
+		// 4 s after the last point the new one stays: the line it extends goes again.
+		const kept = aircraft({ trail: extend(moved.trail, point(4000, 14.08)) });
+		const grown = updates.next([kept], 4000)!;
+		expect(grown.add.map((f) => [f.id, (f.geometry as LineString).coordinates.length])).toEqual([
+			['ABC123 -4000', 3]
+		]);
+		expect(grown.remove).toEqual([]);
+		// Off the map: its lines go.
+		expect(updates.next([kept], SHOW_MS + 1)).toEqual({
+			add: [],
+			remove: ['ABC123 -8000', 'ABC123 -4000']
+		});
 	});
 
 	test(`the predicted path: ${PREDICT_S} s in 5 s pieces, ${PREDICT_SELECTED_S} s with minute marks when selected`, () => {

@@ -26,7 +26,7 @@ import { badge as alertBadge } from '#lib/describe/alert.ts';
 import { flightLevel, n, type Unit } from '#lib/describe/format.ts';
 import { alertsOf, identing, tierOf, type Tier } from '#lib/tracker/alerts.ts';
 import { EXTRAPOLATE_MS, shownPosition } from '#lib/tracker/shown.ts';
-import { bridges } from '#lib/tracker/trail.ts';
+import { bridges, movingHead, type Trail } from '#lib/tracker/trail.ts';
 import type { TrackedAircraft } from '#lib/tracker/tracker.ts';
 import { uncertainty } from '#lib/tracker/uncertainty.ts';
 import { circlePoints, lngLat } from './geometry.ts';
@@ -169,37 +169,111 @@ function runs<P extends LatLon, Props>(
 	return lines;
 }
 
+/** One aircraft's trail lines, per trail (they're immutable, tracker.ts). */
+const trailLines = new WeakMap<
+	Trail,
+	{ icao: string; lines: Feature<LineString, TrailProperties>[] }
+>();
+
 /**
  * Trails, each piece between neighbouring points in the colour of the altitude it ends at:
  * a climbing aircraft leaves a trail that changes colour. Pieces at the same altitude are
  * joined into one line (`runs`), which looks the same. Between the segments, the gaps the
  * aircraft flew straight across (`bridges`). Only for aircraft on the map at `now`.
+ *
+ * Without the newest point while it still moves along (movingHead): headFeatures draws that
+ * piece. So a trail's lines change only when a point stays, every STEP_MS (trail.ts), and
+ * TrailUpdates hands MapLibre only those. Each line has an id for that: the aircraft and
+ * the time of its first point (`>` for a bridge).
  */
 export function trailFeatures(
 	list: TrackedAircraft[],
 	now: number
 ): FeatureCollection<LineString, TrailProperties> {
 	const features: Feature<LineString, TrailProperties>[] = [];
-	for (const a of list) {
-		if (!shownPosition(a, now)) continue;
-		for (const segment of a.trail)
-			features.push(
-				...runs(
-					segment,
-					(x, y) => x.altitude === y.altitude && x.ground === y.ground,
-					(p) => ({ icao: a.icao, altitude: p.altitude, ground: p.ground, bridge: false })
-				)
-			);
-		for (const [from, to] of bridges(a.trail))
-			features.push(line(a.icao, from, to, to.altitude, false, true));
-	}
+	for (const a of list) if (shownPosition(a, now)) features.push(...linesOf(a.icao, a.trail));
 	return { type: 'FeatureCollection', features };
 }
 
+function linesOf(icao: string, trail: Trail): Feature<LineString, TrailProperties>[] {
+	const known = trailLines.get(trail);
+	if (known?.icao === icao) return known.lines;
+	const lines: Feature<LineString, TrailProperties>[] = [];
+	// MapLibre refuses a diff for a source with two features of one id: two points of the
+	// same millisecond would make one.
+	const ids = new Set<string>();
+	const unique = (id: string) => {
+		while (ids.has(id)) id += "'";
+		ids.add(id);
+		return id;
+	};
+	const moving = movingHead(trail);
+	for (const [i, segment] of trail.entries()) {
+		const kept = moving && i === trail.length - 1 ? segment.slice(0, -1) : segment;
+		const pieces = runs(
+			kept,
+			(x, y) => x.altitude === y.altitude && x.ground === y.ground,
+			(p) => ({ icao, altitude: p.altitude, ground: p.ground, bridge: false })
+		);
+		// A run starts where the one before ended: its first point is its own.
+		let first = 0;
+		for (const piece of pieces) {
+			lines.push({ ...piece, id: unique(`${icao} ${kept[first].t}`) });
+			first += piece.geometry.coordinates.length - 1;
+		}
+	}
+	for (const [from, to] of bridges(trail))
+		lines.push({
+			...line(icao, from, to, to.altitude, false, true),
+			id: unique(`${icao} >${from.t}`)
+		});
+	trailLines.set(trail, { icao, lines });
+	return lines;
+}
+
 /**
- * The piece from each aircraft's last real position to where it's drawn now, so the trail
- * reaches the symbol while it's moved along. Separate from the trails: this changes every
- * animation frame, the trails only with new positions.
+ * What changed in trailFeatures since the last call, as MapLibre's GeoJSONSource.updateData
+ * takes it: lines that are new or longer (by id: a line keeps its id as it grows), and the
+ * ids of the ones gone (points older than the trail, aircraft off the map). MapLibre then
+ * re-cuts only the tiles they touch, instead of every trail four times a second.
+ */
+export class TrailUpdates {
+	/** Per line on the map: its number of points and last one (points never change). */
+	#sent = new Map<string, string>();
+
+	/** null: nothing changed. */
+	next(list: TrackedAircraft[], now: number): { add: Feature[]; remove: string[] } | null {
+		const add: Feature[] = [];
+		const remove: string[] = [];
+		const current = new Set<string>();
+		for (const f of trailFeatures(list, now).features) {
+			const id = f.id as string;
+			const coordinates = f.geometry.coordinates;
+			const key = `${coordinates.length} ${coordinates.at(-1)}`;
+			current.add(id);
+			if (this.#sent.get(id) === key) continue;
+			this.#sent.set(id, key);
+			add.push(f); // replaces the line of the same id, if there is one
+		}
+		for (const id of this.#sent.keys())
+			if (!current.has(id)) {
+				remove.push(id);
+				this.#sent.delete(id);
+			}
+		return add.length || remove.length ? { add, remove } : null;
+	}
+
+	/** The source was emptied: everything goes again. */
+	reset(): void {
+		this.#sent.clear();
+	}
+}
+
+/**
+ * The piece from each aircraft's last kept trail point to where it's drawn now: through its
+ * latest position while that still moves along (movingHead, left out of the trails), then
+ * on to the symbol while it's moved along. Separate from the trails: this changes every
+ * animation frame, the trails only every STEP_MS.
  */
 export function headFeatures(
 	list: TrackedAircraft[],
@@ -208,9 +282,17 @@ export function headFeatures(
 	const features: Feature<LineString, TrailProperties>[] = [];
 	for (const a of list) {
 		const shown = shownPosition(a, now);
-		const last = a.trail.at(-1)?.at(-1);
-		if (shown && last && shown.extrapolatedKm > 0)
-			features.push(line(a.icao, last, shown, last.altitude, last.ground));
+		const segment = a.trail.at(-1);
+		const last = segment?.at(-1);
+		if (!shown || !segment || !last) continue;
+		const points: LatLon[] = movingHead(a.trail) ? [segment.at(-2)!, last] : [last];
+		if (shown.extrapolatedKm > 0) points.push(shown);
+		if (points.length < 2) continue;
+		features.push({
+			type: 'Feature',
+			geometry: { type: 'LineString', coordinates: points.map(lngLat) },
+			properties: { icao: a.icao, altitude: last.altitude, ground: last.ground, bridge: false }
+		});
 	}
 	return { type: 'FeatureCollection', features };
 }

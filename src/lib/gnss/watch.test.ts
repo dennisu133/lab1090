@@ -122,6 +122,25 @@ describe('changes', () => {
 	});
 });
 
+describe('versions', () => {
+	test('the changes and stretches count up when they change, and only then', () => {
+		const watch = new GnssWatch(receiver);
+		const version = () => [watch.changesVersion, watch.stretchesVersion];
+		for (const o of flight('AAAA07', times('good', 10))) watch.add(o);
+		expect(version()).toEqual([0, 0]);
+		const lost = flight('AAAA07', times('degraded', 10), 5000);
+		for (const o of lost) watch.add(o);
+		const [changes, stretches] = version();
+		expect(changes).toBeGreaterThan(0);
+		expect(stretches).toBeGreaterThan(0);
+		watch.prune(lost.at(-1)!.t);
+		expect(version()).toEqual([changes, stretches]);
+		watch.prune(lost.at(-1)!.t + WINDOW_MS + 1); // both forgotten
+		expect(watch.changesVersion).toBeGreaterThan(changes);
+		expect(watch.stretchesVersion).toBeGreaterThan(stretches);
+	});
+});
+
 describe('the grid', () => {
 	test(`cells count each aircraft once, and show from ${MIN_AIRCRAFT} aircraft on`, () => {
 		const good = ['B1', 'B2'].map((id, i) => flight(`BBBB${id}`, times('good', 40), i * 60_000));

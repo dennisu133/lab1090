@@ -26,8 +26,11 @@ export class CoverageFeed {
 			let newest = fed;
 			for (const segment of a.trail) {
 				if (segment.length < 2 || segment.at(-1)!.t <= fed) continue;
-				for (const p of segment) {
-					if (p.t <= fed) continue;
+				// The new points are at the end, usually one or two: look for them from there.
+				let from = segment.length - 1;
+				while (from > 0 && segment[from - 1].t > fed) from--;
+				for (let i = from; i < segment.length; i++) {
+					const p = segment[i];
 					newest = Math.max(newest, p.t);
 					if (p.ground || p.altitude === null) continue;
 					if (coverage.add(a.icao, p.t, p, p.altitude)) changed = true;

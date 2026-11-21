@@ -43,6 +43,9 @@ export class GnssStream implements UpdateListener {
 	#watch: GnssWatch | null = null;
 	#publishedAt = -Infinity;
 	#cellsAt = -Infinity;
+	/** The watch's versions last copied: unchanged, the page keeps the same arrays. */
+	#changesVersion = -1;
+	#stretchesVersion = -1;
 
 	constructor(tracker: TrackerStream, receiver: () => LatLon) {
 		this.#tracker = tracker;
@@ -58,6 +61,8 @@ export class GnssStream implements UpdateListener {
 		this.#watch = null;
 		this.#publishedAt = -Infinity;
 		this.#cellsAt = -Infinity;
+		this.#changesVersion = -1;
+		this.#stretchesVersion = -1;
 		this.changes = [];
 		this.stretches = [];
 		this.cells = [];
@@ -86,8 +91,14 @@ export class GnssStream implements UpdateListener {
 		if (now - this.#publishedAt < PUBLISH_MS) return;
 		this.#publishedAt = now;
 		watch.prune(now);
-		this.changes = watch.changes();
-		this.stretches = watch.stretches();
+		if (watch.changesVersion !== this.#changesVersion) {
+			this.#changesVersion = watch.changesVersion;
+			this.changes = watch.changes();
+		}
+		if (watch.stretchesVersion !== this.#stretchesVersion) {
+			this.#stretchesVersion = watch.stretchesVersion;
+			this.stretches = watch.stretches();
+		}
 		this.aircraft = watch.aircraft();
 		this.first = watch.first;
 		if (now - this.#cellsAt >= CELLS_MS) {

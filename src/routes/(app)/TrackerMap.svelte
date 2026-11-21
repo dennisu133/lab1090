@@ -73,7 +73,7 @@
 		predictionFeatures,
 		ringFeatures,
 		routeFeatures,
-		trailFeatures,
+		TrailUpdates,
 		uncertaintyFeatures
 	} from '#lib/map/features.ts';
 	import type { Unit } from '#lib/describe/format.ts';
@@ -85,7 +85,7 @@
 		HORIZON_FT,
 		horizonFeatures,
 		outlineFeatures,
-		pointFeatures,
+		PointUpdates,
 		sectorFeature
 	} from '#lib/map/coverage.ts';
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
@@ -289,11 +289,26 @@
 			horizonFeatures(receiver, HORIZON_FT, coverage.terrain?.antennaKm ?? 0)
 		);
 	});
-	// The panel's extras: the positions behind the outlines, and the sector picked on its plot.
+	// The panel's extras: the positions behind the outlines (only what changed: there are
+	// tens of thousands), and the sector picked on its plot.
+	const pointUpdates = new PointUpdates();
+	let pointsShown = false;
+	$effect(() => {
+		const points = focus?.kind === 'receiver' ? coverage.points : null;
+		if (!map) return;
+		if (!points) {
+			if (pointsShown) source(map, 'coverage-points').setData(empty);
+			pointsShown = false;
+			pointUpdates.reset();
+			return;
+		}
+		pointsShown = true;
+		const diff = pointUpdates.next(points);
+		if (diff) source(map, 'coverage-points').updateData(diff).catch(console.error);
+	});
 	$effect(() => {
 		const open = focus?.kind === 'receiver';
 		if (!map) return;
-		source(map, 'coverage-points').setData(open ? pointFeatures(coverage.points) : empty);
 		source(map, 'coverage-sector').setData(
 			open && sector !== null
 				? sectorFeature(
@@ -369,16 +384,27 @@
 		map.setPaintProperty('aircraft', 'icon-opacity', aircraftOpacity(icaos));
 	});
 
-	// GNSS: when the watch publishes (every few seconds) or the panel's focus changes. Only
-	// while shown: switched on, the effect runs again and draws at once.
+	// GNSS: each source when the watch publishes a change to it (every few seconds at most)
+	// or the panel's focus changes. Only while shown: switched on, the effects run again and
+	// draw at once.
 	let gnssFocus = $derived(focus?.kind === 'gnss' ? focus : null);
+	let gnssCell = $derived(gnssFocus?.cell ?? null);
+	let gnssChange = $derived(gnssFocus?.change ?? null);
 	$effect(() => {
-		const { cells, stretches, changes } = gnss;
-		const cell = gnssFocus?.cell ?? null;
-		const change = gnssFocus?.change ?? null;
+		const { cells } = gnss;
+		const cell = gnssCell;
 		if (!map || !layers.gnss) return;
 		source(map, 'gnss-cells').setData(cellFeatures(cells, cell));
+	});
+	$effect(() => {
+		const { stretches } = gnss;
+		if (!map || !layers.gnss) return;
 		source(map, 'gnss-stretches').setData(stretchFeatures(stretches));
+	});
+	$effect(() => {
+		const { changes } = gnss;
+		const change = gnssChange;
+		if (!map || !layers.gnss) return;
 		const { points, blind } = changeFeatures(changes, change);
 		source(map, 'gnss-changes').setData(points);
 		source(map, 'gnss-blind').setData(blind);
@@ -442,11 +468,13 @@
 		);
 	});
 
-	// Trails: with every update from the tracker.
+	// Trails: with every update from the tracker, only the lines that changed.
+	const trailUpdates = new TrailUpdates();
 	$effect(() => {
 		const list = stream.aircraft;
 		if (!map) return;
-		source(map, 'trails').setData(trailFeatures(list, stream.now()));
+		const diff = trailUpdates.next(list, stream.now());
+		if (diff) source(map, 'trails').updateData(diff).catch(console.error);
 	});
 
 	// What moves with the aircraft, drawn every animation frame (throttled): the aircraft, the

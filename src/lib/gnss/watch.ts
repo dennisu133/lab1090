@@ -172,6 +172,12 @@ export class GnssWatch {
 	#ids = 0;
 	/** The first message seen, ms; null: none yet. */
 	first: number | null = null;
+	/**
+	 * Counted up whenever the changes, or the stretches, change: the page copies them only
+	 * then (changes(), stretches()), and the map redraws only what did.
+	 */
+	changesVersion = 0;
+	stretchesVersion = 0;
 
 	constructor(receiver: LatLon) {
 		this.grid = new HexGrid(receiver, CELL_KM);
@@ -272,12 +278,14 @@ export class GnssWatch {
 			gap: a.run.t - a.run.before
 		};
 		this.#changes.push(change);
+		this.changesVersion++;
 		return change;
 	}
 
 	#place(change: Change, at: LatLon, t: number): void {
 		change.at = at;
 		change.atT = t;
+		this.changesVersion++;
 	}
 
 	#extend(a: Tracked, t: number, at: LatLon): void {
@@ -295,6 +303,7 @@ export class GnssWatch {
 		if (s.points.length >= 2 && tail && t - s.points.at(-2)!.t < STEP_MS)
 			s.points[s.points.length - 1] = point;
 		else s.points.push(point);
+		this.stretchesVersion++;
 	}
 
 	#count(at: LatLon, icao: string, t: number, degraded: boolean): void {
@@ -308,11 +317,18 @@ export class GnssWatch {
 	/** Forget what's older than WINDOW_MS, and aircraft gone for FORGET_MS. */
 	prune(now: number): void {
 		const since = now - WINDOW_MS;
+		const changes = this.#changes.length;
 		this.#changes = this.#changes.filter((c) => c.t >= since);
+		if (this.#changes.length !== changes) this.changesVersion++;
+		const stretches = this.#stretches.length;
 		this.#stretches = this.#stretches.filter((s) => s.points.at(-1)!.t >= since);
+		if (this.#stretches.length !== stretches) this.stretchesVersion++;
 		for (const s of this.#stretches) {
 			const old = s.points.findIndex((p) => p.t >= since);
-			if (old > 0) s.points.splice(0, old);
+			if (old > 0) {
+				s.points.splice(0, old);
+				this.stretchesVersion++;
+			}
 		}
 		for (const [key, cell] of this.#cells) {
 			for (const [icao, e] of cell) if (e.t < since) cell.delete(icao);

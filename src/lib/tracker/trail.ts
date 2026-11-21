@@ -74,6 +74,17 @@ export function extend(trail: Trail, point: TrailPoint, restart = false): Trail 
 	return [...trail.slice(0, -1), updated];
 }
 
+/**
+ * The trail's newest point while it still moves along: the next position takes its place
+ * (extend), until it's STEP_MS past the point before it. null: the newest point stays.
+ */
+export function movingHead(trail: Trail): TrailPoint | null {
+	const segment = trail.at(-1);
+	const head = segment?.at(-1);
+	const before = segment?.at(-2);
+	return head && before && head.t - before.t < STEP_MS ? head : null;
+}
+
 /** Drop points older than TRAIL_MS, and segments left empty. Returns the same trail if nothing changed. */
 export function prune(trail: Trail, now: number): Trail {
 	const from = now - TRAIL_MS;
