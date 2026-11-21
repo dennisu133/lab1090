@@ -1,13 +1,10 @@
 <!--
 	The worked example's third card: whether engines leave a contrail in this observation's
 	air (Schmidt–Appleman, lib/weather/contrail.ts), with its own numbers and the diagram.
-	The footer says what the tracker panel decides for the same aircraft, which may use its
-	layer's mean temperature instead (describe/contrail.ts trackerContrail): this card is the
-	panel's "why".
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import { contrailValue, humidityNeeded, type TrackerContrail } from '#lib/describe/contrail.ts';
+	import { contrailValue, humidityNeeded } from '#lib/describe/contrail.ts';
 	import { celsius, fixed as n, levelOrFeet, n as whole } from '#lib/describe/format.ts';
 	import { staticPressure } from '#lib/modes/air-data.ts';
 	import {
@@ -28,8 +25,7 @@
 	import ContrailChart from './ContrailChart.svelte';
 	import Card from './Card.svelte';
 
-	let { observation: o, tracker }: { observation: Observation; tracker: TrackerContrail | null } =
-		$props();
+	let { observation: o }: { observation: Observation } = $props();
 
 	/** With a real minus sign, like celsius(). */
 	const pct = (x: number) => `${Math.round(x * 100)}\u00a0%`;
@@ -40,17 +36,6 @@
 	let r = $derived(kelvin === null || pressure === null ? null : contrailRange(kelvin, pressure));
 	let older = $derived(pressure === null ? 0 : olderEngineShift(pressure));
 </script>
-
-<!-- What the tracker's panel says for this aircraft: at the bottom, under the steps. -->
-{#snippet trackerLine(className: string)}
-	{#if tracker}
-		<p class={[className, 'truncate text-xs text-zinc-500']}>
-			The tracker's panel uses {tracker.layer
-				? `${levelOrFeet(tracker.layer.level)}'s mean, ${celsius(tracker.kelvin)} from ${tracker.layer.aircraft} aircraft`
-				: `its own reading, ${celsius(tracker.kelvin)}`}, and says “{contrailValue(tracker.range)}”.
-		</p>
-	{/if}
-{/snippet}
 
 <Card title="Contrail" class="min-h-76.5" nowrap>
 	{#snippet info()}
@@ -236,13 +221,9 @@
 						only above {pct(r.at.iceSaturation)} humidity (white tick).
 					</li>
 				</ol>
-				{@render trackerLine('mt-auto pt-2')}
 			</div>
 		</div>
-	{:else}
-		{#if o.temperature}
-			<p class="text-sm text-zinc-500">No altitude for this pair: the pressure is unknown.</p>
-		{/if}
-		{@render trackerLine('mt-2')}
+	{:else if o.temperature}
+		<p class="text-sm text-zinc-500">No altitude for this pair: the pressure is unknown.</p>
 	{/if}
 </Card>

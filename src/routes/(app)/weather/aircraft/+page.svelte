@@ -68,9 +68,6 @@
 		return a ? { observation: a.latest, callsign: a.callsign } : null;
 	});
 
-	/** The tracker panel's contrail answer for the example's aircraft, for the third card. */
-	let contrail = $derived(stream.contrailFor(example?.observation.icao));
-
 	let feed = $derived(
 		stream.items
 			.filter(
@@ -144,7 +141,7 @@
 					<TemperatureCalculation observation={example.observation} />
 				</div>
 				<div id="contrail" class="scroll-mt-4">
-					<ContrailCalculation observation={example.observation} tracker={contrail} />
+					<ContrailCalculation observation={example.observation} />
 				</div>
 			</div>
 		{:else}

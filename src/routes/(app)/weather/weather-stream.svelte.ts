@@ -1,4 +1,3 @@
-import { trackerContrail, type TrackerContrail } from '#lib/describe/contrail.ts';
 import { LiveFeed } from '#lib/live-feed.svelte.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { fromHex } from '#lib/modes/frame.ts';
@@ -80,16 +79,6 @@ export class WeatherStream extends LiveFeed<ObservationRow> {
 			check: this.checks.get(aircraft.icao) ?? null,
 			layer: this.#layerOf(aircraft)
 		};
-	}
-
-	/**
-	 * The tracker panel's contrail answer for one aircraft (/weather/aircraft's worked
-	 * example). Unlike weatherFor it doesn't read the heading checks, so they aren't
-	 * computed for it.
-	 */
-	contrailFor(icao: string | null | undefined): TrackerContrail | null {
-		const aircraft = this.#find(icao);
-		return aircraft ? trackerContrail(aircraft, this.#layerOf(aircraft)) : null;
 	}
 
 	#find(icao: string | null | undefined): WeatherAircraft | undefined {
