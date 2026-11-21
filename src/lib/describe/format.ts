@@ -14,6 +14,9 @@ const minus = (text: string) => (/^-[0.,]*$/.test(text) ? text.slice(1) : text.r
 /** Whole numbers with thousands separators: 38,000, −500. */
 export const n = (x: number) => minus(Math.round(x).toLocaleString('en'));
 
+/** A rate: 57.3 · 1,240 · 2,400,000, one decimal below 100 (99.97 is already "100"). */
+export const perSecond = (x: number) => (x < 99.95 ? x.toFixed(1) : n(x));
+
 /** A count and its noun, singular for 1: "1 wind", "1,204 winds". Regular plurals only. */
 export const plural = (count: number, word: string) =>
 	`${n(count)} ${word}${count === 1 ? '' : 's'}`;

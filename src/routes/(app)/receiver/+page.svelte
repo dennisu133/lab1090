@@ -1,11 +1,13 @@
 <!--
 	/receiver: the receiver itself rather than the aircraft. On top the diagnosis (is the gain
-	right, are samples lost, can the CPU keep up), then the dongle and its link, the
-	demodulator's steps, the last hour (from the server, so a reload keeps it) and signal
-	against distance. With a Beast feed the demodulator is somewhere else: only the message
-	rate and the signal levels are here.
+	right, are samples lost, can the CPU keep up) beside the dongle and its link, then the
+	demodulator's steps beside the noise's last hour (from the server, so a reload keeps it),
+	and signal against distance. With a Beast feed the demodulator is somewhere else: only
+	the link and the signal levels are here. The message rate's last hour is in the navigation
+	bar's tooltip (ReceiverStatus), on every page.
 -->
 <script lang="ts">
+	import HistoryChart from '#lib/components/HistoryChart.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { dbfs, n } from '#lib/describe/format.ts';
 	import { adviseGain, MAX_ROUNDING_DB, ROUNDING_LIMIT_DBFS } from '#lib/radio/gain.ts';
@@ -16,10 +18,8 @@
 	import { getStreams } from '../streams';
 	import Device from './Device.svelte';
 	import Diagnosis from './Diagnosis.svelte';
-	import HistoryChart from './HistoryChart.svelte';
 	import SignalChart from './SignalChart.svelte';
 	import Stages from './Stages.svelte';
-	import { perSecond } from './format';
 
 	const { radio, signal, stats } = getStreams();
 
@@ -52,16 +52,6 @@
 		return { min, max, ticks };
 	});
 
-	let rateSeries = $derived(points.map((p) => ({ t: p.t, value: p.messages / (p.ms / 1000) })));
-	let rateRange = $derived.by(() => {
-		const high = Math.max(10, ...rateSeries.map((p) => p.value));
-		const step = high > 400 ? 200 : high > 200 ? 100 : high > 80 ? 50 : high > 40 ? 20 : 10;
-		const max = Math.ceil(high / step) * step;
-		const ticks = [];
-		for (let v = 0; v <= max; v += step) ticks.push(v);
-		return { max, ticks };
-	});
-
 	let level = $derived(freeSpaceLevel(signal.points));
 	let aircraftCount = $derived(new Set(signal.points.map((p) => p.icao)).size);
 	/** Where the free-space line meets the noise, km. */
@@ -70,60 +60,19 @@
 	);
 </script>
 
-{#snippet messages()}
-	<section class="rounded-lg border border-zinc-800 p-4">
-		<div class="mb-2 flex items-baseline gap-3">
-			<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Messages">
-				<p>
-					Messages per second, of every kind, averaged over 10 s. It follows the traffic: quiet at
-					night, busy in the afternoon. A dip the traffic doesn't explain is the receiver having
-					trouble.
-				</p>
-			</InfoTip>
-			<span class="text-sm text-zinc-400">{perSecond(stats.rates.total)}/s now</span>
-		</div>
-		<HistoryChart
-			series={rateSeries}
-			{end}
-			min={0}
-			max={rateRange.max}
-			ticks={rateRange.ticks}
-			format={(v) => `${v}`}
-			color="stroke-green-400"
-			label="Messages per second over the last hour"
-		/>
-	</section>
-{/snippet}
-
 <PageTitle page="Receiver" />
 
 <div class="space-y-6">
 	{#if demod && advice}
-		<Diagnosis {demod} {summary} {advice} />
-	{:else if receiverLink.source}
-		<section class="rounded-lg border border-zinc-800 p-4 text-sm text-zinc-300">
-			<h2 class="mb-2 text-sm font-semibold text-zinc-100">Diagnosis</h2>
-			<p>
-				Messages come from a Beast feed ({receiverLink.source}): already demodulated on that
-				machine, by readsb, dump1090 or another lab1090. Its samples, gain, noise and CPU show in
-				its own statistics; here are only the message rate and the signal levels.
-			</p>
-		</section>
-	{/if}
-
-	<div class="grid gap-6 xl:grid-cols-2">
-		{#if demod && radio.rates}
-			<Stages rates={radio.rates} />
-		{/if}
-		<Device source={receiverLink.source} {demod} events={radio.events} />
-		<!-- A Beast feed: no stages and no noise, so the messages go next to the device. -->
-		{#if !demod}
-			{@render messages()}
-		{/if}
-	</div>
-
-	{#if demod}
 		<div class="grid gap-6 xl:grid-cols-2">
+			<Diagnosis {demod} {summary} {advice} />
+			<Device source={receiverLink.source} {demod} events={radio.events} />
+		</div>
+
+		<div class="grid gap-6 xl:grid-cols-2">
+			{#if radio.rates}
+				<Stages rates={radio.rates} />
+			{/if}
 			<section class="rounded-lg border border-zinc-800 p-4">
 				<div class="mb-2 flex items-baseline gap-3">
 					<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Noise level">
@@ -150,8 +99,10 @@
 					label="Noise level over the last hour, dBFS"
 				/>
 			</section>
-			{@render messages()}
 		</div>
+	{:else}
+		<!-- A Beast feed: no diagnosis, stages or noise; its Source says why. -->
+		<Device source={receiverLink.source} demod={null} events={radio.events} />
 	{/if}
 
 	<section class="rounded-lg border border-zinc-800 p-4">

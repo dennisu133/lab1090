@@ -35,7 +35,10 @@ export class Streams {
 	readonly radars: RadarStream;
 	/** The antenna's coverage (map layer, receiver panel): collects from the start, it's cheap. */
 	readonly coverage: CoverageStream;
-	/** /receiver: the server's hour of receiver history, and the demodulator's numbers. */
+	/**
+	 * The server's hour of receiver history (/receiver, the navigation bar's message rate) and
+	 * the demodulator's numbers.
+	 */
 	readonly radio = new RadioStream();
 	/** /receiver: signal against distance, from the tracker's positions. */
 	readonly signal: SignalStream;

@@ -11,7 +11,8 @@
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { KNOWN_FOR_S } from '#lib/demod/filter.ts';
 	import type { DemodRates } from './radio-stream.svelte';
-	import { percent, perSecond } from './format';
+	import { perSecond } from '#lib/describe/format.ts';
+	import { percent } from './format';
 
 	let { rates }: { rates: DemodRates } = $props();
 

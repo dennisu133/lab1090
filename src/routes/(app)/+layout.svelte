@@ -86,7 +86,7 @@
 		</div>
 		<div class="ml-auto flex items-center gap-4 sm:gap-6">
 			<NotificationSwitch notifications={streams.alerts.notifications} />
-			<ReceiverStatus stats={streams.stats} />
+			<ReceiverStatus stats={streams.stats} history={streams.radio.points} />
 		</div>
 		<button
 			type="button"

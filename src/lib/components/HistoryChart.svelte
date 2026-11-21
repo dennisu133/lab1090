@@ -26,10 +26,29 @@
 	let width = $state(0);
 	let W = $derived(Math.max(width, 300));
 	const H = 160;
-	const LEFT = 52;
-	const RIGHT = 8;
+	/**
+	 * The space around the drawing: as much at the sides as above the top label and below the
+	 * time axis (about 4 px each). On the left, that plus the widest value label and its gap
+	 * to the grid.
+	 */
+	const INSET = 4;
+	const LABEL_GAP = 6;
+	const RIGHT = INSET;
 	const TOP = 8;
 	const BOTTOM = 20;
+	/**
+	 * The widest value label, px, measured once drawn. Until then (and while the chart is
+	 * hidden, as in a closed tooltip, where nothing has a size) a guess: 6 px a character.
+	 */
+	let measured = $state(0);
+	let yLabels = $state<SVGGElement>();
+	let labelWidth = $derived(measured || Math.max(...ticks.map((v) => format(v).length)) * 6);
+	let LEFT = $derived(INSET + labelWidth + LABEL_GAP);
+	$effect(() => {
+		// Again when the labels change, and once the chart is shown (its width becomes known).
+		void [ticks, format, width];
+		measured = yLabels?.getBBox().width ?? 0;
+	});
 	const HOUR = 3_600_000;
 	/** Points farther apart than this aren't joined, ms. */
 	const GAP = 25_000;
@@ -60,10 +79,14 @@
 	<svg viewBox="0 0 {W} {H}" class="w-full" role="img" aria-label={label}>
 		{#each ticks as v (v)}
 			<line x1={LEFT} x2={W - RIGHT} y1={y(v)} y2={y(v)} class="stroke-zinc-800" />
-			<text x={LEFT - 6} y={y(v) + 3} text-anchor="end" class="fill-zinc-500 text-[10px]"
-				>{format(v)}</text
-			>
 		{/each}
+		<g bind:this={yLabels}>
+			{#each ticks as v (v)}
+				<text x={LEFT - LABEL_GAP} y={y(v) + 3} text-anchor="end" class="fill-zinc-500 text-[10px]"
+					>{format(v)}</text
+				>
+			{/each}
+		</g>
 		{#each MINUTES as m (m)}
 			<text
 				x={x(end - m * 60_000)}

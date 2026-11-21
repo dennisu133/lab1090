@@ -1,6 +1,7 @@
 <!--
 	The dongle and the link to it: what rtl_sdr or rtl_tcp told us about the hardware, the
-	settings lab1090 uses, and the history of the link (starts, failures and why).
+	settings lab1090 uses, and the history of the link (starts, failures and why). With a
+	Beast feed only the source (its tooltip says why) and the link.
 -->
 <script lang="ts">
 	import { dayAndTime } from '#lib/describe/format.ts';
@@ -31,7 +32,20 @@
 <section class="rounded-lg border border-zinc-800 p-4">
 	<h2 class="mb-3 text-sm font-semibold text-zinc-100">Device</h2>
 	<dl class="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-1 text-sm">
-		<dt class="text-zinc-400">Source</dt>
+		{#if demod || !source}
+			<dt class="text-zinc-400">Source</dt>
+		{:else}
+			<dt>
+				<InfoTip label="Source">
+					<p>
+						A Beast feed: messages already demodulated on that machine, by readsb, dump1090 or
+						another lab1090, each sent with its time and signal level. The samples, gain, noise and
+						CPU show in that receiver's own statistics; here are only the link and the signal
+						levels.
+					</p>
+				</InfoTip>
+			</dt>
+		{/if}
 		<dd>{source ?? '–'}</dd>
 		{#if demod}
 			<dt>

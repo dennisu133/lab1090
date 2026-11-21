@@ -1,12 +1,5 @@
 /** Number formats shared by /receiver's cards (the general ones are in describe/format.ts). */
 
-import { n as whole } from '#lib/describe/format.ts';
-
-/** 57.3 · 1,240 · 2,400,000: one decimal below 100. */
-export function perSecond(n: number): string {
-	return n < 100 ? n.toFixed(1) : whole(n);
-}
-
 /** A share as a percentage: 0.4 %, 12 %, < 0.1 %. */
 export function percent(share: number): string {
 	if (share > 0 && share < 0.001) return '< 0.1 %';
