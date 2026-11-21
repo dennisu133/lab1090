@@ -1,10 +1,10 @@
 <!--
-	Switches for what the map draws: the range rings around the receiver, and around the
-	aircraft the trails behind them, the predicted paths ahead, the position uncertainty
-	circles and the wind barbs where they measured the wind; the antenna's coverage. Below a
-	line, two parts of the base map: roads and place names (borders, terrain and airports
-	always stay: they're what you find your way by). Below another, the experiments: the
-	ground radars. All on by default but the wind barbs (busy hours fill the map with them),
+	Switches for what the map draws, in the air first: around the aircraft the trails behind
+	them, the predicted paths ahead, the position uncertainty circles and the wind barbs where
+	they measured the wind; the antenna's coverage. Below a line, what lies on the ground: the
+	range rings around the receiver and two parts of the base map, roads and place names
+	(borders, terrain and airports always stay: they're what you find your way by). Below
+	another, the experiments: the ground radars. All on by default but the wind barbs (busy hours fill the map with them),
 	coverage and the experiments. With the trails off, the selected aircraft still has one.
 	Labels whose layer needs explaining are InfoTips (tappable: phones never show `title`);
 	Roads and Place names are plain. The rings' unit is set above the aircraft list.
@@ -58,28 +58,6 @@
 			open === null ? 'hidden md:block' : !open && 'hidden'
 		]}
 	>
-		<LayerSwitch bind:checked={layers.rings} label="Show the range rings" name="Rings">
-			{#snippet icon()}
-				<!-- A dashed circle, like on the map. -->
-				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
-					<circle
-						cx="10"
-						cy="6"
-						r="5"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1"
-						stroke-dasharray="2 2"
-					/>
-				</svg>
-			{/snippet}
-			<p>
-				Circles around the receiver at {RINGS.NM.slice(0, -1).join(', ')} and {RINGS.NM.at(-1)} nautical
-				miles (NM), or at {RINGS.km[0]} to {RINGS.km.at(-1)} km with the units set to km. A nautical mile
-				is 1,852 m, about a minute of latitude, and it's what aviation mostly measures distances in (ICAO
-				Annex 5 allows it alongside the kilometre).
-			</p>
-		</LayerSwitch>
 		<LayerSwitch bind:checked={layers.trail} label="Show the trails" name="Trail">
 			{#snippet icon()}
 				<!-- A solid line, like on the map. -->
@@ -205,7 +183,29 @@
 				in the way, or the signal gives out first.
 			</p>
 		</LayerSwitch>
-		<LayerSwitch bind:checked={layers.roads} label="Show the roads" name="Roads" divided>
+		<LayerSwitch bind:checked={layers.rings} label="Show the range rings" name="Rings" divided>
+			{#snippet icon()}
+				<!-- A dashed circle, like on the map. -->
+				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+					<circle
+						cx="10"
+						cy="6"
+						r="5"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1"
+						stroke-dasharray="2 2"
+					/>
+				</svg>
+			{/snippet}
+			<p>
+				Circles around the receiver at {RINGS.NM.slice(0, -1).join(', ')} and {RINGS.NM.at(-1)} nautical
+				miles (NM), or at {RINGS.km[0]} to {RINGS.km.at(-1)} km with the units set to km. A nautical mile
+				is 1,852 m, about a minute of latitude, and it's what aviation mostly measures distances in (ICAO
+				Annex 5 allows it alongside the kilometre).
+			</p>
+		</LayerSwitch>
+		<LayerSwitch bind:checked={layers.roads} label="Show the roads" name="Roads">
 			{#snippet icon()}
 				<!-- Two lanes, like a motorway on the map. -->
 				<svg viewBox="0 0 20 6" class="hidden h-1.5 w-5 sm:block" aria-hidden="true">
