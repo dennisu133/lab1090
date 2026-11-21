@@ -22,6 +22,8 @@ export interface Layers {
 	coverage: boolean;
 	/** Experimental: the ground radars found from the replies. Off: not searched for. */
 	radars: boolean;
+	/** Experimental: where aircraft lost their satellite navigation (collected even when off). */
+	gnss: boolean;
 	/** Base map: motorways, trunk and primary roads. */
 	roads: boolean;
 	/** Base map: city and town names. */
@@ -64,7 +66,11 @@ export const SOURCES = [
 	'coverage-sector',
 	'radar-sites',
 	'radar-ellipses',
-	'radar-beams'
+	'radar-beams',
+	'gnss-cells',
+	'gnss-stretches',
+	'gnss-blind',
+	'gnss-changes'
 ] as const;
 export type SourceId = (typeof SOURCES)[number];
 
@@ -77,6 +83,14 @@ export const LAYER_IDS: Record<Exclude<keyof Layers, 'trail'>, string[]> = {
 	// Also shown while the receiver's panel is open (TrackerMap's `coverageShown`).
 	coverage: ['coverage-horizon', 'coverage-horizon-label', 'coverage-fill', 'coverage-outline'],
 	radars: ['radar-ellipse-fill', 'radar-ellipses', 'radar-beams', 'radar-sites'],
+	gnss: [
+		'gnss-cell-fill',
+		'gnss-cells',
+		'gnss-stretches',
+		'gnss-stretches-arrived',
+		'gnss-blind',
+		'gnss-changes'
+	],
 	// The base map's own layers (style.ts). Borders, terrain and airports always stay.
 	roads: ['roads', 'motorways'],
 	places: ['places']
@@ -130,6 +144,16 @@ export function mapLayers(
 		'emergency',
 		colour('error-500'),
 		colour('warn-400')
+	];
+	/** The GNSS cells: by the share of their aircraft without good navigation (lib/map/gnss.ts). */
+	const cellLevel: ExpressionSpecification = [
+		'match',
+		['get', 'level'],
+		'many',
+		colour('error-500'),
+		'some',
+		colour('warn-400'),
+		colour('ok-500')
 	];
 	/** The label's colour: the alert's, or the normal one. */
 	const label: ExpressionSpecification = ['match', ['get', 'tier'], '', colour('zinc-100'), tier];
@@ -211,6 +235,32 @@ export function mapLayers(
 				'circle-opacity': 0.5
 			}
 		},
+		// GNSS cells: background, like the coverage. Clear ones barely tinted (they only show
+		// where there was enough traffic to tell), the others more.
+		{
+			id: 'gnss-cell-fill',
+			type: 'fill',
+			source: 'gnss-cells',
+			paint: {
+				'fill-color': cellLevel,
+				'fill-opacity': ['match', ['get', 'level'], 'many', 0.3, 'some', 0.15, 0.05]
+			}
+		},
+		{
+			id: 'gnss-cells',
+			type: 'line',
+			source: 'gnss-cells',
+			paint: {
+				'line-color': ['case', ['get', 'selected'], colour('zinc-100'), cellLevel],
+				'line-width': ['case', ['get', 'selected'], 1.5, 0.75],
+				'line-opacity': [
+					'case',
+					['get', 'selected'],
+					0.9,
+					['match', ['get', 'level'], 'clear', 0.15, 0.4]
+				]
+			}
+		},
 		// Radars: the ellipses and beams faint, under the aircraft and their trails.
 		{
 			id: 'radar-ellipse-fill',
@@ -280,6 +330,32 @@ export function mapLayers(
 				'text-allow-overlap': true
 			},
 			paint: { 'text-color': colour('zinc-200'), 'text-halo-color': HALO, 'text-halo-width': 2 }
+		},
+		// GNSS: the stretches flown degraded, a wide band under the trails (a highlighter),
+		// dashed for aircraft that arrived like that; the blind lines thin and dashed.
+		...([false, true] as const).map((arrived): LayerSpecification => ({
+			id: arrived ? 'gnss-stretches-arrived' : 'gnss-stretches',
+			type: 'line',
+			source: 'gnss-stretches',
+			filter: ['==', ['get', 'arrived'], arrived],
+			layout: { 'line-join': 'round' },
+			paint: {
+				'line-color': colour('warn-400'),
+				'line-width': 7,
+				'line-opacity': arrived ? 0.25 : 0.4,
+				...(arrived && { 'line-dasharray': [1, 1] })
+			}
+		})),
+		{
+			id: 'gnss-blind',
+			type: 'line',
+			source: 'gnss-blind',
+			paint: {
+				'line-color': colour('error-500'),
+				'line-width': 1.5,
+				'line-opacity': 0.7,
+				'line-dasharray': [3, 2]
+			}
 		},
 		...(['trails', 'heads'] as const).map((id): LayerSpecification => ({
 			id,
@@ -424,6 +500,24 @@ export function mapLayers(
 				'circle-color': colour('zinc-100'),
 				'circle-stroke-color': HALO,
 				'circle-stroke-width': 2
+			}
+		},
+		// GNSS changes: over the trails, under the aircraft. Lost a red dot, regained a green
+		// ring: told apart by shape too, not by colour alone.
+		{
+			id: 'gnss-changes',
+			type: 'circle',
+			source: 'gnss-changes',
+			paint: {
+				'circle-radius': ['case', ['get', 'selected'], 7, 4.5],
+				'circle-color': ['match', ['get', 'kind'], 'lost', colour('error-500'), 'transparent'],
+				'circle-stroke-color': [
+					'case',
+					['get', 'selected'],
+					colour('zinc-100'),
+					['match', ['get', 'kind'], 'lost', HALO, colour('ok-400')]
+				],
+				'circle-stroke-width': ['match', ['get', 'kind'], 'lost', 1.5, 2]
 			}
 		},
 		// Radar sites: over the receiver, under the aircraft, whose labels go first. Radars

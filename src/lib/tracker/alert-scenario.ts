@@ -81,7 +81,7 @@ export function df17(icao: string, me: Uint8Array): Uint8Array {
 }
 
 /** DF17: the CRC into the last 3 bytes. */
-function withCrc(data: Uint8Array): Uint8Array {
+export function withCrc(data: Uint8Array): Uint8Array {
 	const crc = crc24(data, data.length - 3);
 	data.set([crc >> 16, (crc >> 8) & 0xff, crc & 0xff], data.length - 3);
 	return data;
@@ -107,7 +107,7 @@ function field(...parts: [number, number, number][]): Uint8Array {
 }
 
 /** Set `count` bits from `first` (1 = MSB) in a message. */
-function put(data: Uint8Array, first: number, count: number, value: number): void {
+export function put(data: Uint8Array, first: number, count: number, value: number): void {
 	for (let i = 0; i < count; i++) {
 		const bit = first - 1 + i;
 		const mask = 0x80 >> (bit & 7);

@@ -31,6 +31,10 @@
 	each, its uncertainty ellipse, and its beam sweeping round as the fit predicts. With one
 	open, the aircraft that answered it stand out.
 
+	Satellite navigation (lib/map/gnss.ts, experimental, off unless switched on, though it
+	collects all along): the grid's cells shaded by how many of their aircraft had no good
+	GNSS, the stretches flown degraded, and where aircraft lost it and got it back.
+
 	Tap or click an aircraft to select it, a radar, the receiver (the white dot) or an airport's
 	label to open its panel; tap the map elsewhere to close them.
 -->
@@ -45,6 +49,8 @@
 		| { kind: 'receiver' }
 		| { kind: 'radar'; id: string }
 		| { kind: 'airport'; airport: Airport }
+		/** A GNSS cell or change tapped (or picked from the panel's lists). */
+		| { kind: 'gnss'; cell: string | null; change: number | null }
 		| null;
 </script>
 
@@ -83,6 +89,7 @@
 		sectorFeature
 	} from '#lib/map/coverage.ts';
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
+	import { cellFeatures, changeFeatures, stretchFeatures } from '#lib/map/gnss.ts';
 	import { barbFeatures } from '#lib/map/winds.ts';
 	import { mapStyle } from '#lib/map/style.ts';
 	import { themeColour } from '#lib/theme.ts';
@@ -100,6 +107,7 @@
 	import { pick, PICKABLE, type PickedBarb } from '#lib/map/pick.ts';
 	import type { AlertCenter } from './alerts.svelte.ts';
 	import type { CoverageStream } from './coverage-stream.svelte.ts';
+	import type { GnssStream } from './gnss-stream.svelte.ts';
 	import type { RadarStream } from './radar-stream.svelte.ts';
 	import type { TrackerStream } from './tracker-stream.svelte.ts';
 	import WindCard from './WindCard.svelte';
@@ -118,6 +126,8 @@
 		coverage: CoverageStream;
 		/** The ground radars (experimental). */
 		radars: RadarStream;
+		/** Satellite navigation (experimental). */
+		gnss: GnssStream;
 		/** The alerts in force: those aircraft keep their trails with the trail switch off. */
 		alerts: AlertCenter;
 		/** The receiver's or a radar's panel is open. */
@@ -137,6 +147,7 @@
 		route,
 		coverage,
 		radars,
+		gnss,
 		alerts,
 		focus,
 		sector,
@@ -224,6 +235,10 @@
 						return stream.select(hit.icao);
 					case 'radar':
 						return onfocus({ kind: 'radar', id: hit.id });
+					case 'gnss-change':
+						return onfocus({ kind: 'gnss', cell: null, change: hit.id });
+					case 'gnss-cell':
+						return onfocus({ kind: 'gnss', cell: hit.key, change: null });
 					case 'receiver':
 						return onfocus({ kind: 'receiver' });
 					case 'airport':
@@ -352,6 +367,32 @@
 		const icaos = answered;
 		if (!map) return;
 		map.setPaintProperty('aircraft', 'icon-opacity', aircraftOpacity(icaos));
+	});
+
+	// GNSS: when the watch publishes (every few seconds) or the panel's focus changes. Only
+	// while shown: switched on, the effect runs again and draws at once.
+	let gnssFocus = $derived(focus?.kind === 'gnss' ? focus : null);
+	$effect(() => {
+		const { cells, stretches, changes } = gnss;
+		const cell = gnssFocus?.cell ?? null;
+		const change = gnssFocus?.change ?? null;
+		if (!map || !layers.gnss) return;
+		source(map, 'gnss-cells').setData(cellFeatures(cells, cell));
+		source(map, 'gnss-stretches').setData(stretchFeatures(stretches));
+		const { points, blind } = changeFeatures(changes, change);
+		source(map, 'gnss-changes').setData(points);
+		source(map, 'gnss-blind').setData(blind);
+	});
+
+	// A change picked in the panel's list, but off screen: bring it into view (once).
+	$effect(() => {
+		const id = gnssFocus?.change ?? null;
+		const m = map;
+		if (!m || id === null) return;
+		untrack(() => {
+			const at = gnss.changes.find((c) => c.id === id)?.at;
+			if (at && !m.getBounds().contains(lngLat(at))) m.easeTo({ center: lngLat(at) });
+		});
 	});
 
 	// The selected aircraft's route: when it's looked up or the selection changes.

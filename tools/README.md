@@ -8,10 +8,10 @@ committed.
 
 Working without aircraft overhead (at night, say):
 
-| Tool          | What it does                                                                                                                |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `replay.ts`   | Plays a Beast recording over TCP at its recorded pace, like readsb (`--connect`); `--alerts` mixes in synthetic emergencies |
-| `modulate.ts` | Turns a Beast recording back into RTL-SDR samples, with noise (`--samples`)                                                 |
+| Tool          | What it does                                                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `replay.ts`   | Plays a Beast recording over TCP at its recorded pace, like readsb (`--connect`); `--alerts` mixes in synthetic emergencies, `--jamming` a GNSS jammer |
+| `modulate.ts` | Turns a Beast recording back into RTL-SDR samples, with noise (`--samples`)                                                                            |
 
 The demodulator and the gain, on sample recordings (`fixtures/local/README.md` says how to
 make them) or live:

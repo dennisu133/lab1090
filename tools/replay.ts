@@ -3,6 +3,7 @@
  * when the sky is empty (at night), or with a recording that shows something specific.
  *
  *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
+ *                       [--jamming]
  *   bun run dev --connect 127.0.0.1:30105
  *
  * Frames go out at the pace they were recorded, by their Beast timestamps (the receiver's
@@ -15,10 +16,15 @@
  * (src/lib/tracker/alert-scenario.ts has the timeline: 7700 from 30 s, IDENT at 60 s, a
  * medical priority from 240 s, 7600 from 300 s, an RA between two aircraft at 425 s), to see
  * the banner, the map and the notifications work. With --speed 4 they all come within 2 min.
+ *
+ * --jamming puts a GNSS jammer 33 km south of 52°N 14°E (src/lib/gnss/jamming-scenario.ts):
+ * the aircraft within 50 km of it lose their satellite navigation, for the map's GNSS layer.
+ * The first losses come within a minute. One or the other: --alerts wins.
  */
 import { encodeFrame } from '../src/lib/server/beast/encode.ts';
 import { BeastParser } from '../src/lib/server/beast/parser.ts';
 import { injectAlerts } from '../src/lib/tracker/alert-scenario.ts';
+import { injectJamming } from '../src/lib/gnss/jamming-scenario.ts';
 
 const args = process.argv.slice(2);
 const option = (name: string, fallback: number) => {
@@ -29,6 +35,7 @@ const port = option('--port', 30105);
 const speed = option('--speed', 1);
 const loop = args.includes('--loop');
 const alerts = args.includes('--alerts');
+const jamming = !alerts && args.includes('--jamming');
 /** Options followed by a value; the others are switches. */
 const WITH_VALUE = ['--port', '--speed'];
 const path =
@@ -36,7 +43,7 @@ const path =
 	'fixtures/capture.beast';
 
 const recorded = new BeastParser().push(new Uint8Array(await Bun.file(path).arrayBuffer()));
-const frames = alerts ? injectAlerts(recorded) : recorded;
+const frames = alerts ? injectAlerts(recorded) : jamming ? injectJamming(recorded) : recorded;
 const t0 = frames[0].timestamp;
 /** When each frame is due, ms after the start (12,000 ticks per ms). */
 const due = frames.map((f) => (f.timestamp - t0) / 12_000 / speed);
@@ -79,5 +86,5 @@ Bun.listen<{ timer?: ReturnType<typeof setInterval> }>({
 	}
 });
 console.log(
-	`replaying ${path}${alerts ? ' with the alert scenario' : ''} on 127.0.0.1:${port}${speed === 1 ? '' : ` at ${speed}×`}${loop ? ', looping' : ''}`
+	`replaying ${path}${alerts ? ' with the alert scenario' : jamming ? ' with a jammer' : ''} on 127.0.0.1:${port}${speed === 1 ? '' : ` at ${speed}×`}${loop ? ', looping' : ''}`
 );

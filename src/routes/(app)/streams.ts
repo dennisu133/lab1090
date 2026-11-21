@@ -8,6 +8,7 @@ import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
 import { CoverageStream } from './coverage-stream.svelte';
 import { FrameStream } from './frames/frame-stream.svelte';
+import { GnssStream } from './gnss-stream.svelte';
 import { RadarStream } from './radar-stream.svelte';
 import { RadioStream } from './receiver/radio-stream.svelte';
 import { SignalStream } from './receiver/signal-stream.svelte';
@@ -35,6 +36,8 @@ export class Streams {
 	readonly radars: RadarStream;
 	/** The antenna's coverage (map layer, receiver panel): collects from the start, it's cheap. */
 	readonly coverage: CoverageStream;
+	/** Satellite navigation (experimental map layer): collects from the start, it's cheap. */
+	readonly gnss: GnssStream;
 	/**
 	 * The server's hour of receiver history (/receiver, the navigation bar's message rate) and
 	 * the demodulator's numbers.
@@ -53,6 +56,7 @@ export class Streams {
 		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
 		this.radars = new RadarStream(this.tracker);
 		this.coverage = new CoverageStream(this.tracker, reference);
+		this.gnss = new GnssStream(this.tracker, reference);
 		this.signal = new SignalStream(this.tracker, reference);
 		this.#connection = new StreamConnection('/api/stream', [
 			// First: /setup changed the position while this tab was open. Everything decoded
@@ -70,6 +74,7 @@ export class Streams {
 			this.radars, // the same
 			this.coverage, // the same: reads the trails
 			this.signal, // the same: reads the positions
+			this.gnss, // the same
 			this.radio,
 			this.frames,
 			this.commB,

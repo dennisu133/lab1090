@@ -5,7 +5,9 @@
 	below it, side by side from `md` on.
 
 	The panel shows the list, or a selected aircraft, or what was tapped on the map besides:
-	the receiver (its coverage), a ground radar (experimental) or an airport. One at a time.
+	the receiver (its coverage), a ground radar (experimental), a place where an aircraft lost
+	its satellite navigation or a cell of the GNSS grid (experimental), or an airport. One at a
+	time.
 -->
 <script lang="ts" module>
 	import type { Unit } from '#lib/describe/format.ts';
@@ -41,6 +43,7 @@
 	import AirportPanel from './AirportPanel.svelte';
 	import AltitudeLegend from './AltitudeLegend.svelte';
 	import CoveragePanel from './CoveragePanel.svelte';
+	import GnssPanel from './GnssPanel.svelte';
 	import type { Layers } from '#lib/map/layers.ts';
 	import MapLayers from './MapLayers.svelte';
 	import RadarPanel from './RadarPanel.svelte';
@@ -60,6 +63,8 @@
 	const coverage = streams.coverage;
 	/** The ground radars: searched for only while their layer is on. */
 	const radars = streams.radars;
+	/** Satellite navigation: collecting since the app opened, drawn while its layer is on. */
+	const gnss = streams.gnss;
 
 	/** What the map draws: ours on top of the aircraft, and parts of the base map (MapLayers.svelte). Remembered. */
 	const LAYERS_KEY = 'tracker.layers';
@@ -71,6 +76,7 @@
 		winds: false,
 		coverage: false,
 		radars: false,
+		gnss: false,
 		roads: true,
 		places: true
 	});
@@ -121,6 +127,10 @@
 	// would open again by itself if a radar with the same id is confirmed later.
 	$effect(() => {
 		if (focus?.kind === 'radar' && !radar) focus = null;
+	});
+	// The GNSS layer switched off: its panel goes with it (nothing on the map to point at).
+	$effect(() => {
+		if (focus?.kind === 'gnss' && !layers.gnss) focus = null;
 	});
 	// The terrain (for the sky plot's skyline and the antenna's height) loads on first need.
 	$effect(() => {
@@ -177,6 +187,7 @@
 			{route}
 			{coverage}
 			{radars}
+			{gnss}
 			alerts={streams.alerts}
 			{focus}
 			{sector}
@@ -189,7 +200,13 @@
 		<div
 			class="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] flex-wrap items-end gap-2 *:pointer-events-auto *:focus-within:z-10 *:hover:z-20"
 		>
-			<MapLayers bind:layers />
+			<MapLayers
+				bind:layers
+				collecting={{
+					radars: layers.radars && radars.radars.length === 0,
+					gnss: layers.gnss && gnss.cells.length === 0
+				}}
+			/>
 			<AltitudeLegend />
 		</div>
 	</div>
@@ -231,6 +248,19 @@
 				airport={focus.airport}
 				receiver={data.reference}
 				{unit}
+				onclose={() => openFocus(null)}
+			/>
+		{:else if focus?.kind === 'gnss'}
+			<GnssPanel
+				{gnss}
+				cell={focus.cell}
+				change={focus.change}
+				aircraft={stream.aircraft}
+				{now}
+				receiver={data.reference}
+				{unit}
+				onselect={(icao) => stream.select(icao)}
+				onfocus={(cell, change) => openFocus({ kind: 'gnss', cell, change })}
 				onclose={() => openFocus(null)}
 			/>
 		{:else if radar}

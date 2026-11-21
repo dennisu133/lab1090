@@ -4,10 +4,11 @@
 	they measured the wind; the antenna's coverage. Below a line, what lies on the ground: the
 	range rings around the receiver and two parts of the base map, roads and place names
 	(borders, terrain and airports always stay: they're what you find your way by). Below
-	another, the experiments: the ground radars. All on by default but the wind barbs (busy hours fill the map with them),
+	another, the experiments: the ground radars and satellite navigation. All on by default but the wind barbs (busy hours fill the map with them),
 	coverage and the experiments. With the trails off, the selected aircraft still has one.
 	Labels whose layer needs explaining are InfoTips (tappable: phones never show `title`);
-	Roads and Place names are plain. The rings' unit is set above the aircraft list.
+	Roads and Place names are plain. The rings' unit is set above the aircraft list. An
+	experiment switched on that has nothing to draw yet gets a spinner (`collecting`).
 
 	The "Layers" button at the bottom folds the switches away. Until it's used, they're folded
 	on phones (they'd cover a third of the map) and open from `md` on, by CSS so the server's
@@ -26,12 +27,15 @@
 	import { BARB_BIN_MS, BARB_FADE_MS } from '#lib/map/winds.ts';
 	import { BANDS } from '#lib/coverage/coverage.ts';
 	import { HORIZON_FT } from '#lib/map/coverage.ts';
+	import { WINDOW_MS as GNSS_WINDOW_MS, MIN_AIRCRAFT } from '#lib/gnss/watch.ts';
 
 	interface Props {
 		layers: Layers;
+		/** The experiments switched on that are still collecting: nothing to draw yet. */
+		collecting: { radars: boolean; gnss: boolean };
 	}
 
-	let { layers = $bindable() }: Props = $props();
+	let { layers = $bindable(), collecting }: Props = $props();
 
 	/** Open or folded: null until the button is used (then it's by screen width, see above). */
 	const OPEN_KEY = 'tracker.layersOpen';
@@ -236,6 +240,7 @@
 			bind:checked={layers.radars}
 			label="Search for the ground radars and show them"
 			name="Radars"
+			busy={collecting.radars}
 		>
 			{#snippet icon()}
 				<!-- A radar dish on its mast, like the symbol on the map. -->
@@ -261,6 +266,36 @@
 			<p>
 				Experimental. Radars show up after a few minutes. It's off until switched on, as it takes
 				more work than the rest of the page together; switched off, it forgets what it found.
+			</p>
+		</LayerSwitch>
+		<LayerSwitch
+			bind:checked={layers.gnss}
+			label="Show where aircraft lost their satellite navigation"
+			name="GNSS"
+			busy={collecting.gnss}
+		>
+			{#snippet icon()}
+				<!-- A red dot and a green ring, like the losses and the regainings on the map. -->
+				<svg viewBox="0 0 20 12" class="hidden h-3 w-5 sm:block" aria-hidden="true">
+					<circle cx="6" cy="6" r="3" class="fill-error-500" />
+					<circle cx="14.5" cy="6" r="2.75" fill="none" class="stroke-ok-400" stroke-width="1.5" />
+				</svg>
+			{/snippet}
+			<p>
+				Aircraft find their position by satellite (GPS, Galileo, …), and every ADS-B position says
+				how good it is. A jammer on the ground drowns the satellites' faint signal, and the aircraft
+				in its reach then send worse positions, or none.
+			</p>
+			<p>
+				<strong class="text-error-400">Red dots</strong>: where aircraft lost it.
+				<strong class="text-ok-400">Green rings</strong>: where they got it back.
+				<strong class="text-warn-400">Amber bands</strong>: flown without it. The hexagons: green if
+				all aircraft there were fine, amber if some weren't, red if many weren't.
+			</p>
+			<p>
+				Experimental. Collected from the moment the page opens, for {GNSS_WINDOW_MS / 3_600_000} hours.
+				A hexagon is drawn once {MIN_AIRCRAFT} aircraft have flown through it, so the first take 10 to
+				20 minutes.
 			</p>
 		</LayerSwitch>
 	</div>
