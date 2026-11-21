@@ -31,7 +31,7 @@ import { angleDifference, directionOf, speedOf, sub, type Vector, type Wind, win
 
 /** Degrees of turn (of heading: around the circle) the fit needs. */
 export const MIN_ARC = 90;
-/** A track changing faster than this, °/s, is a turn (an airliner banked 25° at 450 kt: 1.2). */
+/** A track changing faster than this, °/s, is a turn (an airliner banked 25° at 450 kt: 1.1). */
 export const TURN_RATE = 0.5;
 /** The rate is measured over this long, ms: two messages 0.5 s apart are too noisy. */
 const RATE_BASELINE_MS = 4000;

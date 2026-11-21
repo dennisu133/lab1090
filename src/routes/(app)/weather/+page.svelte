@@ -122,23 +122,36 @@
 		<div class="flex flex-wrap items-baseline justify-end gap-x-1 text-zinc-400">
 			<InfoTip label="Collected" wide>
 				<p>
-					Nobody sends us the weather, but radars read every aircraft's speeds and heading for air
-					traffic control, in registers <strong>5,0</strong> and <strong>6,0</strong>: enough to
-					work out the wind and the temperature where it flies. ADS-B adds the gap between GNSS
-					height and pressure altitude (how warm the air column below is) and the pilots' altimeter
-					settings. The Dutch weather service (KNMI) feeds such observations into its forecasts.
+					No aircraft broadcasts the weather. But for air traffic control, radars read the speeds
+					and heading of most airliners, in registers <strong>5,0</strong> and <strong>6,0</strong>,
+					and that's enough to work out the wind and the temperature where they fly. ADS-B adds how
+					far each aircraft's satellite (GNSS) height is from its pressure altitude, which tells how
+					warm the air below it is. Both carry the pilots' altimeter settings.
 				</p>
 				<p>
-					Collected here in the browser from the moment the app opened, on any page; reloading
-					starts over. Samples older than {WINDOW_MS / 60_000} minutes are dropped. Cruising aircraft
-					fill FL300–FL410 within minutes; the levels below fill as aircraft climb out and descend, like
-					a weather balloon on its way up.
+					Collected in the browser from the moment lab1090 opened, on any page; a reload starts
+					over. Samples older than {WINDOW_MS / 60_000} minutes are dropped. Cruising aircraft fill FL300–FL410
+					within minutes; the levels below fill as aircraft climb out and descend, like a weather balloon
+					on its way up.
 				</p>
 				<p class="text-zinc-400">
-					Sources: S. de Haan, "High-resolution wind and temperature observations from aircraft
-					tracked by Mode-S air traffic control radar", J. Geophys. Res. (2011). J. Sun et al.,
-					"Weather field reconstruction using aircraft surveillance data and a novel meteo-particle
-					model", PLOS ONE (2018).
+					The Dutch weather service (KNMI) worked out how (<a
+						href="https://doi.org/10.1029/2010JD015264"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">de Haan 2011</a
+					>), and now collects such observations across Europe for weather forecasts (<a
+						href="https://doi.org/10.5194/amt-18-3341-2025"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">de Haan et al. 2025</a
+					>). How to turn them into a weather map:
+					<a
+						href="https://doi.org/10.1371/journal.pone.0205029"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">Sun et al. 2018</a
+					>.
 				</p>
 			</InfoTip>
 			<span>
@@ -162,10 +175,15 @@
 					airliners cruise just below or just above it.
 				</p>
 				<p>
-					By the WMO's definition (the one weather balloons use): the lowest level where the
-					temperature falls by {TROPOPAUSE_LAPSE} K per km or less, and keeps doing so on average for
-					the next 2 km. Only layers with at least {MIN_SAMPLES} temperatures from {MIN_AIRCRAFT} or more
-					aircraft count: each aircraft has its own sensor errors.
+					By the <a
+						href="https://doi.org/10.5194/acp-22-4019-2022"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">WMO's definition</a
+					>, which weather balloons use too: the lowest level where the temperature falls by {TROPOPAUSE_LAPSE}
+					K per km or less, and keeps doing so on average for the next 2 km. Only layers with at least
+					{MIN_SAMPLES} temperatures from {MIN_AIRCRAFT} or more aircraft count: each aircraft's sensors
+					have their own errors.
 				</p>
 				<p class="text-zinc-400">
 					Over Europe usually FL300–FL390: lower in cold polar air, higher in warm air. The standard
@@ -192,9 +210,14 @@
 			{#snippet info()}
 				<p>
 					The layer with the fastest mean wind. A <strong>jet stream</strong> is a narrow band of
-					fast wind, at least 30 m/s ({Math.round(JET_KT)} kt) by the WMO's definition, usually just below
-					the tropopause, where cold polar air meets warmer air. Over Europe it often reaches 100–200
-					kt in winter.
+					fast wind, at least 30 m/s ({Math.round(JET_KT)} kt) by the
+					<a
+						href="https://web.archive.org/web/20251207030338/https://apps.dtic.mil/sti/tr/pdf/AD0264663.pdf"
+						target="_blank"
+						rel="noreferrer"
+						class="text-accent-400 hover:text-accent-300">WMO's definition</a
+					>. It blows near the tropopause, where cold polar air meets warmer air, and in winter
+					often at over 100 kt.
 				</p>
 			{/snippet}
 			{#if strongest}
@@ -234,8 +257,10 @@
 		<Card heading="h2" title="Air column" class="h-36" align="right">
 			{#snippet info()}
 				<p>
-					How much warmer or colder than standard the air is on average from the ground up to the
-					level shown, from how far the aircraft's GNSS height is from its pressure altitude.
+					How much warmer or colder than the standard atmosphere the air is on average, from the
+					ground up to the level shown. It comes from how far the aircraft's satellite (GNSS)
+					heights are from their pressure altitudes: warm air lifts the pressure levels, cold air
+					lowers them.
 				</p>
 			{/snippet}
 			{#if example}
@@ -258,8 +283,9 @@
 		<Card heading="h2" title="Temperature" headClass="mb-2">
 			{#snippet info()}
 				<p>
-					Each layer's mean temperature (dot) and how much the samples differ (bar), against the
-					standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one aircraft.
+					Each layer's mean temperature (dot), with a bar for how much the samples differ, against
+					the standard atmosphere (dashed). Hollow: fewer than {MIN_SAMPLES} samples, or all from one
+					aircraft.
 				</p>
 			{/snippet}
 			{#snippet header()}
@@ -275,19 +301,25 @@
 						</p>
 						<p>
 							A contrail forms when the engines' hot, wet exhaust cools in the cold air until water
-							condenses (the Schmidt–Appleman criterion; Schumann 1996). How cold the air must be
-							depends on the pressure and the humidity: the band's right edge is the limit for
-							saturated air, the left edge for perfectly dry air, about 10 K colder.
+							condenses (the <a
+								href="https://elib.dlr.de/32128/"
+								target="_blank"
+								rel="noreferrer"
+								class="text-accent-400 hover:text-accent-300">Schmidt–Appleman criterion</a
+							>). How cold the air must be depends on the pressure and the humidity: the band's
+							right edge is the limit for saturated air, the left edge for perfectly dry air, about
+							10 K colder.
 						</p>
 						<p>
 							Humidity at cruise level is almost never in the data, so in between the answer is the
 							humidity the air would need. One kelvin can change that by about 20 points or tip it
-							to "too warm", and aircraft read about 2 K cold, so a layer only counts as "any air"
-							or "too warm" with {TEMPERATURE_MARGIN}&nbsp;K to spare.
+							to "too warm", and in a test recording the aircraft read 2 K colder than weather
+							balloons on average. So a layer only counts as "any air" or "too warm" with {TEMPERATURE_MARGIN}&nbsp;K
+							to spare.
 						</p>
 						<p class="text-zinc-400">
-							For engines that turn {ETA * 100} % of the fuel's energy into thrust, typical of today's
-							airliners. Older ones ({ETA_OLDER * 100} %) needed air about {n(
+							For engines that turn {ETA * 100} % of the fuel's energy into pushing the aircraft along,
+							typical of today's airliners. Older ones ({ETA_OLDER * 100} %) needed air about {n(
 								olderEngineShift(staticPressure(35_000)),
 								1
 							)} K colder. The Aircraft tab works it through step by step.
@@ -307,8 +339,8 @@
 					arrow to the right is a westerly). The dashed line is jet stream strength.
 				</p>
 				<p>
-					Headings: the winds as the aircraft sent them, or with the headings corrected where the
-					heading checks below found one clearly off.
+					<strong>Headings</strong>: the winds as the aircraft sent them, or with the headings
+					corrected where the heading checks below found one clearly off.
 				</p>
 			{/snippet}
 			{#snippet header()}
@@ -324,14 +356,15 @@
 		<Card heading="h2" title="Height − pressure altitude" align="right" headClass="mb-2">
 			{#snippet info()}
 				<p>
-					How far each layer's pressure level really is from where the standard atmosphere puts it
-					(after the geoid and geopotential corrections). The guides show what a column with that
-					mean deviation from standard would give, at today's QNH: they fan out because each kelvin
-					counts for more the more air is below.
+					How much higher or lower each layer's pressure level really is than the standard
+					atmosphere puts it, from the aircraft's satellite heights (corrected as in the column card
+					below). The guides show where the dots would be if the whole column below were that many
+					kelvin warmer or colder than standard, at today's sea-level pressure. They fan out because
+					each kelvin counts for more the more air there is below.
 				</p>
 				<p class="text-zinc-400">
-					A dot left of the dashed ISA line: the level is lower than standard, the air below colder
-					(or the pressure lower).
+					A dot left of the dashed ISA line: the level is lower than a standard column at today's
+					sea-level pressure would put it, so the air below is colder than standard.
 				</p>
 			{/snippet}
 			<ColumnChart

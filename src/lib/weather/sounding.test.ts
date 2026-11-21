@@ -232,7 +232,7 @@ describe('the capture against the balloons', () => {
 		expect(Math.round(measured.speed)).toBe(55);
 		// 267°: within 1.3° of the balloons.
 		expect(Math.abs(angleDifference(measured.direction, g.wind.direction))).toBeLessThan(2);
-		// 72 kt, ± 6 leaving out any one aircraft: faster than the real 55 kt, as the
+		// 72 kt ± 6 (jackknife over aircraft): faster than the real 55 kt, as the
 		// balance is where the air curves around a low.
 		expect(g.wind.speed).toBeCloseTo(71.8, 1);
 		expect(g.uncertainty).toBeLessThan(6);
@@ -343,7 +343,7 @@ describe('the capture against the balloons', () => {
 		expect(off[0].correction).toBeCloseTo(-4.0, 1);
 		expect(off[0].others).toBe(5);
 
-		// Corrected, its layer (FL350) is 3 kt from the balloons instead of 29; the others
+		// Corrected, its layer (FL350) is 2 kt from the balloons instead of 29; the others
 		// stay as they were.
 		const error = (winds: typeof sky.winds) =>
 			Object.fromEntries(
@@ -369,7 +369,7 @@ describe('the capture against the balloons', () => {
 		});
 		expect(error(applyHeadingChecks(sky.winds, checks))).toEqual({
 			...error(sky.winds),
-			35000: 3
+			35000: 2
 		});
 	});
 

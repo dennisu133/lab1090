@@ -88,8 +88,9 @@ export type Geostrophic =
 			/** What the plane leaves unexplained, ft rms: GNSS − baro comes in 25 ft steps. */
 			residual: number;
 			/**
-			 * How much the wind changes when any one aircraft is left out, kt (jackknife):
-			 * the honest error bar, since an aircraft's samples aren't independent of each other.
+			 * The jackknife standard error over aircraft, kt: from refitting without each one in
+			 * turn. The honest error bar, since an aircraft's samples aren't independent of each
+			 * other. (Larger than the most any single refit moves the wind.)
 			 * Null when fewer than two of the refits still had the spread to find a slope.
 			 */
 			uncertainty: number | null;

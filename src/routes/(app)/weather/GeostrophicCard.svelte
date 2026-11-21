@@ -103,8 +103,8 @@
 <Card title="Geostrophic wind" wide>
 	{#snippet info()}
 		<p>
-			The wind that the <strong>slope of the pressure surfaces</strong> calls for, measured with GNSS
-			− baro alone: no heading, no airspeed, no radar questions.
+			The wind that the <strong>slope of the pressure surfaces</strong> calls for, from ADS-B's GNSS −
+			baro alone: no heading or airspeed, and no radar has to ask for anything.
 		</p>
 		<p>
 			An aircraft in level flight holds its pressure altitude, so it follows a surface of constant
@@ -115,15 +115,26 @@
 			On the rotating Earth, air doesn't flow down such a slope. The pressure force pushes it
 			downhill, the Coriolis force to the right of its motion, and they balance when it flows
 			<strong>along the height contours</strong>, the low side on its left (in the northern
-			hemisphere): wind = (g / f) × slope, with f = 2Ω · sin(latitude). That's why the wind follows
-			the isobars on a weather map.
+			hemisphere). That's why the wind follows the isobars on a weather map:
+		</p>
+		<p>
+			<math>
+				<mi>V</mi><mo>=</mo>
+				<mfrac displaystyle="true"><mi>g</mi><mi>f</mi></mfrac>
+				<mo>·</mo><mi>s</mi>
+			</math>
+			with
+			<math>
+				<mi>f</mi><mo>=</mo><mn>2</mn><mi>Ω</mi><mo>·</mo><mi>sin</mi><mi>φ</mi>
+			</math>: <math><mi>s</mi></math> the slope, <math><mi>g</mi></math> gravity,
+			<math><mi>Ω</mi></math> the Earth's rotation (once a day) and <math><mi>φ</mi></math> the latitude.
 		</p>
 		<p class="text-zinc-400">
 			Each aircraft at each level gets its own offset, so its altimeter's own error drops out. Needs
 			{MIN_GEOSTROPHIC_AIRCRAFT} aircraft that each flew {MIN_SEGMENT_KM} km level, together spread at
 			least {MIN_SPREAD_KM} km (rms) in every direction: along one airway alone, the slope across it is
 			unknown. A balance, not a measurement: around a low the real wind is slower, around a high faster.
-			Against weather balloons: within 2° of their direction, 30 % faster.
+			In a test recording: within 2° of the weather balloons' direction, 30 % faster.
 		</p>
 	{/snippet}
 	{#snippet header()}
@@ -198,8 +209,12 @@
 						{#if contours}(contours every {contours.step} ft){/if}.
 					</p>
 					<p class="text-zinc-400">
-						At {geo.latitude.toFixed(1)}° f = {(geo.coriolis * 1e4).toFixed(3)} × 10<sup>−4</sup>
-						/s, so the wind along the contours is {Math.round(geo.wind.speed)} kt.
+						At {geo.latitude.toFixed(1)}°
+						<math>
+							<mi>f</mi><mo>=</mo><mn>{(geo.coriolis * 1e4).toFixed(3)}</mn><mo>×</mo>
+							<msup><mn>10</mn><mn>−4</mn></msup><mspace width="0.25em" />
+							<mfrac displaystyle="true"><mn>1</mn><mtext>s</mtext></mfrac>
+						</math>, so the wind along the contours is {Math.round(geo.wind.speed)} kt.
 					</p>
 					<p class="text-zinc-400">
 						{geo.aircraft} aircraft, {geo.segments.length} level flights, {geo.samples} samples, {levelOrFeet(
@@ -207,7 +222,7 @@
 						)}–{levelOrFeet(geo.levels[1])}. The plane leaves {geo.residual.toFixed(0)} ft rms (GNSS −
 						baro comes in 25 ft steps){geo.uncertainty === null
 							? '; too few aircraft keep the spread when one is left out to tell how much the wind depends on any one of them.'
-							: `; leaving out any one aircraft moves the wind by up to ${Math.round(geo.uncertainty)} kt.`}
+							: `; refitting without each aircraft in turn gives an error of ±${Math.round(geo.uncertainty)} kt (jackknife).`}
 					</p>
 					{#if measured}
 						<p>

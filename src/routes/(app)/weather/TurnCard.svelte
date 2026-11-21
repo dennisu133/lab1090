@@ -44,8 +44,8 @@
 		<p>
 			An aircraft turning at a steady airspeed sweeps its air vector (TAS along the heading) around
 			a circle. Its ground vector, which ADS-B broadcasts twice a second, is that plus the wind: so
-			the ground vectors lie on the same circle, <strong>shifted by the wind</strong>. Fit a circle
-			through them: the centre is the wind, the radius the true airspeed.
+			the ground vectors lie on the same circle, <strong>shifted by the wind</strong>. A circle
+			fitted through them has the wind at its centre and the true airspeed as its radius.
 		</p>
 		<p class="text-zinc-400">
 			A turn is a track changing by {TURN_RATE}°/s or more; it needs {MIN_ARC}° of heading, within {MAX_TURN_MS /
@@ -146,7 +146,7 @@
 				{/if}
 				<p class="text-xs text-zinc-500">
 					Winds from turns join the profile's layers like any other, and the heading checks use them
-					as a reference: they can't share a compass error.
+					as a reference: they don't depend on the heading at all.
 				</p>
 			</div>
 		</div>

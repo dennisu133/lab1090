@@ -148,21 +148,30 @@ export interface ContrailRun {
 	to: number;
 	/** For `humid`: the humidity needed over the run, as humidityNeeded(). */
 	needed: string | null;
+	/**
+	 * For a `humid` run whose layers range from any air (2 K colder) to too warm (2 K
+	 * warmer), where `needed` would read "0 % or more": which layers are which. Else null.
+	 */
+	split: { anyAir: [number, number]; tooWarm: [number, number] } | null;
 }
 
 /** "FL360–FL370", "FL380" */
-const runLevels = (r: ContrailRun) =>
-	r.from === r.to ? levelOrFeet(r.from) : `${levelOrFeet(r.from)}–${levelOrFeet(r.to)}`;
+const levels = (from: number, to: number) =>
+	from === to ? levelOrFeet(from) : `${levelOrFeet(from)}–${levelOrFeet(to)}`;
+const runLevels = (r: ContrailRun) => levels(r.from, r.to);
 
 /**
  * One run in /weather's summary: "FL360–FL370 in any air", "FL380 too warm", "FL340 needs
- * 40–90 % humidity". Shorter than contrailValue: the summary lists several in a line.
+ * 40–90 % humidity", "FL210–FL270 depends on the humidity: any air at FL260–FL270, too
+ * warm at FL210". Shorter than contrailValue: the summary lists several in a line.
  */
 export function runText(r: ContrailRun): string {
 	const verdict = {
 		always: 'in any air',
 		never: 'too warm',
-		humid: `needs ${r.needed} humidity`
+		humid: r.split
+			? `depends on the humidity: any air at ${levels(...r.split.anyAir)}, too warm at ${levels(...r.split.tooWarm)}`
+			: `needs ${r.needed} humidity`
 	}[r.verdict];
 	return `${runLevels(r)} ${verdict}`;
 }
@@ -192,22 +201,45 @@ export function contrailHeadline(runs: ContrailRun[]): { text: string; always: b
  * of neighbouring layers with the same verdict.
  */
 export function contrailRuns(all: Layer[]): ContrailRun[] {
-	const runs: (ContrailRun & { ranges: ContrailRange[] })[] = [];
+	const runs: (ContrailRun & { ranges: { level: number; range: ContrailRange }[] })[] = [];
 	for (const l of all) {
 		if (!enough(l.temperature)) continue;
 		const r = contrailRange(l.temperature.kelvin, staticPressure(l.level));
 		const last = runs.at(-1);
 		if (last && last.verdict === r.verdict && l.level - last.to === LAYER_FT) {
 			last.to = l.level;
-			last.ranges.push(r);
-		} else runs.push({ verdict: r.verdict, from: l.level, to: l.level, needed: null, ranges: [r] });
+			last.ranges.push({ level: l.level, range: r });
+		} else
+			runs.push({
+				verdict: r.verdict,
+				from: l.level,
+				to: l.level,
+				needed: null,
+				split: null,
+				ranges: [{ level: l.level, range: r }]
+			});
 	}
 	return runs.map(({ ranges, ...run }) => {
 		if (run.verdict !== 'humid') return run;
 		// The run's range: the least any layer needs to the most.
-		const lo = Math.min(...ranges.map((r) => r.colder.humidityNeeded ?? 1));
-		const his = ranges.map((r) => r.warmer.humidityNeeded);
+		const lo = Math.min(...ranges.map(({ range }) => range.colder.humidityNeeded ?? 1));
+		const his = ranges.map(({ range }) => range.warmer.humidityNeeded);
 		const hi = his.includes(null) ? null : Math.max(...(his as number[]));
-		return { ...run, needed: rangeText(lo, hi) };
+		const needed = rangeText(lo, hi);
+		if (Math.round(lo * 100) !== 0 || hi !== null) return { ...run, needed };
+		// "0 % or more" would read as "any air": say which layers go which way instead.
+		const span = (xs: number[]): [number, number] => [Math.min(...xs), Math.max(...xs)];
+		const anyAir = ranges.filter(
+			({ range }) => Math.round((range.colder.humidityNeeded ?? 1) * 100) === 0
+		);
+		const tooWarm = ranges.filter(({ range }) => range.warmer.humidityNeeded === null);
+		return {
+			...run,
+			needed,
+			split: {
+				anyAir: span(anyAir.map((x) => x.level)),
+				tooWarm: span(tooWarm.map((x) => x.level))
+			}
+		};
 	});
 }

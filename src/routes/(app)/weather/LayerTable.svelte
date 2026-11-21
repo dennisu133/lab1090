@@ -73,30 +73,34 @@
 				<th class="w-56 py-1 font-normal">
 					<InfoTip label="Temperature">
 						<p>
-							The static air temperature at this level, from 5,0's true airspeed and 6,0's Mach, and
-							how it compares with the standard atmosphere (ISA).
+							The air temperature at this level, from 5,0's true airspeed and 6,0's Mach (worked
+							through on the Aircraft tab), and how it compares with the standard atmosphere (ISA).
 						</p>
 					</InfoTip>
 				</th>
 				<th class="w-24 py-1 font-normal">
 					<InfoTip label="Lapse rate">
 						<p>
-							How much colder it gets per km up, to the next layer with a temperature. 6.5 K/km in
-							the standard troposphere, 0 above the tropopause. ≤ 2 K/km is the WMO's threshold for
-							the tropopause.
+							How much colder it gets per km up, to the next layer with a temperature: 6.5 K/km in
+							the standard atmosphere below the tropopause, 0 above it. 2 K/km or less is the WMO's
+							threshold for the tropopause.
 						</p>
 					</InfoTip>
 				</th>
 				<th class="w-63 py-1 font-normal">
 					<InfoTip label="Wind">
-						<p>Mean wind (5,0/6,0 and turns), where it blows from, and how steady it is.</p>
+						<p>
+							The mean wind, where it blows from and how fast, from 5,0/6,0 pairs and from turns;
+							then how steady it is.
+						</p>
 					</InfoTip>
 				</th>
 				<th class="w-35 py-1 font-normal">
 					<InfoTip label="GNSS − baro" align="right">
 						<p>
-							GNSS height minus pressure altitude, as ADS-B sends it (TC 19): how far the real
-							height of this pressure level is from the standard atmosphere's, before corrections.
+							Satellite (GNSS) height minus pressure altitude, as ADS-B sends it (TC 19): how far
+							the real height of this pressure level is from the standard atmosphere's, before the
+							corrections in the column card below.
 						</p>
 					</InfoTip>
 				</th>

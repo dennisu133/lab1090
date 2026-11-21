@@ -24,13 +24,13 @@ describe('weatherHereFields: the tracker panel, on the capture', () => {
 
 	test('the aircraft whose heading is off says so, and what the map uses instead', () => {
 		// Against the weather balloons its heading is 3.5° off (sounding.test.ts); the other
-		// aircraft say 4.0°. Corrected, its wind at FL350 is 56 kt: the balloons measured
+		// aircraft say 4.0°. Corrected, its wind at FL350 is 57 kt: the balloons measured
 		// 53–61 kt there. As sent it's 88 kt over its last minute (83 kt over its whole time at FL350,
 		// pipeline.test.ts).
 		const off = [...checks.values()].filter((c) => c.significant);
 		expect(off.length).toBe(1);
 		const mine = new Map(fields.get(off[0].icao)!.map((f) => [f.label, f]));
-		expect(mine.get('Wind')!.value).toBe('W 265° · 56 kt');
+		expect(mine.get('Wind')!.value).toBe('W 265° · 57 kt');
 		expect(mine.get('Heading check')!.tone).toBe('alert');
 		expect(mine.get('Heading check')!.value).toBe('4.0° off, corrected (as sent: 88 kt)');
 		expect(mine.get('Heading check')!.title).toContain('the barbs on the map');

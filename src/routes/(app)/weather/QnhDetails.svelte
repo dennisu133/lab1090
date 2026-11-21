@@ -16,16 +16,16 @@
 </script>
 
 <p>
-	Below the <strong>transition altitude</strong> (5,000 ft over most of Germany) pilots set their
-	altimeters to the <strong>QNH</strong>, the airfield's pressure reduced to sea level, so they read
-	height above sea level. Higher up everyone uses the standard <strong>1013.25 hPa</strong>, so all
-	aircraft agree on what "FL350" is.
+	Below the <strong>transition altitude</strong> (a few thousand feet in most of Europe, 18,000 ft
+	in North America) pilots set their altimeters to the <strong>QNH</strong>, the airfield's pressure
+	reduced to sea level, so they read height above sea level. Higher up everyone uses the standard
+	<strong>1013.25 hPa</strong>, so all aircraft agree on what "FL350" is.
 </p>
 <p>
 	Aircraft report their setting in register 4,0 (0.1 hPa steps) and ADS-B TC 29 (0.8 hPa steps). A
-	setting more than {STANDARD_TOLERANCE} hPa from standard is someone's QNH; the median of each aircraft's
-	latest one is used, an average for the area. With none, standard is assumed. Local settings come from
-	aircraft near the ground: climbing out, or on approach.
+	setting more than {STANDARD_TOLERANCE} hPa from standard is someone's QNH. The median of each aircraft's
+	latest one is used: an average over the area. With none, standard is assumed. Local settings come from
+	aircraft climbing out or coming in to land.
 </p>
 {#if qnh.local.length}
 	<table class="w-full table-fixed text-sm tabular-nums">

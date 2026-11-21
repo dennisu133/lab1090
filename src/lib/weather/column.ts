@@ -36,9 +36,11 @@
  * colder than standard while the air at cruise level is warmer than standard.
  *
  * Getting the left side right takes two corrections:
- * - GNSS heights are above the WGS84 ellipsoid (DO-260B; dump1090-fa documents its alt_geom
- *   the same way), sea level is above or below it by the geoid undulation (geoid.ts). Some
- *   avionics may send heights above sea level instead; the page lets you switch.
+ * - GNSS heights are above the WGS84 ellipsoid where the aircraft has that, else above sea
+ *   level (ICAO Doc 9871 §A.2.3.5.7; the message doesn't say which). dump1090-fa and readsb
+ *   document their alt_geom as above the ellipsoid, and the capture agrees only that way
+ *   (sounding.test.ts). Sea level is above or below it by the geoid undulation (geoid.ts);
+ *   the page has a switch for avionics that send heights above sea level.
  * - The ISA is defined in geopotential height (height scaled by how gravity weakens with
  *   it), GNSS measures geometric height. H = r · z / (r + z) with r = 6,356,766 m (ICAO
  *   Doc 7488): 59 ft less at 35,000 ft, worth 0.4 K.

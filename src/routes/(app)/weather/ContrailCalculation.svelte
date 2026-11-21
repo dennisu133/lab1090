@@ -209,10 +209,10 @@
 						<InfoTip label="± {TEMPERATURE_MARGIN} K">
 							<p>
 								The temperature is a couple of kelvin off: the rounding alone (Temperature, above),
-								and against weather balloons aircraft read 2 K too cold on average, one 7 K. One
-								kelvin can change the humidity needed by about 20 points, or tip the answer to no
-								contrail at all. So a firm yes or no needs to hold {TEMPERATURE_MARGIN} K either way (the
-								shaded stripe).
+								and in a test recording the aircraft read 2 K colder than weather balloons on
+								average, one 7 K. One kelvin can change the humidity needed by about 20 points, or
+								tip the answer to no contrail at all. So a firm yes or no needs to hold {TEMPERATURE_MARGIN}
+								K either way (the shaded stripe).
 							</p>
 						</InfoTip>:
 						{#if humidityNeeded(r) === null}

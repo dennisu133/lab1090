@@ -2,7 +2,7 @@
  * What /weather's Profile tab shows per 1,000 ft layer (lib/weather/profile.ts), as Fields.
  * Each tooltip says what went in and how it was computed, with the layer's own numbers.
  */
-import { A0, isaTemperature, T0 } from '#lib/modes/air-data.ts';
+import { isaTemperature } from '#lib/modes/air-data.ts';
 import type { Column } from '#lib/weather/column.ts';
 import {
 	MIN_AIRCRAFT,
@@ -64,8 +64,8 @@ export function layerTemperatureFields(layer: Layer): Field[] {
 		{
 			value: celsius(t.kelvin),
 			title: [
-				`Mean static air temperature of ${samplesText(t.n, t.aircraft)}: ${celsius(t.kelvin, 2)}.`,
-				`Each one from true airspeed (5,0) and Mach (6,0): T = ${T0} K × (TAS / (Mach × ${A0.toFixed(2)} kt))², see the Aircraft tab.`,
+				`Mean air temperature of ${samplesText(t.n, t.aircraft)}: ${celsius(t.kelvin, 2)}.`,
+				'Each one from true airspeed (5,0) and Mach (6,0), worked through on the Aircraft tab.',
 				'',
 				`They differ by ±${t.spread.toFixed(1)} K (standard deviation): rounding (about ±2 K each at cruise), different air where each aircraft is, and each aircraft's own probe.`
 			].join('\n'),
@@ -102,7 +102,7 @@ export function lapseField(
 				'The standard atmosphere cools by 6.5 K/km up to the tropopause, then not at all. Real air can cool faster or slower; an inversion is negative (warmer above).',
 				`At ${TROPOPAUSE_LAPSE} K/km or less, staying so for 2 km, the WMO calls it the tropopause.`,
 				'',
-				`Over this gap, 1 K of noise in a layer's mean is ${(1 / km).toFixed(1)} K/km: trust the trend over several layers more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples or ${MIN_AIRCRAFT} aircraft.` : ''}`
+				`Over this gap, 1 K of noise in a layer's mean is ${(1 / km).toFixed(1)} K/km: the trend over several layers says more than one value.${noisy ? ` One of these layers has fewer than ${MIN_SAMPLES} samples or ${MIN_AIRCRAFT} aircraft.` : ''}`
 			].join('\n'),
 			tone: noisy ? 'minor' : lapse <= TROPOPAUSE_LAPSE ? 'alert' : 'main'
 		}
@@ -117,7 +117,7 @@ export function layerWindFields(layer: Layer): Field[] {
 			value: windText(w.wind),
 			title: [
 				`Mean wind of ${samplesText(w.n, w.aircraft)}, averaged as vectors (north and east parts separately): from ${w.wind.direction.toFixed(0)}° at ${w.wind.speed.toFixed(1)} kt.`,
-				'Each one from the wind triangle: ground vector (5,0) − air vector (5,0 TAS along 6,0 heading), see the Aircraft tab; or from the circle fit of a turn.'
+				'Each one from the wind triangle: ground vector (5,0) − air vector (5,0 TAS along 6,0 heading), worked through on the Aircraft tab; or from a turn (Winds from turns, below).'
 			].join('\n'),
 			tone: 'main',
 			mono: true

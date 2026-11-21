@@ -80,17 +80,21 @@ export function correctedWind(w: { wind: Vector; air: Vector | null }, degrees: 
 	return sub(add(w.wind, w.air), rotate(w.air, degrees));
 }
 
-/** Samples are grouped into cells of one layer and TIME_BIN_MS, for finding neighbours fast. */
+/**
+ * Samples are grouped into cells of one layer and TIME_BIN_MS, for finding neighbours fast:
+ * everything within MAX_LEVEL_FT and MAX_TIME_MS is in the LEVELS layers and BINS time bins
+ * either side, and referenceWind() keeps only what is.
+ */
 const TIME_BIN_MS = 5 * 60_000;
-const LEVELS = Math.round(MAX_LEVEL_FT / 1000);
-const BINS = Math.round(MAX_TIME_MS / TIME_BIN_MS);
+const LEVELS = Math.ceil(MAX_LEVEL_FT / 1000);
+const BINS = Math.ceil(MAX_TIME_MS / TIME_BIN_MS);
 const cellOf = (w: WindSample) => ({
 	level: Math.round(w.altitude / 1000),
 	bin: Math.floor(w.rx / TIME_BIN_MS)
 });
 
-/** Per cell, per aircraft: the sum of its (corrected) winds and how many. */
-type Cells = Map<string, Map<string, { north: number; east: number; n: number }>>;
+/** Per cell, per aircraft: its samples' altitude, time and (corrected) wind. */
+type Cells = Map<string, Map<string, { altitude: number; rx: number; wind: Vector }[]>>;
 
 function cells(winds: WindSample[], corrections: Map<string, number>): Cells {
 	const out: Cells = new Map();
@@ -99,19 +103,20 @@ function cells(winds: WindSample[], corrections: Map<string, number>): Cells {
 		const key = `${level} ${bin}`;
 		let cell = out.get(key);
 		if (!cell) out.set(key, (cell = new Map()));
-		let sum = cell.get(w.icao);
-		if (!sum) cell.set(w.icao, (sum = { north: 0, east: 0, n: 0 }));
-		const v = correctedWind(w, corrections.get(w.icao) ?? 0);
-		sum.north += v.north;
-		sum.east += v.east;
-		sum.n++;
+		let list = cell.get(w.icao);
+		if (!list) cell.set(w.icao, (list = []));
+		list.push({
+			altitude: w.altitude,
+			rx: w.rx,
+			wind: correctedWind(w, corrections.get(w.icao) ?? 0)
+		});
 	}
 	return out;
 }
 
 /**
- * The other aircraft's mean wind near a sample (within LEVELS layers and BINS time bins:
- * about MAX_LEVEL_FT and MAX_TIME_MS), each aircraft once.
+ * The other aircraft's mean wind within MAX_LEVEL_FT and MAX_TIME_MS of a sample, each
+ * aircraft once (the mean of its own samples there).
  */
 function referenceWind(w: WindSample, grid: Cells): { wind: Vector; aircraft: string[] } | null {
 	const { level, bin } = cellOf(w);
@@ -120,10 +125,18 @@ function referenceWind(w: WindSample, grid: Cells): { wind: Vector; aircraft: st
 		for (let b = bin - BINS; b <= bin + BINS; b++) {
 			const cell = grid.get(`${l} ${b}`);
 			if (!cell) continue;
-			for (const [icao, c] of cell) {
+			for (const [icao, samples] of cell) {
 				if (icao === w.icao) continue;
-				const sum = sums.get(icao) ?? { north: 0, east: 0, n: 0 };
-				sums.set(icao, { north: sum.north + c.north, east: sum.east + c.east, n: sum.n + c.n });
+				for (const s of samples) {
+					if (Math.abs(s.altitude - w.altitude) > MAX_LEVEL_FT) continue;
+					if (Math.abs(s.rx - w.rx) > MAX_TIME_MS) continue;
+					const sum = sums.get(icao) ?? { north: 0, east: 0, n: 0 };
+					sums.set(icao, {
+						north: sum.north + s.wind.north,
+						east: sum.east + s.wind.east,
+						n: sum.n + 1
+					});
+				}
 			}
 		}
 	const wind = meanVector(

@@ -42,10 +42,24 @@
 		</p>
 		<p>
 			Two things move it: the <strong>pressure at the bottom</strong> (high pressure lifts every
-			level, about 27 ft per hPa) and the <strong>temperature of the column</strong> (warm air takes
-			more room, cold air less: the hypsometric equation, Δz = (R / g) · T · ln(p<sub>1</sub> / p<sub
-				>2</sub
-			>)). With the first from the pilots' QNH, what's left is the temperature.
+			level, about 27 ft per hPa) and the <strong>temperature of the column</strong>: warm air takes
+			more room, cold air less. With the first from the pilots' QNH, what's left is the temperature.
+		</p>
+		<p>
+			How much room is the hypsometric equation:
+			<math>
+				<mi>Δz</mi><mo>=</mo>
+				<mfrac displaystyle="true"><mi>R</mi><mi>g</mi></mfrac>
+				<mo>·</mo><mi>T</mi><mo>·</mo><mi>ln</mi>
+				<mfrac displaystyle="true">
+					<msub><mi>p</mi><mn>1</mn></msub>
+					<msub><mi>p</mi><mn>2</mn></msub>
+				</mfrac>
+			</math>, the height <math><mi>Δz</mi></math> between two pressures
+			<math><msub><mi>p</mi><mn>1</mn></msub></math> and
+			<math><msub><mi>p</mi><mn>2</mn></msub></math>, for air of mean temperature
+			<math><mi>T</mi></math> (<math><mi>R</mi></math>: air's gas constant,
+			<math><mi>g</mi></math>: gravity).
 		</p>
 		<p class="text-zinc-400">
 			It's the same reason altimeters over-read in the cold, and why approach charts list
@@ -75,9 +89,10 @@
 					is stronger or weaker: around Berlin it's about 40 m (130 ft) above the ellipsoid.
 				</p>
 				<p>
-					DO-260B says ADS-B's GNSS height is above the ellipsoid, and the capture's aircraft agree
-					with weather balloons only that way (within 1 ft on average, against 137 ft too high as
-					sea level). Some avionics may still send heights above sea level. Switching changes about {Math.round(
+					ICAO Doc 9871 has ADS-B send the height above the ellipsoid where the aircraft has it,
+					else above sea level, and doesn't say which one a message carries. In a test recording the
+					aircraft agree with weather balloons only as above the ellipsoid (within 1 ft on average,
+					against 137 ft too high as sea level). Switching changes about {Math.round(
 						col.geoid / FT
 					)} ft here, worth {(col.geoid / FT / c.feetPerKelvin).toFixed(1)} K.
 				</p>
@@ -91,8 +106,23 @@
 		</li>
 		<li>
 			<strong>To geopotential height</strong>, what the standard atmosphere's heights mean (gravity
-			weakens with height, so the same climb takes less work up there): H = r · z / (r + z) with r =
-			6,356,766 m gives {ft(c.geopotential)}, {ft(c.seaLevelHeight - c.geopotential)} less.
+			weakens with height, so the same climb takes less work up there):
+			<math>
+				<mi>H</mi><mo>=</mo>
+				<mfrac displaystyle="true">
+					<mrow><mi>r</mi><mo>·</mo><mi>z</mi></mrow>
+					<mrow><mi>r</mi><mo>+</mo><mi>z</mi></mrow>
+				</mfrac>
+			</math>
+			with
+			<a
+				href="https://ntrs.nasa.gov/citations/19770009539"
+				target="_blank"
+				rel="noreferrer"
+				class="text-accent-400 hover:text-accent-300"
+				><math><mi>r</mi><mo>=</mo><mn>6,356,766</mn></math> m</a
+			>
+			gives {ft(c.geopotential)}, {ft(c.seaLevelHeight - c.geopotential)} less.
 		</li>
 		<li>
 			<strong>The offset</strong>: {ft(c.geopotential)} − {ft(col.altitude)} =
@@ -111,14 +141,36 @@
 			{sft(c.temperaturePart)}.
 		</li>
 		<li>
-			<strong>Per kelvin</strong>, a column 1 K warmer is (R / g) · ln(QNH / p) thicker: {R_OVER_G_FT.toFixed(
-				2
-			)} ft × ln({qnh.hPa.toFixed(2)} / {(c.pressure / 100).toFixed(1)}) = {c.feetPerKelvin.toFixed(
-				1
-			)} ft.
+			<strong>Per kelvin</strong>, a column 1 K warmer is
+			<math>
+				<mfrac displaystyle="true"><mi>R</mi><mi>g</mi></mfrac>
+				<mo>·</mo><mi>ln</mi>
+				<mfrac displaystyle="true"><mi>QNH</mi><mi>p</mi></mfrac>
+			</math>
+			thicker:
+			<math>
+				<mn>{R_OVER_G_FT.toFixed(2)}</mn><mspace width="0.25em" /><mtext>ft</mtext><mo>×</mo>
+				<mi>ln</mi>
+				<mfrac displaystyle="true">
+					<mn>{qnh.hPa.toFixed(2)}</mn>
+					<mn>{(c.pressure / 100).toFixed(1)}</mn>
+				</mfrac>
+			</math>
+			= {c.feetPerKelvin.toFixed(1)} ft.
 		</li>
 		<li>
-			<strong>Column temperature</strong>: {sft(c.temperaturePart)} / {c.feetPerKelvin.toFixed(1)} ft/K
+			<strong>Column temperature</strong>:
+			<math>
+				<mfrac displaystyle="true">
+					<mrow
+						><mn>{signed(c.temperaturePart, 0)}</mn><mspace width="0.25em" /><mtext>ft</mtext></mrow
+					>
+					<mrow>
+						<mn>{c.feetPerKelvin.toFixed(1)}</mn><mspace width="0.25em" />
+						<mfrac><mtext>ft</mtext><mtext>K</mtext></mfrac>
+					</mrow>
+				</mfrac>
+			</math>
 			= <span class="text-amber-300">{signed(c.isaDeviation)} K</span>: the air from the ground up
 			to here is on average {Math.abs(c.isaDeviation).toFixed(1)} K {c.isaDeviation >= 0
 				? 'warmer'

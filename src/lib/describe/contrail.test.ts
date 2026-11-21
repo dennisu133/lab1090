@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { staticPressure } from '#lib/modes/air-data.ts';
 import { contrailRange, thresholds } from '#lib/weather/contrail.ts';
-import { LAYER_FT, layers } from '#lib/weather/profile.ts';
+import { LAYER_FT, layers, type Layer } from '#lib/weather/profile.ts';
 import { runCapture } from '#lib/weather/testing.ts';
 import {
 	contrailField,
@@ -28,7 +28,8 @@ describe('contrailHeadline', () => {
 		verdict,
 		from,
 		to,
-		needed: verdict === 'humid' ? '10–80\u00a0%' : null
+		needed: verdict === 'humid' ? '10–80\u00a0%' : null,
+		split: null
 	});
 	test('joins "any air" runs split only by layers without data, not across another verdict', () => {
 		const gap = [run('humid', 33_000), run('always', 35_000, 37_000), run('always', 39_000)];
@@ -42,6 +43,40 @@ describe('contrailHeadline', () => {
 		);
 		expect(contrailHeadline([run('never', 30_000)])).toEqual({ text: 'too warm', always: false });
 		expect(contrailHeadline([]).text).toBe('no data yet');
+	});
+});
+
+describe('contrailRuns', () => {
+	/** A layer with enough temperatures, `kelvin` relative to its own thresholds. */
+	const layer = (level: number, kelvin: (t: ReturnType<typeof thresholds>) => number): Layer => ({
+		level,
+		temperature: {
+			n: 10,
+			aircraft: 3,
+			kelvin: kelvin(thresholds(staticPressure(level))),
+			isaDeviation: 0,
+			spread: 0
+		},
+		wind: null,
+		column: null
+	});
+
+	test('a humid run from "any air" to "too warm" says which layers are which, not "0 % or more"', () => {
+		// Each layer on its own needs some humidity, but 2 K colder FL270 makes a contrail in
+		// any air and 2 K warmer FL210 none at all: across the run, anything goes.
+		const all = [
+			layer(21_000, (t) => t.saturated - 1),
+			...[22_000, 23_000, 24_000, 25_000].map((l) => layer(l, (t) => (t.dry + t.saturated) / 2)),
+			layer(26_000, (t) => t.dry + 1),
+			layer(27_000, (t) => t.dry + 1)
+		];
+		const runs = contrailRuns(all);
+		expect(runs).toHaveLength(1);
+		expect(runs[0].needed).toBe('0\u00a0% or more');
+		expect(runs[0].split).toEqual({ anyAir: [26_000, 27_000], tooWarm: [21_000, 21_000] });
+		expect(runText(runs[0])).toBe(
+			'FL210–FL270 depends on the humidity: any air at FL260–FL270, too warm at FL210'
+		);
 	});
 });
 
@@ -62,8 +97,8 @@ describe('on the capture', () => {
 		// 3–6 K colder than the balloons (sounding.test.ts), which the margin can't catch: the
 		// balloons say they needed 13–17 %. FL380 is within 0.5 K of the balloons.
 		expect(contrailRuns(all)).toEqual([
-			{ verdict: 'always', from: 36_000, to: 37_000, needed: null },
-			{ verdict: 'humid', from: 38_000, to: 38_000, needed: 'up to 73\u00a0%' }
+			{ verdict: 'always', from: 36_000, to: 37_000, needed: null, split: null },
+			{ verdict: 'humid', from: 38_000, to: 38_000, needed: 'up to 73\u00a0%', split: null }
 		]);
 		expect(contrailRuns(all).map(runText)).toEqual([
 			'FL360–FL370 in any air',

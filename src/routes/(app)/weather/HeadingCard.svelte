@@ -39,21 +39,21 @@
 <Card title="Heading checks" wide>
 	{#snippet info()}
 		<p>
-			A wind is ground vector − air vector, and the air vector points along the aircraft's
-			<strong>heading</strong>: magnetic in register 6,0, turned true with the declination. A
-			heading a few degrees off (an outdated magnetic variation table, a compass out of calibration)
-			adds a crosswind that isn't there: 8 kt per degree at 450 kt.
+			A wind is the ground vector minus the air vector, and the air vector points along the
+			aircraft's <strong>heading</strong> (register 6,0). A heading a few degrees off, usually from an
+			outdated magnetic variation table, adds a crosswind that isn't there: 8 kt per degree at 450 kt.
 		</p>
 		<p>
 			So each aircraft's wind is compared with the other aircraft's within {n(MAX_LEVEL_FT)}
 			ft and {MAX_TIME_MS / 60_000} minutes. Its ground vector minus their wind is the air vector it should
 			have flown; the angle from its own to that one is its heading error. Each other aircraft counts
-			once, and it needs {MIN_OTHERS} or more: one against one, who'd be wrong?
+			once, and it needs {MIN_OTHERS} or more: with only one other, there's no telling which of the two
+			is wrong.
 		</p>
 		<p class="text-zinc-400">
 			Only corrections of {MIN_CORRECTION}° or more are applied (amber; "26 → 7 kt" is how far off
-			the wind is before and after): against weather balloons, the check's own estimates were up to
-			2.2° off. It can't see an error every aircraft shares.
+			the wind is before and after): in a test recording, against weather balloons, the check's own
+			estimates were up to 2.2° off. It can't see an error every aircraft shares.
 		</p>
 	{/snippet}
 	{#snippet header()}
