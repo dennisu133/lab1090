@@ -42,14 +42,23 @@ describe('the capture', () => {
 		expect(Math.max(...declinations)).toBeCloseTo(5.5, 1);
 	});
 
-	test('temperatures between −63 and −47 °C, at 31,700–39,050 ft', () => {
+	test('temperatures between −63 and −47 °C, at 33,675–39,050 ft', () => {
 		// The standard atmosphere has −51 to −56.5 °C at these altitudes; real air is often
 		// 5–10 K warmer or colder. So these are plausible, not checked against a reference.
 		const celsius = trustedTemperature.map((o) => o.temperature!.kelvin - 273.15);
 		expect(Math.min(...celsius)).toBeCloseTo(-62.4, 1);
 		expect(Math.max(...celsius)).toBeCloseTo(-47.1, 1);
 		const feet = observations.flatMap((o) => o.inputs.altitude?.feet ?? []);
-		expect([Math.min(...feet), Math.max(...feet)]).toEqual([31_700, 39_050]);
+		expect([Math.min(...feet), Math.max(...feet)]).toEqual([33_675, 39_050]);
+	});
+
+	test('one corrupted reply moves no aircraft: its altitude needs a second, agreeing one', () => {
+		// 440822 cruised at 35,000 ft; one DF0 among twenty in that second said 31,700, and
+		// two of its observations used to be put there.
+		const feet = observations
+			.filter((o) => o.icao === '440822')
+			.map((o) => o.inputs.altitude!.feet);
+		expect(Math.min(...feet)).toBe(35_000);
 	});
 
 	test('compared with the standard atmosphere: −6 to +9 K', () => {

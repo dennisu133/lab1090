@@ -10,7 +10,9 @@
  *   aircraft broadcast via ADS-B may contradict it. A 6,0 read as 5,0 would turn Mach into
  *   a "ground speed" and make up a wind.
  *
- * Around them, the aircraft's context: its altitude (from any verified reply or ADS-B),
+ * Around them, the aircraft's context: its altitude (from ADS-B, or from verified replies
+ * once a second one agrees, like the tracker's: in the capture, one DF0 among twenty put
+ * 440822 at 31,700 ft while it cruised at 35,000),
  * its ADS-B position (for the magnetic declination; the receiver's position if it has
  * none), and its callsign.
  *
@@ -31,7 +33,7 @@ import { destination } from '#lib/geo.ts';
 import { KM_PER_NM } from '#lib/units.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory, type Provenance } from '#lib/modes/adsb-memory.ts';
-import { replyAltitude } from '#lib/modes/altitude.ts';
+import { altitudesAgree, replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat, payload } from '#lib/modes/frame.ts';
@@ -44,6 +46,8 @@ import { toVector } from './wind';
 /** Older than this, a position or altitude isn't used. */
 const POSITION_MAX_AGE_MS = 60_000;
 const ALTITUDE_MAX_AGE_MS = 30_000;
+/** A reply's altitude waits this long for a second, agreeing one. */
+const ALTITUDE_PENDING_MS = 30_000;
 /**
  * GNSS − baro only needs the altitude for the layer and the pressure (column.ts); the
  * difference itself the aircraft computes. Position messages come twice a second.
@@ -62,6 +66,8 @@ export class WeatherPipeline {
 	#reference: () => LatLon;
 	#memory = new AdsbMemory();
 	#altitudes = new Map<string, { feet: number; from: Provenance; rx: number }>();
+	/** A reply's altitude that nothing has agreed with yet (#replyAltitude). */
+	#pendingAltitudes = new Map<string, { feet: number; rx: number }>();
 	/** From ADS-B or register 2,0; kept as long as the aircraft is (AIRCRAFT_TTL_MS). */
 	#callsigns = new Map<string, { callsign: string; rx: number }>();
 
@@ -91,8 +97,7 @@ export class WeatherPipeline {
 		if (addr.verdict !== 'known') return null;
 
 		const altitude = [0, 4, 16, 20].includes(df) ? replyAltitude(data).feet : null;
-		if (altitude !== null)
-			this.#altitudes.set(addr.icao, { feet: altitude, from: { kind: 'reply', df }, rx });
+		if (altitude !== null) this.#replyAltitude(addr.icao, altitude, df, rx);
 		if ((df !== 20 && df !== 21) || !mb) return null;
 
 		const adsb = this.#memory.get(addr.icao);
@@ -173,9 +178,28 @@ export class WeatherPipeline {
 		for (const [icao, a] of this.#altitudes) {
 			if (now - a.rx > ALTITUDE_MAX_AGE_MS) this.#altitudes.delete(icao);
 		}
+		for (const [icao, a] of this.#pendingAltitudes) {
+			if (now - a.rx > ALTITUDE_PENDING_MS) this.#pendingAltitudes.delete(icao);
+		}
 		for (const [icao, c] of this.#callsigns) {
 			if (now - c.rx > AIRCRAFT_TTL_MS) this.#callsigns.delete(icao);
 		}
+	}
+
+	/**
+	 * A radar reply's altitude is taken if it agrees with the current one (from ADS-B or
+	 * replies), or with an earlier reply still waiting; else it waits itself.
+	 */
+	#replyAltitude(icao: string, feet: number, df: number, rx: number): void {
+		const here = { feet, t: rx };
+		const current = this.#altitudes.get(icao);
+		const pending = this.#pendingAltitudes.get(icao);
+		const agrees = (b: { feet: number; rx: number } | undefined, maxAge: number) =>
+			b !== undefined && rx - b.rx <= maxAge && altitudesAgree(here, { feet: b.feet, t: b.rx });
+		if (agrees(current, ALTITUDE_MAX_AGE_MS) || agrees(pending, ALTITUDE_PENDING_MS)) {
+			this.#altitudes.set(icao, { feet, from: { kind: 'reply', df }, rx });
+			this.#pendingAltitudes.delete(icao);
+		} else this.#pendingAltitudes.set(icao, { feet, rx });
 	}
 
 	#altitude(icao: string, now: number): Inputs['altitude'] {

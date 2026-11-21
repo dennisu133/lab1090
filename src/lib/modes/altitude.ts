@@ -96,3 +96,22 @@ export function replyAltitude(data: Uint8Array): Altitude {
 export function squitterAltitude(ac12: number): Altitude {
 	return altitudeCode(((ac12 >> 6) << 7) | (ac12 & 0x3f));
 }
+
+/**
+ * The fastest altitude change believed between two readings: steeper than any normal
+ * descent (an emergency descent is 6,000–8,000 ft/min), plus 500 ft for the 100 ft steps
+ * of the old Gillham code and the time between replies.
+ */
+const MAX_FT_PER_MIN = 10_000;
+const ALTITUDE_SLACK_FT = 500;
+
+/**
+ * Can one aircraft have been at both altitudes (ft, at times t in ms)? How a radar reply's
+ * altitude finds the second opinion it needs (tracker.ts #fromReply, weather/pipeline.ts):
+ * a reply that noise corrupted can still carry a known aircraft's address.
+ */
+export function altitudesAgree(a: { feet: number; t: number }, b: { feet: number; t: number }) {
+	return (
+		Math.abs(a.feet - b.feet) <= ALTITUDE_SLACK_FT + (MAX_FT_PER_MIN * Math.abs(a.t - b.t)) / 60_000
+	);
+}

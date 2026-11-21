@@ -48,7 +48,7 @@
 import { inEffect, type ResolutionAdvisory } from '#lib/modes/acas.ts';
 import type { Checked } from '#lib/modes/address-filter.ts';
 import { AdsbMemory, type Provenance, type Timed } from '#lib/modes/adsb-memory.ts';
-import { replyAltitude } from '#lib/modes/altitude.ts';
+import { altitudesAgree, replyAltitude } from '#lib/modes/altitude.ts';
 import { inferRegister } from '#lib/modes/comm-b.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { bits, downlinkFormat, payload } from '#lib/modes/frame.ts';
@@ -72,15 +72,8 @@ const GROUND_SPEED_MS = 30_000;
 const REPLY_CURRENT_MS = 60_000;
 /** A value waiting for a second reply to confirm it waits this long. */
 const REPLY_PENDING_MS = 30_000;
-/**
- * The fastest altitude change believed from replies: steeper than any normal descent
- * (an emergency descent is 6,000–8,000 ft/min), plus 500 ft for the 100 ft steps of the
- * old Gillham code and the time between replies.
- */
-const MAX_FT_PER_MIN = 10_000;
 /** How many rejected positions are kept (a tab stays open for days). */
 const MAX_REJECTIONS = 100;
-const ALTITUDE_SLACK_FT = 500;
 
 /** A trail point takes the altitude if it's at most this old (position messages carry it). */
 const TRAIL_ALTITUDE_MS = 10_000;
@@ -322,8 +315,7 @@ export class Tracker {
 		if ([0, 4, 16, 20].includes(df)) {
 			const feet = replyAltitude(data).feet;
 			const close = (b: Pending) =>
-				Math.abs(feet! - (b.value as number)) <=
-				ALTITUDE_SLACK_FT + (MAX_FT_PER_MIN * Math.abs(t - b.t)) / 60_000;
+				altitudesAgree({ feet: feet!, t }, { feet: b.value as number, t: b.t });
 			if (feet !== null && this.#fromReply(a.icao, 'altitude', a.altitude, feet, t, close))
 				a.altitude = { value: feet, t, from };
 		}
