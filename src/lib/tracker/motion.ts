@@ -84,6 +84,9 @@ export function trueHeading(
 	return (heading + declination(at.lat, at.lon, 0, t) + 360) % 360;
 }
 
+/** motion() per snapshot: they're immutable (tracker.ts), and the map asks 20 times a second. */
+const motions = new WeakMap<TrackedAircraft, Motion | null>();
+
 /**
  * The motion at the latest position, or null if it can't be moved along: no confirmed
  * airborne position, or no ground velocity from around then. Aircraft that send only their
@@ -91,6 +94,12 @@ export function trueHeading(
  * don't say where it goes over the ground.
  */
 export function motion(a: TrackedAircraft): Motion | null {
+	let m = motions.get(a);
+	if (m === undefined) motions.set(a, (m = motionOf(a)));
+	return m;
+}
+
+function motionOf(a: TrackedAircraft): Motion | null {
 	const p = a.position;
 	const g = a.ground;
 	if (!p || p.surface || !g || p.t - g.t > VELOCITY_MS) return null;
@@ -175,9 +184,11 @@ export function path(
 	const points = [start];
 	let s = start;
 	const open = m.turnRate !== 0 && m.rollOut === null;
+	// Straight on, a piece is one great circle: no need for steps (as in advance()).
+	const stepS = m.turnRate === 0 || m.turnLeft === 0 ? every : STEP_S;
 	for (let ahead = 0; ahead < seconds;) {
 		const dt = Math.min(every, seconds - ahead);
-		for (let done = 0; done < dt; done += STEP_S) s = step(s, m, Math.min(STEP_S, dt - done));
+		for (let done = 0; done < dt; done += stepS) s = step(s, m, Math.min(stepS, dt - done));
 		ahead += dt;
 		points.push(s);
 		if (open && s.turned >= MAX_OPEN_TURN) return { points, openTurnEnd: true };

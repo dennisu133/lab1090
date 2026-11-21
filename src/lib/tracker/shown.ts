@@ -30,8 +30,25 @@ export interface Shown extends LatLon {
 	track: number;
 }
 
-/** Where to show an aircraft now; null if not at all (no confirmed position, or too old). */
+/**
+ * The latest shownPosition() per snapshot (immutable, tracker.ts): the map's layers, the
+ * list and the panels all ask for the same aircraft at the same time, 20 times a second.
+ */
+const lastShown = new WeakMap<TrackedAircraft, { now: number; shown: Shown | null }>();
+
+/**
+ * Where to show an aircraft now; null if not at all (no confirmed position, or too old).
+ * Shared between callers: don't change it.
+ */
 export function shownPosition(a: TrackedAircraft, now: number): Shown | null {
+	const last = lastShown.get(a);
+	if (last?.now === now) return last.shown;
+	const shown = shownAt(a, now);
+	lastShown.set(a, { now, shown });
+	return shown;
+}
+
+function shownAt(a: TrackedAircraft, now: number): Shown | null {
 	const p = a.position;
 	if (!p || !a.confirmed) return null;
 	const age = Math.max(0, now - p.t);
