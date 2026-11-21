@@ -26,11 +26,13 @@
  * mean) found nothing to move them on:
  *
  * - More gain heard more all the way up, 48.0 and 49.6 dB the same: the default stays 49.6.
- * - The rounding limit is on the cautious side. "Too low" starts at 43.4 dB and below,
- *   which do lose 12 % and more. But 44.5 dB (−41.2 dBFS, "fine") still heard ~14 % less
- *   than 48–49.6: more gain keeps helping after rounding stops mattering, probably
- *   because the tuner's own noise figure gets better with more LNA gain. One evening and one
- *   antenna: not enough to move the limit.
+ * - Rounding doesn't explain what lower gain costs. With NOISE corrected (21 Nov 2026) no
+ *   gain of the sweep is "too low": 40.2 dB gives −42.1 dBFS, σ 0.73, 0.6 dB, yet hears 31 %
+ *   less than the mean. Most of the noise at the ADC comes after the gain: 9.4 dB more gain
+ *   (40.2 → 49.6) raised σ only from 0.70 to 0.88 steps (2 dB), so more gain lifts the
+ *   messages above it nearly dB for dB, until they clip. The rule only catches a gain far
+ *   too low; accepted (user, 21 Nov 2026), since clipping is never seen here to set a
+ *   better one by.
  * - Clipping: see MAX_CLIPPED.
  */
 
@@ -53,25 +55,30 @@ function R82XX(): number[] {
 
 /**
  * Gaussian noise of σ ADC steps (on I and on Q), rounded to the dongle's 8 bits, and the mean
- * magnitude that gives in dBFS, the way the demodulator measures it. Simulated (400,000
- * samples each). Below 0.2 steps it hardly moves: −45 dBFS is what 127.5 between two codes
- * leaves even without any noise.
+ * magnitude that gives in dBFS, the way the demodulator measures it. Simulated (1,000,000
+ * samples each) with the zero between codes 127 and 128, where the dongle has it: I and Q
+ * average 127.40 on the three recordings and live (21 Nov 2026, fixtures/local/
+ * receiver-check/). σ fitted to the codes' histogram live: 0.70 / 0.79 / 0.88 at 40.2 / 44.5
+ * / 49.6 dB; this table reads 0.73 / 0.82 / 0.94 from their mean magnitude (traffic adds a
+ * little). Until then it had the zero on a code, which read σ 0.2 too low near the limit
+ * and showed rounding costing twice what it does. Below 0.4 steps it hardly moves: −45 dBFS
+ * is what 127.5 between two codes leaves even without any noise.
  */
 const NOISE: readonly [sigma: number, dbfs: number][] = [
-	[0.2, -45.0],
-	[0.3, -44.1],
-	[0.4, -43.0],
-	[0.5, -42.2],
-	[0.6, -41.5],
-	[0.7, -40.8],
-	[0.8, -40.1],
-	[1, -38.7],
-	[1.2, -37.5],
-	[1.5, -35.9],
-	[2, -33.6],
-	[3, -30.3],
-	[4, -27.9],
-	[8, -21.9]
+	[0.2, -45.2],
+	[0.3, -45.1],
+	[0.4, -44.9],
+	[0.5, -44.2],
+	[0.6, -43.3],
+	[0.7, -42.4],
+	[0.8, -41.4],
+	[1, -39.8],
+	[1.2, -38.3],
+	[1.5, -36.5],
+	[2, -34.1],
+	[3, -30.6],
+	[4, -28.1],
+	[8, -22.1]
 ];
 
 /** The noise's σ in ADC steps, from its mean magnitude in dBFS (NOISE, interpolated). */
@@ -122,7 +129,7 @@ export function roundingCostDb(sigma: number): number {
 export const MAX_CLIPPED = 0.01;
 /** Rounding costing more than this: the gain is too low… */
 export const MAX_ROUNDING_DB = 1;
-/** The noise level below which rounding costs more than MAX_ROUNDING_DB, dBFS (−41.7). */
+/** The noise level below which rounding costs more than MAX_ROUNDING_DB, dBFS (−43.6). */
 export const ROUNDING_LIMIT_DBFS = noiseDbfs(
 	1 / Math.sqrt(12 * (10 ** (MAX_ROUNDING_DB / 10) - 1))
 );

@@ -6,8 +6,9 @@ const base = { tuner: R820T, gain: 49.6, noise: -40.3, messages: 5000, clipped: 
 
 describe('noise in ADC steps', () => {
 	test('from the mean magnitude', () => {
-		expect(noiseSigma(-38.7)).toBeCloseTo(1, 5);
-		expect(noiseSigma(-40.3)).toBeCloseTo(0.77, 2);
+		expect(noiseSigma(-39.8)).toBeCloseTo(1, 5);
+		// The Pi at 49.6 dB; its codes' histogram says 0.88 (traffic adds a little).
+		expect(noiseSigma(-40.3)).toBeCloseTo(0.94, 2);
 		expect(noiseSigma(-50)).toBe(0.2); // below what can be told apart
 		expect(noiseSigma(-15.9)).toBeCloseTo(16, 0); // past the table: 6 dB per doubling
 	});
@@ -15,7 +16,7 @@ describe('noise in ADC steps', () => {
 	test('and back', () => {
 		for (const dbfs of [-44, -40.3, -30, -15])
 			expect(noiseDbfs(noiseSigma(dbfs))).toBeCloseTo(dbfs, 5);
-		expect(ROUNDING_LIMIT_DBFS).toBeCloseTo(-41.7, 1);
+		expect(ROUNDING_LIMIT_DBFS).toBeCloseTo(-43.6, 1);
 	});
 
 	test('what the rounding costs', () => {
@@ -25,10 +26,10 @@ describe('noise in ADC steps', () => {
 });
 
 describe('adviseGain', () => {
-	test('the Pi on 17 Nov at 49.6 dB: noise of 0.8 steps, nothing clipped', () => {
+	test('the Pi at 49.6 dB: noise of 0.9 steps, nothing clipped', () => {
 		const advice = adviseGain(base);
 		expect(advice.verdict).toBe('fine');
-		expect(advice.roundingDb!).toBeCloseTo(0.55, 1);
+		expect(advice.roundingDb!).toBeCloseTo(0.4, 1);
 	});
 
 	test('too high: a step about 3 dB lower', () => {
@@ -38,15 +39,16 @@ describe('adviseGain', () => {
 	});
 
 	test('too low: a step about 3 dB higher, or the top one', () => {
-		// 40.2 dB on the Pi: −42.4 dBFS, rounding costs 1.5 dB.
-		const low = { ...base, gain: 40.2, noise: -42.4 };
+		// Far too low: −44.5 dBFS, σ 0.46, rounding costs 1.5 dB. (40.2 dB on the Pi gives
+		// −42.1 dBFS: fine by this rule.)
+		const low = { ...base, gain: 40.2, noise: -44.5 };
 		expect(adviseGain(low)).toMatchObject({ verdict: 'low', suggest: 43.4, atTop: false });
 		expect(adviseGain({ ...low, gain: 48 })).toMatchObject({ suggest: 49.6, atTop: false });
 		expect(adviseGain({ ...low, gain: 49.6 })).toMatchObject({ suggest: null, atTop: true });
 	});
 
 	test('both ends at once: leave it', () => {
-		expect(adviseGain({ ...base, noise: -43, clipped: 30 }).verdict).toBe('fine');
+		expect(adviseGain({ ...base, noise: -44.5, clipped: 30 }).verdict).toBe('fine');
 	});
 
 	test('clipping needs traffic to judge', () => {
