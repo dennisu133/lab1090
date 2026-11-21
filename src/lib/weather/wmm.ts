@@ -2,7 +2,7 @@
  * Magnetic declination from the World Magnetic Model (WMM2025).
  *
  * Why /weather needs it: register 6,0 gives the aircraft's heading relative to *magnetic*
- * north (that's what the compass in the cockpit shows), while track and wind are relative
+ * north (what the cockpit's heading display shows), while track and wind are relative
  * to *true* north. The angle between the two norths is the declination (pilots say
  * "variation"): true heading = magnetic heading + declination, east positive. In eastern
  * Germany it's about +5°, and it drifts by ~0.15° per year.

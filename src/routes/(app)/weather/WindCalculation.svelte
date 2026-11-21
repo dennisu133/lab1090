@@ -66,29 +66,48 @@
 	</p>
 {/snippet}
 
-<Card title="Wind" class="min-h-76.5" nowrap>
+<Card title="Wind" class="min-h-76.5" nowrap wide>
 	{#snippet info()}
+		<p>The wind is worked out from three arrows, each a speed and a direction:</p>
+		<table class="w-full table-fixed text-xs">
+			<thead class="text-left text-zinc-500">
+				<tr>
+					<th class="w-24 py-0.5 font-normal"></th>
+					<th class="py-0.5 pr-3 font-normal">What it is</th>
+					<th class="w-52 py-0.5 font-normal">Measured by</th>
+				</tr>
+			</thead>
+			<tbody class="align-top">
+				<tr>
+					<td class="py-0.5 text-blue-300">Air vector</td>
+					<td class="py-0.5 pr-3">
+						the aircraft moving through the air: true airspeed, in the direction the nose points
+					</td>
+					<td class="py-0.5">airspeed sensors and heading reference (5,0, 6,0)</td>
+				</tr>
+				<tr>
+					<td class="py-0.5 text-amber-300">Ground vector</td>
+					<td class="py-0.5 pr-3">
+						the aircraft moving over the ground: ground speed along its track
+					</td>
+					<td class="py-0.5">GPS and inertial navigation (5,0)</td>
+				</tr>
+				<tr>
+					<td class="py-0.5 text-green-300">Wind</td>
+					<td class="py-0.5 pr-3">the air moving over the ground</td>
+					<td class="py-0.5">ground vector − air vector</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>Any error in the heading becomes wind that isn't there, blowing across the aircraft.</p>
 		<p>
-			The aircraft moves through the air (<span class="text-blue-300">air vector</span>: true
-			airspeed, in the direction the nose points), and the air moves over the ground (the
-			<span class="text-green-300">wind</span>). Together they make the path over the ground (<span
-				class="text-amber-300">ground vector</span
-			>: ground speed along the track).
-		</p>
-		<p>
-			So <strong>wind = ground − air</strong>. The ground vector comes from GPS, often blended with
-			the inertial reference system; the air vector from the pitot tube (true airspeed) and the
-			inertial reference system (heading). Mostly separate sensors, so their difference is the wind,
-			but an error in the heading goes straight into it.
-		</p>
-		<p>
-			Greyed out and left out of the profile when the two replies may describe different moments:
-			more than {MAX_SKEW_MS / 1000} s apart, or in a turn (banked more than {MAX_ROLL}°), where the
-			heading changes too fast. The checks under the steps turn amber.
+			Greyed out and left out of the profile if the two replies are more than {MAX_SKEW_MS / 1000} s apart
+			or the aircraft is banked more than {MAX_ROLL}°: the values may no longer describe the same
+			moment.
 		</p>
 		<p class="text-zinc-400">
-			Directions are true (geographic north), clockwise. The wind is given where it blows
-			<em>from</em>, as in any weather report.
+			Directions are clockwise from true north. The wind is given as where it blows <em>from</em>,
+			as in a weather report.
 		</p>
 	{/snippet}
 	{#snippet header()}
@@ -115,18 +134,25 @@
 						<em>magnetic</em>. The declination at
 						<InfoTip label={position.from === 'ADS-B' ? 'the aircraft' : 'the receiver'}>
 							<p>
-								{latLon(position)}: {position.from === 'ADS-B'
-									? "the aircraft's last ADS-B position."
-									: 'the receiver: this aircraft sent no ADS-B position. The declination can be up to about a degree off at the edge of the range.'}
+								{latLon(position)}{position.from === 'ADS-B'
+									? ": the aircraft's last ADS-B position."
+									: ", the receiver's position: this aircraft sent no ADS-B position, so for a distant aircraft the declination can be off by a degree or more."}
 							</p>
 							<p>
-								Declination is where a compass points, relative to true north. It comes from the
-								<strong>World Magnetic Model</strong> (WMM2025, NOAA and the British Geological
-								Survey, valid {WMM_VALID.from}–{WMM_VALID.to}).
+								Declination is the angle between magnetic north (where a compass points) and true
+								north. It comes from the <a
+									href="https://www.ncei.noaa.gov/products/world-magnetic-model"
+									target="_blank"
+									rel="noreferrer"
+									class="text-accent-400 hover:text-accent-300">World Magnetic Model</a
+								>
+								(WMM2025, by NOAA and the British Geological Survey, valid {WMM_VALID.from}–{WMM_VALID.to}).
 							</p>
 							<p class="text-zinc-400">
-								Every 1° of heading error is {n(track.tas! * Math.sin(Math.PI / 180), 0)} kt of made-up
-								crosswind at this airspeed, which is why it's looked up per aircraft.
+								At this airspeed, every 1° of heading error adds {n(
+									track.tas! * Math.sin(Math.PI / 180),
+									0
+								)} kt of crosswind that isn't there.
 							</p>
 						</InfoTip>
 						is {signed(w.declination, 2)}°, so true heading {n(w.trueHeading)}°.
@@ -152,15 +178,10 @@
 							<p>
 								The same wind split along the aircraft's heading and across it (dashed in the
 								drawing). The part along it is a <strong>tailwind</strong> or
-								<strong>headwind</strong>: it makes the ground speed differ from the airspeed, and
-								so the flight time. The part across is the <strong>crosswind</strong>: it pushes the
-								aircraft sideways, so the nose has to point a little into the wind to stay on track.
-								The angle between nose and track is the
-								<strong>drift</strong>.
-							</p>
-							<p class="text-zinc-400">
-								Pilots do this for every runway (each aircraft type has a crosswind limit for
-								landing) and for every leg of a flight plan.
+								<strong>headwind</strong>: it changes the ground speed and so the flight time. The
+								part across is the <strong>crosswind</strong>: it pushes the aircraft sideways, so
+								the nose has to point a little into the wind to stay on track. The angle between
+								nose and track is the <strong>drift</strong>.
 							</p>
 						</InfoTip>: {alongText(w.components.tailwind)}, {acrossText(w.components.crosswind)}, so
 						it drifts {driftText(w.components.drift)} (track {n(track.track!)}°, true heading {n(
@@ -170,14 +191,15 @@
 					<li class="text-zinc-400">
 						<InfoTip label="Rounding">
 							<p>
-								Each register value is rounded to a step: ground speed and TAS to {STEP.speed} kt, track
-								and heading to {n(STEP.angle, 3)}° (90/512). Recomputing with every input at both
-								ends of its step (16 combinations) gives the range the true wind can be in.
+								Each value in the replies is rounded: speeds to {STEP.speed} kt, track and heading to
+								{n(STEP.angle, 3)}°. Working the wind out again with every value at both ends of its
+								step (16 combinations) gives the range the real wind lies in.
 							</p>
 							<p class="text-zinc-400">
-								This is the part we can calculate. On top come errors we can't see: the aircraft's
-								own magnetic variation table (avionics databases are updated rarely), compass
-								calibration, and how stale each register is when the radar reads it.
+								The range covers only this rounding. Errors that the replies don't show come on top.
+								The biggest is usually the heading: an airliner's inertial reference has no compass,
+								and turns its true heading into a magnetic one with a table that is often years old.
+								And each value can be up to a second old when the radar reads it.
 							</p>
 						</InfoTip>
 						allows {n(w.speedRange[0])}–{n(w.speedRange[1])} kt, ±{n(w.directionSpread)}°.

@@ -3,8 +3,9 @@ import { staticPressure } from '#lib/modes/air-data.ts';
 import {
 	contrail,
 	contrailRange,
-	ETA_MODERN,
+	ETA_OLDER,
 	mixingLineSlope,
+	olderEngineShift,
 	saturationOverIce,
 	saturationOverWater,
 	schumannFit,
@@ -32,10 +33,10 @@ describe('saturation vapour pressure (Sonntag 1994)', () => {
 });
 
 describe('the Schmidt–Appleman thresholds', () => {
-	test('the mixing line at 250 hPa: G = 1.68 Pa/K, T_LM = −41.7 °C', () => {
-		// G = 1.25 · 1004 · 25,000 / (0.622 · 43 × 10⁶ · 0.7) by hand.
-		expect(mixingLineSlope(25_000)).toBeCloseTo(1.676, 3);
-		expect(thresholds(25_000).saturated - C).toBeCloseTo(-41.7, 1);
+	test('the mixing line at 250 hPa: G = 1.80 Pa/K, T_LM = −40.9 °C', () => {
+		// G = 1.25 · 1004 · 25,000 / (0.622 · 43 × 10⁶ · 0.65) by hand.
+		expect(mixingLineSlope(25_000)).toBeCloseTo(1.805, 3);
+		expect(thresholds(25_000).saturated - C).toBeCloseTo(-40.9, 1);
 	});
 
 	test("the exact tangent agrees with Schumann's fit (1996, eq. 31) within 0.05 K", () => {
@@ -53,13 +54,16 @@ describe('the Schmidt–Appleman thresholds', () => {
 		}
 	});
 
-	test('a modern engine (η = 0.4) leaves contrails in air 1.5–1.8 K warmer', () => {
-		// More of the fuel's heat goes into thrust, so the plume is cooler and wetter for
-		// its temperature: a steeper mixing line, which touches the curve higher up.
+	test('an older engine (η = 0.3) needs air about 0.8 K colder', () => {
+		// Less of the fuel's heat goes into thrust, so the plume is warmer and drier for its
+		// temperature: a flatter mixing line, which touches the curve lower down.
 		for (const hPa of [150, 200, 250, 300, 400]) {
-			const shift = thresholds(hPa * 100, ETA_MODERN).saturated - thresholds(hPa * 100).saturated;
-			expect(shift).toBeGreaterThan(1.5);
-			expect(shift).toBeLessThan(1.8);
+			const shift = olderEngineShift(hPa * 100);
+			expect(shift).toBe(
+				thresholds(hPa * 100).saturated - thresholds(hPa * 100, ETA_OLDER).saturated
+			);
+			expect(shift).toBeGreaterThan(0.7);
+			expect(shift).toBeLessThan(0.9);
 		}
 	});
 

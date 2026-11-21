@@ -13,10 +13,11 @@
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { contrailHeadline, contrailRuns, runText } from '#lib/describe/contrail.ts';
-	import { hpa, levelOrFeet, plural, signed } from '#lib/describe/format.ts';
+	import { fixed as n, hpa, levelOrFeet, plural, signed } from '#lib/describe/format.ts';
 	import { isaText, windText } from '#lib/describe/weather.ts';
 	import { column, type HeightReference } from '#lib/weather/column.ts';
-	import { ETA, ETA_MODERN, TEMPERATURE_MARGIN } from '#lib/weather/contrail.ts';
+	import { ETA, ETA_OLDER, TEMPERATURE_MARGIN, olderEngineShift } from '#lib/weather/contrail.ts';
+	import { staticPressure } from '#lib/modes/air-data.ts';
 	import {
 		JET_KT,
 		MIN_AIRCRAFT,
@@ -280,14 +281,16 @@
 						</p>
 						<p>
 							Humidity at cruise level is almost never in the data, so in between the answer is the
-							humidity the air would need. Near the edges 1 K changes it by 20 points, and aircraft
-							read about 2 K cold, so a layer only counts as "any air" or "too warm" with {TEMPERATURE_MARGIN}
-							K to spare.
+							humidity the air would need. One kelvin can change that by about 20 points or tip it
+							to "too warm", and aircraft read about 2 K cold, so a layer only counts as "any air"
+							or "too warm" with {TEMPERATURE_MARGIN}&nbsp;K to spare.
 						</p>
 						<p class="text-zinc-400">
-							For engines that turn {ETA * 100} % of the fuel's energy into thrust; modern ones ({ETA_MODERN *
-								100} %) make contrails in air about 1.6 K warmer. The Aircraft tab works it through step
-							by step.
+							For engines that turn {ETA * 100} % of the fuel's energy into thrust, typical of today's
+							airliners. Older ones ({ETA_OLDER * 100} %) needed air about {n(
+								olderEngineShift(staticPressure(35_000)),
+								1
+							)} K colder. The Aircraft tab works it through step by step.
 						</p>
 					</InfoTip>
 					<span class={contrailHead.always ? 'text-blue-300' : 'text-zinc-500'}

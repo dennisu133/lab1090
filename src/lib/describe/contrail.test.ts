@@ -56,20 +56,18 @@ describe('on the capture', () => {
 		return contrailField(a, all.find((l) => l.level === level) ?? null)!;
 	};
 
-	test("/weather's summary: FL370 in any air, FL360 and FL380 depend on the humidity", () => {
-		// FL360 at −54.0 °C is 1.9 K below the dry-air threshold: within the 2 K margin, so
-		// "humid", though it needs very little. FL370 is 4.4 K below it, but only because
-		// its 2 aircraft read 3–6 K colder than the balloons (sounding.test.ts): the margin
-		// can't catch that. FL380 is within 0.5 K of the balloons.
+	test("/weather's summary: FL360–FL370 in any air, FL380 depends on the humidity", () => {
+		// FL360 at −54.0 °C and FL370 at −57.0 °C are 2.6 and 5.1 K below their dry-air
+		// thresholds: more than the 2 K margin, so "any air". Only because their aircraft read
+		// 3–6 K colder than the balloons (sounding.test.ts), which the margin can't catch: the
+		// balloons say they needed 13–17 %. FL380 is within 0.5 K of the balloons.
 		expect(contrailRuns(all)).toEqual([
-			{ verdict: 'humid', from: 36_000, to: 36_000, needed: 'up to 3\u00a0%' },
-			{ verdict: 'always', from: 37_000, to: 37_000, needed: null },
-			{ verdict: 'humid', from: 38_000, to: 38_000, needed: '10–80\u00a0%' }
+			{ verdict: 'always', from: 36_000, to: 37_000, needed: null },
+			{ verdict: 'humid', from: 38_000, to: 38_000, needed: 'up to 73\u00a0%' }
 		]);
 		expect(contrailRuns(all).map(runText)).toEqual([
-			'FL360 needs up to 3\u00a0% humidity',
-			'FL370 in any air',
-			'FL380 needs 10–80\u00a0% humidity'
+			'FL360–FL370 in any air',
+			'FL380 needs up to 73\u00a0% humidity'
 		]);
 	});
 

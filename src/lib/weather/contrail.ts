@@ -42,13 +42,25 @@ export const CP = 1004;
 /** Molar mass of water / of dry air. */
 export const EPSILON = 0.622;
 /**
- * Overall propulsion efficiency. Schumann (2000) gives ~0.3 for the engines of the 1990s,
- * up to ~0.4 for modern high-bypass ones: more of the heat leaves as thrust, the plume is
- * cooler, and contrails form in warmer air. One value for all, since we can't tell the
- * engine; ETA_MODERN is for /weather's "how much would it move".
+ * Overall propulsion efficiency: the share of the fuel's heat that pushes the aircraft. The
+ * higher it is, the cooler the plume, and the warmer the air contrails form in (about 0.8 K
+ * from 0.3 to 0.35 at any cruise level).
+ *
+ * 0.35 for today's traffic: Schumann (2000, Aerosp. Sci. Technol. 4, 391–401) gives ~0.35
+ * for high-bypass turbofans since the early 1990s, which is what airliners fly, and Hofer et
+ * al. (2024, Meteorol. Z., doi 10.1127/metz/2024/1178) take 0.35 for modern aircraft. One
+ * value for all, since we can't tell the engine.
+ *
+ * ETA_OLDER is the history /weather mentions: 0.31 (0.27–0.33) measured for an A340 and
+ * 0.23 for a B707 flying side by side (Schumann et al. 2000, J. Aircraft 37, 1083–1087).
  */
-export const ETA = 0.3;
-export const ETA_MODERN = 0.4;
+export const ETA = 0.35;
+export const ETA_OLDER = 0.3;
+
+/** How much warmer than with ETA_OLDER contrails form with ETA, K, at a static pressure (Pa). */
+export function olderEngineShift(pressure: number): number {
+	return thresholds(pressure, ETA).saturated - thresholds(pressure, ETA_OLDER).saturated;
+}
 
 /** The mixing line's slope G, Pa/K, at a static pressure (Pa). */
 export function mixingLineSlope(pressure: number, eta = ETA): number {
@@ -155,8 +167,9 @@ export function contrail(kelvin: number, pressure: number, eta = ETA): Contrail 
 
 /**
  * How far off a measured temperature may be, K. Against Lindenberg's balloons the capture's
- * aircraft read 2 K cold on average, one 7 K (sounding.test.ts), and near the thresholds
- * 1 K moves the humidity needed by 20–25 points. So a yes or no only counts if it still
+ * aircraft read 2 K cold on average, one 7 K (sounding.test.ts), and 1 K moves the humidity
+ * needed by up to ~20–25 points (most near the dry-air limit; near the saturated one it can
+ * tip the answer to "never"). So a yes or no only counts if it still
  * holds this far either way; a layer's mean of several aircraft is better than one, but
  * gets the same margin.
  */

@@ -393,8 +393,9 @@ describe('the capture against the balloons', () => {
 	test('contrails: the balloons say no at FL360–FL380, the aircraft are too cold to tell', () => {
 		// Schmidt–Appleman (contrail.ts) with the balloons' own temperature and humidity,
 		// interpolated to the middle of the capture. The radiosonde found the air very dry:
-		// 0.010 g/kg of water, reported to 0.01 g/kg, so 6–9 % relative humidity over water.
-		// Contrails there needed 31–46 %: none formed, whatever the engine.
+		// 0.010 g/kg of water, reported to 0.01 g/kg, so 6–10 % relative humidity over water.
+		// Contrails there needed 13–31 % (with η = 0.35; 31–46 % with the older 0.3): none
+		// formed.
 		const time = CAPTURE_START + 5 * 60_000;
 		const usable = all.filter((l) => enough(l.temperature));
 		for (const l of usable) {
@@ -403,15 +404,17 @@ describe('the capture against the balloons', () => {
 			const k = (time - a.time) / (b.time - a.time);
 			const kelvin = a.kelvin + k * (b.kelvin - a.kelvin);
 			const mixing = a.mixingRatio + k * (b.mixingRatio - a.mixingRatio);
-			expect(humidityOf(mixing + 0.005e-3, p, kelvin)).toBeLessThan(0.1);
+			const air = humidityOf(mixing + 0.005e-3, p, kelvin);
+			expect(air).toBeLessThan(0.1);
 			const truth = contrail(kelvin, p);
 			expect(truth.verdict).toBe('humid');
-			expect(truth.humidityNeeded!).toBeGreaterThan(0.3);
-			// One kelvin either way moves that by 20–25 points: the answer hinges on
-			// the temperature far more finely than any single aircraft measures it.
+			expect(truth.humidityNeeded!).toBeGreaterThan(air);
+			// One kelvin warmer adds 20–24 points; one colder and FL360–FL370 need almost
+			// nothing: the answer hinges on the temperature far more finely than any single
+			// aircraft measures it.
 			const colder = contrail(kelvin - 1, p).humidityNeeded!;
 			const warmer = contrail(kelvin + 1, p).humidityNeeded!;
-			expect(truth.humidityNeeded! - colder).toBeGreaterThan(0.2);
+			expect(truth.humidityNeeded! - colder).toBeGreaterThan(0.1);
 			expect(warmer - truth.humidityNeeded!).toBeGreaterThan(0.15);
 		}
 		// The aircraft's layers (2–4 aircraft each, 2 K cold on average, see above) put

@@ -27,18 +27,25 @@
 <Card title="Temperature" class="min-h-76.5" nowrap>
 	{#snippet info()}
 		<p>
-			Mach is the true airspeed divided by the <strong>speed of sound</strong>, and the speed of
-			sound depends on one thing only: the air's temperature. (Sound is carried by the moving air
-			molecules; warmer molecules move faster.) So TAS and Mach together give the temperature away.
+			<strong>True airspeed</strong> (TAS) is how fast the aircraft moves through the air around it.
+			At cruise height it is much more than what the cockpit's airspeed indicator shows, because the
+			air up there is thin{#if track.tas !== null && heading.ias !== null}: this aircraft flies at {track.tas}
+				kt true, but its indicator reads {heading.ias} kt{/if}.
 		</p>
 		<p>
-			It works because the aircraft's air data computer did it the other way round: it measured the
-			temperature with a probe outside, worked out Mach from the pitot and static pressures, and TAS
-			= Mach × speed of sound. 5,0 and 6,0 hand us both results; we undo the last step.
+			The <strong>Mach number</strong> is the true airspeed as a fraction of the speed of sound{#if heading.mach !== null}:
+				Mach {heading.mach.toFixed(2)} is {n(heading.mach * 100, 0)} % of it{/if}. The speed of
+			sound depends only on the air's temperature: sound travels as molecules bump into each other,
+			and warmer molecules move faster. So TAS and Mach together give away the temperature.
 		</p>
 		<p>
-			Greyed out and left out of the profile when 5,0 and 6,0 are more than {MAX_SKEW_MS / 1000} s apart:
-			the speed may have changed in between. The wind card's checks show it in amber.
+			The aircraft measures the temperature with a probe outside, and Mach from air pressures. From
+			those two it works out its TAS. 5,0 and 6,0 send TAS and Mach, so that last step can be done
+			backwards.
+		</p>
+		<p>
+			Greyed out and left out of the profile if 5,0 and 6,0 are more than {MAX_SKEW_MS / 1000} s apart:
+			the speed may have changed in between.
 		</p>
 	{/snippet}
 	{#snippet header()}
@@ -71,17 +78,35 @@
 				</li>
 				<li>
 					<InfoTip>
-						{#snippet label()}a = a<sub>0</sub> · √(T / T<sub>0</sub>){/snippet}
+						{#snippet label()}
+							<math>
+								<mi>a</mi><mo>=</mo><msub><mi>a</mi><mn>0</mn></msub><mo>·</mo>
+								<msqrt><mi>T</mi><mo>/</mo><msub><mi>T</mi><mn>0</mn></msub></msqrt>
+							</math>
+						{/snippet}
 						<p>
-							The speed of sound in air is √(γ·R·T): γ = 1.4 (how air's pressure responds to
-							compression) and R = 287 J/(kg·K) (air's gas constant) are fixed, so only the absolute
-							temperature T changes it.
+							The speed of sound in air is
+							<math>
+								<mi>a</mi><mo>=</mo>
+								<msqrt><mi>γ</mi><mo>·</mo><mi>R</mi><mo>·</mo><mi>T</mi></msqrt>
+							</math>:
+							<math><mi>γ</mi><mo>=</mo><mn>1.4</mn></math> (how air's pressure responds to
+							compression) and
+							<math>
+								<mi>R</mi><mo>=</mo><mn>287</mn><mspace width="0.25em" />
+								<mfrac displaystyle="true">
+									<mtext>J</mtext>
+									<mrow><mtext>kg</mtext><mo>·</mo><mtext>K</mtext></mrow>
+								</mfrac>
+							</math>
+							(air's gas constant) are fixed, so only the absolute temperature
+							<math><mi>T</mi></math> changes it.
 						</p>
 						<p>
-							Written relative to the standard sea level (T<sub>0</sub> = {T0} K, 15 °C, where a<sub
-								>0</sub
-							>
-							= {n(A0, 2)} kt) it needs no constants at all.
+							Written relative to the standard sea level, where
+							<math><msub><mi>T</mi><mn>0</mn></msub><mo>=</mo><mn>{T0}</mn></math> K (15 °C) and
+							<math><msub><mi>a</mi><mn>0</mn></msub><mo>=</mo><mn>{n(A0, 2)}</mn></math> kt, it needs
+							no constants at all.
 						</p>
 					</InfoTip>, solved for T: T = {T0} K × ({n(t.speedOfSound)} / {n(A0, 2)})² =
 					<strong>{n(t.kelvin)} K = {celsius(t.kelvin)}</strong> (white dot).
@@ -110,15 +135,34 @@
 					</li>
 				{/if}
 				<li>
-					<span class="text-amber-300">The probe</span> outside reads more:
-					<InfoTip label="TAT = T · (1 + 0.2 M²)">
+					<span class="text-amber-300">The probe</span> outside reads warmer:
+					<InfoTip>
+						{#snippet label()}
+							<math>
+								<mi>TAT</mi><mo>=</mo><mi>T</mi><mo>·</mo>
+								<mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+								<mn>0.2</mn><msup><mi>M</mi><mn>2</mn></msup>
+								<mo stretchy="false">)</mo>
+							</math>
+						{/snippet}
 						<p>
-							<strong>Total air temperature.</strong> The air hitting the probe is brought to a stop,
-							and its energy of motion turns into heat. 0.2 is (γ − 1)/2 for air, with γ = 1.4.
+							<strong>TAT, the total air temperature,</strong> is what the temperature probe on the
+							outside of the aircraft measures. The air hitting the probe is brought almost to a
+							stop, and its energy of motion turns into heat. So the probe reads warmer than the air
+							around it, the more so the faster the aircraft flies: at airliner cruise speeds by
+							about <span class="whitespace-nowrap">25–30 °C</span>.
 						</p>
 						<p class="text-zinc-400">
-							Air data computers work the other way: they measure TAT and calculate the static
-							temperature from it and the Mach number.
+							The 0.2 comes from a property of air:
+							<math>
+								<mfrac displaystyle="true">
+									<mrow><mi>γ</mi><mo>−</mo><mn>1</mn></mrow>
+									<mn>2</mn>
+								</mfrac>
+							</math>
+							with <math><mi>γ</mi><mo>=</mo><mn>1.4</mn></math>. The aircraft does this sum the
+							other way round: it measures TAT, and calculates the real air temperature from it and
+							the Mach number.
 						</p>
 					</InfoTip>
 					= {celsius(t.total)} (hollow dot), {n(t.total - t.kelvin, 0)} °C warmer than the air.

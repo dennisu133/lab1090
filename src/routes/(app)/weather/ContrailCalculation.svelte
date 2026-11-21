@@ -15,14 +15,14 @@
 		EI_H2O,
 		EPSILON,
 		ETA,
-		ETA_MODERN,
+		ETA_OLDER,
 		Q,
 		TEMPERATURE_MARGIN,
 		contrailRange,
+		olderEngineShift,
 		saturationOverIce,
 		saturationOverWater,
-		schumannFit,
-		thresholds
+		schumannFit
 	} from '#lib/weather/contrail.ts';
 	import type { Observation } from '#lib/weather/observation.ts';
 	import ContrailChart from './ContrailChart.svelte';
@@ -38,11 +38,7 @@
 	let kelvin = $derived(o.temperature?.kelvin ?? null);
 	let pressure = $derived(feet === null ? null : staticPressure(feet));
 	let r = $derived(kelvin === null || pressure === null ? null : contrailRange(kelvin, pressure));
-	let modern = $derived(
-		pressure === null || !r
-			? 0
-			: thresholds(pressure, ETA_MODERN).saturated - r.at.thresholds.saturated
-	);
+	let older = $derived(pressure === null ? 0 : olderEngineShift(pressure));
 </script>
 
 <!-- What the tracker's panel says for this aircraft: at the bottom, under the steps. -->
@@ -64,8 +60,13 @@
 			other, temperature and water vapour change in step, so in the diagram the mixture moves along
 			a straight line (<span class="text-amber-300">amber</span>). If that line crosses the
 			<span class="text-blue-300">water curve</span>, the mixture is supersaturated for a moment:
-			droplets form and freeze at once. That's the Schmidt–Appleman criterion (Schmidt 1941,
-			Appleman 1953; the form here is Schumann 1996).
+			droplets form and freeze at once. That's the
+			<a
+				href="https://elib.dlr.de/32128/"
+				target="_blank"
+				rel="noreferrer"
+				class="text-accent-400 hover:text-accent-300">Schmidt–Appleman criterion</a
+			> (Schmidt 1941, Appleman 1953; the form here is Schumann 1996).
 		</p>
 		<p>
 			Air with more water vapour starts higher up, closer to the curve: the more humid, the warmer
@@ -76,7 +77,7 @@
 			Humidity at cruise level is almost never in the data (register 4,4 is rarely sent), so the
 			answer is the humidity the air would need. Looking up settles it.
 		</p>
-		<p class="text-zinc-400">Greyed out when the temperature is.</p>
+		<p class="text-zinc-400">Worked out from the temperature above: greyed out along with it.</p>
 	{/snippet}
 	{#snippet header()}
 		{#if r}
@@ -106,34 +107,80 @@
 					<li>
 						<span class="text-amber-300">The engine's line</span> has the slope
 						<InfoTip>
-							{#snippet label()}G = EI · c<sub>p</sub> · p / (ε · Q · (1 − η)){/snippet}
+							{#snippet label()}
+								<math>
+									<mi>G</mi><mo>=</mo>
+									<mfrac displaystyle="true">
+										<mrow>
+											<mi>EI</mi><mo>·</mo><msub><mi>c</mi><mi>p</mi></msub>
+											<mo>·</mo><mi>p</mi>
+										</mrow>
+										<mrow>
+											<mi>ε</mi><mo>·</mo><mi>Q</mi><mo>·</mo><mo stretchy="false">(</mo>
+											<mn>1</mn><mo>−</mo><mi>η</mi><mo stretchy="false">)</mo>
+										</mrow>
+									</mfrac>
+								</math>
+							{/snippet}
 							<p>
-								How much water vapour the exhaust carries for each kelvin of heat it brings. EI = {EI_H2O}
-								kg of water per kg of kerosene burnt; Q = {Q / 1e6} MJ/kg, the heat in it; c<sub
-									>p</sub
-								>
-								= {CP} J/(kg·K), what it takes to warm air; ε = {EPSILON}, water's molar mass over
-								air's (vapour pressure from the mixing ratio); p, the pressure.
+								How much water vapour the exhaust carries for each kelvin of heat it brings.
+								<math><mi>EI</mi><mo>=</mo><mn>{EI_H2O}</mn></math> kg of water per kg of kerosene
+								burnt;
+								<math>
+									<mi>Q</mi><mo>=</mo><mn>{Q / 1e6}</mn><mspace width="0.25em" />
+									<mfrac displaystyle="true"><mtext>MJ</mtext><mtext>kg</mtext></mfrac>
+								</math>, the heat in it;
+								<math>
+									<msub><mi>c</mi><mi>p</mi></msub><mo>=</mo><mn>{CP}</mn><mspace width="0.25em" />
+									<mfrac displaystyle="true">
+										<mtext>J</mtext>
+										<mrow><mtext>kg</mtext><mo>·</mo><mtext>K</mtext></mrow>
+									</mfrac>
+								</math>, what it takes to warm air;
+								<math><mi>ε</mi><mo>=</mo><mn>{EPSILON}</mn></math>, how much lighter a water
+								molecule is than the average air molecule (18 against 29 g/mol);
+								<math><mi>p</mi></math>, the pressure.
 							</p>
 							<p>
-								η = {ETA}: the share of the heat that goes into pushing the aircraft instead of
-								warming the plume, typical for engines of the 1990s (Schumann 2000). A modern engine
-								reaches about {ETA_MODERN}: a cooler, steeper line, and contrails in air {n(modern)} K
-								warmer here. We can't tell the engine, so one value for all.
+								<math><mi>η</mi><mo>=</mo><mn>{ETA}</mn></math>: the share of the fuel's heat that
+								pushes the aircraft instead of warming the exhaust, typical of today's airliners.
+								Which engines an aircraft has isn't in the data, so all get the same value.
+							</p>
+							<p class="text-zinc-400">
+								Older engines were less efficient: about {ETA_OLDER} was measured on an Airbus A340 in
+								the 1990s (<a
+									href="https://elib.dlr.de/9281/"
+									target="_blank"
+									rel="noreferrer"
+									class="text-accent-400 hover:text-accent-300">Schumann et al. 2000</a
+								>). Their warmer exhaust needed air {n(older)} K colder here to leave a contrail.
 							</p>
 						</InfoTip>
-						= {EI_H2O} × {CP} × {whole(pressure)} / ({EPSILON} × {whole(Q)} × {n(1 - ETA)}) =
-						<strong>{n(t.slope, 2)} Pa/K</strong>.
+						=
+						<math>
+							<mfrac displaystyle="true">
+								<mrow>
+									<mn>{EI_H2O}</mn><mo>×</mo><mn>{CP}</mn><mo>×</mo><mn>{whole(pressure)}</mn>
+								</mrow>
+								<mrow>
+									<mn>{EPSILON}</mn><mo>×</mo><mn>{whole(Q)}</mn><mo>×</mo><mn>{n(1 - ETA)}</mn>
+								</mrow>
+							</mfrac>
+						</math>
+						= <strong>{n(t.slope, 2)} Pa/K</strong>.
 					</li>
 					<li>
 						<strong>Saturated air</strong> (100 %): the line touches the water curve where the curve
 						is as steep,
 						<InfoTip label="at {celsius(t.saturated)}">
 							<p>
-								Solved numerically from the slope of the saturation curve (Sonntag 1994): {n(eLM)} Pa
-								at that temperature. Schumann's fitted formula gives {celsius(
-									schumannFit(t.slope)
-								)}.
+								Found by searching for the temperature where the water curve (<a
+									href="https://doi.org/10.1127/metz/3/1994/51"
+									target="_blank"
+									rel="noreferrer"
+									class="text-accent-400 hover:text-accent-300">Sonntag 1994</a
+								>) is exactly as steep as the line: there, saturated air holds {n(eLM)} Pa of water vapour.
+								Schumann's approximate formula gives {celsius(schumannFit(t.slope))}.
 							</p>
 							<p class="text-zinc-400">
 								Warmer than this, no contrail however humid the air: the line can't reach the curve.
@@ -162,9 +209,10 @@
 						<InfoTip label="± {TEMPERATURE_MARGIN} K">
 							<p>
 								The temperature is a couple of kelvin off: the rounding alone (Temperature, above),
-								and against weather balloons aircraft read 2 K too cold on average, one 7 K. Near
-								the limits 1 K changes the humidity needed by about 20 points, so a firm yes or no
-								needs to hold {TEMPERATURE_MARGIN} K either way (the shaded stripe).
+								and against weather balloons aircraft read 2 K too cold on average, one 7 K. One
+								kelvin can change the humidity needed by about 20 points, or tip the answer to no
+								contrail at all. So a firm yes or no needs to hold {TEMPERATURE_MARGIN} K either way (the
+								shaded stripe).
 							</p>
 						</InfoTip>:
 						{#if humidityNeeded(r) === null}
