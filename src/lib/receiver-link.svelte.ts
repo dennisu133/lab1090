@@ -1,4 +1,4 @@
-import type { RecordingReport, StreamUpdate } from '#lib/receiver-types.ts';
+import type { RecordingReport, ReplayInfo, StreamUpdate } from '#lib/receiver-types.ts';
 
 /**
  * The two links between the antenna and the open page, for the status in the navigation bar:
@@ -20,4 +20,6 @@ export const receiverLink = $state<{
 	source: string | null;
 	/** The samples' recording (--record), from the latest update; null: none. */
 	recording: RecordingReport | null;
-}>({ online: null, status: null, source: null, recording: null });
+	/** What --replay plays; null: a live source. */
+	replay: ReplayInfo | null;
+}>({ online: null, status: null, source: null, recording: null, replay: null });

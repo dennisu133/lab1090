@@ -7,7 +7,6 @@ import { toHex } from '#lib/modes/frame.ts';
 import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
 import { waitFor } from '../beast/testing';
 import type { ModeSFrame } from '../frame-source';
-import { Recording } from './recording';
 import { explain, learn, RtlSdr } from './rtl-sdr';
 import { RtlTcp, setupCommands, tunerName } from './rtl-tcp';
 
@@ -156,18 +155,6 @@ describe('RtlTcp', () => {
 		expect(statuses.at(-1)).toMatchObject({
 			reason: 'not an rtl_tcp server (it doesn\'t start with "RTL0")'
 		});
-	});
-});
-
-describe('Recording', () => {
-	test('plays samples at their own pace, then ends', async () => {
-		const { frames, statuses, onFrame, onStatus } = collect();
-		const start = performance.now();
-		sources.push(new Recording({ file: samplesFile, onFrame, onStatus }).start());
-		await waitFor(() => statuses.at(-1)?.state === 'ended');
-		// 0.1 s of samples take about that long.
-		expect(performance.now() - start).toBeGreaterThan(90);
-		expect(frames.map((f) => toHex(f.data))).toEqual(MESSAGES.map(toHex));
 	});
 });
 

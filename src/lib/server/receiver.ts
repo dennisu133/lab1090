@@ -11,6 +11,7 @@ import { describeSource, type Source } from './settings';
 import type {
 	RadioUpdate,
 	ReceiverCounts,
+	ReplayInfo,
 	SourceEvent,
 	StreamUpdate,
 	WireFrame
@@ -60,6 +61,8 @@ export class Receiver {
 	#pending: WireFrame[] = [];
 	#subscribers = new Set<Subscriber>();
 	#timer: ReturnType<typeof setInterval> | undefined;
+	/** The replay's description as last sent (a new object when it changes). */
+	#replaySent: ReplayInfo | undefined;
 	/** When the demodulator's report last went out with a batch. */
 	#demodSentAt = -Infinity;
 	/** Say on the console which source this is and how its link is doing (#log). */
@@ -99,7 +102,8 @@ export class Receiver {
 	#log(event: SourceEvent): void {
 		if (event.state === 'waiting') console.warn(`${this.source}: ${event.reason}, trying again`);
 		else if (event.state === 'connected') console.log(`${this.source}: receiving`);
-		else console.log(`${this.source}: the recording has ended`);
+		else
+			console.log(`${this.source}: the replay has ended${event.reason ? `: ${event.reason}` : ''}`);
 	}
 
 	/** Every frame since the server started (FrameCounts). */
@@ -167,6 +171,7 @@ export class Receiver {
 		const after = this.#resumeAfter(lastEventId);
 		const frames = after === null ? this.#history : this.#history.filter((f) => f.id > after);
 		const update: StreamUpdate = { ...this.#update(frames, radio), source: this.source };
+		if (this.#client.replay) update.replay = this.#client.replay;
 		if (after === null) {
 			const last = this.#history.at(-1)?.id ?? 0;
 			update.tracks = this.tracks.frames.filter((f) => f.id <= last);
@@ -232,6 +237,11 @@ export class Receiver {
 		const sendDemod = now - this.#demodSentAt >= DEMOD_MS;
 		if (sendDemod) this.#demodSentAt = now;
 		const update = this.#update(frames, this.radio.take(sendDemod ? demod : undefined));
+		const replay = this.#client.replay;
+		if (replay !== this.#replaySent) {
+			if (replay) update.replay = replay;
+			this.#replaySent = replay;
+		}
 		const eventId = this.#eventId();
 		for (const s of this.#subscribers) s.send(update, eventId);
 	}

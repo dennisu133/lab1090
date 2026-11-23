@@ -6,14 +6,15 @@ import type { LatLon } from '#lib/modes/cpr.ts';
 
 /**
  * The server's link to the receiver (a FrameSource: the RTL-SDR, rtl_tcp, a Beast feed), for
- * the status in the navigation bar. `ended`: a recording (--samples) has played to its end.
+ * the status in the navigation bar. `ended`: a replay (--replay) has played to its end, or
+ * couldn't go on (`reason`).
  */
 export type SourceStatus =
 	| { state: 'connecting' }
 	| { state: 'connected' }
 	/** `retryInMs`: the backoff; `retryAt`: when the next try starts (server's Date.now()). */
 	| { state: 'waiting'; retryInMs: number; retryAt: number; reason: string }
-	| { state: 'ended' }
+	| { state: 'ended'; reason?: string }
 	| { state: 'closed' };
 
 export interface WireFrame {
@@ -66,7 +67,10 @@ export interface DeviceInfo {
 	/** The USB device's name and serial number (rtl_sdr only). */
 	name: string | null;
 	serial: string | null;
-	/** Gain in dB: rtl_sdr's confirmation, else what lab1090 asked for; null: a recording. */
+	/**
+	 * Gain in dB: rtl_sdr's confirmation, else what lab1090 asked for; for a replay, what its
+	 * metadata says. null: not known (a bare .u8).
+	 */
 	gain: number | null;
 }
 
@@ -119,7 +123,7 @@ export interface SourceEvent {
 	/** The last time, for a repeated one. */
 	last: number;
 	state: 'connected' | 'waiting' | 'ended';
-	/** Why it's waiting. */
+	/** Why it's waiting, or why a replay ended early. */
 	reason?: string;
 	/** The same reason again and again (backoff retries) is one event, counted. */
 	count: number;
@@ -136,6 +140,21 @@ export interface RadioUpdate {
 	points: RadioPoint[];
 	/** Events: in a full update all of them; else the new ones and any whose count grew. */
 	events: SourceEvent[];
+}
+
+/** What's being played (--replay), for the navigation bar and /receiver. */
+export interface ReplayInfo {
+	/** The file, as given. */
+	file: string;
+	/** Samples (demodulated here as they play) or Beast messages (demodulated when recorded). */
+	kind: 'samples' | 'beast';
+	loop: boolean;
+	/** From a SigMF recording's metadata; null: not said (a bare .u8, a Beast file). */
+	label: string | null;
+	/** The program that recorded it, "lab1090 0.1.0". */
+	recorder: string | null;
+	/** When it was recorded, ms since epoch. */
+	recordedAt: number | null;
 }
 
 /** A recording of the samples (--record), for the navigation bar and /receiver. */
@@ -160,6 +179,11 @@ export interface StreamUpdate {
 	status: SourceStatus;
 	/** The samples' recording, if lab1090 runs with --record. */
 	recording?: RecordingReport;
+	/**
+	 * What --replay plays: in the first update, and again whenever it changes (the metadata
+	 * is read once the file is opened). Absent: as before; never there for a live source.
+	 */
+	replay?: ReplayInfo;
 	/**
 	 * First update only (it never changes while the server runs): where the messages come
 	 * from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource).

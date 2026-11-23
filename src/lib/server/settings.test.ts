@@ -47,7 +47,12 @@ test('flags', () => {
 		device: '00000001',
 		gain: 40
 	});
-	expect(parseFlags(['--samples', 'x.u8']).samples).toBe('x.u8');
+	expect(parseFlags(['--replay', 'x.u8'])).toMatchObject({ replay: 'x.u8' });
+	expect(parseFlags(['--replay', 'x.beast', '--loop'])).toMatchObject({
+		replay: 'x.beast',
+		loop: true
+	});
+	expect(() => parseFlags(['--loop'])).toThrow('--loop: only with --replay');
 	expect(parseFlags(['-h']).help).toBe(true);
 	expect(parseFlags(['--version']).version).toBe(true);
 });
@@ -56,7 +61,7 @@ test('one source at a time', () => {
 	expect(() => parseFlags(['--connect', 'pi', '--device', '0'])).toThrow(
 		'--device and --connect are different sources'
 	);
-	expect(() => parseFlags(['--rtl-tcp', 'pi', '--samples', 'x.u8'])).toThrow('pick one');
+	expect(() => parseFlags(['--rtl-tcp', 'pi', '--replay', 'x.u8'])).toThrow('pick one');
 	expect(() => parseConfig('{"device": "0", "connect": "pi"}', 'c.json')).toThrow(
 		'c.json: "device" and "connect" are different sources'
 	);
@@ -149,8 +154,9 @@ test('a source flag wins over the file’s; the gain goes with any RTL-SDR', () 
 		device: '1',
 		gain: 20
 	});
-	expect(resolveSettings(parseFlags(['--samples', 'x.u8']), tcp).source).toEqual({
-		kind: 'samples',
+	expect(resolveSettings(parseFlags(['--replay', 'x.u8']), tcp).source).toEqual({
+		kind: 'replay',
+		loop: false,
 		file: 'x.u8'
 	});
 	expect(describeSource({ kind: 'rtlsdr', device: '0', gain: 1 })).toBe('RTL-SDR 0');
@@ -199,7 +205,7 @@ test('a recording: 5 minutes unless --record-for, of samples only', () => {
 	expect(() => parseFlags(['--label', 'x'])).toThrow('--label: only with --record');
 	expect(() => record(['--record', '--connect', 'pi'])).toThrow('--record: a Beast feed');
 	expect(() => record(['--record'], { connect: 'pi' })).toThrow('--record: a Beast feed');
-	expect(() => record(['--record', '--samples', 'x.u8'])).toThrow('--record');
+	expect(() => record(['--record', '--replay', 'x.u8'])).toThrow('--record');
 });
 
 test('config path follows XDG', () => {

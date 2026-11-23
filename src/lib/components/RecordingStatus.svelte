@@ -40,11 +40,6 @@
 					{bytesText(recording.bytes)} so far, until about {clockTime(Date.now() + left)}.
 				{/if}
 			</p>
-			<p>
-				Samples are what the antenna heard before any decoding, 2.4 million a second. Played back
-				(--replay), they let the demodulator be tried again on the same sky, messages it missed
-				included.
-			</p>
 		</InfoTip>
 	</div>
 {/if}

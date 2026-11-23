@@ -1,6 +1,8 @@
 /**
  * Play a Beast recording over TCP, like the Pi's readsb does live: for working on the app
  * when the sky is empty (at night), or with a recording that shows something specific.
+ * lab1090 plays one by itself too (`--replay x.beast [--loop]`); this tool adds the synthetic
+ * alerts and jammer, and serves several lab1090s at once.
  *
  *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
  *                       [--jamming]

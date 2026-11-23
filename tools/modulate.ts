@@ -6,7 +6,7 @@
  *   bun tools/modulate.ts [fixtures/capture.beast] [--seconds 60] [--out sky.u8]
  *                         [--noise noise.u8 | --sigma 0.0095] [--gain-db 0]
  *
- *   lab1090 --samples sky.u8                          (or: bun run dev --samples sky.u8)
+ *   lab1090 --replay sky.u8                           (or: bun run dev --replay sky.u8)
  *   readsb --device-type ifile --ifile sky.u8 --iformat UC8 > sky.readsb   (demod-compare.ts)
  *
  * Each message goes out at its Beast timestamp and at the level readsb heard it (its signal

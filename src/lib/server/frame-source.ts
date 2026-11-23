@@ -1,7 +1,9 @@
-import type { SourceStatus } from '#lib/receiver-types.ts';
+import type { ReplayInfo, SourceStatus } from '#lib/receiver-types.ts';
 import { BeastClient } from './beast/client';
+import { BeastReplay } from './replay/beast';
+import { fileFormat } from './replay/format';
+import { SampleReplay } from './replay/samples';
 import type { SampleDecoder } from './sdr/decoder';
-import { Recording } from './sdr/recording';
 import { RtlSdr } from './sdr/rtl-sdr';
 import { RtlTcp } from './sdr/rtl-tcp';
 import type { Source } from './settings';
@@ -12,11 +14,14 @@ import type { Source } from './settings';
  *
  * Messages from an RTL-SDR (directly, through rtl_tcp or recorded) are demodulated here
  * (lib/demod); a Beast feed brings them demodulated by another lab1090, readsb or dump1090.
+ * A replay (--replay) plays a file of either: replay/format.ts tells which.
  */
 export interface FrameSource {
 	readonly status: SourceStatus;
 	/** Sources that deliver samples demodulate them here (and report on it). */
 	readonly decoder?: SampleDecoder;
+	/** What a replay plays; a new object when it learns more (the file's metadata). */
+	readonly replay?: ReplayInfo;
 	start(): this;
 	close(): void;
 }
@@ -62,7 +67,12 @@ export function openSource(
 				},
 				onStatus
 			});
-		case 'samples':
-			return new Recording({ file: source.file, onFrame, onStatus });
+		case 'replay': {
+			const { file, loop } = source;
+			const format = fileFormat(file);
+			return format === 'beast'
+				? new BeastReplay({ file, loop, onFrame, onStatus })
+				: new SampleReplay({ file, format, loop, onFrame, onStatus });
+		}
 	}
 }

@@ -52,6 +52,7 @@ describe('lengths and sizes (a recording)', () => {
 	test('a length in words', () => {
 		expect(durationWords(300_000)).toBe('5 minutes');
 		expect(durationWords(90_000)).toBe('90 seconds');
+		expect(durationWords(60_000)).toBe('1 minute');
 		expect(durationWords(1_000)).toBe('1 second');
 		expect(durationWords(150_000)).toBe('2 minutes 30 seconds');
 		expect(durationWords(5_400_000)).toBe('1 hour 30 minutes');

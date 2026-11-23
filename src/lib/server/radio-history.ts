@@ -79,7 +79,7 @@ export class RadioHistory {
 	status(status: SourceStatus, now: number): SourceEvent | null {
 		if (status.state === 'connecting' || status.state === 'closed') return null;
 		const last = this.events.at(-1);
-		const reason = status.state === 'waiting' ? status.reason : undefined;
+		const reason = 'reason' in status ? status.reason : undefined;
 		if (last && last.state === status.state && last.reason === reason) {
 			last.count++;
 			last.last = now;

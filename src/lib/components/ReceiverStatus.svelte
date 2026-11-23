@@ -1,5 +1,6 @@
 <!--
-	The receiver's state in the navigation bar, one block: "● Live: 57.3 msg/s" over the total
+	The receiver's state in the navigation bar, one block: "● Live: 57.3 msg/s" (or "Replay:" for
+	--replay) over the total
 	since the server started. The two links between the antenna and this page, browser ↔
 	server (the event stream) and server ↔ receiver (the RTL-SDR, rtl_tcp or a Beast feed), are
 	reported to `receiverLink` by the page's stream (receiver-link.svelte.ts); the counts come
@@ -43,15 +44,23 @@
 		return { max, ticks };
 	});
 
+	/**
+	 * `receiving`: messages are coming, live or from a file (--replay): the rate and the total
+	 * are shown. A replay says so instead of "Live": its aircraft aren't in the sky now.
+	 */
 	let state = $derived.by(() => {
 		const status = link.status;
 		if (link.online === false) return { dot: 'bg-zinc-500', label: 'Server offline' };
 		if (link.online && status?.state === 'connected')
-			return { dot: 'motion-safe:animate-pulse bg-ok-400', label: 'Live' };
+			return {
+				dot: 'motion-safe:animate-pulse bg-ok-400',
+				label: link.replay ? 'Replay' : 'Live',
+				receiving: true
+			};
 		if (link.online && status?.state === 'waiting')
-			return { dot: 'bg-warn-400', label: 'Receiver unreachable', status };
+			return { dot: 'bg-warn-400', label: 'Receiver unreachable', waiting: status };
 		if (link.online && status?.state === 'ended')
-			return { dot: 'bg-zinc-500', label: 'Recording ended' };
+			return { dot: 'bg-zinc-500', label: 'Replay ended', ended: status };
 		return { dot: 'bg-warn-400', label: 'Connecting…' };
 	});
 </script>
@@ -59,21 +68,21 @@
 <!-- Two 16 px lines while live: the logo's height. Right-aligned, against the bar's end. -->
 <div class="flex flex-col items-end text-xs/4 whitespace-nowrap text-zinc-400 tabular-nums">
 	<div class="grid justify-items-end">
-		{#if state.label === 'Live'}
+		{#if state.receiving}
 			<!-- Room for "9,999" kept free, so the rate can grow (99.9 → 100 → 1,000 msg/s) without
 			     shifting the rest of the bar: the dot and "Live" move left inside it. The busiest
 			     sites decode a few thousand a second: past that, overlapping messages garble the
 			     channel, so five digits don't come. -->
 			<span class="invisible col-start-1 row-start-1 flex items-center gap-2" aria-hidden="true">
 				<span class="size-2.5"></span>
-				<span>Live: 9,999 msg/s<span class="ml-1 inline-block size-[1em]"></span></span>
+				<span>{state.label}: 9,999 msg/s<span class="ml-1 inline-block size-[1em]"></span></span>
 			</span>
 		{/if}
 		<div class="col-start-1 row-start-1 flex items-center gap-2">
 			<span class={['size-2.5 shrink-0 rounded-full', state.dot]}></span>
-			{#if state.label === 'Live'}
+			{#if state.receiving}
 				<InfoTip
-					label="Live: {perSecond(stats.rates.total)} msg/s"
+					label="{state.label}: {perSecond(stats.rates.total)} msg/s"
 					class="text-zinc-300"
 					align="right"
 					wide
@@ -97,19 +106,23 @@
 				<InfoTip label={state.label} align="right">
 					<p>This page lost its connection to the server. The browser keeps retrying.</p>
 				</InfoTip>
-			{:else if state.status}
+			{:else if state.waiting}
 				<InfoTip label={state.label} align="right">
 					<p>
-						The server can't read from {link.source ?? 'the receiver'}: {state.status.reason}. Next
-						try at {clockTime(state.status.retryAt)}.
+						The server can't read from {link.source ?? 'the receiver'}: {state.waiting.reason}. Next
+						try at {clockTime(state.waiting.retryAt)}.
 					</p>
+				</InfoTip>
+			{:else if state.ended?.reason}
+				<InfoTip label={state.label} align="right">
+					<p>The server stopped playing {link.source ?? 'the file'}: {state.ended.reason}.</p>
 				</InfoTip>
 			{:else}
 				<span>{state.label}</span>
 			{/if}
 		</div>
 	</div>
-	{#if state.label === 'Live'}
+	{#if state.receiving}
 		<span>
 			{stats.counts && stats.since !== null
 				? `${n(stats.counts.total)} since ${dayAndTime(stats.since, shortTime)}`

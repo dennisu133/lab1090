@@ -93,10 +93,10 @@ export function minutesSeconds(ms: number): string {
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** "5 minutes", "90 seconds", "1 hour 30 minutes": a length of time in words. */
+/** "5 minutes", "1 minute", "90 seconds", "1 hour 30 minutes": a length of time in words. */
 export function durationWords(ms: number): string {
 	const s = Math.round(ms / 1000);
-	if (s < 120) return plural(s, 'second');
+	if (s < 60 || (s < 120 && s % 60 !== 0)) return plural(s, 'second');
 	const parts = [
 		[Math.floor(s / 3600), 'hour'],
 		[Math.floor(s / 60) % 60, 'minute'],

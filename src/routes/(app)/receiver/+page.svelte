@@ -71,6 +71,7 @@
 				{demod}
 				events={radio.events}
 				recording={receiverLink.recording}
+				replay={receiverLink.replay}
 			/>
 		</div>
 
@@ -112,6 +113,7 @@
 			demod={null}
 			events={radio.events}
 			recording={receiverLink.recording}
+			replay={receiverLink.replay}
 		/>
 	{/if}
 

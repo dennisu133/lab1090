@@ -75,7 +75,11 @@ export class StreamConnection {
 	#receive(update: StreamUpdate): void {
 		receiverLink.status = update.status;
 		receiverLink.recording = update.recording ?? null;
-		if (update.source !== undefined) receiverLink.source = update.source; // first update only
+		if (update.source !== undefined) {
+			// First update only: a new run may play something else, or nothing.
+			receiverLink.source = update.source;
+			receiverLink.replay = update.replay ?? null;
+		} else if (update.replay) receiverLink.replay = update.replay;
 		if (update.since !== this.#since) {
 			// The first update of all needs no reset: nothing came before it.
 			if (this.#since !== null) for (const listener of this.#listeners) listener.reset?.();

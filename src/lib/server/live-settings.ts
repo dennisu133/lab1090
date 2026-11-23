@@ -72,8 +72,8 @@ class LiveSettings {
 			this.configPath = flags.config ?? defaultConfigPath(process.env, homedir());
 			this.#settings = resolveSettings(flags, readConfig(this.configPath));
 			const source = this.#settings.source;
-			if (source.kind === 'samples' && !existsSync(source.file)) {
-				throw new SettingsError(`--samples: no such file: ${source.file}`);
+			if (source.kind === 'replay' && !existsSync(source.file)) {
+				throw new SettingsError(`--replay: no such file: ${source.file}`);
 			}
 		} catch (e) {
 			if (e instanceof SettingsError) fail(e.message);

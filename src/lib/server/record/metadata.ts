@@ -123,6 +123,44 @@ export function toSigmf(m: RecordingMetadata): string {
 	});
 }
 
+/** What a replay needs from a recording's metadata (ours, or another program's SigMF). */
+export interface SigmfInfo {
+	datatype: string | null;
+	sampleRate: number | null;
+	frequencyHz: number | null;
+	recorder: string | null;
+	label: string | null;
+	tuner: string | null;
+	gainDb: number | null;
+	/** When it was recorded (the first capture's start), ms since epoch; null: not said. */
+	t: number | null;
+}
+
+/** Read a `.sigmf-meta` file's text; throws if it isn't one. */
+export function fromSigmf(text: string): SigmfInfo {
+	const json = JSON.parse(text) as {
+		global?: Record<string, unknown>;
+		captures?: Record<string, unknown>[];
+	};
+	const global = json.global;
+	if (typeof global !== 'object' || global === null) throw new Error('no "global" object');
+	const capture = json.captures?.[0] ?? {};
+	const string = (v: unknown) => (typeof v === 'string' ? v : null);
+	const number = (v: unknown) => (typeof v === 'number' ? v : null);
+	const datetime = string(capture['core:datetime']);
+	const t = datetime ? Date.parse(datetime) : NaN;
+	return {
+		datatype: string(global['core:datatype']),
+		sampleRate: number(global['core:sample_rate']),
+		frequencyHz: number(capture['core:frequency']),
+		recorder: string(global['core:recorder']),
+		label: string(global['lab1090:label']),
+		tuner: string(global['lab1090:tuner']),
+		gainDb: number(global['lab1090:gain_db']),
+		t: Number.isNaN(t) ? null : t
+	};
+}
+
 function round(x: number, digits: number): number {
 	return Math.round(x * 10 ** digits) / 10 ** digits;
 }

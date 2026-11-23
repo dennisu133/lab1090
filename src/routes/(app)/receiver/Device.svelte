@@ -1,12 +1,18 @@
 <!--
 	The dongle and the link to it: what rtl_sdr or rtl_tcp told us about the hardware, the
 	settings lab1090 uses, and the history of the link (starts, failures and why). With a
-	Beast feed only the source (its tooltip says why) and the link.
+	Beast feed only the source (its tooltip says why) and the link. A replay says what its
+	file says about the recording.
 -->
 <script lang="ts">
 	import { bytesText, dayAndTime, minutesSeconds } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import type { DemodReport, RecordingReport, SourceEvent } from '#lib/receiver-types.ts';
+	import type {
+		DemodReport,
+		RecordingReport,
+		ReplayInfo,
+		SourceEvent
+	} from '#lib/receiver-types.ts';
 
 	interface Props {
 		/** "RTL-SDR 0", "pi:1234 (rtl_tcp)"… */
@@ -16,9 +22,11 @@
 		events: SourceEvent[];
 		/** The samples' recording (--record); null: none. */
 		recording: RecordingReport | null;
+		/** What --replay plays; null: a live source. */
+		replay: ReplayInfo | null;
 	}
 
-	let { source, demod, events, recording }: Props = $props();
+	let { source, demod, events, recording, replay }: Props = $props();
 
 	/** "4:12 of 5:00, 160 MB", "saved, 5:00, 470 MB". */
 	let recorded = $derived.by(() => {
@@ -41,7 +49,7 @@
 	const STATES: Record<SourceEvent['state'], string> = {
 		connected: 'receiving',
 		waiting: 'stopped',
-		ended: 'recording ended'
+		ended: 'replay ended'
 	};
 
 	/** Newest first, at most this many. */
@@ -57,16 +65,42 @@
 		{:else}
 			<dt>
 				<InfoTip label="Source">
-					<p>
-						A Beast feed: messages already demodulated on that machine, by readsb, dump1090 or
-						another lab1090, each sent with its time and signal level. The samples, gain, noise and
-						CPU show in that receiver's own statistics; here are only the link and the signal
-						levels.
-					</p>
+					{#if replay}
+						<p>
+							Beast messages from a file: demodulated when they were received, by readsb, dump1090
+							or lab1090, each kept with its time and signal level, and played at the pace they
+							came. The samples, gain and noise weren't kept; here are only the signal levels.
+						</p>
+					{:else}
+						<p>
+							A Beast feed: messages already demodulated on that machine, by readsb, dump1090 or
+							another lab1090, each sent with its time and signal level. The samples, gain, noise
+							and CPU show in that receiver's own statistics; here are only the link and the signal
+							levels.
+						</p>
+					{/if}
 				</InfoTip>
 			</dt>
 		{/if}
-		<dd>{source ?? '–'}</dd>
+		<dd class="min-w-0 truncate">{source ?? '–'}</dd>
+		{#if replay}
+			<dt class="text-zinc-400">Replay</dt>
+			<dd>
+				{replay.kind === 'samples' ? 'samples, demodulated as they play' : 'Beast messages'},
+				{replay.loop ? 'in a loop' : 'once'}
+			</dd>
+			{#if replay.recordedAt !== null || replay.recorder}
+				<dt class="text-zinc-400">Recorded</dt>
+				<dd>
+					{replay.recordedAt === null ? '' : dayAndTime(replay.recordedAt)}
+					{#if replay.recorder}<span class="text-zinc-500">· by {replay.recorder}</span>{/if}
+				</dd>
+			{/if}
+			{#if replay.label}
+				<dt class="text-zinc-400">Label</dt>
+				<dd>{replay.label}</dd>
+			{/if}
+		{/if}
 		{#if demod}
 			<dt>
 				<InfoTip label="Tuner">
@@ -89,7 +123,7 @@
 				</dd>
 			{/if}
 			<dt class="text-zinc-400">Gain</dt>
-			<dd>{demod.device.gain === null ? 'as recorded' : `${demod.device.gain} dB`}</dd>
+			<dd>{demod.device.gain === null ? 'not known' : `${demod.device.gain} dB`}</dd>
 			<dt>
 				<InfoTip label="Tuned to">
 					<p>

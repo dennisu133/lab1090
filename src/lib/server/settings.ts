@@ -5,14 +5,14 @@
  *   lab1090 --gain 40 --position 52.52,13.40 --port 8080
  *
  * The config file (JSON, ~/.config/lab1090/config.json) takes the same keys as the flags,
- * except `config` and `samples`. The setup page (/setup) writes `position` into it; the
+ * except `config`, `replay` and `record`. The setup page (/setup) writes `position` into it; the
  * others are there for whoever prefers a file to flags, e.g. a service:
  *
  *   { "gain": 40, "position": { "lat": 52.52, "lon": 13.4 } }
  *
  * Where the messages come from (Source): the RTL-SDR on this machine by default, one on
  * another machine through rtl_tcp, a Beast feed from readsb or dump1090, or a recording of
- * samples. One of them: a flag for one wins over the file's, and two flags for different
+ * samples or Beast messages (--replay). One of them: a flag for one wins over the file's, and two flags for different
  * ones are a mistake.
  *
  * The position has no default: without one, every page sends you to /setup.
@@ -22,7 +22,7 @@
  * page's alone.
  *
  * `--record` saves the RTL-SDR's samples for a while (record/recorder.ts). A thing done once,
- * so the command line's only, like `--samples`.
+ * so the command line's only, like `--replay`.
  */
 import { parseArgs } from 'node:util';
 // Only the version is bundled: Vite splits JSON into named exports and drops the rest.
@@ -44,8 +44,8 @@ export type Source =
 	| { kind: 'rtl-tcp'; endpoint: Endpoint; gain: number }
 	/** Demodulated elsewhere: Beast from another lab1090, readsb, dump1090, tools/replay.ts. */
 	| { kind: 'beast'; endpoint: Endpoint }
-	/** Samples recorded with rtl_sdr, played at their own pace. */
-	| { kind: 'samples'; file: string };
+	/** A recording, played at its own pace: samples (we demodulate) or Beast messages. */
+	| { kind: 'replay'; file: string; loop: boolean };
 
 export interface Settings {
 	source: Source;
@@ -102,8 +102,10 @@ Where the messages come from (default: the first RTL-SDR on this machine):
                             (port ${RTL_TCP_PORT} by default)
   --connect <host[:port]>   messages demodulated by another lab1090 (its --beast-out),
                             readsb or dump1090: their Beast output (port ${BEAST_PORT} by default)
-  --samples <file>          a recording made with rtl_sdr -f 1090M -s 2.4M, played at its
-                            own pace
+  --replay <file>           a recording, played at its own pace as if it were live: samples
+                            from --record or rtl_sdr -f 1090M -s 2.4M (demodulated as they
+                            play), or Beast messages saved from port ${BEAST_PORT}
+  --loop                    with --replay: start over at the end
 
 Recording the samples, to tune lab1090's demodulator to other dongles and skies:
   --record                  save the RTL-SDR's raw samples to a file in the current
@@ -131,7 +133,7 @@ The web page:
   -h, --help                show this text
   --version                 show lab1090's version
 
-The config file takes the same settings as JSON (not --samples or --record), e.g.
+The config file takes the same settings as JSON (not --replay or --record), e.g.
   { "gain": 40, "position": { "lat": 52.5163, "lon": 13.3777 } }
 Options on the command line win over the file.`;
 
@@ -147,7 +149,8 @@ export interface Flags {
 	gain?: number;
 	rtlTcp?: Endpoint;
 	connect?: Endpoint;
-	samples?: string;
+	replay?: string;
+	loop?: boolean;
 	position?: LatLon;
 	port?: number;
 	bind?: string;
@@ -169,7 +172,8 @@ export function parseFlags(args: string[]): Flags {
 				gain: { type: 'string' },
 				'rtl-tcp': { type: 'string' },
 				connect: { type: 'string' },
-				samples: { type: 'string' },
+				replay: { type: 'string' },
+				loop: { type: 'boolean' },
 				position: { type: 'string' },
 				port: { type: 'string' },
 				bind: { type: 'string' },
@@ -198,14 +202,18 @@ export function parseFlags(args: string[]): Flags {
 	}
 	if (parsed.connect !== undefined)
 		flags.connect = field('--connect', parseEndpoint, parsed.connect);
-	if (parsed.samples !== undefined) {
-		flags.samples = field('--samples', (v) => nonEmpty(v, 'a file'), parsed.samples);
+	if (parsed.replay !== undefined) {
+		flags.replay = field('--replay', (v) => nonEmpty(v, 'a file'), parsed.replay);
+	}
+	if (parsed.loop) {
+		if (flags.replay === undefined) throw new SettingsError('--loop: only with --replay');
+		flags.loop = true;
 	}
 	const sources = [
 		flags.device !== undefined && '--device',
 		flags.rtlTcp && '--rtl-tcp',
 		flags.connect && '--connect',
-		flags.samples !== undefined && '--samples'
+		flags.replay !== undefined && '--replay'
 	].filter(Boolean);
 	if (sources.length > 1) {
 		throw new SettingsError(`${sources.join(' and ')} are different sources: pick one`);
@@ -336,7 +344,8 @@ function resolveSource(flags: Flags, file: ConfigFile): Source {
 	const gain = flags.gain ?? file.gain;
 	let source: Source;
 	if (flags.connect) source = { kind: 'beast', endpoint: flags.connect };
-	else if (flags.samples !== undefined) source = { kind: 'samples', file: flags.samples };
+	else if (flags.replay !== undefined)
+		source = { kind: 'replay', file: flags.replay, loop: flags.loop ?? false };
 	else if (flags.rtlTcp)
 		source = { kind: 'rtl-tcp', endpoint: flags.rtlTcp, gain: gain ?? DEFAULT_GAIN };
 	else if (flags.device === undefined && file.connect)
@@ -348,12 +357,12 @@ function resolveSource(flags: Flags, file: ConfigFile): Source {
 		const device = flags.device ?? file.device ?? DEFAULT_DEVICE;
 		source = { kind: 'rtlsdr', device, gain: gain ?? DEFAULT_GAIN };
 	}
-	if (flags.gain !== undefined && (source.kind === 'beast' || source.kind === 'samples')) {
+	if (flags.gain !== undefined && (source.kind === 'beast' || source.kind === 'replay')) {
 		throw new SettingsError(
 			'--gain: only an RTL-SDR has a gain (the source here is a Beast feed or a recording)'
 		);
 	}
-	if (flags.record && (source.kind === 'beast' || source.kind === 'samples')) {
+	if (flags.record && (source.kind === 'beast' || source.kind === 'replay')) {
 		throw new SettingsError(
 			source.kind === 'beast'
 				? '--record: a Beast feed brings messages, not samples: record where the RTL-SDR is'
@@ -372,7 +381,7 @@ export function describeSource(source: Source): string {
 			return `${formatEndpoint(source.endpoint)} (rtl_tcp)`;
 		case 'beast':
 			return formatEndpoint(source.endpoint);
-		case 'samples':
+		case 'replay':
 			return source.file;
 	}
 }
