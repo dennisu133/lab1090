@@ -4,6 +4,13 @@ import type { DemodReport, DeviceInfo } from '#lib/receiver-types.ts';
 import type { FrameHandler } from '../frame-source';
 import { SampleClock } from './sample-clock';
 
+/** Something that wants the samples too, as they come (a recording: record/recorder.ts). */
+export interface SampleTap {
+	/** A new run of samples begins (after a gap). */
+	restart(): void;
+	push(iq: Uint8Array): void;
+}
+
 /**
  * Samples → messages, for the sources that deliver samples (rtl_sdr, rtl_tcp, a recording).
  *
@@ -14,9 +21,12 @@ import { SampleClock } from './sample-clock';
  * It also keeps the numbers for /receiver (report()): the demodulator's counts over all
  * runs, the time spent demodulating, and for a live source the sample clock (lost samples,
  * the crystal's error). The source fills in `device` as it learns about the dongle.
+ *
+ * A `tap` gets every sample before the demodulator does (--record).
  */
 export class SampleDecoder {
 	readonly device: DeviceInfo;
+	tap: SampleTap | null = null;
 	#demodulator = new Demodulator();
 	#onFrame: FrameHandler;
 	#live: boolean;
@@ -49,9 +59,11 @@ export class SampleDecoder {
 		this.#demodulator = new Demodulator({ startTick: Math.round(performance.now() * 12_000) });
 		this.#clock = this.#live ? new SampleClock(SAMPLE_RATE) : null;
 		this.#runs++;
+		this.tap?.restart();
 	}
 
 	push(iq: Uint8Array): void {
+		this.tap?.push(iq);
 		const start = performance.now();
 		this.#clock?.add(iq.length / 2, start);
 		const frames = this.#demodulator.push(iq);

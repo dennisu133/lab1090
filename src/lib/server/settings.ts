@@ -20,6 +20,9 @@
  * `--beast-out` serves what this receiver hears as Beast (beast/server.ts), for another
  * lab1090 or readsb to `--connect` to, on every address of the machine: `--bind` is the web
  * page's alone.
+ *
+ * `--record` saves the RTL-SDR's samples for a while (record/recorder.ts). A thing done once,
+ * so the command line's only, like `--samples`.
  */
 import { parseArgs } from 'node:util';
 // Only the version is bundled: Vite splits JSON into named exports and drops the rest.
@@ -56,6 +59,15 @@ export interface Settings {
 	bind: string | null;
 	/** Serve the messages as Beast on this port; null: don't. */
 	beastOut: number | null;
+	/** Record the samples; null: don't. */
+	record: RecordSettings | null;
+}
+
+export interface RecordSettings {
+	/** How long, ms of samples. */
+	durationMs: number;
+	/** Goes into the file's name and metadata: letters, digits, - and _. */
+	label: string | null;
 }
 
 /** readsb and dump1090 serve Beast on 30005 by default (lab1090 only with --beast-out). */
@@ -69,6 +81,8 @@ export const DEFAULT_PORT = 1090;
  * need it. Near an airport, strong signals can overload it; then less helps.
  */
 export const DEFAULT_GAIN = 49.6;
+/** --record's length: like the recordings the demodulator was tuned on (~470 MB). */
+export const DEFAULT_RECORD_MS = 5 * 60_000;
 /** lab1090's version: package.json's, the one place it is kept. */
 export const VERSION: string = version;
 
@@ -91,6 +105,16 @@ Where the messages come from (default: the first RTL-SDR on this machine):
   --samples <file>          a recording made with rtl_sdr -f 1090M -s 2.4M, played at its
                             own pace
 
+Recording the samples, to tune lab1090's demodulator to other dongles and skies:
+  --record                  save the RTL-SDR's raw samples to a file in the current
+                            directory, lab1090-<date>T<time>[-<label>].sigmf.zst, while
+                            the page goes on as usual: 5 minutes are about 470 MB. A SigMF
+                            archive, compressed (zstd -d, then tar x, gives the samples as
+                            rtl_sdr writes them). It doesn't say where it was made, but the
+                            aircraft in it show roughly where, and when
+  --record-for <time>       how long, e.g. 90s, 10m (default: 5m)
+  --label <name>            a word for the file name, e.g. --label balcony
+
 Passing them on:
   --beast-out <port>        serve every message as Beast on this port, on every address of
                             this machine, like readsb's --net-bo-port (usually ${BEAST_PORT}): for
@@ -107,7 +131,7 @@ The web page:
   -h, --help                show this text
   --version                 show lab1090's version
 
-The config file takes the same settings as JSON (not --samples), e.g.
+The config file takes the same settings as JSON (not --samples or --record), e.g.
   { "gain": 40, "position": { "lat": 52.5163, "lon": 13.3777 } }
 Options on the command line win over the file.`;
 
@@ -128,6 +152,9 @@ export interface Flags {
 	port?: number;
 	bind?: string;
 	beastOut?: number;
+	record?: boolean;
+	recordFor?: number;
+	label?: string;
 }
 
 export function parseFlags(args: string[]): Flags {
@@ -147,6 +174,9 @@ export function parseFlags(args: string[]): Flags {
 				port: { type: 'string' },
 				bind: { type: 'string' },
 				'beast-out': { type: 'string' },
+				record: { type: 'boolean' },
+				'record-for': { type: 'string' },
+				label: { type: 'string' },
 				config: { type: 'string' },
 				help: { type: 'boolean', short: 'h' },
 				version: { type: 'boolean' }
@@ -186,6 +216,17 @@ export function parseFlags(args: string[]): Flags {
 	if (parsed.bind !== undefined) flags.bind = field('--bind', parseBind, parsed.bind);
 	if (parsed['beast-out'] !== undefined) {
 		flags.beastOut = field('--beast-out', parsePort, parsed['beast-out']);
+	}
+	if (parsed.record) flags.record = true;
+	if (parsed['record-for'] !== undefined) {
+		flags.recordFor = field('--record-for', parseDuration, parsed['record-for']);
+	}
+	if (parsed.label !== undefined) flags.label = field('--label', parseLabel, parsed.label);
+	for (const [name, given] of [
+		['--record-for', flags.recordFor !== undefined],
+		['--label', flags.label !== undefined]
+	] as const) {
+		if (given && !flags.record) throw new SettingsError(`${name}: only with --record`);
 	}
 	return flags;
 }
@@ -280,7 +321,10 @@ export function resolveSettings(flags: Flags, file: ConfigFile): Settings {
 		positionFrom: flags.position ? 'flag' : file.position ? 'file' : null,
 		port: flags.port ?? file.port ?? DEFAULT_PORT,
 		bind: flags.bind ?? file.bind ?? null,
-		beastOut: flags.beastOut ?? file['beast-out'] ?? null
+		beastOut: flags.beastOut ?? file['beast-out'] ?? null,
+		record: flags.record
+			? { durationMs: flags.recordFor ?? DEFAULT_RECORD_MS, label: flags.label ?? null }
+			: null
 	};
 }
 
@@ -307,6 +351,13 @@ function resolveSource(flags: Flags, file: ConfigFile): Source {
 	if (flags.gain !== undefined && (source.kind === 'beast' || source.kind === 'samples')) {
 		throw new SettingsError(
 			'--gain: only an RTL-SDR has a gain (the source here is a Beast feed or a recording)'
+		);
+	}
+	if (flags.record && (source.kind === 'beast' || source.kind === 'samples')) {
+		throw new SettingsError(
+			source.kind === 'beast'
+				? '--record: a Beast feed brings messages, not samples: record where the RTL-SDR is'
+				: '--record: this is a recording already'
 		);
 	}
 	return source;
@@ -355,6 +406,24 @@ export function formatEndpoint({ host, port }: Endpoint): string {
 export function defaultConfigPath(env: Record<string, string | undefined>, home: string): string {
 	const base = env.XDG_CONFIG_HOME || `${home}/.config`;
 	return `${base}/lab1090/config.json`;
+}
+
+/** "90s", "10m", "1.5h": a length of time, in ms. At least a second. */
+function parseDuration(value: string): number {
+	const match = /^(\d+(?:\.\d+)?)(s|m|h)$/.exec(value.trim());
+	const unit = { s: 1000, m: 60_000, h: 3_600_000 };
+	const ms = match ? Number(match[1]) * unit[match[2] as keyof typeof unit] : 0;
+	if (ms < 1000)
+		throw new Error(`expected a time with its unit, e.g. 90s, 10m or 1h, got "${value}"`);
+	return ms;
+}
+
+/** Letters, digits, - and _: it goes into a file name, and SigMF's names avoid the rest. */
+function parseLabel(value: string): string {
+	if (!/^[A-Za-z0-9_-]{1,40}$/.test(value.trim())) {
+		throw new Error(`expected up to 40 letters, digits, - or _, e.g. balcony, got "${value}"`);
+	}
+	return value.trim();
 }
 
 function parsePort(value: string): number {

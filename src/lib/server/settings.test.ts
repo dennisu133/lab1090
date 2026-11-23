@@ -3,6 +3,7 @@ import {
 	BEAST_PORT,
 	DEFAULT_GAIN,
 	DEFAULT_PORT,
+	DEFAULT_RECORD_MS,
 	RTL_TCP_PORT,
 	SettingsError,
 	defaultConfigPath,
@@ -112,7 +113,8 @@ test('flags win over the file, the file over the defaults', () => {
 		positionFrom: null,
 		port: DEFAULT_PORT,
 		bind: null,
-		beastOut: null
+		beastOut: null,
+		record: null
 	});
 	expect(resolveSettings(parseFlags([]), file)).toMatchObject({
 		source: { kind: 'beast', endpoint: { host: 'pi', port: BEAST_PORT } },
@@ -174,6 +176,30 @@ test('a Beast output: a port, from a flag or the file', () => {
 		resolveSettings(parseFlags(['--beast-out', '30105']), { 'beast-out': 30005 }).beastOut
 	).toBe(30105);
 	expect(() => parseConfig('{"beast-out": "x"}', 'c.json')).toThrow('c.json: "beast-out"');
+});
+
+test('a recording: 5 minutes unless --record-for, of samples only', () => {
+	const record = (args: string[], file = {}) => resolveSettings(parseFlags(args), file).record;
+	expect(record([])).toBeNull();
+	expect(record(['--record'])).toEqual({ durationMs: DEFAULT_RECORD_MS, label: null });
+	expect(DEFAULT_RECORD_MS).toBe(300_000);
+	expect(record(['--record', '--record-for', '90s', '--label', 'balcony'])).toEqual({
+		durationMs: 90_000,
+		label: 'balcony'
+	});
+	expect(record(['--record', '--record-for=1.5h'])?.durationMs).toBe(5_400_000);
+	expect(record(['--record', '--rtl-tcp', 'pi', '--record-for', '10m'])?.durationMs).toBe(600_000);
+	expect(() => parseFlags(['--record', '--record-for', '90'])).toThrow(
+		'--record-for: expected a time'
+	);
+	expect(() => parseFlags(['--record', '--record-for', '0.5s'])).toThrow('--record-for');
+	expect(() => parseFlags(['--record', '--label', 'my balcony'])).toThrow('--label: expected');
+	expect(() => parseFlags(['--record', '--label', '../x'])).toThrow('--label');
+	expect(() => parseFlags(['--record-for', '5m'])).toThrow('--record-for: only with --record');
+	expect(() => parseFlags(['--label', 'x'])).toThrow('--label: only with --record');
+	expect(() => record(['--record', '--connect', 'pi'])).toThrow('--record: a Beast feed');
+	expect(() => record(['--record'], { connect: 'pi' })).toThrow('--record: a Beast feed');
+	expect(() => record(['--record', '--samples', 'x.u8'])).toThrow('--record');
 });
 
 test('config path follows XDG', () => {

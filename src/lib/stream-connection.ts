@@ -74,6 +74,7 @@ export class StreamConnection {
 
 	#receive(update: StreamUpdate): void {
 		receiverLink.status = update.status;
+		receiverLink.recording = update.recording ?? null;
 		if (update.source !== undefined) receiverLink.source = update.source; // first update only
 		if (update.since !== this.#since) {
 			// The first update of all needs no reset: nothing came before it.

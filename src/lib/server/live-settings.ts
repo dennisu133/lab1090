@@ -99,6 +99,9 @@ class LiveSettings {
 	get beastOut(): number | null {
 		return this.#settings.beastOut;
 	}
+	get record(): Settings['record'] {
+		return this.#settings.record;
+	}
 
 	/**
 	 * Save a new position from /setup into the config file (the rest of the file stays). The

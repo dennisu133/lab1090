@@ -25,6 +25,8 @@ vite.config.ts.timestamp-*
 # Local recordings, too big or too revealing to commit (fixtures/local/README.md)
 /fixtures/local/*
 !/fixtures/local/README.md
+# Samples recorded with --record (in dev: here, the directory it runs in)
+*.sigmf.zst
 
 # Python tools (pyModeS oracle)
 tools/.venv

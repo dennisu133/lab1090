@@ -138,8 +138,28 @@ export interface RadioUpdate {
 	events: SourceEvent[];
 }
 
+/** A recording of the samples (--record), for the navigation bar and /receiver. */
+export interface RecordingReport {
+	/** The file's name, in the directory lab1090 was started in. */
+	file: string;
+	/**
+	 * `waiting`: for the first samples; `finishing`: the last ones are being written;
+	 * `failed`: nothing recorded, or the file couldn't be finished (`stopped` says why).
+	 */
+	state: 'waiting' | 'recording' | 'finishing' | 'saved' | 'failed';
+	/** Samples taken so far and planned, as time (ms). */
+	ms: number;
+	plannedMs: number;
+	/** The file's size so far. */
+	bytes: number;
+	/** Why it ended early; null: it didn't (yet). */
+	stopped: string | null;
+}
+
 export interface StreamUpdate {
 	status: SourceStatus;
+	/** The samples' recording, if lab1090 runs with --record. */
+	recording?: RecordingReport;
 	/**
 	 * First update only (it never changes while the server runs): where the messages come
 	 * from, e.g. "RTL-SDR 0" or "pi:30005" (settings.ts describeSource).

@@ -66,7 +66,12 @@
 	{#if demod && advice}
 		<div class="grid gap-6 xl:grid-cols-2">
 			<Diagnosis {demod} {summary} {advice} />
-			<Device source={receiverLink.source} {demod} events={radio.events} />
+			<Device
+				source={receiverLink.source}
+				{demod}
+				events={radio.events}
+				recording={receiverLink.recording}
+			/>
 		</div>
 
 		<div class="grid gap-6 xl:grid-cols-2">
@@ -102,7 +107,12 @@
 		</div>
 	{:else}
 		<!-- A Beast feed: no diagnosis, stages or noise; its Source says why. -->
-		<Device source={receiverLink.source} demod={null} events={radio.events} />
+		<Device
+			source={receiverLink.source}
+			demod={null}
+			events={radio.events}
+			recording={receiverLink.recording}
+		/>
 	{/if}
 
 	<section class="rounded-lg border border-zinc-800 p-4">

@@ -6,6 +6,7 @@ import { RadioHistory } from './radio-history';
 import { TrackHistory } from './track-history';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { downlinkFormat, signalDbfs, toHex, typeCode } from '#lib/modes/frame.ts';
+import type { SampleRecorder } from './record/recorder';
 import { describeSource, type Source } from './settings';
 import type {
 	RadioUpdate,
@@ -35,6 +36,8 @@ type Subscriber = { send: (update: StreamUpdate, eventId: string) => void; close
  * history (TrackHistory) and the next batch. Batches fan out to any number of subscribers
  * (browser tabs) every 250 ms: one update with ~12 frames instead of ~12 separate events.
  * With `beastOut`, every frame also goes out at once as Beast on that port (BeastServer).
+ * With a `recorder` (--record), the source's samples also go into a file, and every update
+ * says how far it got.
  */
 export class Receiver {
 	readonly source: string;
@@ -48,6 +51,7 @@ export class Receiver {
 
 	#client: FrameSource;
 	#beast: BeastServer | null;
+	#recorder: SampleRecorder | null;
 	#counts = new FrameCounts();
 	#addresses = new AddressFilter();
 	#nextId = 1;
@@ -63,7 +67,11 @@ export class Receiver {
 
 	constructor(
 		source: Source,
-		{ log = true, beastOut = null }: { log?: boolean; beastOut?: number | null } = {}
+		{
+			log = true,
+			beastOut = null,
+			recorder = null
+		}: { log?: boolean; beastOut?: number | null; recorder?: SampleRecorder | null } = {}
 	) {
 		this.source = describeSource(source);
 		this.#logging = log;
@@ -76,6 +84,11 @@ export class Receiver {
 				if (this.#logging && event) this.#log(event);
 			}
 		);
+		this.#recorder = recorder;
+		if (recorder) {
+			if (!this.#client.decoder) throw new Error('only a source of samples can be recorded');
+			recorder.attach(this.#client.decoder);
+		}
 	}
 
 	/**
@@ -226,6 +239,7 @@ export class Receiver {
 	#update(frames: WireFrame[], radio: RadioUpdate): StreamUpdate {
 		return {
 			status: this.#client.status,
+			...(this.#recorder && { recording: this.#recorder.report() }),
 			since: this.since,
 			counts: this.counts,
 			radio,

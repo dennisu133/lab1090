@@ -4,6 +4,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
+	import RecordingStatus from '#lib/components/RecordingStatus.svelte';
 	import AlertBanner from './AlertBanner.svelte';
 	import NotificationSwitch from './NotificationSwitch.svelte';
 	import { setStreams, Streams } from './streams';
@@ -86,6 +87,7 @@
 		</div>
 		<div class="ml-auto flex items-center gap-4 sm:gap-6">
 			<NotificationSwitch notifications={streams.alerts.notifications} />
+			<RecordingStatus />
 			<ReceiverStatus stats={streams.stats} history={streams.radio.points} />
 		</div>
 		<button

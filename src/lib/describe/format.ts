@@ -87,6 +87,34 @@ export function ago(ms: number): string {
 export const interval = (ms: number) =>
 	ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
 
+/** "4:12": a length of time in minutes and seconds, e.g. what's left of a recording. */
+export function minutesSeconds(ms: number): string {
+	const s = Math.max(0, Math.round(ms / 1000));
+	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** "5 minutes", "90 seconds", "1 hour 30 minutes": a length of time in words. */
+export function durationWords(ms: number): string {
+	const s = Math.round(ms / 1000);
+	if (s < 120) return plural(s, 'second');
+	const parts = [
+		[Math.floor(s / 3600), 'hour'],
+		[Math.floor(s / 60) % 60, 'minute'],
+		[s % 60, 'second']
+	] as const;
+	return parts
+		.filter(([count]) => count > 0)
+		.map(([count, word]) => plural(count, word))
+		.join(' ');
+}
+
+/** "470 MB", "1.4 GB", "12 kB": a file's size, in powers of 1000 like disks and downloads. */
+export function bytesText(bytes: number): string {
+	if (bytes >= 1e9) return `${fixed(bytes / 1e9)} GB`;
+	if (bytes >= 1e6) return `${n(bytes / 1e6)} MB`;
+	return `${n(Math.max(1, bytes / 1e3))} kB`;
+}
+
 /** Distances and speeds on the tracker: NM and kt (aviation's units), or km and km/h. */
 export type Unit = 'NM' | 'km';
 
@@ -128,4 +156,14 @@ export const shortTime = (t: number) => SHORT.format(t);
 export function dayAndTime(t: number, time: (t: number) => string = clockTime): string {
 	const today = new Date(t).toDateString() === new Date().toDateString();
 	return today ? time(t) : `${DAY.format(t)} ${time(t)}`;
+}
+
+/** "2026-11-23T21-40-12": local time for a file name (no colons: Windows forbids them). */
+export function fileTime(t: number): string {
+	const d = new Date(t);
+	const two = (x: number) => String(x).padStart(2, '0');
+	return (
+		`${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` +
+		`T${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`
+	);
 }

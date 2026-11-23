@@ -6,6 +6,9 @@ import type { Build } from 'bun';
 
 // Tests don't go through Vite: they run with Bun's built-in runner (`bun test`).
 export default defineConfig({
+	// `bun run dev --record` writes its file here, a second at a time: not a source file, so
+	// no reloads for it.
+	server: { watch: { ignored: ['**/*.sigmf.zst'] } },
 	plugins: [
 		tailwindcss(),
 		sveltekit({

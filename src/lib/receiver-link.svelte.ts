@@ -1,9 +1,9 @@
-import type { StreamUpdate } from '#lib/receiver-types.ts';
+import type { RecordingReport, StreamUpdate } from '#lib/receiver-types.ts';
 
 /**
  * The two links between the antenna and the open page, for the status in the navigation bar:
  * browser ↔ server (the event stream) and server ↔ receiver (the FrameSource, from the
- * stream's updates).
+ * stream's updates), and the server's recording of the samples, if it makes one.
  *
  * The app's one StreamConnection writes here.
  *
@@ -18,4 +18,6 @@ export const receiverLink = $state<{
 	status: StreamUpdate['status'] | null;
 	/** Where the messages come from, e.g. "RTL-SDR 0" or "pi:30005". */
 	source: string | null;
-}>({ online: null, status: null, source: null });
+	/** The samples' recording (--record), from the latest update; null: none. */
+	recording: RecordingReport | null;
+}>({ online: null, status: null, source: null, recording: null });

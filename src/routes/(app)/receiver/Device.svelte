@@ -4,9 +4,9 @@
 	Beast feed only the source (its tooltip says why) and the link.
 -->
 <script lang="ts">
-	import { dayAndTime } from '#lib/describe/format.ts';
+	import { bytesText, dayAndTime, minutesSeconds } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import type { DemodReport, SourceEvent } from '#lib/receiver-types.ts';
+	import type { DemodReport, RecordingReport, SourceEvent } from '#lib/receiver-types.ts';
 
 	interface Props {
 		/** "RTL-SDR 0", "pi:1234 (rtl_tcp)"… */
@@ -14,9 +14,29 @@
 		/** null: a Beast feed. */
 		demod: DemodReport | null;
 		events: SourceEvent[];
+		/** The samples' recording (--record); null: none. */
+		recording: RecordingReport | null;
 	}
 
-	let { source, demod, events }: Props = $props();
+	let { source, demod, events, recording }: Props = $props();
+
+	/** "4:12 of 5:00, 160 MB", "saved, 5:00, 470 MB". */
+	let recorded = $derived.by(() => {
+		if (!recording) return null;
+		const length = `${minutesSeconds(recording.ms)} of ${minutesSeconds(recording.plannedMs)}`;
+		const size = bytesText(recording.bytes);
+		switch (recording.state) {
+			case 'waiting':
+				return 'waiting for the first samples';
+			case 'recording':
+			case 'finishing':
+				return `${length}, ${size}`;
+			case 'saved':
+				return `saved, ${minutesSeconds(recording.ms)}, ${size}`;
+			case 'failed':
+				return 'failed';
+		}
+	});
 
 	const STATES: Record<SourceEvent['state'], string> = {
 		connected: 'receiving',
@@ -82,6 +102,15 @@
 			<dd>1090 MHz · 2.4 million samples/s</dd>
 			<dt class="text-zinc-400">Runs</dt>
 			<dd>{demod.runs}</dd>
+		{/if}
+		{#if recording}
+			<dt class="text-zinc-400">Recording</dt>
+			<dd class="min-w-0">
+				<span class="block truncate font-mono">{recording.file}</span>
+				<span class={recording.state === 'failed' || recording.stopped ? 'text-warn-300' : ''}>
+					{recorded}{recording.stopped ? `: ${recording.stopped}` : ''}
+				</span>
+			</dd>
 		{/if}
 	</dl>
 
