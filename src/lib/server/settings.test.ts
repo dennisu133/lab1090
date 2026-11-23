@@ -28,11 +28,12 @@ test('endpoints: host, host:port, IPv6 in brackets; Beast port by default', () =
 });
 
 test('flags', () => {
-	expect(parseFlags([])).toEqual({ help: false, config: null });
+	expect(parseFlags([])).toEqual({ help: false, version: false, config: null });
 	expect(
 		parseFlags(['--connect', 'pi', '--position', '52,14', '--port', '8080', '--bind', '127.0.0.1'])
 	).toEqual({
 		help: false,
+		version: false,
 		config: null,
 		connect: { host: 'pi', port: BEAST_PORT },
 		position: { lat: 52, lon: 14 },
@@ -47,6 +48,7 @@ test('flags', () => {
 	});
 	expect(parseFlags(['--samples', 'x.u8']).samples).toBe('x.u8');
 	expect(parseFlags(['-h']).help).toBe(true);
+	expect(parseFlags(['--version']).version).toBe(true);
 });
 
 test('one source at a time', () => {

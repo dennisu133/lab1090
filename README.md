@@ -71,8 +71,7 @@ bun run build:arm64    # build/lab1090, for a 64-bit Raspberry Pi
 ```
 
 One file with the Bun runtime and the web page inside: copy it to the machine and run it. It
-needs 64-bit Linux with glibc and, for a dongle on that machine, the rtl-sdr package. On a
-Pi 5 it uses about 7 % of one core and 55 MB of memory.
+needs 64-bit Linux with glibc and, for a dongle on that machine, the rtl-sdr package.
 
 ## Attribution
 

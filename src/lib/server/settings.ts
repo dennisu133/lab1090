@@ -22,6 +22,8 @@
  * page's alone.
  */
 import { parseArgs } from 'node:util';
+// Only the version is bundled: Vite splits JSON into named exports and drops the rest.
+import { version } from '../../../package.json';
 import { parseLatLon } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 
@@ -67,10 +69,13 @@ export const DEFAULT_PORT = 1090;
  * need it. Near an airport, strong signals can overload it; then less helps.
  */
 export const DEFAULT_GAIN = 49.6;
+/** lab1090's version: package.json's, the one place it is kept. */
+export const VERSION: string = version;
+
 /** The first RTL-SDR found. */
 const DEFAULT_DEVICE = '0';
 
-export const USAGE = `lab1090: live Mode S and ADS-B from your own receiver, decoded in your browser.
+export const USAGE = `lab1090 ${VERSION}: live Mode S and ADS-B from your own receiver, decoded in your browser.
 
 Usage: lab1090 [options]
 
@@ -100,6 +105,7 @@ The web page:
   --config <file>           the config file (default: ~/.config/lab1090/config.json,
                             or $XDG_CONFIG_HOME/lab1090/config.json if that is set)
   -h, --help                show this text
+  --version                 show lab1090's version
 
 The config file takes the same settings as JSON (not --samples), e.g.
   { "gain": 40, "position": { "lat": 52.5163, "lon": 13.3777 } }
@@ -111,6 +117,7 @@ export class SettingsError extends Error {}
 /** What the command line said; anything left out comes from the file or the defaults. */
 export interface Flags {
 	help: boolean;
+	version: boolean;
 	config: string | null;
 	device?: string;
 	gain?: number;
@@ -141,14 +148,19 @@ export function parseFlags(args: string[]): Flags {
 				bind: { type: 'string' },
 				'beast-out': { type: 'string' },
 				config: { type: 'string' },
-				help: { type: 'boolean', short: 'h' }
+				help: { type: 'boolean', short: 'h' },
+				version: { type: 'boolean' }
 			}
 		}).values;
 	} catch (e) {
 		// parseArgs: "Unknown option '--conect'", "Option '--port <value>' argument missing", …
 		throw new SettingsError((e as Error).message);
 	}
-	const flags: Flags = { help: parsed.help ?? false, config: parsed.config ?? null };
+	const flags: Flags = {
+		help: parsed.help ?? false,
+		version: parsed.version ?? false,
+		config: parsed.config ?? null
+	};
 	if (parsed.device !== undefined) flags.device = field('--device', parseDevice, parsed.device);
 	if (parsed.gain !== undefined) flags.gain = field('--gain', parseGain, parsed.gain);
 	if (parsed['rtl-tcp'] !== undefined) {

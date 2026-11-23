@@ -19,6 +19,7 @@ import {
 	resolveSettings,
 	SettingsError,
 	USAGE,
+	VERSION,
 	withPosition,
 	type ConfigFile,
 	type Settings
@@ -55,13 +56,17 @@ class LiveSettings {
 		// Vite's build runs this module too (with its own argv): defaults, nothing read.
 		if (building) {
 			this.configPath = '';
-			this.#settings = resolveSettings({ help: false, config: null }, {});
+			this.#settings = resolveSettings({ help: false, version: false, config: null }, {});
 			return;
 		}
 		try {
 			const flags = parseFlags(args(process.argv));
 			if (flags.help) {
 				console.log(USAGE);
+				process.exit(0);
+			}
+			if (flags.version) {
+				console.log(`lab1090 ${VERSION}`);
 				process.exit(0);
 			}
 			this.configPath = flags.config ?? defaultConfigPath(process.env, homedir());
