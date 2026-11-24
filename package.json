@@ -1,7 +1,7 @@
 {
 	"name": "lab1090",
 	"version": "0.0.1",
-	"description": "A learning tool for what aircraft transmit on 1090 MHz: decodes live Mode S and ADS-B from an RTL-SDR, from the raw samples up, and explains every value",
+	"description": "See and understand what aircraft transmit on 1090 MHz: live Mode S and ADS-B decoding from raw RTL-SDR samples.",
 	"license": "GPL-3.0-or-later",
 	"repository": {
 		"type": "git",
