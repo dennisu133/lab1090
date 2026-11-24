@@ -54,12 +54,12 @@ export function terrainSkyline(receiver: LatLon, antennaKm: number, at: Elevatio
 }
 
 /** Height in metres from a terrarium pixel's red, green and blue. */
-export function terrariumHeight(r: number, g: number, b: number): number {
+function terrariumHeight(r: number, g: number, b: number): number {
 	return r * 256 + g + b / 256 - 32768;
 }
 
 /** Web Mercator tile coordinates (fractional) of a point at zoom z. */
-export function tileXY(p: LatLon, z: number): { x: number; y: number } {
+function tileXY(p: LatLon, z: number): { x: number; y: number } {
 	const n = 2 ** z;
 	const phi = (p.lat * Math.PI) / 180;
 	return {

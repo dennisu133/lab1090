@@ -218,7 +218,7 @@ export function lookupAircraft(
 }
 
 /** The route flown under a callsign; null if adsbdb doesn't know it. */
-export function lookupRoute(callsign: string, get: typeof fetch = fetch): Promise<DbRoute | null> {
+function lookupRoute(callsign: string, get: typeof fetch = fetch): Promise<DbRoute | null> {
 	return lookup(`callsign/${encodeURIComponent(callsign.toUpperCase())}`, parseRoute, get);
 }
 
@@ -233,7 +233,7 @@ export function airlineDesignator(callsign: string): string | null {
 }
 
 /** An airline by its ICAO designator; null if adsbdb doesn't know it. */
-export function lookupAirline(icao: string, get: typeof fetch = fetch): Promise<DbAirline | null> {
+function lookupAirline(icao: string, get: typeof fetch = fetch): Promise<DbAirline | null> {
 	const key = icao.toUpperCase();
 	return lookup(`airline/${key}`, (json) => parseAirlineList(json, key), get);
 }

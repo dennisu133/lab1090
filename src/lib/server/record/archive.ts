@@ -40,7 +40,7 @@ const ZSTD_MAGIC = 0xfd2fb528;
 const MAX_BLOCK = 128 * 1024;
 
 /** The archive's names for a recording called `base` ("lab1090-2026-11-23T21-40-12-balcony"). */
-export function archiveNames(base: string) {
+function archiveNames(base: string) {
 	return {
 		meta: `${base}/${base}.sigmf-meta`,
 		data: `${base}/${base}.sigmf-data`

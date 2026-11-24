@@ -46,7 +46,7 @@ export function crc24(bytes: Uint8Array, length = bytes.length): number {
 }
 
 /** The parity field: the last 24 bits of the message (PI or AP). */
-export function parityField(data: Uint8Array): number {
+function parityField(data: Uint8Array): number {
 	const n = data.length;
 	return (data[n - 3] << 16) | (data[n - 2] << 8) | data[n - 1];
 }

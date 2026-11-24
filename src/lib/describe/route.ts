@@ -91,7 +91,7 @@ const titleCase = (s: string) =>
  * How the callsign is said on the radio: the airline's telephony designator, then the rest
  * character by character: EJU64BR with "Alpine" → "Alpine six four bravo romeo".
  */
-export function spoken(callsign: string, airline: DbAirline): string | null {
+function spoken(callsign: string, airline: DbAirline): string | null {
 	if (!airline.radio || airlineDesignator(callsign) !== airline.icao) return null;
 	const rest = [...callsign.slice(3).toUpperCase()].map((c) =>
 		/\d/.test(c) ? DIGITS[Number(c)] : (LETTERS[c] ?? c)

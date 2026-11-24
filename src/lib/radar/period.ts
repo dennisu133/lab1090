@@ -63,7 +63,7 @@ export function comb(gapsS: number[], period: number): number {
  * other's (always the same fraction of a turn apart) shift the peak by ~10 ms, which over
  * 60 turns adds up to half a second. Here they count as nothing.
  */
-export function sharpComb(gapsS: number[], period: number): number {
+function sharpComb(gapsS: number[], period: number): number {
 	let sum = 0;
 	for (const d of gapsS) sum += Math.exp(SHARPNESS * (Math.cos((2 * Math.PI * d) / period) - 1));
 	return gapsS.length ? sum / gapsS.length : 0;

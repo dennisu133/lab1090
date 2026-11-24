@@ -90,7 +90,7 @@ export interface RouteCheck {
 }
 
 /** The legs of a route: one, or two with a stop on the way. */
-export function legs(route: DbRoute): Leg[] {
+function legs(route: DbRoute): Leg[] {
 	return route.via
 		? [
 				{ from: route.origin, to: route.via },

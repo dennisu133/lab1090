@@ -79,7 +79,7 @@ export interface TrackerContrail {
  * MIN_AIRCRAFT aircraft (each aircraft's own errors partly cancel), else its own. null
  * without a temperature or an altitude.
  */
-export function trackerContrail(w: WeatherAircraft, layer: Layer | null): TrackerContrail | null {
+function trackerContrail(w: WeatherAircraft, layer: Layer | null): TrackerContrail | null {
 	const t = w.lastTemperature;
 	const feet = t?.inputs.altitude?.feet;
 	if (!t?.temperature || feet === undefined) return null;
@@ -98,7 +98,7 @@ export function trackerContrail(w: WeatherAircraft, layer: Layer | null): Tracke
 }
 
 /** Where the temperature comes from, in a sentence. */
-export function temperatureSource(c: TrackerContrail): string {
+function temperatureSource(c: TrackerContrail): string {
 	const { kelvin, own, layer } = c;
 	return layer
 		? `The air at ${levelOrFeet(layer.level)}: ${celsius(kelvin)}, the mean of ${layer.n} samples from ${layer.aircraft} aircraft (its own reading: ${celsius(own)}${

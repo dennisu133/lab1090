@@ -46,7 +46,7 @@ export interface RadarProperties {
  * rate (SI 1 4.00 s and SI 28 3.96 s, 20–30 km apart near Bratislava), and with one
  * decimal both read "4.0 s", as if they were one radar found twice.
  */
-export function radarLabel(radar: Radar): string {
+function radarLabel(radar: Radar): string {
 	return `${radar.id} · ${(radar.period / 1000).toFixed(2)} s`;
 }
 
