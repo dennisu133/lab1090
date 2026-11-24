@@ -8,7 +8,7 @@
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 	import type { LatLon } from '#lib/modes/cpr.ts';
-	import { mapStyle } from '#lib/map/style.ts';
+	import { MAP_ORIGINS, mapStyle } from '#lib/map/style.ts';
 	import { watchBaseMap } from '#lib/map/base-map.ts';
 	import { themeColour } from '#lib/theme.ts';
 
@@ -71,6 +71,13 @@
 		}
 	});
 </script>
+
+<!-- crossorigin: MapLibre fetches tiles in CORS mode, which needs a connection of its own. -->
+<svelte:head>
+	{#each MAP_ORIGINS as origin (origin)}
+		<link rel="preconnect" href={origin} crossorigin="anonymous" />
+	{/each}
+</svelte:head>
 
 <!-- MapLibre makes its container `position: relative`: the notice's anchor is a wrapper. -->
 <div class="relative">

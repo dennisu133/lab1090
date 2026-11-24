@@ -48,6 +48,10 @@
 	/* the ⓘ button is a black icon: make it light */
 	@apply invert;
 }
+/* On a narrow map the credits are at the top (base-map.ts): below the alert banner. */
+.maplibregl-map .maplibregl-ctrl-top-right {
+	top: var(--alert-banner, 0px);
+}
 
 /*
  * InfoTip's last resorts, when lining the tooltip up with an edge of its label doesn't fit in

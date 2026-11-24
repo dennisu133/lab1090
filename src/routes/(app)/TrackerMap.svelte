@@ -91,9 +91,9 @@
 	import { beamFeatures, radarFeatures } from '#lib/map/radars.ts';
 	import { cellFeatures, changeFeatures, stretchFeatures } from '#lib/map/gnss.ts';
 	import { barbFeatures } from '#lib/map/winds.ts';
-	import { mapStyle } from '#lib/map/style.ts';
+	import { MAP_ORIGINS, mapStyle } from '#lib/map/style.ts';
 	import { themeColour } from '#lib/theme.ts';
-	import { foldCredits, watchBaseMap } from '#lib/map/base-map.ts';
+	import { creditsCorner, foldCredits, watchBaseMap } from '#lib/map/base-map.ts';
 	import { lngLat } from '#lib/map/geometry.ts';
 	import {
 		aircraftOpacity,
@@ -195,7 +195,8 @@
 			style: mapStyle(),
 			center: lngLat(center),
 			zoom: 7,
-			attributionControl: { compact: true },
+			// Added below, in a corner that depends on the map's width.
+			attributionControl: false,
 			// Rotating the map would make "north up" and the tracks confusing; pinch-zoom stays.
 			dragRotate: false,
 			pitchWithRotate: false,
@@ -206,6 +207,7 @@
 			fadeDuration: 0
 		});
 		m.touchZoomRotate.disableRotation();
+		m.addControl(new maplibregl.AttributionControl({ compact: true }), creditsCorner(container));
 		let unfold = () => {};
 		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));
 
@@ -590,6 +592,13 @@
 		m.fitBounds(bounds, { padding: 60, maxZoom: 8, duration: 0 });
 	});
 </script>
+
+<!-- crossorigin: MapLibre fetches tiles in CORS mode, which needs a connection of its own. -->
+<svelte:head>
+	{#each MAP_ORIGINS as origin (origin)}
+		<link rel="preconnect" href={origin} crossorigin="anonymous" />
+	{/each}
+</svelte:head>
 
 <!-- MapLibre makes its container `position: relative` (unlayered CSS, so it beats Tailwind's
      `absolute`): the positioning goes on a wrapper. -->

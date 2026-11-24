@@ -14,6 +14,16 @@
  */
 import type { StyleSpecification } from 'maplibre-gl';
 
+const OPENFREEMAP = 'https://tiles.openfreemap.org';
+const TERRAIN = 'https://s3.amazonaws.com';
+
+/**
+ * The servers the base map comes from. The pages with a map name them in their head
+ * (`<link rel="preconnect">`), so the browser connects to them while it's still loading
+ * MapLibre, not only once MapLibre asks for the first tile.
+ */
+export const MAP_ORIGINS = [OPENFREEMAP, TERRAIN];
+
 const FONT = ['Noto Sans Regular'];
 
 /**
@@ -50,15 +60,15 @@ export const HALO = C.halo;
 export function mapStyle({ streets = false } = {}): StyleSpecification {
 	const style: StyleSpecification = {
 		version: 8,
-		glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+		glyphs: `${OPENFREEMAP}/fonts/{fontstack}/{range}.pbf`,
 		sources: {
 			openmaptiles: {
 				type: 'vector',
-				url: 'https://tiles.openfreemap.org/planet'
+				url: `${OPENFREEMAP}/planet`
 			},
 			terrain: {
 				type: 'raster-dem',
-				tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+				tiles: [`${TERRAIN}/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`],
 				encoding: 'terrarium',
 				tileSize: 256,
 				// Finer tiles exist, but shading doesn't need them: beyond this they're stretched.

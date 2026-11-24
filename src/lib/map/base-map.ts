@@ -1,5 +1,6 @@
 /**
- * The base map: is it reachable (watchBaseMap), and its credits (foldCredits, at the end).
+ * The base map: is it reachable (watchBaseMap), and its credits (creditsCorner, foldCredits,
+ * at the end).
  *
  * The map's tiles, label fonts and terrain come from outside (OpenFreeMap, AWS), fetched by
  * the browser; lab1090's server needs no internet. So a device without it gets live aircraft
@@ -95,12 +96,22 @@ export function watchBaseMap(
 
 /** How long the credits stay open on a narrow map: OSMF's guidelines allow five seconds. */
 export const CREDITS_MS = 5000;
-/** Narrower than this, open credits cover the legend and the layer switches. */
+/** Narrower than this, open credits wrap across the map's width. */
 const NARROW_PX = 800;
 
 /**
+ * Where the credits go: MapLibre's bottom right, unless the map is narrow. There the open
+ * credits would reach across to the legend and the layer switches in the bottom left and
+ * lie over them (a tap meant for "Layers" could open a credit's link), so they go to the top
+ * right, where there's only map (below the alert banner: layout.css).
+ */
+export function creditsCorner(container: HTMLElement): 'top-right' | 'bottom-right' {
+	return container.clientWidth < NARROW_PX ? 'top-right' : 'bottom-right';
+}
+
+/**
  * The credits (MapLibre's compact attribution control) open expanded. On a narrow map they
- * cover the legend and the layers, so there they fold to the ⓘ on the first tap or zoom
+ * cover a good part of it, so there they fold to the ⓘ on the first tap or zoom
  * (MapLibre itself only on a drag), or after CREDITS_MS. Never before they've been seen:
  * OSMF's attribution guidelines want them visible without a tap at first, and allow folding
  * them on map interaction or after five seconds. Opened again with the ⓘ, the next tap or
