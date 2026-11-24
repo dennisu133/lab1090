@@ -29,6 +29,11 @@ vite.config.ts.timestamp-*
 tools/.venv
 __pycache__
 
+# Downloads the generators read (tools/README.md): not ours to publish
+/tools/annex10/
+/tools/fonts/
+/tools/geoids/
+
 # Claude Code: personal instructions, not shared
 CLAUDE.md
 CLAUDE.local.md

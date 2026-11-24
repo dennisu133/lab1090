@@ -3,7 +3,7 @@ The font for formulas (MathML): Noto Sans Math (The Noto Project Authors, SIL Op
 License 1.1, no Reserved Font Name), cut down to what formulas in the UI can use, renamed
 "Noto Sans Math Subset". See tools/README.md.
 
-  python tools/math-font.py oracle/local/fonts src/lib/assets/fonts
+  python tools/math-font.py tools/fonts src/lib/assets/fonts
 
 reads noto-sans-math.ttf (Google Fonts' file) from the first directory and writes
 noto-sans-math-subset.woff2 into the second.
