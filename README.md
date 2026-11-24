@@ -60,8 +60,8 @@ bun run lint     # formatting and ESLint (bun run format fixes the formatting)
 Receiver on another machine? Run lab1090 there with `--beast-out 30005` and develop with
 `bun run dev --connect <host>`. Nothing in the sky? `bun tools/replay.ts --loop` plays the recorded capture on
 127.0.0.1:30105, for `bun run dev --connect 127.0.0.1:30105`. The tests run on recordings
-and on reference values from pyModeS: [fixtures/](fixtures/README.md) and
-[tools/](tools/README.md) say more.
+and on reference values from pyModeS, weather balloons and NOAA: [oracle/](oracle/README.md)
+and [tools/](tools/README.md) say more.
 
 ## Deployment
 

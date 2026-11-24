@@ -8,7 +8,7 @@ crc:  CRC-24 remainder over the whole message, parity included ("syndrome"):
       0 for a valid DF17/18, the aircraft address for DF0/4/5/16/20/21.
 icao: what pyModeS reports as the address (AA field, or the remainder for AP formats).
 
-The output is committed under fixtures/oracle/, so tests don't need Python. pyModeS 3 has
+The output is committed under oracle/pymodes/, so tests don't need Python. pyModeS 3 has
 no top-level pms.crc()/pms.icao() any more: this uses pyModeS.util.crc and
 pyModeS.decode(msg)["icao"].
 See tools/README.md.

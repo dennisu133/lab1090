@@ -1,6 +1,6 @@
 /**
  * Test helpers for the weather code: the capture run through the pipeline, and the weather
- * balloon ascents in fixtures/sounding/ (tools/sounding.ts). Only imported by tests.
+ * balloon ascents in oracle/sounding/ (tools/sounding.ts). Only imported by tests.
  */
 import { join } from 'node:path';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
@@ -15,7 +15,7 @@ import { toVector, type Vector } from './wind';
 const root = join(import.meta.dir, '../../..');
 
 /**
- * When the capture was recorded (fixtures/README.md: 13 Nov 2026, 16:18:23 CET). The
+ * When the capture was recorded (13 Nov 2026, 16:18:23 CET). The
  * receiver's Beast timestamps only count from when readsb started, so the wall clock is
  * reconstructed from this; it only matters for the magnetic model.
  */
@@ -64,9 +64,9 @@ export interface Sounding {
 	levels: SoundingLevel[];
 }
 
-/** A file in fixtures/sounding/, e.g. "10393-2026-11-13-18z". */
+/** A file in oracle/sounding/, e.g. "10393-2026-11-13-18z". */
 export async function loadSounding(name: string): Promise<Sounding> {
-	const text = await Bun.file(join(root, `fixtures/sounding/${name}.csv`)).text();
+	const text = await Bun.file(join(root, `oracle/sounding/${name}.csv`)).text();
 	const lines = text.trim().split('\n');
 	const launch = lines.find((l) => l.startsWith('# Launched'))!;
 	const [, date] = launch.match(/(\d{4}-\d\d-\d\d) /)!;

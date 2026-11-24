@@ -4,7 +4,7 @@ import { BeastParser, type BeastFrame } from './parser';
 import { encodeFrame } from './encode';
 
 const capture = new Uint8Array(
-	await Bun.file(join(import.meta.dir, '../../../../fixtures/capture.beast')).arrayBuffer()
+	await Bun.file(join(import.meta.dir, '../../../../oracle/capture.beast')).arrayBuffer()
 );
 
 /** Compact, comparable representation of a frame. */
@@ -39,7 +39,7 @@ const reference = parseInChunks(capture, () => capture.length);
 const referenceShown = reference.frames.map(show);
 
 describe('the 10-minute capture', () => {
-	test('yields every frame, matching fixtures/README.md', () => {
+	test('yields every frame', () => {
 		expect(reference.stats).toEqual({ frames: 33968, heartbeats: 5, resyncs: 0, skippedBytes: 0 });
 
 		const dfCounts: Record<number, number> = {};

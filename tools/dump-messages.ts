@@ -2,7 +2,7 @@
  * Print every Mode S message in a Beast capture as hex, one per line. Input for the pyModeS
  * oracle:
  *
- *   bun tools/dump-messages.ts fixtures/capture.beast | tools/.venv/bin/python tools/oracle.py
+ *   bun tools/dump-messages.ts oracle/capture.beast | tools/.venv/bin/python tools/oracle.py
  *
  * By default deduplicated (aircraft repeat themselves a lot). With --timed: every message in
  * capture order, prefixed with the receiver timestamp in seconds ("12.345678 8d…"), for
@@ -13,7 +13,7 @@ import { toHex } from '../src/lib/modes/frame.ts';
 
 const args = process.argv.slice(2);
 const timed = args.includes('--timed');
-const path = args.find((a) => !a.startsWith('--')) ?? 'fixtures/capture.beast';
+const path = args.find((a) => !a.startsWith('--')) ?? 'oracle/capture.beast';
 const frames = new BeastParser().push(new Uint8Array(await Bun.file(path).arrayBuffer()));
 const seen = new Set<string>();
 for (const f of frames) {

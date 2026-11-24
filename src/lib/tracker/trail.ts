@@ -23,7 +23,7 @@
  * messages (TC 19, subtypes 1 and 2: modes/velocity.ts). The map draws a bridge fainter
  * than the trail: nobody heard the aircraft there.
  *
- * In an hour of traffic (fixtures/local/capture-1h.beast) 56 of 70 gaps got a bridge, most
+ * In an hour of traffic (oracle/local/capture-1h.beast) 56 of 70 gaps got a bridge, most
  * with the line's speed within 2 % of the reported ones, all within 3° of the tracks; the
  * furthest off in speed were aircraft climbing (and speeding up) through the gap. Two had
  * turned in the gap, by 16° and 8°: no bridge. The other 12 had no velocity reported on

@@ -166,7 +166,7 @@ describe('IDENT', () => {
 
 const captureFrames = new BeastParser().push(
 	new Uint8Array(
-		await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
+		await Bun.file(join(import.meta.dir, '../../../oracle/capture.beast')).arrayBuffer()
 	)
 );
 

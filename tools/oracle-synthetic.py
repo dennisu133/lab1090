@@ -12,9 +12,9 @@ capability and mode bits) has hand-made cases in src/lib/modes/synthetic.test.ts
 
 Writes two files (see tools/README.md):
 
-  fixtures/oracle/synthetic.jsonl   one message per line, with everything pyModeS.decode()
+  oracle/pymodes/synthetic.jsonl   one message per line, with everything pyModeS.decode()
                                     returns, plus "ra" (BDS 3,0 decode) for DF16 with VDS 0x30
-  fixtures/oracle/surface.json      surface CPR: true positions near a reference, encoded as
+  oracle/pymodes/surface.json      surface CPR: true positions near a reference, encoded as
                                     even/odd messages (our own encoder, below), and pyModeS's
                                     decodes with the reference and as pairs
 
@@ -135,9 +135,9 @@ def surface_cases():
             }  # fmt: skip
 
 
-with open(ROOT / "fixtures/oracle/synthetic.jsonl", "w") as f:
+with open(ROOT / "oracle/pymodes/synthetic.jsonl", "w") as f:
     for e in entries():
         f.write(json.dumps(e, separators=(",", ":")) + "\n")
 
-with open(ROOT / "fixtures/oracle/surface.json", "w") as f:
+with open(ROOT / "oracle/pymodes/surface.json", "w") as f:
     json.dump(list(surface_cases()), f, separators=(",", ":"))

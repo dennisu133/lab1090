@@ -1,9 +1,9 @@
 /**
  * Downloads a radiosonde ascent (weather balloon) from the University of Wyoming's
  * sounding archive and writes what the weather tests need as a small CSV, for
- * fixtures/sounding/ (see fixtures/README.md and src/lib/weather/sounding.test.ts).
+ * oracle/sounding/ (see oracle/README.md and src/lib/weather/sounding.test.ts).
  *
- *   bun tools/sounding.ts 10393 "2026-11-13 18:00" > fixtures/sounding/10393-2026-11-13-18z.csv
+ *   bun tools/sounding.ts 10393 "2026-11-13 18:00" > oracle/sounding/10393-2026-11-13-18z.csv
  *
  * The first argument is the WMO station number (10393: Lindenberg, Germany), the second
  * the nominal time of the ascent in UTC (00, 06, 12 or 18 UTC). The balloon is launched

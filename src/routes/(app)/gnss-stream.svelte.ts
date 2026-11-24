@@ -25,7 +25,7 @@ const CELLS_MS = 10_000;
  *
  * A stream listener after the tracker (streams.ts), like the radars: it reads where the
  * tracker put each aircraft. It collects from the start, on every page, like the coverage:
- * a few comparisons per message (the hour of fixtures/local/capture-1h.beast takes ~0.1 s),
+ * a few comparisons per message (the hour of oracle/local/capture-1h.beast takes ~0.1 s),
  * and interference is rare, so the hours before the layer was switched on count too.
  */
 export class GnssStream implements UpdateListener {

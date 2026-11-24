@@ -4,7 +4,7 @@
  * lab1090 plays one by itself too (`--replay x.beast [--loop]`); this tool adds the synthetic
  * alerts and jammer, and serves several lab1090s at once.
  *
- *   bun tools/replay.ts [fixtures/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
+ *   bun tools/replay.ts [oracle/capture.beast] [--port 30105] [--speed 1] [--loop] [--alerts]
  *                       [--jamming]
  *   bun run dev --connect 127.0.0.1:30105
  *
@@ -42,7 +42,7 @@ const jamming = !alerts && args.includes('--jamming');
 const WITH_VALUE = ['--port', '--speed'];
 const path =
 	args.find((a, i) => !a.startsWith('--') && !WITH_VALUE.includes(args[i - 1])) ??
-	'fixtures/capture.beast';
+	'oracle/capture.beast';
 
 const recorded = new BeastParser().push(new Uint8Array(await Bun.file(path).arrayBuffer()));
 const frames = alerts ? injectAlerts(recorded) : jamming ? injectJamming(recorded) : recorded;

@@ -3,12 +3,12 @@ import { join } from 'node:path';
 import { decimalYear, magneticField } from './wmm';
 
 /**
- * NOAA's test values for WMM2025 (fixtures/wmm/WMM2025_TestValues.txt, shipped with the
+ * NOAA's test values for WMM2025 (oracle/wmm/WMM2025_TestValues.txt, shipped with the
  * coefficients): 100 points from pole to pole over 2025–2029.5, with the field to 2 decimals
  * for angles and 6 for nT.
  */
 const values = (
-	await Bun.file(join(import.meta.dir, '../../../fixtures/wmm/WMM2025_TestValues.txt')).text()
+	await Bun.file(join(import.meta.dir, '../../../oracle/wmm/WMM2025_TestValues.txt')).text()
 )
 	.split('\n')
 	.filter((line) => line.trim() && !line.startsWith('#'))

@@ -22,7 +22,7 @@
  *             large Rc, or NACp < 8, 0 meaning unknown)
  *   none      TC 0: an airborne position message without a position, only the altitude
  *
- * In an hour of traffic (fixtures/local/capture-1h.beast, 96 aircraft sending positions),
+ * In an hour of traffic (oracle/local/capture-1h.beast, 96 aircraft sending positions),
  * no aircraft ever switched between the states: 92 were good throughout, three sent TC 18
  * with NACp 0 throughout (MAS4, CKK235, CCA935, all from the east), one TC 0 only
  * (a military flight). In the 10-minute capture: DLH895 TC 18, CCA749 TC 0. So the numbers

@@ -3,7 +3,7 @@ The app's fonts: Atkinson Hyperlegible Next and Mono (Braille Institute, SIL Ope
 1.1, no Reserved Font Name) with an open zero, renamed "Hyperlegible Open" and "Hyperlegible
 Open Mono" so they aren't mistaken for the originals. See tools/README.md.
 
-  python tools/hyperlegible-open.py fixtures/local/fonts src/lib/assets/fonts
+  python tools/hyperlegible-open.py oracle/local/fonts src/lib/assets/fonts
 
 reads next.ttf, next-italic.ttf, mono.ttf and mono-italic.ttf (Google Fonts' variable fonts,
 weights 200–800), and inter.ttf and inter-italic.ttf (Inter, also OFL 1.1, for the Greek) from

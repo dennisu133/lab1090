@@ -4,7 +4,7 @@ import type { Socket, TCPSocketListener } from 'bun';
 import { encodeFrame } from './encode';
 
 export const capture = new Uint8Array(
-	await Bun.file(join(import.meta.dir, '../../../../fixtures/capture.beast')).arrayBuffer()
+	await Bun.file(join(import.meta.dir, '../../../../oracle/capture.beast')).arrayBuffer()
 );
 
 export const heartbeat = encodeFrame({

@@ -81,7 +81,7 @@ export function payload(data: Uint8Array): Uint8Array | null {
  * scale. readsb (only with --connect) sends sqrt(power) · 255, the power being the mean
  * squared magnitude of every sample in the message (demod_2400.c): pulses and gaps alike,
  * which costs 3 dB, and at 2.4 MS/s a 0.5 µs pulse is smeared over two or three samples,
- * which costs about 1.5 dB more. Measured on fixtures/local/{a,b,c}.u8 (20 Nov 2026), same
+ * which costs about 1.5 dB more. Measured on oracle/local/{a,b,c}.u8 (20 Nov 2026), same
  * message: ours 4.4 dB higher (4.0–4.7 for 80 % of them; 3.8 for the weakest, where noise
  * adds to readsb's power).
  */
@@ -91,7 +91,7 @@ export function signalDbfs(signal: number): number {
 
 /**
  * Messages at or above this count as "strong signals": close to the ADC's limit. On our
- * pulse-amplitude scale that's where clipping starts: in fixtures/local/{a,b}.u8 (20 Nov 2026)
+ * pulse-amplitude scale that's where clipping starts: in oracle/local/{a,b}.u8 (20 Nov 2026)
  * every message that reached the ADC's limit read −3 dBFS or more (519 of the 738 there in a,
  * 1 of 51 in b), none below. readsb uses −3 too (its auto-gain backs off above it), but on its
  * own scale, about 4.5 dB lower (signalDbfs): on ours that's past full scale.

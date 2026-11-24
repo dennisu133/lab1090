@@ -3,7 +3,7 @@
  * demodulator on a known sky when the real one is empty, and to compare it with readsb on
  * the same samples.
  *
- *   bun tools/modulate.ts [fixtures/capture.beast] [--seconds 60] [--out sky.u8]
+ *   bun tools/modulate.ts [oracle/capture.beast] [--seconds 60] [--out sky.u8]
  *                         [--noise noise.u8 | --sigma 0.0095] [--gain-db 0]
  *
  *   lab1090 --replay sky.u8                           (or: bun run dev --replay sky.u8)
@@ -27,7 +27,7 @@ const option = (name: string) => {
 const WITH_VALUE = ['--seconds', '--out', '--noise', '--sigma', '--gain-db'];
 const input =
 	args.find((a, i) => !a.startsWith('--') && !WITH_VALUE.includes(args[i - 1])) ??
-	'fixtures/capture.beast';
+	'oracle/capture.beast';
 const seconds = Number(option('--seconds') ?? 60);
 const out = option('--out') ?? 'sky.u8';
 const gain = 10 ** (Number(option('--gain-db') ?? 0) / 20);

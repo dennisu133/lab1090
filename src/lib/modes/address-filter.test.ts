@@ -49,7 +49,7 @@ test('prune forgets aircraft after the TTL', () => {
 
 test('the capture, in order, with the receiver clock', async () => {
 	const capture = new Uint8Array(
-		await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
+		await Bun.file(join(import.meta.dir, '../../../oracle/capture.beast')).arrayBuffer()
 	);
 	const filter = new AddressFilter();
 	const verdicts: Record<string, number> = {};

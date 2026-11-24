@@ -1,7 +1,7 @@
 /**
  * The capture against an independent measurement: the weather balloons of the German
  * Weather Service's observatory at Lindenberg (WMO station 10393, 52.21°N 14.12°E)
- * (fixtures/sounding/, from tools/sounding.ts).
+ * (oracle/sounding/, from tools/sounding.ts).
  *
  * A radiosonde measures pressure, temperature, humidity and (by GPS) its position as it
  * rises at about 5 m/s; the wind is how it drifts. Lindenberg launches four a day. Two
@@ -381,7 +381,7 @@ describe('the capture against the balloons', () => {
 		for (const t of truth) {
 			expect(Math.abs(speedOf(t) - w.wind.speed)).toBeLessThan(3); // 61 and 58 kt
 		}
-		// In both ascents (fixtures/sounding/) the cooling slows to 2 K/km or less well below
+		// In both ascents (oracle/sounding/) the cooling slows to 2 K/km or less well below
 		// cruise, around FL330 in the morning and FL270 in the evening as colder air came in.
 		// The tropopause is below every layer the aircraft filled (FL360–FL380 with enough
 		// data): we can't see it, and don't claim to.

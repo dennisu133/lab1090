@@ -20,7 +20,7 @@ function remainderBitwise(data: Uint8Array): number {
 }
 
 /** pyModeS's verdict on every distinct message in the capture (see tools/README.md). */
-const oracle = (await Bun.file(join(import.meta.dir, '../../../fixtures/oracle/crc.tsv')).text())
+const oracle = (await Bun.file(join(import.meta.dir, '../../../oracle/pymodes/crc.tsv')).text())
 	.split('\n')
 	.filter((line) => line && !line.startsWith('#') && !line.startsWith('message'))
 	.map((line) => {

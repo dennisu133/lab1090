@@ -21,7 +21,7 @@
  * (Y) and down (Z) components, and the declination is atan2(Y, X).
  *
  * Source: NOAA/BGS, "The US/UK World Magnetic Model for 2025–2030: Technical Report"
- * (equations 4–19). Tested against NOAA's published test values (fixtures/wmm/).
+ * (equations 4–19). Tested against NOAA's published test values (oracle/wmm/).
  *
  * Pure, no state here.
  */

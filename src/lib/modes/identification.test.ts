@@ -14,7 +14,7 @@ function identification(data: Uint8Array) {
 
 /** pyModeS's full decode of every distinct message in the capture (see tools/README.md). */
 const oracle: { message: string; typecode?: number; callsign?: string; category?: number }[] = (
-	await Bun.file(join(root, 'fixtures/oracle/decoded.jsonl')).text()
+	await Bun.file(join(root, 'oracle/pymodes/decoded.jsonl')).text()
 )
 	.trim()
 	.split('\n')

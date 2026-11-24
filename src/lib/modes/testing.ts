@@ -10,7 +10,7 @@ import type { Cpr } from './position';
 
 const root = join(import.meta.dir, '../../..');
 
-/** One line of fixtures/oracle/decoded.jsonl: field names as pyModeS returns them. */
+/** One line of oracle/pymodes/decoded.jsonl: field names as pyModeS returns them. */
 export type OracleEntry = { message: string; df: number; data: Uint8Array } & Record<
 	string,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,7 +18,7 @@ export type OracleEntry = { message: string; df: number; data: Uint8Array } & Re
 >;
 
 export const oracle: OracleEntry[] = (
-	await Bun.file(join(root, 'fixtures/oracle/decoded.jsonl')).text()
+	await Bun.file(join(root, 'oracle/pymodes/decoded.jsonl')).text()
 )
 	.trim()
 	.split('\n')
@@ -29,12 +29,12 @@ export const oracle: OracleEntry[] = (
 
 /** pyModeS's answer for each of the 8,192 possible 13-bit altitude and identity codes. */
 export const codes: { altitude: (number | null)[]; squawk: string[] } = await Bun.file(
-	join(root, 'fixtures/oracle/codes.json')
+	join(root, 'oracle/pymodes/codes.json')
 ).json();
 
 /** Every Mode S message of the capture, in order, duplicates included. */
 export const messages: Uint8Array[] = new BeastParser()
-	.push(new Uint8Array(await Bun.file(join(root, 'fixtures/capture.beast')).arrayBuffer()))
+	.push(new Uint8Array(await Bun.file(join(root, 'oracle/capture.beast')).arrayBuffer()))
 	.filter((f) => f.kind !== 'modeac')
 	.map((f) => f.data);
 
@@ -59,11 +59,11 @@ export const cprOracle: {
 		global: [number, number] | null;
 		local: [number, number];
 	}[];
-} = await Bun.file(join(root, 'fixtures/oracle/cpr.json')).json();
+} = await Bun.file(join(root, 'oracle/pymodes/cpr.json')).json();
 
 /** Every Mode S message of the capture with its receiver time in ms, in order. */
 export const timedMessages: { t: number; data: Uint8Array }[] = new BeastParser()
-	.push(new Uint8Array(await Bun.file(join(root, 'fixtures/capture.beast')).arrayBuffer()))
+	.push(new Uint8Array(await Bun.file(join(root, 'oracle/capture.beast')).arrayBuffer()))
 	.filter((f) => f.kind !== 'modeac')
 	.map((f) => ({ t: f.timestamp / 12_000, data: f.data }));
 
@@ -77,7 +77,7 @@ export const commbOracle: {
 	inferred: string[];
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	valid: Record<string, Record<string, any>>;
-}[] = (await Bun.file(join(root, 'fixtures/oracle/commb.jsonl')).text())
+}[] = (await Bun.file(join(root, 'oracle/pymodes/commb.jsonl')).text())
 	.trim()
 	.split('\n')
 	.map((line) => JSON.parse(line));
@@ -88,7 +88,7 @@ export const commbOracle: {
  * Random payloads with a correct CRC: well-formed, not necessarily sensible.
  */
 export const syntheticOracle: OracleEntry[] = (
-	await Bun.file(join(root, 'fixtures/oracle/synthetic.jsonl')).text()
+	await Bun.file(join(root, 'oracle/pymodes/synthetic.jsonl')).text()
 )
 	.trim()
 	.split('\n')
@@ -109,7 +109,7 @@ export const surfaceOracle: {
 	local_odd: Pair;
 	pair_even_newer: Pair | null;
 	pair_odd_newer: Pair | null;
-}[] = await Bun.file(join(root, 'fixtures/oracle/surface.json')).json();
+}[] = await Bun.file(join(root, 'oracle/pymodes/surface.json')).json();
 
 /**
  * The encoder, as the aircraft runs it (DO-260B A.1.7.1): the inverse of decoding, for

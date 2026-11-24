@@ -22,7 +22,7 @@
  * a 6-tick pulse: 1 for d = 0 and 1, sloping to 0 at −5 and 6, nothing outside.)
  *
  * Another dongle's filters may draw it differently; none has been tried. Simulated instead
- * (21 Nov 2026, fixtures/local/receiver-check/robust.ts: 30 s of fixtures/capture.beast's
+ * (21 Nov 2026, oracle/local/receiver-check/robust.ts: 30 s of oracle/capture.beast's
  * traffic over Gaussian noise, the share of sent messages decoded, against readsb 3.16.21 on the
  * same files): this shape 69.3 % (readsb 64.8 %), a box 51.7 % (50.1 %), this shape 1.3×
  * slower 57.4 % (41.6 %), 0.75× faster 62.1 % (59.7 %), 4× the traffic 71.4 % (64.9 %). A

@@ -13,11 +13,11 @@ import {
 import { checkParity } from './crc';
 
 const capture = new Uint8Array(
-	await Bun.file(join(import.meta.dir, '../../../fixtures/capture.beast')).arrayBuffer()
+	await Bun.file(join(import.meta.dir, '../../../oracle/capture.beast')).arrayBuffer()
 );
 const frames = new BeastParser().push(capture);
 
-describe('against the capture (numbers from fixtures/README.md)', () => {
+describe('against the capture', () => {
 	test('type codes of DF17', () => {
 		const tcs: Record<number, number> = {};
 		for (const f of frames) {

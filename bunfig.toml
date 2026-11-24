@@ -4,7 +4,7 @@ singleQuote = true
 trailingComma = "none"
 printWidth = 100
 # Served as-is, and the pyModeS oracle's generated output (tools/README.md)
-ignorePatterns = ["/static/", "/fixtures/oracle/"]
+ignorePatterns = ["/static/", "/oracle/pymodes/"]
 
 [fmt.sortTailwindcss]
 stylesheet = "./src/routes/layout.css"

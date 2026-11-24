@@ -57,7 +57,7 @@ function R82XX(): number[] {
  * Gaussian noise of σ ADC steps (on I and on Q), rounded to the dongle's 8 bits, and the mean
  * magnitude that gives in dBFS, the way the demodulator measures it. Simulated (1,000,000
  * samples each) with the zero between codes 127 and 128, where the dongle has it: I and Q
- * average 127.40 on the three recordings and live (21 Nov 2026, fixtures/local/
+ * average 127.40 on the three recordings and live (21 Nov 2026, oracle/local/
  * receiver-check/). σ fitted to the codes' histogram live: 0.70 / 0.79 / 0.88 at 40.2 / 44.5
  * / 49.6 dB; this table reads 0.73 / 0.82 / 0.94 from their mean magnitude (traffic adds a
  * little). Until then it had the zero on a code, which read σ 0.2 too low near the limit
@@ -121,7 +121,7 @@ export function roundingCostDb(sigma: number): number {
  * TODO: check it at a time with more strong traffic. Nothing clipped in the gain sweep;
  * afterwards one close aircraft reached full scale and clipped 42 messages in 5 s at 49.6 dB
  * (3.4 % of that step), too little to say whether 1 % over 5 minutes is the right limit.
- * On fixtures/local/a.u8 one aircraft passing close (0 dBFS) made 519 clipped messages in
+ * On oracle/local/a.u8 one aircraft passing close (0 dBFS) made 519 clipped messages in
  * 90 s, 1.65 % of 5 minutes: "too high" at the gain the sweep found best. Only 98 were its
  * own; 421 were weaker aircraft's sent while it was. Counting only messages whose own
  * pulses clip would fit the advice better; clipping is too rare here to tune it on.

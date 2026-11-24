@@ -93,7 +93,7 @@ describe('column', () => {
 	});
 
 	test("the capture's −775 ft at FL350: a column about 7 K colder than standard", () => {
-		// Median GNSS − baro at FL350 in fixtures/capture.beast; geoid 40.85 m at 52°N 14°E.
+		// Median GNSS − baro at FL350 in oracle/capture.beast; geoid 40.85 m at 52°N 14°E.
 		// If QNH was standard, that's −775 − 134 (geoid) − 59 (geopotential) = −965 ft,
 		// at 139 ft per kelvin.
 		const c = column(
