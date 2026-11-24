@@ -13,6 +13,7 @@
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { pathOf } from '#lib/page-path.ts';
 
 	let { children }: { children?: Snippet } = $props();
 
@@ -29,11 +30,11 @@
 				href={tab.href}
 				class={[
 					'-mb-px border-b-2 px-4 py-2 text-sm',
-					page.url.pathname === tab.href
+					page.url.pathname === pathOf(tab.href)
 						? 'border-zinc-100 text-white'
 						: 'border-transparent text-zinc-400 hover:text-white'
 				]}
-				aria-current={page.url.pathname === tab.href ? 'page' : undefined}
+				aria-current={page.url.pathname === pathOf(tab.href) ? 'page' : undefined}
 			>
 				{tab.label}
 			</a>

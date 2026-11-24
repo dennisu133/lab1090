@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { pathOf } from '#lib/page-path.ts';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import RecordingStatus from '#lib/components/RecordingStatus.svelte';
 	import AlertBanner from './AlertBanner.svelte';
@@ -43,7 +44,7 @@
 	 * The map pages (the tracker) fill the window below the navigation: a map, no margins, no
 	 * page scrolling.
 	 */
-	const FULL_SCREEN: string[] = [resolve('/(app)')];
+	const FULL_SCREEN: string[] = [pathOf(resolve('/(app)'))];
 	const fullScreen = $derived(FULL_SCREEN.includes(page.url.pathname));
 
 	/**
@@ -59,9 +60,13 @@
 	});
 
 	/** Is the current page this one or one of its sub-pages (the /weather tabs)? */
-	const within = (href: string) =>
-		page.url.pathname === href ||
-		(href !== resolve('/(app)') && page.url.pathname.startsWith(`${href}/`));
+	const within = (href: string) => {
+		const path = pathOf(href);
+		return (
+			page.url.pathname === path ||
+			(path !== pathOf(resolve('/(app)')) && page.url.pathname.startsWith(`${path}/`))
+		);
+	};
 </script>
 
 <!-- --alert-banner: other notices (LiveHeading) float below the alert banner, not over it. -->
