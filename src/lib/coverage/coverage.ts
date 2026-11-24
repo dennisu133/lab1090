@@ -36,6 +36,8 @@ export const BANDS = [
 
 /** One point per aircraft per this many ms for the sky plot (extremes are always kept). */
 export const THIN_MS = 10_000;
+/** How often aircraft no longer thinned are forgotten, ms. */
+const SWEEP_MS = 60_000;
 /** The most points kept for the plot; beyond, the oldest go (~5 h of busy traffic). */
 export const MAX_POINTS = 60_000;
 
@@ -76,7 +78,7 @@ export function sectorOf(bearingDeg: number): number {
 	return Math.floor((((bearingDeg % 360) + 360) % 360) / SECTOR_DEG) % SECTORS;
 }
 
-export function bandOf(altitudeFt: number): number {
+function bandOf(altitudeFt: number): number {
 	return BANDS.findIndex((b) => altitudeFt < b.below);
 }
 
@@ -87,8 +89,12 @@ export class Coverage {
 	#sectors: SectorState[];
 	/** Thinned positions for the sky plot, oldest first. */
 	#points: CoveragePoint[] = [];
-	/** When each aircraft's last point was kept. */
+	/**
+	 * When each aircraft's last point was kept. An entry older than THIN_MS acts like none,
+	 * so they're swept out every SWEEP_MS: otherwise every aircraft ever heard stays in it.
+	 */
 	#kept = new Map<string, number>();
+	#swept = -Infinity;
 	/** Positions counted in all. */
 	positions = 0;
 	/** The first and the latest position's time; null: none yet. */
@@ -163,6 +169,10 @@ export class Coverage {
 			extreme = true;
 		}
 
+		if (t - this.#swept >= SWEEP_MS) {
+			for (const [a, kept] of this.#kept) if (t - kept >= THIN_MS) this.#kept.delete(a);
+			this.#swept = t;
+		}
 		if (extreme || t - (this.#kept.get(icao) ?? -Infinity) >= THIN_MS) {
 			this.#kept.set(icao, t);
 			this.#points.push(p);
