@@ -42,6 +42,12 @@ export type Counts = Record<string, Record<Source, number>>;
 const MAX_ROWS = 2000;
 /** Rows the page shows at most; also what each register's buffer keeps. */
 export const FEED_ROWS = 200;
+/**
+ * A callsign is forgotten once its aircraft has sent nothing trustworthy for this long, ms
+ * (like AdsbMemory's). Kept as long as anything comes, not just callsigns: a radar may ask
+ * for 2,0 only now and then.
+ */
+const CALLSIGN_TTL_MS = 5 * 60_000;
 
 /**
  * /comm-b's view of the live stream: every register reading, broadcast or interrogated.
@@ -59,9 +65,12 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 
 	#memory = new AdsbMemory();
 	#aircraft = new CommBAircraftList();
-	// Plain Map on purpose: bookkeeping, never rendered (rows copy the callsign out).
+	/**
+	 * Each aircraft's latest callsign (ADS-B or 2,0), and when anything trustworthy last came
+	 * from it. Plain Map on purpose: bookkeeping, never rendered (rows copy the callsign out).
+	 */
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	#callsigns = new Map<string, string>();
+	#callsigns = new Map<string, { callsign: string | null; seen: number }>();
 	/** On the server's clock, like the frames. */
 	#window = new RateWindow<Counts>();
 	/**
@@ -96,6 +105,8 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 		const now = frames.at(-1)!.rx; // the server's clock, like the frames'
 		this.#memory.prune(now);
 		this.#aircraft.prune(now);
+		for (const [icao, c] of this.#callsigns)
+			if (now - c.seen > CALLSIGN_TTL_MS) this.#callsigns.delete(icao);
 		this.#count(rows, now);
 		for (const r of rows) {
 			const key = `${r.key} ${r.source}`;
@@ -142,11 +153,15 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 			this.#memory.add(addr.icao, mb, f.rx);
 			const s = squitter(mb);
 			const key = adsbRegister(s);
-			if (s.kind === 'identification') this.#callsigns.set(addr.icao, s.callsign);
+			const callsign = this.#heard(
+				addr.icao,
+				f.rx,
+				s.kind === 'identification' ? s.callsign : null
+			);
 			if (!key) return null;
 			return {
 				...base,
-				callsign: this.#callsigns.get(addr.icao) ?? null,
+				callsign,
 				source: 'broadcast',
 				key,
 				inference: null,
@@ -165,10 +180,14 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 				address: addr.verdict === 'known' ? addr.icao : null
 			});
 			const best = inference.best;
-			if (best?.register.bds === '2,0') this.#callsigns.set(addr.icao, best.register.callsign);
-			const callsign = this.#callsigns.get(addr.icao) ?? null;
-			if (addr.verdict === 'known')
+			// Only a known address is trusted: a corrupted reply's garbled address could
+			// otherwise give an aircraft heard later someone else's callsign.
+			let callsign: string | null = null;
+			if (addr.verdict === 'known') {
+				const read = best?.register.bds === '2,0' ? best.register.callsign : null;
+				callsign = this.#heard(addr.icao, f.rx, read);
 				this.#aircraft.add(addr.icao, f.rx, best?.register ?? null, callsign);
+			}
 			return {
 				...base,
 				callsign,
@@ -184,6 +203,14 @@ export class CommBStream extends LiveFeed<RegisterRow> {
 			};
 		}
 		return null;
+	}
+
+	/** A trustworthy message from an aircraft, with a callsign or without: its latest callsign. */
+	#heard(icao: string, t: number, callsign: string | null): string | null {
+		const c = this.#callsigns.get(icao);
+		const latest = callsign ?? c?.callsign ?? null;
+		this.#callsigns.set(icao, { callsign: latest, seen: t });
+		return latest;
 	}
 
 	#count(rows: RegisterRow[], now: number): void {
