@@ -1,7 +1,12 @@
 {
 	"name": "lab1090",
 	"version": "0.0.1",
+	"description": "A learning tool for what aircraft transmit on 1090 MHz: decodes live Mode S and ADS-B from an RTL-SDR, from the raw samples up, and explains every value",
 	"license": "GPL-3.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dennisu133/lab1090.git"
+	},
 	"private": true,
 	"type": "module",
 	"imports": {
@@ -12,8 +17,7 @@
 		"build": "bun --bun vite build",
 		"build:binary": "COMPILE=native bun --bun vite build",
 		"build:arm64": "COMPILE=bun-linux-arm64 bun --bun vite build",
-		"preview": "bun --bun vite preview",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "svelte-kit sync",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "bun test",
