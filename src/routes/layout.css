@@ -52,6 +52,19 @@
 .maplibregl-map .maplibregl-ctrl-top-right {
 	top: var(--alert-banner, 0px);
 }
+/*
+ * When they fold to the ⓘ, their box shrinks towards its right edge. Browsers count a box
+ * whose starting corner moves as a layout shift, and left to right that's the top-left one.
+ * Right to left it's the top-right one, which stays put; the text itself stays left to
+ * right (MapLibre places everything with left/right, which the direction doesn't turn).
+ */
+.maplibregl-map .maplibregl-ctrl-top-right,
+.maplibregl-map .maplibregl-ctrl-top-right > .maplibregl-ctrl-attrib {
+	direction: rtl;
+}
+.maplibregl-map .maplibregl-ctrl-top-right .maplibregl-ctrl-attrib-inner {
+	direction: ltr;
+}
 
 /*
  * InfoTip's last resorts, when lining the tooltip up with an edge of its label doesn't fit in

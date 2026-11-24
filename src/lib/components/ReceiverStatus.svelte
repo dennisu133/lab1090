@@ -55,27 +55,30 @@
 			return {
 				dot: 'motion-safe:animate-pulse bg-ok-400',
 				label: link.replay ? 'Replay' : 'Live',
-				receiving: true
+				receiving: true,
+				reserve: link.replay ? 'Replay' : 'Live'
 			};
 		if (link.online && status?.state === 'waiting')
 			return { dot: 'bg-warn-400', label: 'Receiver unreachable', waiting: status };
 		if (link.online && status?.state === 'ended')
 			return { dot: 'bg-zinc-500', label: 'Replay ended', ended: status };
-		return { dot: 'bg-warn-400', label: 'Connecting…' };
+		// The server's page says this, so it takes the room "Live" will take (`reserve`).
+		return { dot: 'bg-warn-400', label: 'Connecting…', reserve: 'Live' };
 	});
 </script>
 
-<!-- Two 16 px lines while live: the logo's height. Right-aligned, against the bar's end. -->
+<!-- Two 16 px lines while live: the logo's height. Right-aligned, against the bar's end.
+     While connecting it takes the same room, so going live moves nothing in the bar. -->
 <div class="flex flex-col items-end text-xs/4 whitespace-nowrap text-zinc-400 tabular-nums">
 	<div class="grid justify-items-end">
-		{#if state.receiving}
+		{#if state.reserve}
 			<!-- Room for "9,999" kept free, so the rate can grow (99.9 → 100 → 1,000 msg/s) without
 			     shifting the rest of the bar: the dot and "Live" move left inside it. The busiest
 			     sites decode a few thousand a second: past that, overlapping messages garble the
 			     channel, so five digits don't come. -->
 			<span class="invisible col-start-1 row-start-1 flex items-center gap-2" aria-hidden="true">
 				<span class="size-2.5"></span>
-				<span>{state.label}: 9,999 msg/s<span class="ml-1 inline-block size-[1em]"></span></span>
+				<span>{state.reserve}: 9,999 msg/s<span class="ml-1 inline-block size-[1em]"></span></span>
 			</span>
 		{/if}
 		<div class="col-start-1 row-start-1 flex items-center gap-2">
@@ -128,5 +131,7 @@
 				? `${n(stats.counts.total)} since ${dayAndTime(stats.since, shortTime)}`
 				: '–'}
 		</span>
+	{:else if state.reserve}
+		<span class="invisible" aria-hidden="true">–</span>
 	{/if}
 </div>
