@@ -5,7 +5,9 @@
 
 	Rows keep their height while the rates change, or the rest of the page would jump: every
 	reason is always there (also at 0/s), on its own line, and the narrow Step column leaves
-	those lines room enough not to wrap at 1280 px, where this panel is half the page.
+	those lines room enough not to wrap at 1280 px, where this panel is half the page. For the
+	same reason it's there before the rates are (`null`: a window takes a second or two), with
+	"–" and empty bars.
 -->
 <script lang="ts">
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -14,7 +16,24 @@
 	import { perSecond } from '#lib/describe/format.ts';
 	import { percent } from './format';
 
-	let { rates }: { rates: DemodRates } = $props();
+	let { rates: measured }: { rates: DemodRates | null } = $props();
+
+	/** Not measured yet: NaN, which the sums below keep and the formatters show as "–". */
+	const UNMEASURED: DemodRates = {
+		samples: NaN,
+		candidates: NaN,
+		noPreamble: NaN,
+		unknownFormat: NaN,
+		parity: NaN,
+		unheard: NaN,
+		decoded: NaN,
+		accepted: NaN,
+		repaired: NaN,
+		clipped: NaN,
+		blocks: NaN,
+		levelSum: NaN
+	};
+	let rates = $derived(measured ?? UNMEASURED);
 
 	let preamble = $derived(rates.candidates - rates.noPreamble);
 	let format = $derived(preamble - rates.unknownFormat);
@@ -22,8 +41,11 @@
 
 	/** Bar width on a log scale from 1/s to the sample rate. */
 	const width = (n: number) =>
-		`${(Math.max(0, Math.log10(Math.max(n, 1))) / Math.log10(Math.max(rates.samples, 10))) * 100}%`;
+		Number.isNaN(n)
+			? '0%'
+			: `${(Math.max(0, Math.log10(Math.max(n, 1))) / Math.log10(Math.max(rates.samples, 10))) * 100}%`;
 	const share = (part: number, whole: number) => (whole > 0 ? percent(part / whole) : '–');
+	const rate = (x: number) => (Number.isNaN(x) ? '–' : perSecond(x));
 </script>
 
 {#snippet bar(n: number, color: string)}
@@ -73,7 +95,7 @@
 						</p>
 					</InfoTip>
 				</td>
-				<td class="py-1 text-right">{perSecond(rates.samples)}</td>
+				<td class="py-1 text-right">{rate(rates.samples)}</td>
 				<td></td>
 				<td class="py-1 pl-4">{@render bar(rates.samples, 'bg-zinc-500')}</td>
 			</tr>
@@ -93,7 +115,7 @@
 						<p class="text-zinc-400">The samples next to a real preamble often pass too.</p>
 					</InfoTip>
 				</td>
-				<td class="py-1 text-right">{perSecond(rates.candidates)}</td>
+				<td class="py-1 text-right">{rate(rates.candidates)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(rates.candidates, rates.samples)}</td>
 				<td class="py-1 pl-4">{@render bar(rates.candidates, 'bg-blue-700')}</td>
 			</tr>
@@ -107,12 +129,12 @@
 						</p>
 					</InfoTip>
 				</td>
-				<td class="py-1 text-right">{perSecond(preamble)}</td>
+				<td class="py-1 text-right">{rate(preamble)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(preamble, rates.candidates)}</td>
 				<td class="py-1 pl-4">
 					{@render bar(preamble, 'bg-blue-600')}
 					<div class="mt-0.5 text-xs text-zinc-500">
-						{perSecond(rates.noPreamble)}/s no start looked like a preamble
+						{rate(rates.noPreamble)}/s no start looked like a preamble
 					</div>
 				</td>
 			</tr>
@@ -137,12 +159,12 @@
 						</p>
 					</InfoTip>
 				</td>
-				<td class="py-1 text-right">{perSecond(format)}</td>
+				<td class="py-1 text-right">{rate(format)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(format, preamble)}</td>
 				<td class="py-1 pl-4">
 					{@render bar(format, 'bg-blue-500')}
 					<div class="mt-0.5 text-xs text-zinc-500">
-						{perSecond(rates.unknownFormat)}/s a format that doesn't exist
+						{rate(rates.unknownFormat)}/s a format that doesn't exist
 					</div>
 				</td>
 			</tr>
@@ -165,14 +187,14 @@
 						</p>
 					</InfoTip>
 				</td>
-				<td class="py-1 text-right">{perSecond(passed)}</td>
+				<td class="py-1 text-right">{rate(passed)}</td>
 				<td class="py-1 text-right text-zinc-400">{share(passed, format)}</td>
 				<td class="py-1 pl-4">
 					{@render bar(passed, 'bg-green-500')}
 					<div class="mt-0.5 text-xs text-zinc-500">
-						<div>{perSecond(rates.parity)}/s parity wrong</div>
-						<div>{perSecond(rates.unheard)}/s address not heard</div>
-						<div>{perSecond(rates.repaired)}/s passed after a repair</div>
+						<div>{rate(rates.parity)}/s parity wrong</div>
+						<div>{rate(rates.unheard)}/s address not heard</div>
+						<div>{rate(rates.repaired)}/s passed after a repair</div>
 					</div>
 				</td>
 			</tr>

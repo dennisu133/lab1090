@@ -25,8 +25,11 @@
 
 	/** The viewBox is the chart's width in px, so the labels keep their size. */
 	let width = $state(0);
-	let W = $derived(Math.max(width, 600));
+	const MIN_W = 600;
+	let W = $derived(Math.max(width, MIN_W));
 	const H = 360;
+	/** Known before the width is: H, or less in proportion below MIN_W (as HistoryChart). */
+	const HEIGHT = `min(${H}px, ${(100 * H) / MIN_W}cqw)`;
 	const LEFT = 48;
 	/** The histogram takes the last BARS px on the right. */
 	const BARS = 150;
@@ -100,11 +103,12 @@
 	}
 </script>
 
-<div class="relative w-full" bind:clientWidth={width}>
+<div class="@container relative w-full" bind:clientWidth={width}>
 	<canvas class="pointer-events-none absolute inset-0 h-full w-full" {@attach dots}></canvas>
 	<svg
 		viewBox="0 0 {W} {H}"
 		class="relative w-full"
+		style:height={HEIGHT}
 		role="img"
 		aria-label="Signal level against distance, with the free-space line, the noise level and the signal histogram"
 	>

@@ -24,8 +24,15 @@
 
 	/** The viewBox is the chart's width in px, so the labels keep their size. */
 	let width = $state(0);
-	let W = $derived(Math.max(width, 300));
+	const MIN_W = 300;
+	let W = $derived(Math.max(width, MIN_W));
 	const H = 160;
+	/**
+	 * The height the drawing will have, known before the width is measured (the server's
+	 * page): H, or less in proportion below MIN_W (cqw: the container's width). Without it
+	 * the height followed the placeholder W and jumped once the width was known.
+	 */
+	const HEIGHT = `min(${H}px, ${(100 * H) / MIN_W}cqw)`;
 	/**
 	 * The space around the drawing: as much at the sides as above the top label and below the
 	 * time axis (about 4 px each). On the left, that plus the widest value label and its gap
@@ -75,8 +82,8 @@
 	const MINUTES = [60, 45, 30, 15, 0];
 </script>
 
-<div bind:clientWidth={width}>
-	<svg viewBox="0 0 {W} {H}" class="w-full" role="img" aria-label={label}>
+<div class="@container" bind:clientWidth={width}>
+	<svg viewBox="0 0 {W} {H}" class="w-full" style:height={HEIGHT} role="img" aria-label={label}>
 		{#each ticks as v (v)}
 			<line x1={LEFT} x2={W - RIGHT} y1={y(v)} y2={y(v)} class="stroke-zinc-800" />
 		{/each}

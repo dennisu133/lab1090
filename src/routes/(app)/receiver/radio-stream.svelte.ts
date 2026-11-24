@@ -1,5 +1,11 @@
 import type { DemodulatorStats } from '#lib/demod/demodulator.ts';
-import type { DemodReport, RadioPoint, SourceEvent, StreamUpdate } from '#lib/receiver-types.ts';
+import type {
+	DemodReport,
+	RadioPoint,
+	RadioUpdate,
+	SourceEvent,
+	StreamUpdate
+} from '#lib/receiver-types.ts';
 import { perSecond, RateWindow } from '#lib/rate-window.ts';
 import type { UpdateListener } from '#lib/stream-connection.ts';
 
@@ -10,6 +16,10 @@ export type DemodRates = Record<Exclude<keyof DemodulatorStats, 'level'>, number
  * clock), the server's last hour in 10-second points and the link's events. All kept on the
  * server (RadioHistory), so a reload shows the past hour too; this only merges the updates.
  * Plus per-second rates of the demodulator's totals over the last 10 s, for the stages.
+ *
+ * /receiver's page data holds the same snapshot a new stream starts with (`seed`): the
+ * server's page then has the layout and numbers the stream will bring, instead of a Beast
+ * feed's layout that the first update replaces, moving everything on the page.
  */
 export class RadioStream implements UpdateListener {
 	/** null: a Beast feed, or nothing heard from the server yet. */
@@ -21,8 +31,20 @@ export class RadioStream implements UpdateListener {
 
 	/** Over the last 10 s, like the navigation bar's. */
 	#window = new RateWindow<DemodulatorStats>();
+	/** Has the stream sent anything? Then it's newer than any page data. */
+	#heard = false;
 
 	receive({ radio }: StreamUpdate): void {
+		this.#heard = true;
+		this.#apply(radio);
+	}
+
+	/** The page's snapshot (a full update), until the stream has sent its own. */
+	seed(radio: RadioUpdate): void {
+		if (!this.#heard) this.#apply(radio);
+	}
+
+	#apply(radio: RadioUpdate): void {
 		// Absent: unchanged (the server sends it once a second).
 		if (radio.demod !== undefined) this.demod = radio.demod;
 		if (radio.full) {

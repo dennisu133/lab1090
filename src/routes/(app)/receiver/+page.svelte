@@ -20,8 +20,17 @@
 	import Diagnosis from './Diagnosis.svelte';
 	import SignalChart from './SignalChart.svelte';
 	import Stages from './Stages.svelte';
+	import { untrack } from 'svelte';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 
 	const { radio, signal, stats } = getStreams();
+	// The server's snapshot until the stream sends its own (+page.server.ts). Once, as the
+	// page opens: by the time newer page data could come, the stream has long taken over.
+	untrack(() => radio.seed(data.radio));
+	/** The receiver's link: the server's page's until the stream's first update. */
+	let link = $derived(receiverLink.status === null ? data.link : receiverLink);
 
 	let demod = $derived(radio.demod);
 	let points = $derived(radio.points);
@@ -67,18 +76,16 @@
 		<div class="grid gap-6 xl:grid-cols-2">
 			<Diagnosis {demod} {summary} {advice} />
 			<Device
-				source={receiverLink.source}
+				source={link.source}
 				{demod}
 				events={radio.events}
-				recording={receiverLink.recording}
-				replay={receiverLink.replay}
+				recording={link.recording}
+				replay={link.replay}
 			/>
 		</div>
 
 		<div class="grid gap-6 xl:grid-cols-2">
-			{#if radio.rates}
-				<Stages rates={radio.rates} />
-			{/if}
+			<Stages rates={radio.rates} />
 			<section class="rounded-lg border border-zinc-800 p-4">
 				<div class="mb-2 flex items-baseline gap-3">
 					<InfoTip heading="h2" class="text-sm font-semibold text-zinc-100" label="Noise level">
@@ -109,11 +116,11 @@
 	{:else}
 		<!-- A Beast feed: no diagnosis, stages or noise; its Source says why. -->
 		<Device
-			source={receiverLink.source}
+			source={link.source}
 			demod={null}
 			events={radio.events}
-			recording={receiverLink.recording}
-			replay={receiverLink.replay}
+			recording={link.recording}
+			replay={link.replay}
 		/>
 	{/if}
 

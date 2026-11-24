@@ -11,6 +11,7 @@ import { describeSource, type Source } from './settings';
 import type {
 	RadioUpdate,
 	ReceiverCounts,
+	RecordingReport,
 	ReplayInfo,
 	SourceEvent,
 	StreamUpdate,
@@ -144,6 +145,24 @@ export class Receiver {
 		this.#subscribers.clear();
 	}
 
+	/** The radio part of a new stream's first update; also /receiver's page data. */
+	radioSnapshot(): RadioUpdate {
+		return this.radio.full(this.#client.decoder?.report() ?? null);
+	}
+
+	/** Where the messages come from, as a new stream's first update says; also /receiver's. */
+	linkSnapshot(): {
+		source: string;
+		replay: ReplayInfo | null;
+		recording: RecordingReport | null;
+	} {
+		return {
+			source: this.source,
+			replay: this.#client.replay ?? null,
+			recording: this.#recorder?.report() ?? null
+		};
+	}
+
 	/**
 	 * Get an update right away, then one every 250 ms. The first holds the recent history,
 	 * and the position history (TrackHistory) in its own field: the browser merges that in
@@ -167,7 +186,7 @@ export class Receiver {
 		// History only: frames still pending go out with the next batch, to everyone.
 		// (Sending them here too would deliver them twice.) The same for position frames:
 		// pending ones are in TrackHistory already.
-		const radio = this.radio.full(this.#client.decoder?.report() ?? null);
+		const radio = this.radioSnapshot();
 		const after = this.#resumeAfter(lastEventId);
 		const frames = after === null ? this.#history : this.#history.filter((f) => f.id > after);
 		const update: StreamUpdate = { ...this.#update(frames, radio), source: this.source };
