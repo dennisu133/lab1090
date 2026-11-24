@@ -1,8 +1,13 @@
 import { networkInterfaces } from 'node:os';
-import type { ServerInit } from '@sveltejs/kit/hooks';
+import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { building, dev } from '$app/env';
+import { gzipResponse } from '#lib/server/compress.ts';
 import { receiver } from '#lib/server/live-receiver.ts';
 import { settings } from '#lib/server/live-settings.ts';
+
+/** Pages and JSON gzipped (lib/server/compress.ts); static files come compressed already. */
+export const handle: Handle = async ({ event, resolve }) =>
+	gzipResponse(event.request, await resolve(event));
 
 /** Start reading the receiver when the server starts, not on the first request. */
 export const init: ServerInit = () => {

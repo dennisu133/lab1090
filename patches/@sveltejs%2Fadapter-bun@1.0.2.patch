@@ -1,0 +1,119 @@
+diff --git a/index.js b/index.js
+index af5e19d60351c109f31ef2b5341df87dd1bd7ed9..33fa2a6e16d936c0033f1bebe0b7ab9a2d660c12 100644
+--- a/index.js
++++ b/index.js
+@@ -47,8 +47,12 @@ async function asset_meta(file, precompress = false) {
+ 	/** @type {{ hash: string, mtime: number, br?: boolean, gz?: boolean }} */
+ 	const meta = { hash, mtime: Bun.file(file).lastModified };
+ 	if (precompress) {
+-		if (fs.existsSync(`${file}.br`)) meta.br = true;
+-		if (fs.existsSync(`${file}.gz`)) meta.gz = true;
++		// a variant that isn't smaller (tiny files) is never worth sending
++		const size = fs.statSync(file).size;
++		for (const encoding of /** @type {const} */ (['br', 'gz'])) {
++			const variant = `${file}.${encoding}`;
++			if (fs.existsSync(variant) && fs.statSync(variant).size < size) meta[encoding] = true;
++		}
+ 	}
+ 
+ 	return meta;
+@@ -76,12 +80,6 @@ export default function (opts = {}) {
+ 
+ 			fs.rmSync(out, { recursive: true, force: true });
+ 
+-			if (precompress && embed) {
+-				builder.log.warn(
+-					'precompress is ignored with buildOptions.compile: embedded assets are imported by identity path'
+-				);
+-			}
+-
+ 			builder.log.minor('Building server');
+ 
+ 			const server = builder.getServerDirectory();
+@@ -102,7 +100,7 @@ export default function (opts = {}) {
+ 					`export const env_prefix = ${JSON.stringify(envPrefix)};`,
+ 					`export const origin = ${JSON.stringify(builder.config.paths.origin)};`,
+ 					`export const server_options = ${JSON.stringify(serverOptions)};`,
+-					...(await create_assets({ builder, out, embed, precompress: precompress && !embed }))
++					...(await create_assets({ builder, out, embed, precompress }))
+ 				].join('\n')
+ 			);
+ 
+@@ -210,7 +208,19 @@ async function create_assets({ builder, out, embed, precompress }) {
+ 	const entry = async (kind, url, dir, filename = url) => {
+ 		const file = `${dest}/${dir}/${filename}`;
+ 		if (embed) embedded.set(file, `asset_${embedded.size}`);
+-		return `[${JSON.stringify(kind)}, ${JSON.stringify(url)}, ${embedded.get(file) ?? JSON.stringify(filename)}, ${JSON.stringify(await asset_meta(file, precompress))}]`;
++		const meta = await asset_meta(file, precompress);
++		// embedded variants are imported like the file itself: their paths, by encoding
++		/** @type {string[]} */
++		const variants = [];
++		if (embed) {
++			for (const encoding of /** @type {const} */ (['br', 'gz'])) {
++				if (!meta[encoding]) continue;
++				const asset = `asset_${embedded.size}`;
++				embedded.set(`${file}.${encoding}`, asset);
++				variants.push(`${encoding}: ${asset}`);
++			}
++		}
++		return `[${JSON.stringify(kind)}, ${JSON.stringify(url)}, ${embedded.get(file) ?? JSON.stringify(filename)}, ${JSON.stringify(meta)}, { ${variants.join(', ')} }]`;
+ 	};
+ 
+ 	const pages = [...builder.prerendered.pages];
+diff --git a/src/assets.js b/src/assets.js
+index daeff4dea2caf4f307ebd864108a31e80f9c2640..5b37428843bae3f884441fedf70d6e5a21b63361 100644
+--- a/src/assets.js
++++ b/src/assets.js
+@@ -73,9 +73,10 @@ function is_fresh(request, etag, mtime) {
+  * @param {string} file
+  * @param {AssetMeta} meta
+  * @param {boolean} [immutable]
++ * @param {{ br?: string, gz?: string }} [variants] embedded variants, by encoding
+  * @returns {{ serve: Serve, native?: Response }}
+  */
+-function file_entry(file, meta, immutable = false) {
++function file_entry(file, meta, immutable = false, variants = {}) {
+ 	const source = Bun.file(file);
+ 	const compressed = Boolean(meta.br || meta.gz);
+ 
+@@ -95,7 +96,7 @@ function file_entry(file, meta, immutable = false) {
+ 		return {
+ 			etag,
+ 			not_modified: { status: 304, headers: new Headers(headers) },
+-			body: encoding ? Bun.file(`${file}.${encoding}`) : source,
++			body: encoding ? Bun.file(variants[encoding] ?? `${file}.${encoding}`) : source,
+ 			ok: {
+ 				headers: new Headers(
+ 					encoding ? { ...headers, 'content-encoding': CONTENT_ENCODING[encoding] } : headers
+@@ -164,11 +165,11 @@ function redirect_to_canonical(request) {
+ 	return new Response(null, { status: 308, headers: { location: location + search } });
+ }
+ 
+-for (const [kind, url, filename, meta] of assets) {
++for (const [kind, url, filename, meta, variants] of assets) {
+ 	if (kind === 'prerendered_page') {
+ 		// url already contains base, with reserved characters kept percent-encoded
+ 		const pathname = decode(url);
+-		add(pathname, file_entry(resolve_file('prerendered', filename), meta));
++		add(pathname, file_entry(resolve_file('prerendered', filename), meta, false, variants));
+ 
+ 		const inverted = pathname.endsWith('/') ? pathname.slice(0, -1) : `${pathname}/`;
+ 		if (inverted) add(inverted, { serve: redirect_to_canonical });
+@@ -178,14 +179,15 @@ for (const [kind, url, filename, meta] of assets) {
+ 	const pathname = path.posix.join(base, url);
+ 
+ 	if (kind === 'prerendered_asset') {
+-		add(decode(pathname), file_entry(resolve_file('prerendered', filename), meta));
++		add(decode(pathname), file_entry(resolve_file('prerendered', filename), meta, false, variants));
+ 		continue;
+ 	}
+ 
+ 	const entry = file_entry(
+ 		resolve_file('client', filename),
+ 		meta,
+-		url.startsWith(`${app_dir}/immutable/`)
++		url.startsWith(`${app_dir}/immutable/`),
++		variants
+ 	);
+ 	add(pathname, entry);
+ 
