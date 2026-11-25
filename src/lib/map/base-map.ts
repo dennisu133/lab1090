@@ -41,15 +41,18 @@ export class BaseMapHealth {
 
 /**
  * Watch one vector source of a map (the base map: 'openmaptiles' in style.ts); `onChange`
- * gets true when it becomes unreachable, false when tiles load again. Returns a cleanup.
+ * gets true when it becomes unreachable, false when tiles load again, and the latest
+ * failure as the browser put it (`reason`): "unreachable" is only our reading of it.
+ * Returns a cleanup.
  */
 export function watchBaseMap(
 	map: MapLibreMap,
-	onChange: (unreachable: boolean) => void,
+	onChange: (unreachable: boolean, reason: string | null) => void,
 	sourceId = 'openmaptiles'
 ): () => void {
 	const health = new BaseMapHealth();
 	let state = false;
+	let reason: string | null = null;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let retries: ReturnType<typeof setInterval> | undefined;
 	const retry = () => {
@@ -59,7 +62,7 @@ export function watchBaseMap(
 	const update = () => {
 		const now = health.unreachable(performance.now());
 		if (now === state) return;
-		onChange((state = now));
+		onChange((state = now), reason);
 		clearInterval(retries);
 		if (state) retries = setInterval(retry, RETRY_MS);
 	};
@@ -74,6 +77,7 @@ export function watchBaseMap(
 			return;
 		}
 		health.error(performance.now());
+		reason = failure((e as { error?: unknown }).error);
 		clearTimeout(timer);
 		timer = setTimeout(update, GRACE_MS);
 	};
@@ -92,6 +96,18 @@ export function watchBaseMap(
 		map.off('error', onError);
 		map.off('sourcedata', onData);
 	};
+}
+
+/**
+ * A failed tile or index as text: MapLibre's AJAXError has the HTTP status and the address
+ * ("HTTP 403: https://…"); a failed fetch only the browser's message ("NetworkError when
+ * attempting to fetch resource."), a tile that came but didn't parse the parser's.
+ */
+export function failure(error: unknown): string | null {
+	if (!(error instanceof Error)) return error === undefined ? null : String(error);
+	const { status, url } = error as Error & { status?: number; url?: string };
+	if (status && url) return `HTTP ${status}: ${url}`;
+	return error.message || error.name;
 }
 
 /** How long the credits stay open on a narrow map: OSMF's guidelines allow five seconds. */

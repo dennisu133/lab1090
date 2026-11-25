@@ -90,8 +90,8 @@
 			class="absolute inset-x-3 top-3 rounded-lg border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-sm text-zinc-300"
 			role="status"
 		>
-			No map: this device can't reach OpenFreeMap. Check the spot on a map elsewhere before you save
-			it.
+			No map: the map from OpenFreeMap didn't load (no internet, or a content blocker stopping it).
+			Check the spot on a map elsewhere before you save it.
 		</p>
 	{/if}
 </div>

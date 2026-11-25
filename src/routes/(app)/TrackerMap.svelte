@@ -94,6 +94,7 @@
 	import { MAP_ORIGINS, mapStyle } from '#lib/map/style.ts';
 	import { themeColour } from '#lib/theme.ts';
 	import { creditsCorner, foldCredits, watchBaseMap } from '#lib/map/base-map.ts';
+	import { DEMO } from '#lib/demo/mode.ts';
 	import { lngLat } from '#lib/map/geometry.ts';
 	import {
 		aircraftOpacity,
@@ -165,6 +166,8 @@
 	let map = $state<maplibregl.Map | null>(null);
 	/** The base map's tiles don't load (lib/map/base-map.ts): no internet on this device? */
 	let baseMapDown = $state(false);
+	/** Why, as the browser put it (watchBaseMap). */
+	let baseMapReason = $state<string | null>(null);
 
 	/**
 	 * The wind barb tapped last: its card shows its numbers (WindCard). Derived from the wind
@@ -209,7 +212,10 @@
 		m.touchZoomRotate.disableRotation();
 		m.addControl(new maplibregl.AttributionControl({ compact: true }), creditsCorner(container));
 		let unfold = () => {};
-		const unwatch = watchBaseMap(m, (down) => (baseMapDown = down));
+		const unwatch = watchBaseMap(m, (down, reason) => {
+			baseMapDown = down;
+			baseMapReason = reason;
+		});
 
 		// Wind barbs: one image per speed (in 5 kt steps) and hemisphere, drawn on first use.
 		// A resolver, not the styleimagemissing event: since MapLibre 6 an image added by the
@@ -611,8 +617,13 @@
 			class="absolute top-[calc(0.75rem+var(--alert-banner,0px))] left-1/2 z-10 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-sm text-zinc-300 shadow-xl"
 			role="status"
 		>
-			No map: this device can't reach OpenFreeMap, where the map comes from. The aircraft are live:
-			they come from the receiver.
+			No map: the map from OpenFreeMap didn't load (no internet, or a content blocker stopping it).
+			{DEMO
+				? 'The aircraft still show: they come from the recording.'
+				: 'The aircraft are live: they come from the receiver.'}
+			{#if baseMapReason}
+				<span class="mt-1 block font-mono text-xs break-all text-zinc-500">{baseMapReason}</span>
+			{/if}
 		</p>
 	{/if}
 
