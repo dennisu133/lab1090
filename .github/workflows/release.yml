@@ -1,0 +1,87 @@
+# A release for every version: package.json's "version" is the one place it is kept. When a
+# push to main brings a version that has no tag yet, this builds the binaries, tags the
+# commit v<version> and makes a draft release with them. Notes and "Publish" are done by
+# hand on GitHub. Versions with a "-" (1.1.0-beta.1) become pre-releases.
+#
+# If it fails after tagging (the release step), delete the tag on GitHub and re-run it
+# (Actions → Release → Run workflow): it only releases versions without a tag.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    # Also this file: a version pushed before a fix to it gets released with the fix.
+    paths: [package.json, .github/workflows/release.yml]
+  workflow_dispatch:
+
+# One at a time: two pushes in a row must not both see the version untagged.
+concurrency:
+  group: release
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      new: ${{ steps.version.outputs.new }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        run: |
+          version=$(jq -r .version package.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "v$version is tagged already: nothing to release."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.new == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the tag and the release
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      # The binary embeds Bun's runtime: the latest, as on a developer's machine.
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      # One executable each, the client files embedded (vite.config.ts, COMPILE), packed with
+      # LICENSE and README in a folder of their own: xz makes them 40 % of their size (gzip:
+      # 50 %), and tar keeps the executable bit.
+      # x64 is Bun's "baseline" build: it also runs on CPUs without AVX2 (before ~2013, small
+      # Atoms and Celerons), a little slower.
+      - name: Build
+        run: |
+          mkdir dist
+          for arch in x64 arm64; do
+            target="bun-linux-$arch"
+            [ "$arch" = x64 ] && target=bun-linux-x64-baseline
+            COMPILE=$target bun --bun vite build
+            # The runner is x64: that one can show it runs and knows its version.
+            if [ "$arch" = x64 ]; then
+              test "$(./build/lab1090 --version)" = "lab1090 $VERSION"
+            fi
+            name="lab1090-$VERSION-linux-$arch"
+            mkdir "$name"
+            cp build/lab1090 LICENSE README.md "$name/"
+            XZ_OPT='-9e -T0' tar --owner=0 --group=0 --numeric-owner -cJf "dist/$name.tar.xz" "$name"
+          done
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          ls -l dist
+
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag "v$VERSION" "$GITHUB_SHA"
+          git push origin "v$VERSION"
+          prerelease=()
+          [[ "$VERSION" == *-* ]] && prerelease=(--prerelease)
+          gh release create "v$VERSION" dist/* --draft --verify-tag "${prerelease[@]}" \
+            --title "lab1090 $VERSION" --generate-notes
