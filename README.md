@@ -61,7 +61,8 @@ The binary is written to `build/lab1090`.
 
 A demo without a receiver, for any static host: a Beast recording made into a seamless loop
 and played in the browser (`bun tools/demo.ts` says how), then `bun run build:demo` writes
-the site to `build-demo/`.
+the site to `build-demo/`. `bun run deploy:demo` builds it and puts it on Cloudflare
+(`wrangler.jsonc`).
 
 ## Attribution
 

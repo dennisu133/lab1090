@@ -1,0 +1,19 @@
+// The static demo on Cloudflare (bun run deploy:demo): a Worker that only serves files,
+// build-demo/ from `bun run build:demo`, at lab1090.dennisu.com (Cloudflare makes the DNS
+// record and the certificate). /frames serves frames.html; an unknown path gets 404.html,
+// which the app renders as its "not found" page.
+//
+// This file also keeps wrangler from "configuring" the project itself: without one it
+// rewrites vite.config.ts and package.json for Cloudflare's own adapter.
+{
+	"name": "lab1090",
+	"compatibility_date": "2026-11-25",
+	"assets": {
+		"directory": "./build-demo",
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "404-page"
+	},
+	"routes": [{ "pattern": "lab1090.dennisu.com", "custom_domain": true }],
+	"workers_dev": false,
+	"preview_urls": false
+}

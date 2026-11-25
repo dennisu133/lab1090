@@ -19,6 +19,7 @@
 		"build:arm64": "COMPILE=bun-linux-arm64 bun --bun vite build",
 		"build:demo": "bun --bun vite build --mode demo && cp -r demo-data build-demo/demo",
 		"dev:demo": "bun --bun vite dev --mode demo --",
+		"deploy:demo": "bun run build:demo && bunx wrangler deploy",
 		"prepare": "svelte-kit sync",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
