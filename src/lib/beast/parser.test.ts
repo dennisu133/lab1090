@@ -4,7 +4,7 @@ import { BeastParser, type BeastFrame } from './parser';
 import { encodeFrame } from './encode';
 
 const capture = new Uint8Array(
-	await Bun.file(join(import.meta.dir, '../../../../oracle/capture.beast')).arrayBuffer()
+	await Bun.file(join(import.meta.dir, '../../../oracle/capture.beast')).arrayBuffer()
 );
 
 /** Compact, comparable representation of a frame. */

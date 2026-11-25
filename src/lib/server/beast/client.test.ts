@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import type { SourceStatus } from '#lib/receiver-types.ts';
 import { BeastClient, type BeastClientOptions } from './client';
-import { BeastParser, type BeastFrame } from './parser';
+import { BeastParser, type BeastFrame } from '#lib/beast/parser.ts';
 import {
 	capture,
 	fakeReceiver,

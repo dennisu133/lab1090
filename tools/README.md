@@ -12,6 +12,12 @@ When the sky is empty (at night, say):
 | `replay.ts`   | Plays a Beast recording over TCP, like readsb; with synthetic emergencies (`--alerts`) or a GNSS jammer (`--jamming`). For plain playback, `lab1090 --replay` is enough |
 | `modulate.ts` | Turns a Beast recording back into RTL-SDR samples, with noise, for `--replay`                                                                                           |
 
+For the static demo (`bun run build:demo`):
+
+| Tool      | What it does                                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `demo.ts` | Makes a Beast recording into a seamless loop (whole aircraft only), in files for the site: `demo-data/`, not committed |
+
 When working on the demodulator or the gain, with sample recordings (`--record`) or live:
 
 | Tool               | What it does                                                                                  |

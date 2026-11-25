@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { startingQuery } from '#lib/page-query.ts';
 	import { arrivalTime, dbfs } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
@@ -27,7 +27,7 @@
 	 * with one set, from `?df=17` or `?tc=4` (the tracker panel links here so).
 	 */
 	let filter = $state<{ df: number | null; tc: string | null; verdict: Verdict | null }>(
-		fromUrl(page.url.searchParams)
+		startingQuery(fromUrl, (f) => (filter = f))
 	);
 
 	function fromUrl(params: { get(name: string): string | null }) {

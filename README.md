@@ -59,6 +59,10 @@ bun run build:arm64    # for 64-bit ARM Linux (e.g. a Raspberry Pi)
 
 The binary is written to `build/lab1090`.
 
+A demo without a receiver, for any static host: a Beast recording made into a seamless loop
+and played in the browser (`bun tools/demo.ts` says how), then `bun run build:demo` writes
+the site to `build-demo/`.
+
 ## Attribution
 
 lab1090 owes a lot to the projects below and the people behind them. It is an independent project and not affiliated with them.

@@ -1,5 +1,5 @@
 import type { ReplayInfo } from '#lib/receiver-types.ts';
-import { BeastParser, type BeastFrame } from '../beast/parser';
+import { BeastParser, type BeastFrame } from '#lib/beast/parser.ts';
 import type { FrameHandler, FrameSource } from '../frame-source';
 import { SourceBase, type SourceOptions } from '../source-base';
 

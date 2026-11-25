@@ -23,8 +23,8 @@
  * the aircraft within 50 km of it lose their satellite navigation, for the map's GNSS layer.
  * The first losses come within a minute. One or the other: --alerts wins.
  */
-import { encodeFrame } from '../src/lib/server/beast/encode.ts';
-import { BeastParser } from '../src/lib/server/beast/parser.ts';
+import { encodeFrame } from '../src/lib/beast/encode.ts';
+import { BeastParser } from '../src/lib/beast/parser.ts';
 import { injectAlerts } from '../src/lib/tracker/alert-scenario.ts';
 import { injectJamming } from '../src/lib/gnss/jamming-scenario.ts';
 

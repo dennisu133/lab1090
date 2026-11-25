@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { DEMO } from '#lib/demo/mode.ts';
 	import { n } from '#lib/describe/format.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { SIGNAL_BUCKET_DB, STRONG_SIGNAL_DBFS } from '#lib/modes/frame.ts';
@@ -104,9 +105,11 @@
 					Pulses in the <span class="text-error-400">red</span> bucket come close to full scale:
 					they may have been too loud for the dongle and got cut off (clipped). A few are harmless;
 					many mean the gain is too high. When lab1090 demodulates itself,
-					<a href={resolve('/(app)/receiver')} class="text-accent-400 hover:text-accent-300"
-						>the receiver page</a
-					> counts the ones that did. A feed from readsb reads about 4.5 dB lower for the same message.
+					{#if DEMO}the receiver page{:else}<a
+							href={resolve('/(app)/receiver')}
+							class="text-accent-400 hover:text-accent-300">the receiver page</a
+						>{/if} counts the ones that did. A feed from readsb reads about 4.5 dB lower for the same
+					message.
 				</p>
 			</InfoTip>
 		</div>

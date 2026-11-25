@@ -1,6 +1,6 @@
 import type { Socket, TCPSocketListener } from 'bun';
 import type { ModeSFrame } from '../frame-source';
-import { encodeFrame } from './encode';
+import { encodeFrame } from '#lib/beast/encode.ts';
 
 /**
  * lab1090's own Beast output (`--beast-out 30005`), what readsb serves with `--net-bo-port`:

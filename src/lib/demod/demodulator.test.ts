@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { capture } from '#lib/server/beast/testing.ts';
-import { BeastParser } from '#lib/server/beast/parser.ts';
+import { BeastParser } from '#lib/beast/parser.ts';
 import { checkParity } from '#lib/modes/crc.ts';
 import { toHex } from '#lib/modes/frame.ts';
 import { Demodulator, type DemodulatedFrame } from './demodulator';

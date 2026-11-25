@@ -25,7 +25,7 @@
 import { checkParity, crc24 } from '#lib/modes/crc.ts';
 import { bits, downlinkFormat } from '#lib/modes/frame.ts';
 import { squawk } from '#lib/modes/squawk.ts';
-import type { BeastFrame } from '#lib/server/beast/parser.ts';
+import type { BeastFrame } from '#lib/beast/parser.ts';
 
 /** 12 MHz Beast ticks per second. */
 const TICKS = 12_000_000;

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { AddressFilter, type Checked } from '#lib/modes/address-filter.ts';
 import { build, timedMessages } from '#lib/modes/testing.ts';
-import { BeastParser } from '#lib/server/beast/parser.ts';
+import { BeastParser } from '#lib/beast/parser.ts';
 import { advisoryField, df17, encodeSquawk, injectAlerts, statusMe } from './alert-scenario';
 import { activeAlerts, ADVISORY_MS, alertsOf, IDENT_MS, identing, type Alert } from './alerts';
 import { Tracker } from './tracker';

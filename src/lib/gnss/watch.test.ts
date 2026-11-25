@@ -3,7 +3,7 @@ import { destination, distanceKm } from '#lib/geo.ts';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { downlinkFormat } from '#lib/modes/frame.ts';
-import { BeastParser, type BeastFrame } from '#lib/server/beast/parser.ts';
+import { BeastParser, type BeastFrame } from '#lib/beast/parser.ts';
 import { capture } from '#lib/server/beast/testing.ts';
 import { Tracker } from '#lib/tracker/tracker.ts';
 import { injectJamming, JAMMED_KM, JAMMER, REACQUIRE_S } from './jamming-scenario';

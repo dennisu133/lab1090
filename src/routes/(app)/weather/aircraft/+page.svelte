@@ -6,7 +6,7 @@
 	`#temperature` or `#contrail` at that card (the tracker panel's weather rows link here).
 -->
 <script lang="ts">
-	import { page } from '$app/state';
+	import { startingQuery } from '#lib/page-query.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import PauseIcon from '#lib/components/icons/PauseIcon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
@@ -34,7 +34,12 @@
 	const stream = getStreams().weather;
 
 	/** The aircraft picked in the table (filters the feed, picks the worked example). */
-	let selected = $state<string | null>(page.url.searchParams.get('icao'));
+	let selected = $state<string | null>(
+		startingQuery(
+			(q) => q.get('icao'),
+			(icao) => (selected = icao)
+		)
+	);
 	/** An observation frozen in the calculations (paused), so they can be read without changing. */
 	let held = $state.raw<{ observation: Observation; callsign: string | null } | null>(null);
 

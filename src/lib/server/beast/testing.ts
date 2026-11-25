@@ -1,7 +1,7 @@
 /** Test helpers: the recorded capture and a fake Pi. Only imported by tests. */
 import { join } from 'node:path';
 import type { Socket, TCPSocketListener } from 'bun';
-import { encodeFrame } from './encode';
+import { encodeFrame } from '#lib/beast/encode.ts';
 
 export const capture = new Uint8Array(
 	await Bun.file(join(import.meta.dir, '../../../../oracle/capture.beast')).arrayBuffer()

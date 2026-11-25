@@ -142,6 +142,11 @@ const SHORT = new Intl.DateTimeFormat('en-GB', {
 	hour12: false
 });
 const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+const DATE = new Intl.DateTimeFormat('en-GB', {
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric'
+});
 
 /** "14:03:12.345": when a frame arrived, to the millisecond (frames come ms apart). */
 export const arrivalTime = (t: number) => ARRIVAL.format(t);
@@ -157,6 +162,9 @@ export function dayAndTime(t: number, time: (t: number) => string = clockTime): 
 	const today = new Date(t).toDateString() === new Date().toDateString();
 	return today ? time(t) : `${DAY.format(t)} ${time(t)}`;
 }
+
+/** "25 Nov 2026". */
+export const date = (t: number) => DATE.format(t);
 
 /** "2026-11-23T21-40-12": local time for a file name (no colons: Windows forbids them). */
 export function fileTime(t: number): string {

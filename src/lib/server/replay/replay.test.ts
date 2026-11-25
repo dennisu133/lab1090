@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { modulate } from '#lib/demod/modulate.ts';
 import { toHex } from '#lib/modes/frame.ts';
 import type { SourceStatus } from '#lib/receiver-types.ts';
-import { encodeFrame } from '../beast/encode';
+import { encodeFrame } from '#lib/beast/encode.ts';
 import { capture, waitFor } from '../beast/testing';
 import type { ModeSFrame } from '../frame-source';
 import { headerFrame, trailerFrame } from '../record/archive';

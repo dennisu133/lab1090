@@ -1,5 +1,5 @@
 import { closeSync, openSync, readSync } from 'node:fs';
-import { BeastParser } from '../beast/parser';
+import { BeastParser } from '#lib/beast/parser.ts';
 
 /**
  * What a --replay file holds, from its first bytes (not its name: a `.u8` may be called

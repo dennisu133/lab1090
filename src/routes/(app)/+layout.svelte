@@ -6,7 +6,9 @@
 	import { pathOf } from '#lib/page-path.ts';
 	import ReceiverStatus from '#lib/components/ReceiverStatus.svelte';
 	import RecordingStatus from '#lib/components/RecordingStatus.svelte';
+	import { DEMO } from '#lib/demo/mode.ts';
 	import AlertBanner from './AlertBanner.svelte';
+	import DemoNotice from './DemoNotice.svelte';
 	import NotificationSwitch from './NotificationSwitch.svelte';
 	import { setStreams, Streams } from './streams';
 	import type { LayoutProps } from './$types';
@@ -20,13 +22,17 @@
 	const streams = setStreams(new Streams(() => data.reference));
 	$effect(() => streams.connect());
 
+	/** The demo has no receiver, so no /receiver. */
 	const links = [
 		{ href: resolve('/(app)'), label: 'Tracker' },
 		{ href: resolve('/(app)/frames'), label: 'Frames' },
 		{ href: resolve('/(app)/comm-b'), label: 'Comm-B registers' },
 		{ href: resolve('/(app)/weather'), label: 'Weather' },
-		{ href: resolve('/(app)/receiver'), label: 'Receiver' }
+		...(DEMO ? [] : [{ href: resolve('/(app)/receiver'), label: 'Receiver' }])
 	];
+
+	/** The demo's "not live" notice is showing (DemoNotice). */
+	let demoNotice = $state(false);
 
 	/**
 	 * The data pages are made for wide screens: dense tables, explanations on hover. They
@@ -69,13 +75,14 @@
 	};
 </script>
 
-<!-- --alert-banner: other notices (LiveHeading) float below the alert banner, not over it. -->
+<!-- --alert-banner: other notices (LiveHeading) float below the alert banner (or the demo's
+     notice), not over it. -->
 <div
 	class={[
 		'bg-zinc-950 text-zinc-100',
 		fullScreen ? 'flex h-dvh flex-col overflow-hidden' : 'min-h-screen'
 	]}
-	style:--alert-banner={streams.alerts.top ? '3rem' : null}
+	style:--alert-banner={streams.alerts.top || demoNotice ? '3rem' : null}
 >
 	<nav
 		class="relative z-40 flex items-center gap-4 border-b border-zinc-800 px-4 py-3 [anchor-name:--page-nav] sm:gap-6 sm:px-6"
@@ -136,6 +143,9 @@
 		{/each}
 	{/snippet}
 	<AlertBanner floating={fullScreen} />
+	{#if DEMO}
+		<DemoNotice bind:open={demoNotice} hidden={streams.alerts.top !== null} />
+	{/if}
 	{#if WIDE_ONLY.some(within)}
 		<p class="border-b border-warn-900/50 bg-warn-950/40 px-6 py-2 text-sm text-warn-200 lg:hidden">
 			Made for wide screens (1024 px and up). On a smaller screen the tables scroll sideways, and

@@ -1,6 +1,7 @@
 import { networkInterfaces } from 'node:os';
 import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { building, dev } from '$app/env';
+import { DEMO } from '#lib/demo/mode.ts';
 import { gzipResponse } from '#lib/server/compress.ts';
 import { receiver } from '#lib/server/live-receiver.ts';
 import { settings } from '#lib/server/live-settings.ts';
@@ -11,7 +12,8 @@ export const handle: Handle = async ({ event, resolve }) =>
 
 /** Start reading the receiver when the server starts, not on the first request. */
 export const init: ServerInit = () => {
-	if (building) return;
+	// The demo has no receiver (and `dev:demo` is Vite's server alone).
+	if (building || DEMO) return;
 	// Importing live-receiver.ts has started it (and Receiver.start named the source).
 	receiver();
 

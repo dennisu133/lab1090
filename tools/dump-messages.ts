@@ -8,7 +8,7 @@
  * capture order, prefixed with the receiver timestamp in seconds ("12.345678 8d…"), for
  * oracles that depend on order and timing (CPR pairs).
  */
-import { BeastParser } from '../src/lib/server/beast/parser.ts';
+import { BeastParser } from '../src/lib/beast/parser.ts';
 import { toHex } from '../src/lib/modes/frame.ts';
 
 const args = process.argv.slice(2);

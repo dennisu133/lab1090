@@ -27,7 +27,7 @@ import { distanceKm } from '#lib/geo.ts';
 import type { LatLon } from '#lib/modes/cpr.ts';
 import { AddressFilter } from '#lib/modes/address-filter.ts';
 import { bits, downlinkFormat, toHex } from '#lib/modes/frame.ts';
-import type { BeastFrame } from '#lib/server/beast/parser.ts';
+import type { BeastFrame } from '#lib/beast/parser.ts';
 
 /** Where it stands: 33 km south of the tests' receiver (52, 14), where the capture's traffic is. */
 export const JAMMER: LatLon = { lat: 51.7, lon: 14.0 };

@@ -2,8 +2,10 @@ import { createContext } from 'svelte';
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import type { LatLon } from '#lib/modes/cpr.ts';
+import { DEMO } from '#lib/demo/mode.ts';
+import { DemoPlayer } from '#lib/demo/player.ts';
 import { ReceiverStats } from '#lib/receiver-stats.svelte.ts';
-import { StreamConnection } from '#lib/stream-connection.ts';
+import { eventStream, StreamConnection } from '#lib/stream-connection.ts';
 import { AlertCenter } from './alerts.svelte';
 import { CommBStream } from './comm-b/comm-b-stream.svelte';
 import { CoverageStream } from './coverage-stream.svelte';
@@ -22,6 +24,9 @@ import { WeatherStream } from './weather/weather-stream.svelte';
  * itself (the server only checks CRCs), which costs little: the four together take ~2 s of
  * CPU for 10 minutes of the capture's traffic (~57 frames/s). The radar experiment costs
  * more than that on its own, so it only runs while its map layer is on.
+ *
+ * The static demo (DEMO) has no server: a recording played in the page (DemoPlayer) feeds
+ * them instead of /api/stream, and answers /frames' lookups instead of /api/frames.
  */
 export class Streams {
 	/** The server's message counts and the rates: for the navigation bar, /frames and /receiver. */
@@ -50,7 +55,8 @@ export class Streams {
 	/** `reference`: the receiver's position (the page data, from the server's settings). */
 	constructor(reference: () => LatLon) {
 		this.tracker = new TrackerStream(reference);
-		this.frames = new FrameStream(reference);
+		const player = DEMO ? new DemoPlayer() : null;
+		this.frames = new FrameStream(reference, player && (async (query) => player.query(query)));
 		this.commB = new CommBStream();
 		this.weather = new WeatherStream(reference);
 		this.alerts = new AlertCenter(this.tracker, (icao) => this.show(icao));
@@ -58,7 +64,7 @@ export class Streams {
 		this.coverage = new CoverageStream(this.tracker, reference);
 		this.gnss = new GnssStream(this.tracker, reference);
 		this.signal = new SignalStream(this.tracker, reference);
-		this.#connection = new StreamConnection('/api/stream', [
+		this.#connection = new StreamConnection(player ?? eventStream('/api/stream'), [
 			// First: /setup changed the position while this tab was open. Everything decoded
 			// with the old one is wrong (coverage, ground positions, distances, declination):
 			// start over with a reload rather than reset each view.

@@ -1,5 +1,5 @@
 import { TcpClient, type TcpClientOptions } from '../tcp-client';
-import { BeastParser, type BeastFrame } from './parser';
+import { BeastParser, type BeastFrame } from '#lib/beast/parser.ts';
 
 /**
  * A Beast feed (another lab1090's --beast-out, readsb or dump1090, TCP port 30005): messages

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { startingQuery } from '#lib/page-query.ts';
 	import { arrivalTime, n as whole } from '#lib/describe/format.ts';
 	import FilterChip from '#lib/components/FilterChip.svelte';
 	import LiveHeading from '#lib/components/LiveHeading.svelte';
@@ -25,7 +25,12 @@
 
 	let source = $state<Source | null>(null);
 	/** The register picked; the page can open with one, from `?register=5,0` (the tracker links so). */
-	let register = $state<string | null>(page.url.searchParams.get('register'));
+	let register = $state<string | null>(
+		startingQuery(
+			(q) => q.get('register'),
+			(r) => (register = r)
+		)
+	);
 	let aircraft = $state<string | null>(null);
 
 	let rows = $derived(

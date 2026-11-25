@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { DEMO } from '#lib/demo/mode.ts';
 	import CloseIcon from '#lib/components/icons/CloseIcon.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { ago, angleText, distanceText, flightLevel, n, type Unit } from '#lib/describe/format.ts';
@@ -83,8 +84,10 @@
 <p class="px-4 pb-3 text-sm text-zinc-400">
 	Antenna at
 	<span class="font-mono text-zinc-300">{receiver.lat.toFixed(5)}, {receiver.lon.toFixed(5)}</span>
-	·
-	<a href={resolve('/setup')} class="text-accent-400 hover:text-accent-300">Change</a>
+	{#if !DEMO}
+		·
+		<a href={resolve('/setup')} class="text-accent-400 hover:text-accent-300">Change</a>
+	{/if}
 </p>
 
 <p class="px-4 pb-3 text-sm text-zinc-300">

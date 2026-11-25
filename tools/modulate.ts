@@ -17,7 +17,7 @@
  */
 import { modulate } from '../src/lib/demod/modulate.ts';
 import { SAMPLE_RATE } from '../src/lib/demod/samples.ts';
-import { BeastParser } from '../src/lib/server/beast/parser.ts';
+import { BeastParser } from '../src/lib/beast/parser.ts';
 
 const args = process.argv.slice(2);
 const option = (name: string) => {

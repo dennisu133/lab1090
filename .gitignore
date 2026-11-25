@@ -37,3 +37,7 @@ __pycache__
 # Claude Code: personal instructions, not shared
 CLAUDE.md
 CLAUDE.local.md
+
+# The static demo: its data (tools/demo.ts) and the site (bun run build:demo)
+/demo-data/
+/build-demo/

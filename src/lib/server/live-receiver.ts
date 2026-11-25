@@ -1,5 +1,6 @@
 import { statfsSync } from 'node:fs';
 import { building } from '$app/env';
+import { DEMO } from '#lib/demo/mode.ts';
 import { SAMPLE_RATE } from '#lib/demod/samples.ts';
 import { bytesText, durationWords, fileTime } from '#lib/describe/format.ts';
 import { settings } from './live-settings';
@@ -18,6 +19,8 @@ import { VERSION } from './settings';
  *
  * The recording too, but a reload ends it (the samples break off there) and no new one
  * starts: one --record, one file.
+ *
+ * Not at all in the demo (DEMO): it has no receiver, the pages play a recording.
  */
 const g = globalThis as typeof globalThis & {
 	__lab1090Receiver?: Receiver;
@@ -28,7 +31,7 @@ const g = globalThis as typeof globalThis & {
 const COMPRESSED = 0.33;
 const ROOM_NEEDED = 0.5;
 
-if (!building) {
+if (!building && !DEMO) {
 	g.__lab1090Receiver?.stop();
 	g.__lab1090Recorder?.finish('the server was reloaded');
 	if (g.__lab1090Recorder === undefined) g.__lab1090Recorder = openRecorder();

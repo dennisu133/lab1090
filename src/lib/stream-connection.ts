@@ -13,6 +13,43 @@ export interface UpdateListener {
 	reset?(): void;
 }
 
+/** Where the updates come from: the server's event stream, or the demo's player. */
+export interface UpdateSource {
+	/**
+	 * Start; `update` gets every update, `online` whether the link to the source is up.
+	 * Returns a cleanup function.
+	 */
+	open(handlers: { update(update: StreamUpdate): void; online(up: boolean): void }): () => void;
+}
+
+/** How long to wait before opening a new EventSource after one gave up. */
+const RETRY_MS = 5_000;
+
+/** The server's event stream, '/api/stream' (see StreamConnection for what it does). */
+export function eventStream(url: string): UpdateSource {
+	return {
+		open({ update, online }) {
+			let source: EventSource;
+			let retry: ReturnType<typeof setTimeout> | undefined;
+			const open = () => {
+				source = new EventSource(url);
+				source.onopen = () => online(true);
+				source.onerror = () => {
+					online(false);
+					// CONNECTING: it retries by itself. CLOSED: it gave up (an HTTP error).
+					if (source.readyState === EventSource.CLOSED) retry = setTimeout(open, RETRY_MS);
+				};
+				source.onmessage = (e) => update(JSON.parse(e.data));
+			};
+			open();
+			return () => {
+				clearTimeout(retry);
+				source.close();
+			};
+		}
+	};
+}
+
 /**
  * The browser's one connection to the server's event stream (/api/stream), feeding every
  * page's view of it (the LiveFeeds) and the receiver's counts with the same updates.
@@ -21,10 +58,10 @@ export interface UpdateListener {
  * open while you move between pages, and every view keeps collecting in the background. The
  * weather profile needs half an hour of data, the tracker's turn rates and callsigns a few
  * minutes; with a connection per page all of that started over on every page switch. A
- * reload or a new tab still starts over: the server only keeps a little history (Receiver).
+ * reload or a new tab still starts over: the server only keeps a little history (ReceiverHub).
  *
  * EventSource reconnects by itself after a network error, saying which update it got last
- * (Last-Event-ID), and the server goes on from there (Receiver.subscribe). It gives up for
+ * (Last-Event-ID), and the server goes on from there (ReceiverHub.subscribe). It gives up for
  * good when the server answers with an HTTP error (a reverse proxy's 502 while lab1090
  * restarts): then a new one is opened after RETRY_MS, which starts afresh, and the server
  * sends its recent history again, part of which this tab already has. So does a reconnect
@@ -34,42 +71,29 @@ export interface UpdateListener {
  *
  * Also reports both links (browser ↔ server, server ↔ receiver) to `receiverLink`, for the status
  * in the navigation bar.
+ *
+ * The static demo has no server: its player (demo/player.ts) runs the server's hub in the
+ * page and hands over the same updates (an UpdateSource like eventStream).
  */
-/** How long to wait before opening a new EventSource after one gave up. */
-const RETRY_MS = 5_000;
-
 export class StreamConnection {
-	#url: string;
+	#source: UpdateSource;
 	#listeners: UpdateListener[];
 	/** The server run (`since`) and the newest frame id from it seen so far. */
 	#since: number | null = null;
 	#newest = 0;
 
-	/** `url`: the server's event stream, '/api/stream'. */
-	constructor(url: string, listeners: UpdateListener[]) {
-		this.#url = url;
+	/** `source`: eventStream('/api/stream'), or the demo's player. */
+	constructor(source: UpdateSource, listeners: UpdateListener[]) {
+		this.#source = source;
 		this.#listeners = listeners;
 	}
 
 	/** Open the stream; returns a cleanup function (use from an $effect). */
 	connect(): () => void {
-		let source: EventSource;
-		let retry: ReturnType<typeof setTimeout> | undefined;
-		const open = () => {
-			source = new EventSource(this.#url);
-			source.onopen = () => (receiverLink.online = true);
-			source.onerror = () => {
-				receiverLink.online = false;
-				// CONNECTING: it retries by itself. CLOSED: it gave up (an HTTP error).
-				if (source.readyState === EventSource.CLOSED) retry = setTimeout(open, RETRY_MS);
-			};
-			source.onmessage = (e) => this.#receive(JSON.parse(e.data));
-		};
-		open();
-		return () => {
-			clearTimeout(retry);
-			source.close();
-		};
+		return this.#source.open({
+			update: (update) => this.#receive(update),
+			online: (up) => (receiverLink.online = up)
+		});
 	}
 
 	#receive(update: StreamUpdate): void {

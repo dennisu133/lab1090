@@ -11,9 +11,13 @@
 
 	While a link is down the numbers are hidden (they'd be stale or zero): one line says which
 	link, its tooltip the reason.
+
+	The demo (DEMO) says when its recording was made instead of the total: counted since the
+	page opened, the total says little there.
 -->
 <script lang="ts">
-	import { clockTime, dayAndTime, n, perSecond, shortTime } from '#lib/describe/format.ts';
+	import { clockTime, date, dayAndTime, n, perSecond, shortTime } from '#lib/describe/format.ts';
+	import { DEMO } from '#lib/demo/mode.ts';
 	import HistoryChart from '#lib/components/HistoryChart.svelte';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import { receiverLink as link } from '#lib/receiver-link.svelte.ts';
@@ -125,7 +129,9 @@
 			{/if}
 		</div>
 	</div>
-	{#if state.receiving}
+	{#if state.receiving && DEMO && link.replay?.recordedAt}
+		<span>Recorded {date(link.replay.recordedAt)}</span>
+	{:else if state.receiving}
 		<span>
 			{stats.counts && stats.since !== null
 				? `${n(stats.counts.total)} since ${dayAndTime(stats.since, shortTime)}`

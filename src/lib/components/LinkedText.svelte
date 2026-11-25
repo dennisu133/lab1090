@@ -7,16 +7,20 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { DEMO } from '#lib/demo/mode.ts';
 
 	let { text }: { text: string } = $props();
 
-	/** The pages a tooltip may send the reader to, for more on what it only touches on. */
-	const PAGES: Record<string, string> = {
+	/**
+	 * The pages a tooltip may send the reader to, for more on what it only touches on. null:
+	 * not in this build (the demo has no /receiver): the link's text stays, without the link.
+	 */
+	const PAGES: Record<string, string | null> = {
 		'/frames': resolve('/(app)/frames'),
 		'/comm-b': resolve('/(app)/comm-b'),
 		'/weather': resolve('/(app)/weather'),
 		'/weather/aircraft': resolve('/(app)/weather/aircraft'),
-		'/receiver': resolve('/(app)/receiver')
+		'/receiver': DEMO ? null : resolve('/(app)/receiver')
 	};
 
 	const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
@@ -31,8 +35,13 @@
 			const path = target.split(/[?#]/)[0];
 			const page = PAGES[path];
 			const external = /^https:\/\//.test(target);
-			if (!page && !external) continue;
+			if (page === undefined && !external) continue;
 			out.push({ text: text.slice(at, m.index) });
+			if (page === null) {
+				out.push({ text: label });
+				at = m.index + whole.length;
+				continue;
+			}
 			out.push({
 				text: label,
 				href: external ? target : page + target.slice(path.length),

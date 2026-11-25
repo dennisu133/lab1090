@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { BeastParser } from '#lib/server/beast/parser.ts';
+import { BeastParser } from '#lib/beast/parser.ts';
 import {
 	downlinkFormat,
 	signalBucket,

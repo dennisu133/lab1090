@@ -39,11 +39,14 @@ export class FrameStream extends LiveFeed<FeedFrame> {
 	/** The receiver's position from the server: the reference point for local CPR decoding. */
 	#reference: () => LatLon;
 	#decoder: FrameDecoder;
+	#stored: StoredFrames;
 
-	constructor(reference: () => LatLon) {
+	/** `stored`: where lookups go; null: the server's /api/frames. */
+	constructor(reference: () => LatLon, stored: StoredFrames | null = null) {
 		super(LIVE_FRAMES);
 		this.#reference = reference;
 		this.#decoder = new FrameDecoder(reference);
+		this.#stored = stored ?? fromServer;
 	}
 
 	/**
@@ -54,9 +57,7 @@ export class FrameStream extends LiveFeed<FeedFrame> {
 		query: FrameQuery,
 		signal?: AbortSignal
 	): Promise<FramesResponse & { frames: FeedFrame[] }> {
-		const response = await fetch(`/api/frames?${toSearchParams(query)}`, { signal });
-		if (!response.ok) throw new Error(`/api/frames: ${response.status} ${await response.text()}`);
-		const { since, frames }: FramesResponse = await response.json();
+		const { since, frames } = await this.#stored(query, signal);
 		// A decoder of their own, fed in arrival order: these frames are older than the live
 		// ones and must not end up in the live pairing. Pairs within the batch still work.
 		const decoder = new FrameDecoder(this.#reference);
@@ -76,6 +77,15 @@ export class FrameStream extends LiveFeed<FeedFrame> {
 		return decorated;
 	}
 }
+
+/** The latest stored frames matching a filter (FrameBuffers), oldest first. */
+export type StoredFrames = (query: FrameQuery, signal?: AbortSignal) => Promise<FramesResponse>;
+
+const fromServer: StoredFrames = async (query, signal) => {
+	const response = await fetch(`/api/frames?${toSearchParams(query)}`, { signal });
+	if (!response.ok) throw new Error(`/api/frames: ${response.status} ${await response.text()}`);
+	return response.json();
+};
 
 /**
  * Decodes frames for display. Remembers each aircraft's latest even and odd positions to

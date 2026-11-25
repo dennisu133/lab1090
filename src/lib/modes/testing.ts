@@ -3,7 +3,7 @@
  * see tools/README.md), and the capture's messages. Only imported by tests.
  */
 import { join } from 'node:path';
-import { BeastParser } from '#lib/server/beast/parser.ts';
+import { BeastParser } from '#lib/beast/parser.ts';
 import { nl, type LatLon } from './cpr';
 import { fromHex } from './frame';
 import type { Cpr } from './position';

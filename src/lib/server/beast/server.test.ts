@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { BeastClient } from './client';
-import { BeastParser, type BeastFrame } from './parser';
+import { BeastParser, type BeastFrame } from '#lib/beast/parser.ts';
 import { BeastServer } from './server';
 import { capture, waitFor } from './testing';
 
