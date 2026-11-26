@@ -7,7 +7,7 @@ import { toHex } from '#lib/modes/frame.ts';
 import type { DeviceInfo, SourceStatus } from '#lib/receiver-types.ts';
 import { waitFor } from '../beast/testing';
 import type { ModeSFrame } from '../frame-source';
-import { explain, learn, RtlSdr } from './rtl-sdr';
+import { explain, learn, missing, RtlSdr } from './rtl-sdr';
 import { RtlTcp, setupCommands, tunerName } from './rtl-tcp';
 
 const hex = (s: string) => Uint8Array.from(s.match(/../g)!.map((b) => parseInt(b, 16)));
@@ -93,8 +93,15 @@ describe('RtlSdr', () => {
 		sources.push(sdr.start());
 		await waitFor(() => statuses.at(-1)?.state === 'waiting');
 		expect(statuses.at(-1)).toMatchObject({
-			reason: `${command} isn't installed (apt install rtl-sdr)`
+			reason: missing(command)
 		});
+	});
+
+	test('only Linux is told to install rtl_sdr', () => {
+		expect(missing('rtl_sdr', 'linux')).toBe("rtl_sdr isn't installed (apt install rtl-sdr)");
+		for (const platform of ['darwin', 'win32'] as const) {
+			expect(missing('rtl_sdr', platform)).toContain('--rtl-tcp or --connect');
+		}
 	});
 
 	test('rtl_sdr’s messages in words', () => {

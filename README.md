@@ -28,6 +28,10 @@ The dongle can also be on another machine:
   `./lab1090 --connect <host>`: their Beast output, already demodulated, about 20 KB/s. A
   receiver that feeds a flight tracking site can be used as it is.
 
+The web server alone also runs on macOS and Windows, with the dongle on a Linux machine
+through either of these. macOS asks for the downloaded `lab1090` to be allowed first, in
+System Settings → Privacy & Security (it isn't notarized).
+
 Use `./lab1090 --help` for more information.
 
 ## Development

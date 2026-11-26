@@ -7,7 +7,8 @@ import { SampleDecoder } from './decoder';
 
 /**
  * The RTL-SDR on this machine, read through the `rtl_sdr` program (Debian/Ubuntu/Raspberry Pi
- * OS: `apt install rtl-sdr`). It tunes the dongle to 1090 MHz at 2.4 million samples a second
+ * OS: `apt install rtl-sdr`; on macOS and Windows lab1090 takes its messages from a receiver
+ * elsewhere, `missing` says so). It tunes the dongle to 1090 MHz at 2.4 million samples a second
  * and writes the samples to its output, which we demodulate.
  *
  * Why a program and not the library (librtlsdr) itself: librtlsdr is GPL, and a separate
@@ -89,10 +90,9 @@ export class RtlSdr extends SourceBase implements FrameSource {
 		try {
 			process = Bun.spawn([command, ...args], { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' });
 		} catch (error) {
-			const missing = (error as NodeJS.ErrnoException).code === 'ENOENT';
 			this.retry(
-				missing
-					? `${command} isn't installed (apt install rtl-sdr)`
+				(error as NodeJS.ErrnoException).code === 'ENOENT'
+					? missing(command)
 					: `${command} didn't start: ${(error as Error).message}`,
 				() => void this.#run()
 			);
@@ -138,6 +138,16 @@ export class RtlSdr extends SourceBase implements FrameSource {
 		const reason = stalled ?? explain(await messages, code, device);
 		this.retry(reason, () => void this.#run());
 	}
+}
+
+/**
+ * Why there's no `command` to run. Off Linux, the dongle is meant to be on a Linux machine
+ * (rtl_tcp there, or a Beast feed), and installing rtl_sdr here is not what to suggest.
+ */
+export function missing(command: string, platform: NodeJS.Platform = process.platform): string {
+	return platform === 'linux'
+		? `${command} isn't installed (apt install rtl-sdr)`
+		: `no ${command} on this machine: --rtl-tcp or --connect take the messages from a receiver on Linux`;
 }
 
 /**

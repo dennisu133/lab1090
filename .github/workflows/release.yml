@@ -1,6 +1,6 @@
 # A release for every version: package.json's "version" is the one place it is kept. When a
-# push to main brings a version that has no tag yet, this builds the binaries, tags the
-# commit v<version> and makes a draft release with them. Notes and "Publish" are done by
+# push to main brings a version that has no tag yet, this builds the binaries, tries them on
+# Linux, macOS and Windows, tags the commit v<version> and makes a draft release with them. Notes and "Publish" are done by
 # hand on GitHub. Versions with a "-" (1.1.0-beta.1) become pre-releases.
 #
 # If it fails after tagging (the release step), delete the tag on GitHub and re-run it
@@ -37,12 +37,10 @@ jobs:
             echo "new=true" >> "$GITHUB_OUTPUT"
           fi
 
-  release:
+  build:
     needs: check
     if: needs.check.outputs.new == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # the tag and the release
     env:
       VERSION: ${{ needs.check.outputs.version }}
     steps:
@@ -52,28 +50,98 @@ jobs:
       - run: bun install --frozen-lockfile
 
       # One executable each, the client files embedded (vite.config.ts, COMPILE), packed with
-      # LICENSE and README in a folder of their own: xz makes them 40 % of their size (gzip:
-      # 50 %), and tar keeps the executable bit.
-      # x64 is Bun's "baseline" build: it also runs on CPUs without AVX2 (before ~2013, small
-      # Atoms and Celerons), a little slower.
+      # LICENSE and README in a folder of their own. Bun builds them all from here, the macOS
+      # ones signed ad hoc (Apple Silicon runs nothing unsigned; not notarized, README says
+      # what that asks of the user). macOS and Windows get only the web server's part:
+      # rtl_sdr is Linux only, their dongle is on a Linux machine (--rtl-tcp, --connect).
+      # Linux and macOS: xz makes them 40 % of their size (gzip: 50 %), and tar keeps the
+      # executable bit. Windows: zip, which Explorer opens.
+      # x64 Linux and Windows are Bun's "baseline" builds: they also run on CPUs without AVX2
+      # (before ~2013, small Atoms and Celerons), a little slower. Every Intel Mac that runs
+      # a current macOS has AVX2.
       - name: Build
         run: |
           mkdir dist
-          for arch in x64 arm64; do
-            target="bun-linux-$arch"
-            [ "$arch" = x64 ] && target=bun-linux-x64-baseline
+          for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
+            target="bun-$platform"
+            [[ "$platform" == *-x64 && "$platform" != darwin-* ]] && target+=-baseline
+            rm -rf build
             COMPILE=$target bun --bun vite build
-            # The runner is x64: that one can show it runs and knows its version.
-            if [ "$arch" = x64 ]; then
-              test "$(./build/lab1090 --version)" = "lab1090 $VERSION"
-            fi
-            name="lab1090-$VERSION-linux-$arch"
+            name="lab1090-$VERSION-$platform"
             mkdir "$name"
-            cp build/lab1090 LICENSE README.md "$name/"
-            XZ_OPT='-9e -T0' tar --owner=0 --group=0 --numeric-owner -cJf "dist/$name.tar.xz" "$name"
+            cp build/lab1090* LICENSE README.md "$name/"
+            rm -f "$name/lab1090.map"
+            if [[ "$platform" == windows-* ]]; then
+              zip -9 -rq "dist/$name.zip" "$name"
+            else
+              XZ_OPT='-9e -T0' tar --owner=0 --group=0 --numeric-owner -cJf "dist/$name.tar.xz" "$name"
+            fi
           done
           (cd dist && sha256sum -- * > SHA256SUMS)
           ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  # Each download where it's meant to run, as a user would unpack it: it knows its version,
+  # serves the page and plays a recording (the committed capture) into /api/stream. Not
+  # linux-arm64 (the Pi is where that one runs every day) or darwin-x64 (Intel Macs:
+  # GitHub's runners for them are going away).
+  smoke-test:
+    needs: [check, build]
+    strategy:
+      matrix:
+        include:
+          - { platform: linux-x64, os: ubuntu-latest }
+          - { platform: darwin-arm64, os: macos-latest }
+          - { platform: windows-x64, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: oracle/capture.beast
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - name: Run it
+        run: |
+          name="lab1090-$VERSION-${{ matrix.platform }}"
+          if [ -f "dist/$name.zip" ]; then 7z x -bso0 "dist/$name.zip"; else tar -xJf "dist/$name.tar.xz"; fi
+          bin="$name/lab1090"
+          test "$("$bin" --version | tr -d '\r')" = "lab1090 $VERSION"
+          "$bin" --replay oracle/capture.beast --position 52,14 --port 5199 > server.log 2>&1 &
+          server=$!
+          for _ in $(seq 60); do curl -sf -o /dev/null http://127.0.0.1:5199/ && break; sleep 1; done
+          ok=true
+          curl -sf -o /dev/null http://127.0.0.1:5199/ || ok=false
+          curl -sN -m 5 http://127.0.0.1:5199/api/stream > stream.txt || true
+          grep -q '"state":"connected"' stream.txt || ok=false
+          kill $server || true
+          cat server.log
+          $ok
+
+  release:
+    needs: [check, smoke-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the tag and the release
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
 
       - name: Tag and release
         env:

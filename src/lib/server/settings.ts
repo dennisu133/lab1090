@@ -95,7 +95,7 @@ Usage: lab1090 [options]
 
 Where the messages come from (default: the first RTL-SDR on this machine):
   --device <index|serial>   which RTL-SDR, if there are several (default: ${DEFAULT_DEVICE}). lab1090
-                            runs rtl_sdr to read it: apt install rtl-sdr
+                            runs rtl_sdr to read it, Linux only: apt install rtl-sdr
   --gain <dB>               the RTL-SDR's gain (default: ${DEFAULT_GAIN}, the most); less if strong
                             signals near an airport overload it
   --rtl-tcp <host[:port]>   an RTL-SDR on another machine, through rtl_tcp there
